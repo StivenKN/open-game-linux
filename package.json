@@ -14,6 +14,8 @@
     "db:up": "docker compose up -d --wait db",
     "db:migrar": "node --env-file-if-exists=.env scripts/migrar.ts",
     "db:reset": "node --env-file-if-exists=.env scripts/migrar.ts --reset",
+    "db:sembrar": "node --env-file-if-exists=.env scripts/sembrar.ts",
+    "rol": "node --env-file-if-exists=.env scripts/rol.ts",
     "db:auth-sql": "node --env-file-if-exists=.env scripts/auth-sql.ts",
     "check": "tsr generate && tsc --noEmit && oxlint && vitest run && vite build && node scripts/sin-servidor-en-cliente.ts"
   },

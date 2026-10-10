@@ -6,9 +6,10 @@
 import { betterAuth } from 'better-auth'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { Brand, Context, Effect, Option, Schema } from 'effect'
+import { SqlClient } from 'effect/sql'
 import { Pool } from 'pg'
-import { NoAutenticado, SinPermiso } from '../dominio/fallos.ts'
-import { puedeRevisar } from '../dominio/revision.ts'
+import { NoAutenticado, NoEncontrado, SinPermiso } from '../dominio/fallos.ts'
+import { puedeRevisar, type Rol } from '../dominio/revision.ts'
 import { Usuario as FilaUsuario } from '../dominio/tablas.ts'
 import { esquemaAuth } from './esquema/auth.ts'
 
@@ -66,3 +67,22 @@ const Revisor = Brand.nominal<Revisor>()
 export const exigirRevisor: Effect.Effect<Revisor, NoAutenticado | SinPermiso, Visitante> = Effect.flatMap(exigirUsuario, (u) =>
   puedeRevisar[u.rol] ? Effect.succeed(Revisor(u)) : Effect.fail(new SinPermiso()),
 )
+
+/**
+ * Demo accounts live under this reserved `.test` domain, which no real person can register, so a
+ * contribution whose author's correo ends in `@${dominioDemo}` is "Datos de ejemplo" (open decision 3).
+ */
+export const dominioDemo = 'demo.opengame.test'
+
+const RolActual = Schema.Struct({ alias: FilaUsuario.fields.alias, rol: FilaUsuario.fields.rol })
+
+/** Sets an account's role (scripts/rol.ts and the seed; there is no admin UI). `cambio` is false when it already had it. */
+export const asignarRol = (correo: string, rol: Rol) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    const filas = yield* sql`SELECT alias, rol FROM usuario WHERE correo = lower(btrim(${correo}))`
+    const [actual] = yield* Schema.decodeUnknownEffect(Schema.Array(RolActual))(filas)
+    if (actual === undefined) return yield* Effect.fail(new NoEncontrado())
+    if (actual.rol !== rol) yield* sql`UPDATE usuario SET rol = ${rol} WHERE correo = lower(btrim(${correo}))`
+    return { alias: actual.alias, rol, cambio: actual.rol !== rol }
+  })
