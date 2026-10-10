@@ -4,7 +4,7 @@ import { Effect, Schema, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { PerfilObjetivo } from '../../dominio/aportes.ts'
 import { NoEncontrado } from '../../dominio/fallos.ts'
-import { DiagnosticoId, EdicionId, type JuegoId, type PerfilId, type ReporteId } from '../../dominio/ids.ts'
+import { DiagnosticoId, DistribucionId, EdicionId, type JuegoId, type PerfilId, type ReporteId } from '../../dominio/ids.ts'
 import { estadosVigentes } from '../../dominio/revision.ts'
 import { Diagnostico, Equipo, Juego, Lanzador, PerfilConfiguracion, Reporte, TipoFallo, VersionCapa } from '../../dominio/tablas.ts'
 import { exigirUsuario } from '../auth.ts'
@@ -18,7 +18,8 @@ const DiagnosticoFila = Schema.Struct({
   id: DiagnosticoId,
   equipo: Equipo.fields.alias,
   distribucion: Nombre,
-  ...Diagnostico.mapFields(Struct.pick(['distribucion_id', 'arquitectura', 'capturado_en'])).fields,
+  distribucion_id: DistribucionId, // joined to distribucion, so only Linux captures come back
+  ...Diagnostico.mapFields(Struct.pick(['arquitectura', 'capturado_en'])).fields,
 })
 
 const PerfilFila = Schema.Struct({

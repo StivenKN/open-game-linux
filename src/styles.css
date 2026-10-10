@@ -513,6 +513,71 @@ textarea {
   min-height: 110px;
   font-family: var(--mono);
   font-size: 12px;
+
+
+/* ------------------------------------------------------------ aportes y revisión (U5) */
+.formulario-ancho {
+  max-width: 760px;
+}
+.campo {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.campo .ayuda {
+  margin: 0;
+}
+.campos-en-linea {
+  align-items: start;
+}
+.campos-en-linea > .campo {
+  flex: 1 1 180px;
+}
+.grupo,
+.grupo-opcional {
+  border: 1px solid var(--linea);
+  border-radius: 8px;
+  padding: 10px 14px 14px;
+  margin: 8px 0 0;
+  display: grid;
+  gap: 6px;
+}
+.grupo legend,
+.grupo-opcional legend {
+  font-weight: 600;
+  padding: 0 6px;
+}
+.grupo-opcional-campos {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.formulario label.casilla,
+label.casilla {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  margin-top: 0;
+}
+.formulario .campos-en-linea > button {
+  margin-top: 28px;
+}
+.pestanas {
+  margin: 12px 0 4px;
+}
+.decision {
+  border-top: 1px solid var(--linea);
+  padding-top: 10px;
+  margin-bottom: 0;
+}
+.decision button {
+  margin-top: 6px;
+}
+.instrucciones {
+  white-space: pre-line;
 }
 textarea[aria-invalid='true'],
 select[aria-invalid='true'] {
@@ -527,3 +592,4 @@ select[aria-invalid='true'] {
   display: grid;
   gap: 6px;
 }
+
