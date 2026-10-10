@@ -5,9 +5,8 @@ import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient, type SqlError } from 'effect/sql'
 import { getMigrations } from 'better-auth/db/migration'
-import { Pool } from 'pg'
 import { ReglaIncumplida } from '../src/dominio/fallos.ts'
-import { esquemaAuth } from '../src/servidor/esquema/auth.ts'
+import { auth } from '../src/servidor/auth.ts'
 import { conReglasDeBd, reglaDeRestriccion } from '../src/servidor/esquema/restricciones.ts'
 import { enRollback, idDe, PgTest, restriccionDe } from './apoyo.ts'
 import { base, type Base } from './fixtures.ts'
@@ -272,13 +271,8 @@ layer(PgTest)('esquema', (it) => {
       ))
 
     it.effect('better-auth no tiene nada que migrar sobre 1_auth', () =>
-      Effect.acquireUseRelease(
-        Effect.sync(() => new Pool({ connectionString: process.env.DATABASE_URL_TEST, max: 1 })),
-        (pool) =>
-          Effect.promise(() => getMigrations({ ...esquemaAuth, database: pool })).pipe(
-            Effect.map(({ toBeCreated, toBeAdded }) => expect({ toBeCreated, toBeAdded }).toEqual({ toBeCreated: [], toBeAdded: [] })),
-          ),
-        (pool) => Effect.promise(() => pool.end()),
+      Effect.promise(() => getMigrations(auth.options)).pipe(
+        Effect.map(({ toBeCreated, toBeAdded }) => expect({ toBeCreated, toBeAdded }).toEqual({ toBeCreated: [], toBeAdded: [] })),
       ))
   })
 })
