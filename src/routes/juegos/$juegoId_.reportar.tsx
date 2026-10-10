@@ -143,7 +143,7 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
   }
 
   return (
-    <form className="tarjeta formulario formulario-ancho" onSubmit={r.enviar} noValidate>
+    <form className="tarjeta formulario formulario-ancho" {...r.formulario}>
       <ErrorCampo errores={r.errores} campo="formulario" />
 
       <h2 className="titulo-seccion">Dónde probaste</h2>

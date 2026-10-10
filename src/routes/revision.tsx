@@ -116,7 +116,7 @@ function Elemento({ refAporte, elemento, children }: { refAporte: AporteRef; ele
       {elemento.es_propio ? (
         <p className="pequeno tenue">Es tu aporte: otro revisor debe decidir sobre él.</p>
       ) : (
-        <form className="formulario decision" onSubmit={r.enviar} noValidate>
+        <form className="formulario decision" {...r.formulario}>
           <ErrorCampo errores={r.errores} campo="formulario" />
           <input type="hidden" name="ref[_tag]" value={refAporte._tag} />
           <input type="hidden" name="ref[id]" value={refAporte.id} />

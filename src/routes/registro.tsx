@@ -23,7 +23,7 @@ function CrearCuenta() {
     <main className="envoltura estrecha">
       <h1>Crear cuenta</h1>
       <p className="tenue">Los demás solo verán tu alias. Tu correo no se muestra en ningún aporte.</p>
-      <form className="tarjeta formulario" onSubmit={r.enviar} noValidate>
+      <form className="tarjeta formulario" {...r.formulario}>
         <ErrorCampo errores={r.errores} campo="formulario" />
         <label htmlFor="alias">Alias</label>
         <input id="alias" name="alias" autoComplete="nickname" aria-invalid={r.errores.alias !== undefined} aria-describedby={idError('alias')} />

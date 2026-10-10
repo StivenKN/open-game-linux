@@ -38,7 +38,7 @@ function NuevoJuegoPagina() {
     <main className="envoltura">
       <p className="rotulo">Catálogo</p>
       <h1>Nuevo juego</h1>
-      <form className="tarjeta formulario formulario-ancho" onSubmit={r.enviar} noValidate>
+      <form className="tarjeta formulario formulario-ancho" {...r.formulario}>
         <ErrorCampo errores={r.errores} campo="formulario" />
         <Campo errores={r.errores} nombre="titulo" etiqueta="Título">
           <input {...campo(r.errores, 'titulo')} />

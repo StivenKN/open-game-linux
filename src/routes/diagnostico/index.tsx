@@ -109,7 +109,7 @@ function Detector({ origen }: { origen: string }) {
         </a>{' '}
         <span className="tenue">para leerlo antes de ejecutarlo con</span> <code>bash opengame-detect.sh --open</code>
       </p>
-      <form className="formulario" onSubmit={r.enviar} noValidate>
+      <form className="formulario" {...r.formulario}>
         <label htmlFor="texto">¿Sin navegador en ese equipo? Pega aquí lo que imprimió el detector</label>
         <textarea
           id="texto"
@@ -156,7 +156,7 @@ function Manual() {
         Descripción manual
       </h2>
       <p className="pequeno tenue">¿Sigues en Windows o no puedes ejecutar el script? Escribe lo que sabes de tu equipo.</p>
-      <form className="formulario" onSubmit={r.enviar} noValidate>
+      <form className="formulario" {...r.formulario}>
         <ErrorCampo errores={r.errores} campo="formulario" />
         <div className="campos-2">
           <div>

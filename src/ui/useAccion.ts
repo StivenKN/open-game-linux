@@ -1,14 +1,15 @@
 // The one form hook. Plain React state; Effect appears only as Schema, with no runtime in the browser.
 //
 //   const r = useAccion(NuevoReporte, registrarReporteFn, { alFallar: erroresDeRegla, alCompletar })
-//   <form onSubmit={r.enviar} noValidate> ... <ErrorCampo errores={r.errores} campo="perfil_id" />
+//   <form {...r.formulario}> ... <ErrorCampo errores={r.errores} campo="perfil_id" />
 //
 // 1. Decodes the FormData with the SAME schema the server fn validates with: field errors, no request.
 // 2. Calls the fn with the re-encoded value (its `data` is the schema's Encoded type).
 // 3. Narrows the returned Respuesta: ok -> alCompletar(valor), else alFallar(fallo) -> field errors.
 //
 // onSubmit rather than <form action>: React 19 resets an action form's fields after every action,
-// which would wipe what the user typed whenever we show an error.
+// which would wipe what the user typed whenever we show an error. `method="post"` covers a submit
+// before hydration: the browser's default GET would put every field, passwords included, in the URL.
 import { type FormEvent, useRef, useState } from 'react'
 import { isNotFound, isRedirect, useRouter } from '@tanstack/react-router'
 import { Option, Result, Schema, SchemaIssue } from 'effect'
@@ -140,5 +141,5 @@ export function useAccion<T, E, A, F>(
     })
   }
 
-  return { enviar, errores, enviando }
+  return { formulario: { onSubmit: enviar, method: 'post', noValidate: true }, errores, enviando } as const
 }

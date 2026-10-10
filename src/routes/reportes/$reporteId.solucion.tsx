@@ -54,7 +54,7 @@ function ProponerSolucion() {
           </p>
         </section>
       ) : (
-        <form className="tarjeta formulario formulario-ancho" onSubmit={r.enviar} noValidate>
+        <form className="tarjeta formulario formulario-ancho" {...r.formulario}>
           <ErrorCampo errores={r.errores} campo="formulario" />
           <input type="hidden" name="reporte_id" value={reporte.id} />
           <Campo errores={r.errores} nombre="tipo_fallo_id" etiqueta="Fallo que resuelve">

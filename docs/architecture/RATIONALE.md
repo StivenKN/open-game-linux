@@ -52,7 +52,7 @@ const r = useAccion(NuevoReporte, registrarReporteFn, {
   alFallar: erroresDeRegla,                   // fallo: { _tag: 'ReglaIncumplida'; regla: Regla }, the only failure registrarReporte returns
   alCompletar: () => navigate({ to: '/juegos/$juegoId', params: { juegoId } }),
 })
-<form onSubmit={r.enviar} noValidate>
+<form {...r.formulario}>
   <select name="perfil_id">…</select>
   <ErrorCampo errores={r.errores} campo="perfil_id" />   {/* "El perfil es para otra distribución que la de tu diagnóstico." */}
   <button disabled={r.enviando}>Enviar reporte</button>

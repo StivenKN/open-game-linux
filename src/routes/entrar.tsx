@@ -23,7 +23,7 @@ function Entrar() {
     <main className="envoltura estrecha">
       <h1>Entrar</h1>
       <p className="tenue">Entra para guardar tu diagnóstico y publicar reportes.</p>
-      <form className="tarjeta formulario" onSubmit={r.enviar} noValidate>
+      <form className="tarjeta formulario" {...r.formulario}>
         <ErrorCampo errores={r.errores} campo="formulario" />
         <label htmlFor="correo">Correo</label>
         <input

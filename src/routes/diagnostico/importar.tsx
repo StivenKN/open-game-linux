@@ -121,7 +121,7 @@ function Guardar({ entrada }: { entrada: Entrada }) {
 
   return (
     <section className="tarjeta" aria-label="Guardar">
-      <form className="fila" onSubmit={r.enviar} noValidate>
+      <form className="fila" {...r.formulario}>
         <input type="hidden" name="equipo[_tag]" value={destino === 'nuevo' ? 'nuevo' : 'existente'} />
         <label htmlFor="equipo[id]">Guardar en</label>
         <select
