@@ -232,9 +232,11 @@ table {
 .matriz th[scope='row'] {
   text-align: left;
   font-weight: 400;
+  padding: 10px;
+  border-bottom: 1px solid var(--linea);
+  vertical-align: top;
 }
-.matriz td,
-.matriz th[scope='row'] {
+.matriz td {
   padding: 10px;
   border-bottom: 1px solid var(--linea);
   vertical-align: top;
@@ -332,11 +334,11 @@ a {
   color: var(--tenue);
   text-decoration: none;
 }
-.cabecera nav a:hover,
-.cabecera nav a[data-status='active'] {
+.cabecera nav a:hover {
   color: var(--texto);
 }
 .cabecera nav a[data-status='active'] {
+  color: var(--texto);
   text-decoration: underline;
   text-underline-offset: 6px;
 }
@@ -355,8 +357,7 @@ a {
   margin-top: 8px;
 }
 input,
-select,
-textarea {
+select {
   font: inherit;
   color: var(--texto);
   background: var(--fondo);
@@ -364,7 +365,21 @@ textarea {
   border-radius: 6px;
   padding: 8px 10px;
 }
-input[aria-invalid='true'] {
+textarea {
+  width: 100%;
+  min-height: 110px;
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--texto);
+  background: var(--fondo);
+  border: 1px solid var(--linea);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+input[aria-invalid='true'],
+select[aria-invalid='true'],
+textarea[aria-invalid='true'] {
   border-color: var(--rojo);
 }
 button,
@@ -421,12 +436,13 @@ button:disabled {
   color: var(--tenue);
   text-decoration: none;
 }
-.filtro:hover,
-.filtro[data-activo] {
+.filtro:hover {
   color: var(--texto);
   border-color: var(--azul);
 }
 .filtro[data-activo] {
+  color: var(--texto);
+  border-color: var(--azul);
   background: color-mix(in srgb, var(--azul) 18%, transparent);
 }
 .contadores {
@@ -445,9 +461,7 @@ button:disabled {
   font-family: var(--mono);
   font-size: 24px;
 }
-.lista-juegos,
-.lista-tarjetas,
-.pasos {
+.lista-tarjetas {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -455,9 +469,19 @@ button:disabled {
   gap: 12px;
 }
 .lista-juegos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
 }
 .pasos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
   counter-reset: paso;
 }
 .pasos > li {
@@ -510,12 +534,6 @@ button:disabled {
 }
 .sin-margen {
   margin: 0;
-}
-textarea {
-  width: 100%;
-  min-height: 110px;
-  font-family: var(--mono);
-  font-size: 12px;
 }
 
 /* ------------------------------------------------------------ aportes y revisión (U5) */
@@ -581,10 +599,6 @@ label.casilla {
 }
 .instrucciones {
   white-space: pre-line;
-}
-textarea[aria-invalid='true'],
-select[aria-invalid='true'] {
-  border-color: var(--rojo);
 }
 .campos-2 {
   display: grid;
