@@ -1,4 +1,16 @@
+import { existsSync } from 'node:fs'
 import { defineConfig } from 'vitest/config'
 
+// Variables already in the environment win over .env (Node's loadEnvFile does not override).
+if (existsSync('.env')) process.loadEnvFile('.env')
+
 // Separate from vite.config.ts so tests don't boot the Start plugin (spike Q9).
-export default defineConfig({ test: { include: ['src/**/*.test.ts', 'tests/**/*.test.ts'] } })
+// tests/ needs the local Postgres (`pnpm db:up`); its globalSetup migrates DATABASE_URL_TEST.
+export default defineConfig({
+  test: {
+    projects: [
+      { test: { name: 'dominio', include: ['src/**/*.test.ts'] } },
+      { test: { name: 'bd', include: ['tests/**/*.test.ts'], globalSetup: ['tests/preparar.ts'] } },
+    ],
+  },
+})
