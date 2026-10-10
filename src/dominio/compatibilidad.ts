@@ -1,18 +1,7 @@
 // 8.10 "Cómo se obtiene la compatibilidad". Pure and isomorphic. Nothing here is ever stored.
 import { Schema } from 'effect'
 import { DistribucionId, EdicionId, PerfilId, ReporteId, VersionCapaId } from './ids.ts'
-
-/** reporte.resultado. The DB CHECK is generated from `Resultado.literals` (servidor/esquema). */
-export const Resultado = Schema.Literals(['funciona', 'funciona_con_ajustes', 'no_inicia', 'falla_en_ejecucion'])
-export type Resultado = typeof Resultado.Type
-
-/** 8.9's "resultado funcional": what a profile's approval needs from at least one approved report. */
-export const ResultadoFuncional = Resultado.pick(['funciona', 'funciona_con_ajustes'])
-export type ResultadoFuncional = typeof ResultadoFuncional.Type
-
-/** 8.7: these results need >= 1 reporte_fallo. NuevoReporte gives them a non-empty `fallos` type. */
-export const ResultadoFallido = Resultado.pick(['no_inicia', 'falla_en_ejecucion'])
-export type ResultadoFallido = typeof ResultadoFallido.Type
+import { Resultado } from './literales.ts'
 
 /** The computed state of a set of APPROVED results: the four results plus the two set-only states. */
 export const EstadoCompatibilidad = Schema.Literals([
@@ -32,14 +21,6 @@ const estadoDeResultado = {
   no_inicia: 'no_inicia',
   falla_en_ejecucion: 'falla_en_ejecucion',
 } as const satisfies Record<Resultado, EstadoCompatibilidad>
-
-/** 8.7 as a lookup. `satisfies` ties it to ResultadoFuncional and ResultadoFallido at compile time. */
-export const exigeFallo = {
-  funciona: false,
-  funciona_con_ajustes: false,
-  no_inicia: true,
-  falla_en_ejecucion: true,
-} as const satisfies Record<ResultadoFuncional, false> & Record<ResultadoFallido, true>
 
 /**
  * THE result-set rule. Every grain calls it: catalog row, ficha headline, environment row,

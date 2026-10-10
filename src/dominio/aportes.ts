@@ -4,7 +4,7 @@
 // (field errors before any request), the server fn validator decodes the same Encoded value
 // (`Schema.toStandardSchemaV1`), and the handler receives the decoded Type.
 import { Array as Arr, Effect, Schema } from 'effect'
-import { EstadoCompatibilidad, ResultadoFallido, ResultadoFuncional } from './compatibilidad.ts'
+import { EstadoCompatibilidad } from './compatibilidad.ts'
 import { SoporteVulkan } from './evaluacion.ts'
 import type { Discrepancia } from './fallos.ts'
 import {
@@ -20,10 +20,7 @@ import {
   TipoFalloId,
   VersionCapaId,
 } from './ids.ts'
-
-/** version_capa.familia. 'Nativo' is round 1 open decision 2's default (native Linux titles). */
-export const FamiliaCapa = Schema.Literals(['Wine', 'Proton', 'Nativo'])
-export type FamiliaCapa = typeof FamiliaCapa.Type
+import { FamiliaCapa, ResultadoFallido, ResultadoFuncional } from './literales.ts'
 
 /** Round 1 graft: report on a Proton build the seeders missed. Registration upserts on (familia, variante, version). */
 export const VersionCapaRef = Schema.Union([

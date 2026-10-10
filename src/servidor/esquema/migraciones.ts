@@ -32,10 +32,9 @@
 import { Effect, Schema } from 'effect'
 import { Migrator, SqlClient } from 'effect/sql'
 import { PgMigrator } from '@effect/sql-pg'
-import { FamiliaCapa } from '../../dominio/aportes.ts'
-import { Resultado } from '../../dominio/compatibilidad.ts'
 import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
 import { EstadoGuia, TipoGuia } from '../../dominio/guias.ts'
+import { FamiliaCapa, Resultado } from '../../dominio/literales.ts'
 import { type EstadoRevision, Rol } from '../../dominio/revision.ts'
 import { BloqueRevision, largo as L } from '../../dominio/tablas.ts'
 

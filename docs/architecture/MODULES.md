@@ -23,8 +23,9 @@ Each failure message names the fix, for example: "routes call server fns from sr
 
 | Path | Owns | Does not own |
 |---|---|---|
-| `dominio/ids.ts` | Branded integer ids, text `UsuarioId`, `Texto` (trim + non-empty), `TextoOpcional` (blank → null), `IdDesdeTexto` | |
-| `dominio/compatibilidad.ts` | `Resultado`, `EstadoCompatibilidad`, `estadoDeResultado` (explicit map), `exigeFallo`, **`estadoDe`** (the only result-set rule), `PruebaAprobada` (row schema that proves approval), `resumir`, `enDistribucion` | Queries |
+| `dominio/ids.ts` | Branded integer ids (including `DependenciaId`), text `UsuarioId`, `Texto` (trim + non-empty), `TextoOpcional` (blank → null), `IdDesdeTexto` | |
+| `dominio/literales.ts` | `FamiliaCapa`, `Resultado` with `ResultadoFuncional`/`ResultadoFallido`, `exigeFallo`. Imports only `effect`, so `aportes.ts` can spread `tablas.ts` fields without a cycle | |
+| `dominio/compatibilidad.ts` | `EstadoCompatibilidad`, `estadoDeResultado` (explicit map), **`estadoDe`** (the only result-set rule), `PruebaAprobada` (row schema that proves approval), `resumir`, `enDistribucion` | Queries |
 | `dominio/evaluacion.ts` | `Sistema`, `SoporteVulkan`, `Vulkan` (a version only with `si`), `versionVulkan`/`alMenos`, `Capacidades`, `CondicionesConocidas`, **`evaluar`** (3 outcomes, no FPS field), `capacidades`/`condiciones` column adapters, `sugerirPerfil` | |
 | `dominio/revision.ts` | `EstadoRevision`, **`siguientes`** (the only transition table), `Decision` (approval requires evidence), `planificar` (idempotence), `AporteRef`, `Bloqueo`, `Rol`, `puedeRevisar` | Who may decide, preconditions |
 | `dominio/aportes.ts` | Every input schema (`NuevoReporte` with the failing-result filter, `NuevaSolucion`, `NuevoJuego`, `Captura`, `EntradaDiagnostico`, `GuardarDiagnostico`, `VersionCapaRef`, `EquipoDestino`, `FiltroCatalogo`), **`discrepancias`** (8.7 comparability) | Persisting |

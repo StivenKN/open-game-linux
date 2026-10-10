@@ -1,7 +1,8 @@
 // Pure core, no DB. Fixture: prototypes/veredicto (GTA V, Valorant, ETS2) in muestras.ts.
 import { describe, expect, it } from '@effect/vitest'
-import { type EstadoCompatibilidad, enDistribucion, estadoDe, type PruebaAprobada, type Resultado, resumir } from './compatibilidad.ts'
+import { type EstadoCompatibilidad, enDistribucion, estadoDe, type PruebaAprobada, resumir } from './compatibilidad.ts'
 import { DistribucionId } from './ids.ts'
+import type { Resultado } from './literales.ts'
 import { ets2, gtaV, valorant } from './muestras.ts'
 
 describe('estadoDe', () => {

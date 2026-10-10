@@ -1,7 +1,8 @@
 // "Entornos probados": one row per 8.10 grouping key, each with its own computed state and count.
 // FPS appears only as measured by the community, one line per (resolución, calidad), never averaged across.
-import { Resultado, type EntornoProbado } from '../../dominio/compatibilidad.ts'
+import type { EntornoProbado } from '../../dominio/compatibilidad.ts'
 import type { DistribucionId } from '../../dominio/ids.ts'
+import { Resultado } from '../../dominio/literales.ts'
 import { contar, fecha, fps } from '../formato.ts'
 import { Chip, Insignia } from '../Insignia.tsx'
 import { estadoCompatibilidad, resultado } from '../vocabulario.ts'

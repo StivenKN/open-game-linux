@@ -3,11 +3,10 @@
 // Isomorphic. `largo` holds every "Texto n" of the doc; the migration writes varchar(n) from it,
 // so a length lives in one place.
 import { Schema } from 'effect'
-import { Resultado } from './compatibilidad.ts'
-import { FamiliaCapa } from './aportes.ts'
 import { Sistema, SoporteVulkan } from './evaluacion.ts'
 import { EstadoGuia, TipoGuia } from './guias.ts'
 import {
+  DependenciaId,
   DiagnosticoId,
   DistribucionId,
   EdicionId,
@@ -23,6 +22,7 @@ import {
   UsuarioId,
   VersionCapaId,
 } from './ids.ts'
+import { FamiliaCapa, Resultado } from './literales.ts'
 import { EstadoRevision, Rol } from './revision.ts'
 
 export const largo = {
@@ -60,10 +60,6 @@ export const TextoHasta = (n: number) => Texto.pipe(Schema.check(Schema.isMaxLen
 
 const Positivo = Schema.Int.check(Schema.isGreaterThan(0))
 const NoNegativo = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
-
-// Belongs in ids.ts with the other ids; it lives here until lane U2, which owns ids.ts, moves it.
-export const DependenciaId = Schema.Int.pipe(Schema.brand('DependenciaId'))
-export type DependenciaId = typeof DependenciaId.Type
 
 // ------------------------------------------------------------------ 8.3 usuarios y diagnósticos
 

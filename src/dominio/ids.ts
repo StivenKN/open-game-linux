@@ -27,6 +27,8 @@ export const TipoFalloId = Schema.Int.pipe(Schema.brand('TipoFalloId'))
 export type TipoFalloId = typeof TipoFalloId.Type
 export const SolucionId = Schema.Int.pipe(Schema.brand('SolucionId'))
 export type SolucionId = typeof SolucionId.Type
+export const DependenciaId = Schema.Int.pipe(Schema.brand('DependenciaId'))
+export type DependenciaId = typeof DependenciaId.Type
 export const GuiaId = Schema.Int.pipe(Schema.brand('GuiaId'))
 export type GuiaId = typeof GuiaId.Type
 

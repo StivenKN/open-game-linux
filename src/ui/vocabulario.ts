@@ -1,7 +1,8 @@
 // Spanish label, tone and icon for every domain literal the UI shows. `satisfies Record<Union, …>`:
 // adding a literal to a dominio Schema without a label here fails `tsc`.
 // Tone is never the only signal: every badge renders its icon and text next to the colour.
-import type { EstadoCompatibilidad, Resultado } from '../dominio/compatibilidad.ts'
+import type { EstadoCompatibilidad } from '../dominio/compatibilidad.ts'
+import type { Resultado } from '../dominio/literales.ts'
 import type { Comprobacion, Sistema, SoporteVulkan, VeredictoRequisitos } from '../dominio/evaluacion.ts'
 import type { Bloqueo, EstadoRevision } from '../dominio/revision.ts'
 
