@@ -1,8 +1,9 @@
 // The pure half of useAccion: a submitted form becomes either the server fn's Encoded input or a
 // map of Spanish field errors keyed by input name. Uses the real report form schema.
 import { describe, expect, it } from '@effect/vitest'
-import { Result } from 'effect'
+import { Result, Schema } from 'effect'
 import { NuevoReporte } from '../dominio/aportes.ts'
+import { Usuario } from '../dominio/tablas.ts'
 import { leerFormulario } from './useAccion.ts'
 
 const reporte: Record<string, string> = {
@@ -60,6 +61,21 @@ describe('leerFormulario', () => {
 
   it('un error anidado cae en el nombre del input que lo produjo', () => {
     expect(errores({ 'fallos[0][detalle]': '' })).toEqual({ 'fallos[0][detalle]': 'Este campo es obligatorio.' })
+  })
+
+  it('informa todos los campos con error a la vez, no solo el primero', () => {
+    expect(errores({ observaciones: '', version_juego: '', perfil_id: null })).toEqual({
+      observaciones: 'Este campo es obligatorio.',
+      version_juego: 'Este campo es obligatorio.',
+      perfil_id: 'Este campo es obligatorio.',
+    })
+  })
+
+  it('un texto más largo que su columna dice el límite', () => {
+    const datos = new FormData()
+    datos.append('alias', 'a'.repeat(61))
+    const leido = leerFormulario(Schema.Struct({ alias: Usuario.fields.alias }), datos)
+    expect(Result.isFailure(leido) && leido.failure).toEqual({ alias: 'Usa como máximo 60 caracteres.' })
   })
 
   it('un valor mal formado recibe el aviso genérico en español', () => {

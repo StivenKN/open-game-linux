@@ -11,7 +11,7 @@
 // which would wipe what the user typed whenever we show an error.
 import { type FormEvent, useState } from 'react'
 import { isNotFound, isRedirect, useRouter } from '@tanstack/react-router'
-import { Result, Schema, SchemaIssue } from 'effect'
+import { Option, Result, Schema, SchemaIssue } from 'effect'
 import { reglas, type Regla, type Respuesta } from '../dominio/fallos.ts'
 
 /**
@@ -20,10 +20,24 @@ import { reglas, type Regla, type Respuesta } from '../dominio/fallos.ts'
  */
 export type Errores = Readonly<Partial<Record<string, string>>>
 
+// Effect's length checks describe themselves in this annotation; TextoHasta(n) fields rely on it.
+const Longitud = Schema.Struct({
+  representation: Schema.Union([
+    Schema.Struct({ id: Schema.Literal('effect/schema/isMaxLength'), payload: Schema.Struct({ maxLength: Schema.Number }) }),
+    Schema.Struct({ id: Schema.Literal('effect/schema/isMinLength'), payload: Schema.Struct({ minLength: Schema.Number }) }),
+  ]),
+})
+
 const formatear = SchemaIssue.makeFormatterStandardSchemaV1({
   leafHook: (issue) => (issue._tag === 'MissingKey' ? 'Este campo es obligatorio.' : 'Revisa este valor.'),
-  // A check's own `message` annotation (Texto's 'Este campo es obligatorio.') wins over the generic text.
-  checkHook: (issue) => SchemaIssue.defaultCheckHook(issue) ?? 'Revisa este valor.',
+  // A check's own `message` annotation (Texto's 'Este campo es obligatorio.') wins over these.
+  checkHook: (issue) =>
+    SchemaIssue.defaultCheckHook(issue) ??
+    Option.match(Schema.decodeUnknownOption(Longitud)(issue.filter.annotations), {
+      onNone: () => 'Revisa este valor.',
+      onSome: ({ representation: r }) =>
+        r.id === 'effect/schema/isMaxLength' ? `Usa como máximo ${r.payload.maxLength} caracteres.` : `Usa al menos ${r.payload.minLength} caracteres.`,
+    }),
 })
 
 /** Rebuilds the bracket name a form input uses for this path: ['fallos', 0, 'detalle'] -> 'fallos[0][detalle]'. */
@@ -43,7 +57,7 @@ export const erroresDeIssue = (issue: SchemaIssue.Issue): Errores => {
  * then re-encodes it into what the server fn's validator expects. Pure, so tests call it directly.
  */
 export const leerFormulario = <T, E>(esquema: Schema.Codec<T, E>, form: FormData): Result.Result<E, Errores> =>
-  Schema.decodeUnknownResult(Schema.fromFormData(Schema.toCodecStringTree(esquema)))(form).pipe(
+  Schema.decodeUnknownResult(Schema.fromFormData(Schema.toCodecStringTree(esquema)))(form, { errors: 'all' }).pipe(
     Result.map(Schema.encodeSync(esquema)),
     Result.mapError((e) => erroresDeIssue(e.issue)),
   )
