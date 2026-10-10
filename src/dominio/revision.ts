@@ -1,7 +1,6 @@
 // 8.9 review block: the state machine, the decision input, and the approval blockers. Pure, isomorphic.
 import { Schema } from 'effect'
-import { PerfilId, ReporteId, SolucionId } from './ids.ts'
-import { Texto } from './ids.ts'
+import { PerfilId, ReporteId, SolucionId, Texto } from './ids.ts'
 
 export const EstadoRevision = Schema.Literals(['pendiente', 'aprobado', 'rechazado', 'retirado'])
 export type EstadoRevision = typeof EstadoRevision.Type
@@ -43,7 +42,9 @@ export const destinoDe = {
 /**
  * What applying `decision` to a row in `actual` means.
  * `sin_cambios` makes decidir idempotent: a double click or a racing second reviewer with the same
- * decision converges without overwriting revisor/fecha/motivo.
+ * decision converges without overwriting revisor/fecha/motivo. On `transicion_invalida`, decidir fails
+ * with TransicionInvalida { de: actual, a: destinoDe[decision._tag] } (fallos.ts imports this file,
+ * so the class cannot be built here without an import cycle).
  */
 export const planificar = (
   actual: EstadoRevision,

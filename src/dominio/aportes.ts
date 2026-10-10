@@ -6,7 +6,7 @@
 import { Schema } from 'effect'
 import { exigeFallo, EstadoCompatibilidad, Resultado } from './compatibilidad.ts'
 import { Sistema, SoporteVulkan } from './evaluacion.ts'
-import type { Regla } from './fallos.ts'
+import type { Discrepancia } from './fallos.ts'
 import {
   DiagnosticoId,
   DistribucionId,
@@ -145,8 +145,6 @@ export type ContextoPrueba = {
 
 export type PerfilObjetivo = Omit<ContextoPrueba, 'version_juego'> & { readonly version_juego_objetivo: string | null }
 
-type Discrepancia = Extract<Regla, `perfil_${string}`>
-
 /**
  * 8.7 "Condiciones para que un reporte sea comparable". The single home of the rule. Called at save
  * (registrarReporte) and at approval (bloqueosAprobacion), the two moments 8.7 names, and by the
@@ -154,7 +152,16 @@ type Discrepancia = Extract<Regla, `perfil_${string}`>
  * Versions are identifiers: exact text equality, no numeric comparison.
  */
 export const discrepancias = (prueba: ContextoPrueba, perfil: PerfilObjetivo): ReadonlyArray<Discrepancia> => {
-  void prueba
-  void perfil
-  throw new Error('not implemented')
+  const encontradas: Array<Discrepancia> = []
+  if (prueba.edicion_id !== perfil.edicion_id)
+    encontradas.push({ de: 'edicion', esperado: perfil.edicion_id, observado: prueba.edicion_id })
+  if (prueba.version_capa_id !== perfil.version_capa_id)
+    encontradas.push({ de: 'capa', esperado: perfil.version_capa_id, observado: prueba.version_capa_id })
+  if (prueba.distribucion_id !== perfil.distribucion_id)
+    encontradas.push({ de: 'distribucion', esperado: perfil.distribucion_id, observado: prueba.distribucion_id })
+  if (prueba.arquitectura !== perfil.arquitectura)
+    encontradas.push({ de: 'arquitectura', esperado: perfil.arquitectura, observado: prueba.arquitectura })
+  if (perfil.version_juego_objetivo !== null && prueba.version_juego !== perfil.version_juego_objetivo)
+    encontradas.push({ de: 'version_juego', esperado: perfil.version_juego_objetivo, observado: prueba.version_juego })
+  return encontradas
 }
