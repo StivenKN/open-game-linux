@@ -1,5 +1,6 @@
-// Read models behind the two contribution forms (RF-08): what a signed-in user may report on, and what a
-// solution may answer. Writes and their rules live in servidor/aportes/aportes.ts.
+// Read models behind the contribution forms: what a signed-in user may report on and what a solution may
+// answer (RF-08), and the launchers a new game's editions pick from (RF-03). Writes and their rules live
+// in servidor/aportes/aportes.ts.
 import { Effect, Schema, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { PerfilObjetivo } from '../../dominio/aportes.ts'
@@ -7,7 +8,7 @@ import { NoEncontrado } from '../../dominio/fallos.ts'
 import { DiagnosticoId, DistribucionId, EdicionId, type JuegoId, type PerfilId, type ReporteId } from '../../dominio/ids.ts'
 import { estadosVigentes } from '../../dominio/revision.ts'
 import { Diagnostico, Equipo, Juego, Lanzador, PerfilConfiguracion, Reporte, TipoFallo, VersionCapa } from '../../dominio/tablas.ts'
-import { exigirUsuario } from '../auth.ts'
+import { exigirRevisor, exigirUsuario } from '../auth.ts'
 import { filas } from '../filas.ts'
 
 const JuegoFila = Juego.mapFields(Struct.pick(['id', 'titulo']))
@@ -109,3 +110,12 @@ export const opcionesSolucion = (reporteId: ReporteId) =>
     )
     return { reporte, fallos, perfiles }
   })
+
+const LanzadorFila = Lanzador.mapFields(Struct.pick(['id', 'nombre']))
+
+/** The new-game form (RF-03): reviewers only, so anyone else gets notFound from the loader. */
+export const opcionesJuego = Effect.gen(function* () {
+  yield* exigirRevisor
+  const sql = yield* SqlClient.SqlClient
+  return { lanzadores: yield* filas(LanzadorFila, sql`SELECT id, nombre FROM lanzador ORDER BY nombre`) }
+})

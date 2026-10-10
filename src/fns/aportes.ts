@@ -1,12 +1,12 @@
-// Server fns for contributions (RF-08). Each write validates with the same schema the form decoded in
+// Server fns for contributions (RF-03 games, RF-08 reports and solutions). Each write validates with the same schema the form decoded in
 // the browser, then returns Respuesta<A, Fallos.Encoded> through `accion`.
 import { createServerFn } from '@tanstack/react-start'
 import { Schema } from 'effect'
-import { NuevaSolucion, NuevoReporte } from '../dominio/aportes.ts'
+import { NuevaSolucion, NuevoJuego, NuevoReporte } from '../dominio/aportes.ts'
 import { PerfilNoComparable, ReglaIncumplida } from '../dominio/fallos.ts'
 import { IdDesdeTexto, JuegoId, PerfilId, ReporteId } from '../dominio/ids.ts'
-import { registrarReporte, registrarSolucion } from '../servidor/aportes/aportes.ts'
-import { opcionesReporte, opcionesSolucion } from '../servidor/consultas/reportar.ts'
+import { crearJuego, registrarReporte, registrarSolucion } from '../servidor/aportes/aportes.ts'
+import { opcionesJuego, opcionesReporte, opcionesSolucion } from '../servidor/consultas/reportar.ts'
 import { accion, leer } from '../servidor/ejecutar.ts'
 
 export const opcionesReporteFn = createServerFn({ method: 'GET' })
@@ -24,3 +24,9 @@ export const opcionesSolucionFn = createServerFn({ method: 'GET' })
 export const registrarSolucionFn = createServerFn({ method: 'POST' })
   .validator(Schema.toStandardSchemaV1(NuevaSolucion))
   .handler(({ data }) => accion(ReglaIncumplida, registrarSolucion(data)))
+
+export const opcionesJuegoFn = createServerFn({ method: 'GET' }).handler(() => leer(opcionesJuego))
+
+export const crearJuegoFn = createServerFn({ method: 'POST' })
+  .validator(Schema.toStandardSchemaV1(NuevoJuego))
+  .handler(({ data }) => accion(ReglaIncumplida, crearJuego(data)))

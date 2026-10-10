@@ -98,6 +98,7 @@ export const NuevoJuego = Schema.Struct({
     Schema.Struct({ lanzador_id: LanzadorId, identificador_externo: TextoOpcionalHasta(largo.edicion_juego.identificador_externo) }),
   ),
 })
+export type NuevoJuego = typeof NuevoJuego.Type
 
 const camposCaptura = {
   capturado_en: Schema.DateFromString,

@@ -22,6 +22,8 @@ export const Regla = Schema.Literals([
   'version_capa_no_exacta', // DB home: CHECK version_capa_version_exacta, reachable through VersionCapaRef nueva
   'autorrevision', // home: decidir, for all three reviewable tables
   'contenido_inmutable', // DB home: trigger og_solo_revision; unreachable from the UI, mapped for completeness
+  'edicion_repetida', // DB home: UQ edicion_juego_juego_lanzador_uq
+  'identificador_en_uso', // DB home: UQ edicion_juego_externo_uq
 ])
 export type Regla = typeof Regla.Type
 
@@ -35,6 +37,7 @@ export type Campo =
   | 'version_capa'
   | 'tipo_fallo_id'
   | 'decision'
+  | 'ediciones'
   | 'formulario'
 
 /** One row per rule: the field it lands on and its Spanish message. `Record<Regla, …>` fails the build on a gap. */
@@ -49,6 +52,8 @@ export const reglas: Record<Regla, { readonly campo: Campo; readonly mensaje: st
   version_capa_no_exacta: { campo: 'version_capa', mensaje: 'Escribe la versión exacta, no «última».' },
   autorrevision: { campo: 'decision', mensaje: 'No puedes revisar tu propio aporte.' },
   contenido_inmutable: { campo: 'formulario', mensaje: 'El contenido revisado no se reescribe; registra un aporte nuevo.' },
+  edicion_repetida: { campo: 'ediciones', mensaje: 'Un juego tiene una sola edición por lanzador.' },
+  identificador_en_uso: { campo: 'ediciones', mensaje: 'Ese identificador ya pertenece a otro juego en ese lanzador.' },
 }
 
 /**

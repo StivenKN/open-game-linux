@@ -8,11 +8,11 @@
 import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { NuevaSolucion, NuevoReporte } from '../src/dominio/aportes.ts'
+import { NuevaSolucion, NuevoJuego, NuevoReporte } from '../src/dominio/aportes.ts'
 import { AprobacionBloqueada, NoAutenticado, PerfilNoComparable, ReglaIncumplida, SinPermiso, TransicionInvalida } from '../src/dominio/fallos.ts'
 import { UsuarioId } from '../src/dominio/ids.ts'
 import { AporteRef, Decision, type Rol } from '../src/dominio/revision.ts'
-import { registrarReporte, registrarSolucion } from '../src/servidor/aportes/aportes.ts'
+import { crearJuego, registrarReporte, registrarSolucion } from '../src/servidor/aportes/aportes.ts'
 import { bloqueosAprobacion, decidir } from '../src/servidor/aportes/revision.ts'
 import { type Usuario, Visitante } from '../src/servidor/auth.ts'
 import { enRollback, idDe, PgTest } from './apoyo.ts'
@@ -75,7 +75,7 @@ const escenario = Effect.gen(function* () {
     })} RETURNING id`)
   const perfilMint = yield* perfil()
 
-  return { sql, ana, bruno, rita, ed, edGog, mint, fedora, capa, capa8, otro, lanzadorFallo, equipoAna, diagAna, diagAnaWindows, diagBruno, perfil, perfilMint, diagnostico }
+  return { sql, ana, bruno, rita, lanzador, lanzador2, ed, edGog, mint, fedora, capa, capa8, otro, lanzadorFallo, equipoAna, diagAna, diagAnaWindows, diagBruno, perfil, perfilMint, diagnostico }
 })
 type Escenario = Effect.Success<typeof escenario>
 
@@ -120,6 +120,9 @@ const solucion = (e: Escenario, reporte_id: number, cambios: Record<string, unkn
       }),
     ),
   )
+
+const nuevoJuego = (titulo: string, ediciones: ReadonlyArray<{ lanzador_id: number; identificador_externo: string }>) =>
+  Schema.decodeUnknownSync(NuevoJuego)({ titulo, descripcion: 'Un juego de prueba', ediciones })
 
 const conFallo = (e: Escenario) => ({ resultado: 'no_inicia', fallos: [{ tipo_fallo_id: e.lanzadorFallo, detalle: 'El lanzador se cierra' }] })
 
@@ -266,9 +269,47 @@ layer(PgTest)('aportes', (it) => {
           new TransicionInvalida({ de: 'aprobado', a: 'rechazado' }),
         )
       })))
+
+    it.effect('que un usuario o un invitado registre un juego, sin escribir nada', enEscenario((e) =>
+      Effect.gen(function* () {
+        const juego = nuevoJuego('Hades', [{ lanzador_id: e.lanzador, identificador_externo: '1145360' }])
+        expect(yield* Effect.flip(como(e.ana)(crearJuego(juego)))).toEqual(new SinPermiso())
+        expect(yield* Effect.flip(como(null)(crearJuego(juego)))).toEqual(new NoAutenticado())
+        expect(yield* e.sql`SELECT titulo FROM juego WHERE titulo = 'Hades'`).toEqual([])
+      })))
+
+    it.effect('dos ediciones en el mismo lanzador, o un identificador de tienda que ya usa otro juego', enEscenario((e) =>
+      Effect.gen(function* () {
+        const repetida = nuevoJuego('Hades', [
+          { lanzador_id: e.lanzador, identificador_externo: '' },
+          { lanzador_id: e.lanzador, identificador_externo: '' },
+        ])
+        expect(yield* Effect.flip(como(e.rita)(crearJuego(repetida)))).toEqual(regla('edicion_repetida'))
+        yield* como(e.rita)(crearJuego(nuevoJuego('Hades', [{ lanzador_id: e.lanzador, identificador_externo: '1145360' }])))
+        const ajeno = nuevoJuego('Hades II', [{ lanzador_id: e.lanzador, identificador_externo: '1145360' }])
+        expect(yield* Effect.flip(como(e.rita)(crearJuego(ajeno)))).toEqual(regla('identificador_en_uso'))
+        expect(yield* e.sql`SELECT titulo FROM juego WHERE titulo LIKE 'Hades%' ORDER BY titulo`).toEqual([{ titulo: 'Hades' }])
+      })))
   })
 
   describe('la aplicación permite', () => {
+    it.effect('que un revisor registre un juego con dos ediciones', enEscenario((e) =>
+      Effect.gen(function* () {
+        const { id } = yield* como(e.rita)(
+          crearJuego(
+            nuevoJuego('  Hades  ', [
+              { lanzador_id: e.lanzador, identificador_externo: '1145360' },
+              { lanzador_id: e.lanzador2, identificador_externo: '   ' },
+            ]),
+          ),
+        )
+        expect(yield* e.sql`SELECT titulo, descripcion FROM juego WHERE id = ${id}`).toEqual([{ titulo: 'Hades', descripcion: 'Un juego de prueba' }])
+        expect(yield* e.sql`SELECT lanzador_id, identificador_externo FROM edicion_juego WHERE juego_id = ${id} ORDER BY lanzador_id`).toEqual([
+          { lanzador_id: e.lanzador, identificador_externo: '1145360' },
+          { lanzador_id: e.lanzador2, identificador_externo: null },
+        ])
+      })))
+
     it.effect('reportar desde varios diagnósticos históricos del mismo equipo', enEscenario((e) =>
       Effect.gen(function* () {
         const posterior = yield* e.diagnostico(e.equipoAna, '2026-10-05T10:00:00Z', { ram_mb: 32768 })

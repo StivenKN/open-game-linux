@@ -58,7 +58,12 @@ function Cabecera() {
           </Link>
           <Link to="/diagnostico">Diagnóstico</Link>
           <Link to="/guias">Guías</Link>
-          {visitante !== null && visitante.rol !== 'usuario' && <Link to="/revision">Revisión</Link>}
+          {visitante !== null && visitante.rol !== 'usuario' && (
+            <>
+              <Link to="/revision">Revisión</Link>
+              <Link to="/catalogo/nuevo">Nuevo juego</Link>
+            </>
+          )}
         </nav>
         <div className="fila cuenta">
           {visitante === null ? (

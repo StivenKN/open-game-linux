@@ -12,6 +12,8 @@ export const reglaDeRestriccion = {
   version_capa_version_exacta: 'version_capa_no_exacta',
   // reporte_perfil_fk is absent on purpose: discrepancias() rejects first with PerfilNoComparable, so a hit is a writer bug.
   og_solo_revision: 'contenido_inmutable',
+  edicion_juego_juego_lanzador_uq: 'edicion_repetida',
+  edicion_juego_externo_uq: 'identificador_en_uso',
 } as const satisfies Record<string, Regla>
 
 const CausaPg = Schema.Struct({ constraint: Schema.String })

@@ -1,17 +1,17 @@
-// The single writer of user contributions: reporte (+ reporte_fallo, version_capa upsert) and solucion.
-// juego/edicion arrive with U8; diagnostico/equipo/distribucion belong to aportes/diagnostico.ts (U6).
+// The single writer of user contributions: reporte (+ reporte_fallo, version_capa upsert), solucion, and
+// juego/edicion_juego (RF-03). diagnostico/equipo/distribucion belong to aportes/diagnostico.ts (U6).
 // Every app-side 8.7/8.9 write rule the DB cannot express lives here or in revision.ts, nowhere else.
 //
 // Each program runs inside the one transaction servidor/ejecutar.ts `accion` opens, so a failure after a
 // partial insert rolls back. Rule failures are data for the form: ReglaIncumplida or PerfilNoComparable.
 import { Array as Arr, Effect, Schema, Struct } from 'effect'
 import { SqlClient, type SqlError } from 'effect/sql'
-import { discrepancias, type NuevaSolucion, type NuevoReporte, PerfilObjetivo } from '../../dominio/aportes.ts'
-import { type NoAutenticado, PerfilNoComparable, type Regla, ReglaIncumplida } from '../../dominio/fallos.ts'
-import { ReporteId, SolucionId, VersionCapaId } from '../../dominio/ids.ts'
+import { discrepancias, type NuevaSolucion, type NuevoJuego, type NuevoReporte, PerfilObjetivo } from '../../dominio/aportes.ts'
+import { type NoAutenticado, PerfilNoComparable, type Regla, ReglaIncumplida, type SinPermiso } from '../../dominio/fallos.ts'
+import { JuegoId, ReporteId, SolucionId, VersionCapaId } from '../../dominio/ids.ts'
 import { estadosVigentes } from '../../dominio/revision.ts'
 import { Diagnostico, Equipo, PerfilConfiguracion, Reporte } from '../../dominio/tablas.ts'
-import { exigirUsuario, type Visitante } from '../auth.ts'
+import { exigirRevisor, exigirUsuario, type Visitante } from '../auth.ts'
 import { conReglasDeBd } from '../esquema/restricciones.ts'
 import { filas } from '../filas.ts'
 
@@ -157,4 +157,21 @@ export const registrarSolucion = (s: NuevaSolucion): Escritura<{ readonly id: So
     )
     if (creada === undefined) return yield* Effect.die('INSERT INTO solucion no devolvió id')
     return { id: creada.id }
+  })
+
+const ConIdJuego = Schema.Struct({ id: JuegoId })
+
+/**
+ * RF-03, reviewers and administrators only: a game and its editions, written together. Rules:
+ *   one edition per launcher                    -> edicion_repetida (DB UQ edicion_juego_juego_lanzador_uq)
+ *   a store id names one game on its launcher   -> identificador_en_uso (DB UQ edicion_juego_externo_uq)
+ */
+export const crearJuego = (j: NuevoJuego): Escritura<{ readonly id: JuegoId }, ReglaIncumplida | SinPermiso> =>
+  Effect.gen(function* () {
+    yield* exigirRevisor
+    const sql = yield* SqlClient.SqlClient
+    const [creado] = yield* filas(ConIdJuego, sql`INSERT INTO juego ${sql.insert({ titulo: j.titulo, descripcion: j.descripcion })} RETURNING id`)
+    if (creado === undefined) return yield* Effect.die('INSERT INTO juego no devolvió id')
+    yield* conReglasDeBd(sql`INSERT INTO edicion_juego ${sql.insert(j.ediciones.map((e) => ({ juego_id: creado.id, ...e })))}`)
+    return { id: creado.id }
   })
