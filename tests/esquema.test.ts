@@ -51,7 +51,7 @@ const perfil = (f: Base, cambios: Record<string, Valor> = {}) =>
     revision: 2,
     titulo: 'perfil',
     ...cambios,
-  })}`
+  })} RETURNING id`
 
 const guia = (f: Base, cambios: Record<string, Valor> = {}) =>
   f.sql`INSERT INTO guia_adopcion ${f.sql.insert({
@@ -70,6 +70,9 @@ const revisar = (f: Base, tabla: 'reporte' | 'solucion' | 'perfil_configuracion'
 const aprobarReporte = (f: Base, evidencia: string | null) => revisar(f, 'reporte', f.rep, { estado_revision: 'aprobado', evidencia_revision: evidencia })
 
 const falloDelReporte = (f: Base) => f.sql`INSERT INTO reporte_fallo (reporte_id, tipo_fallo_id, detalle) VALUES (${f.rep}, ${f.tipoFallo}, 'pantalla negra al iniciar')`
+
+const paso = (f: Base, perfilId: number, orden = 1) =>
+  f.sql`INSERT INTO paso_configuracion (perfil_id, orden, titulo, instruccion) VALUES (${perfilId}, ${orden}, 't', 'i')`
 
 const solucion = (f: Base) =>
   idDe(f.sql`INSERT INTO solucion (reporte_id, tipo_fallo_id, autor_id, titulo, instrucciones) VALUES (${f.rep}, ${f.tipoFallo}, 'revisor', 's', 'i') RETURNING id`)
@@ -120,8 +123,8 @@ const rechaza: ReadonlyArray<Caso> = [
   ['revisión de perfil cero', 'perfil_configuracion_revision_positiva', (f) => perfil(f, { revision: 0 })],
   ['RAM mínima cero en un perfil', 'perfil_configuracion_ram_min_positiva', (f) => perfil(f, { ram_min_mb: 0 })],
   ['VRAM mínima negativa en un perfil', 'perfil_configuracion_vram_min_no_negativa', (f) => perfil(f, { vram_min_mb: -1 })],
-  ['paso con orden cero', 'paso_configuracion_orden_positivo', (f) =>
-    f.sql`INSERT INTO paso_configuracion (perfil_id, orden, titulo, instruccion) VALUES (${f.perfil}, 0, 't', 'i')`],
+  ['paso con orden cero', 'paso_configuracion_orden_positivo', (f) => paso(f, f.perfil, 0)],
+  ['dos pasos con el mismo orden en un perfil', 'paso_configuracion_pkey', (f) => Effect.andThen(paso(f, f.perfil), paso(f, f.perfil))],
   ['revisión de guía cero', 'guia_adopcion_revision_positiva', (f) => guia(f, { revision: 0 })],
   ['aprobación sin evidencia (NULL)', 'reporte_bloque_revision', (f) => aprobarReporte(f, null)],
   ['aprobación con evidencia en blanco', 'reporte_bloque_revision', (f) => aprobarReporte(f, '   ')],
@@ -130,9 +133,18 @@ const rechaza: ReadonlyArray<Caso> = [
       yield* falloDelReporte(f)
       yield* revisar(f, 'solucion', yield* solucion(f), { estado_revision: 'rechazado', motivo_revision: null })
     })],
+  ['evidencia en blanco en un rechazo', 'reporte_evidencia_revision_no_vacio', (f) =>
+    revisar(f, 'reporte', f.rep, { estado_revision: 'rechazado', evidencia_revision: '  ' })],
   ['pendiente con revisor asignado', 'perfil_configuracion_bloque_revision', (f) => f.sql`UPDATE perfil_configuracion SET revisor_id = ${f.revisor} WHERE id = ${f.perfil}`],
-  ['revisión anterior a la creación', 'perfil_configuracion_revision_posterior', (f) =>
-    revisar(f, 'perfil_configuracion', f.perfil, { estado_revision: 'rechazado', revisado_en: new Date('2000-01-01T00:00:00Z') })],
+  ...(['perfil_configuracion', 'reporte', 'solucion'] as const).map((tabla): Caso => [
+    `revisión anterior a la creación (${tabla})`,
+    `${tabla}_revision_posterior`,
+    (f) =>
+      Effect.gen(function* () {
+        const id = tabla === 'perfil_configuracion' ? f.perfil : tabla === 'reporte' ? f.rep : yield* Effect.andThen(falloDelReporte(f), solucion(f))
+        yield* revisar(f, tabla, id, { estado_revision: 'rechazado', revisado_en: new Date('2000-01-01T00:00:00Z') })
+      }),
+  ]),
   ['FPS sin resolución, calidad ni método', 'reporte_fps_con_contexto', (f) => reporte(f, { fps_promedio: 60 })],
   ['Linux sin distribución', 'diagnostico_linux_con_distribucion', (f) => diagnostico(f, { distribucion_id: null })],
   ['versión de Vulkan sin soporte', 'diagnostico_version_vulkan_solo_con_soporte', (f) => diagnostico(f, { soporte_vulkan: 'no', version_vulkan: '1.3' })],
@@ -142,24 +154,39 @@ const rechaza: ReadonlyArray<Caso> = [
   ['versión de capa «latest»', 'version_capa_version_exacta', (f) => f.sql`INSERT INTO version_capa (familia, variante, version) VALUES ('Wine', 'Staging', 'Latest')`],
   ['correo sin normalizar', 'usuario_correo_normalizado', (f) =>
     f.sql`INSERT INTO usuario (id, alias, correo, correo_verificado, rol, activo) VALUES ('m', 'm', 'Mayus@demo.opengame.test', false, 'usuario', true)`],
+  ['correo de más de 254 caracteres', 'usuario_correo_largo', (f) => f.sql`UPDATE usuario SET correo = ${`${'a'.repeat(245)}@demo.test`} WHERE id = ${f.autor}`],
   ['alias de usuario de más de 60 caracteres', 'usuario_alias_largo', (f) => f.sql`UPDATE usuario SET alias = ${'a'.repeat(61)} WHERE id = ${f.autor}`],
   ['código de tipo de fallo con espacios', 'tipo_fallo_codigo_formato', (f) => f.sql`INSERT INTO tipo_fallo (codigo, descripcion) VALUES ('Anti Cheat', 'x')`],
   ['guía actualizada antes de crearse', 'guia_adopcion_fechas_ordenadas', (f) => guia(f, { actualizado_en: new Date('2000-01-01T00:00:00Z') })],
   ['reporte con perfil de otra edición', 'reporte_perfil_fk', (f) => reporte(f, { edicion_id: f.ed2, perfil_id: f.perfil })],
   ['solución sobre un fallo que el reporte no tiene', 'solucion_fallo_fk', solucion],
   ['actualizar un diagnóstico', 'og_inmutable', (f) => f.sql`UPDATE diagnostico SET ram_mb = 16384 WHERE id = ${f.diag}`],
-  ['cambiar el dueño de un equipo', 'og_inmutable', (f) => f.sql`UPDATE equipo SET usuario_id = ${f.revisor} WHERE id = ${f.equipo}`],
+  ['cambiar el dueño de un equipo con diagnósticos', 'og_propietario_fijo', (f) => f.sql`UPDATE equipo SET usuario_id = ${f.revisor} WHERE id = ${f.equipo}`],
   ['reescribir un reporte', 'og_solo_revision', (f) => f.sql`UPDATE reporte SET observaciones = 'otra cosa' WHERE id = ${f.rep}`],
   ['reescribir una solución', 'og_solo_revision', (f) =>
     Effect.gen(function* () {
       yield* falloDelReporte(f)
       yield* f.sql`UPDATE solucion SET instrucciones = 'otra cosa' WHERE id = ${yield* solucion(f)}`
     })],
-  ['agregar un paso a un perfil usado por un reporte', 'og_perfil_congelado', (f) =>
+  ['agregar un paso a un perfil usado por un reporte', 'og_perfil_congelado', (f) => Effect.andThen(reporte(f, { perfil_id: f.perfil }), paso(f, f.perfil))],
+  ['borrar un paso de un perfil usado por un reporte', 'og_perfil_congelado', (f) =>
     Effect.gen(function* () {
+      yield* paso(f, f.perfil)
       yield* reporte(f, { perfil_id: f.perfil })
-      yield* f.sql`INSERT INTO paso_configuracion (perfil_id, orden, titulo, instruccion) VALUES (${f.perfil}, 1, 't', 'i')`
+      yield* f.sql`DELETE FROM paso_configuracion WHERE perfil_id = ${f.perfil}`
     })],
+  ['sacar un paso de un perfil revisado hacia otro pendiente', 'og_perfil_congelado', (f) =>
+    Effect.gen(function* () {
+      yield* paso(f, f.perfil)
+      yield* revisar(f, 'perfil_configuracion', f.perfil, { estado_revision: 'rechazado' })
+      const otro = yield* idDe(perfil(f))
+      yield* f.sql`UPDATE paso_configuracion SET perfil_id = ${otro} WHERE perfil_id = ${f.perfil}`
+    })],
+  ['reescribir un perfil revisado', 'og_perfil_congelado', (f) =>
+    Effect.andThen(
+      revisar(f, 'perfil_configuracion', f.perfil, { estado_revision: 'rechazado' }),
+      f.sql`UPDATE perfil_configuracion SET titulo = 'otro título' WHERE id = ${f.perfil}`,
+    )],
   ['agregar una dependencia a un perfil revisado', 'og_perfil_congelado', (f) =>
     Effect.gen(function* () {
       yield* revisar(f, 'perfil_configuracion', f.perfil, { estado_revision: 'rechazado' })
@@ -193,6 +220,11 @@ layer(PgTest)('esquema', (it) => {
     it.effect('varios diagnósticos históricos del mismo equipo', conBase((f) =>
       Effect.andThen(acepta(diagnostico(f)), acepta(diagnostico(f, { capturado_en: new Date('2026-10-06T10:00:00Z'), version_controlador: '550.1' })))))
     it.effect('diagnóstico de Windows sin distribución', conBase((f) => acepta(diagnostico(f, { sistema: 'Windows', version_sistema: '11', distribucion_id: null }))))
+    it.effect('cambiar el dueño de un equipo sin diagnósticos', conBase((f) =>
+      Effect.gen(function* () {
+        const nuevo = yield* idDe(f.sql`INSERT INTO equipo (usuario_id, alias) VALUES (${f.autor}, 'sobremesa') RETURNING id`)
+        yield* acepta(f.sql`UPDATE equipo SET usuario_id = ${f.revisor} WHERE id = ${nuevo}`)
+      })))
     it.effect('guía general sin distribución', conBase((f) => acepta(guia(f, { distribucion_id: null }))))
     it.effect('varias ediciones sin identificador externo en el mismo lanzador', conBase((f) =>
       Effect.gen(function* () {
@@ -211,9 +243,9 @@ layer(PgTest)('esquema', (it) => {
         const [fila] = yield* f.sql`SELECT estado_revision, evidencia_revision FROM reporte WHERE id = ${f.rep}`
         expect(fila).toEqual({ estado_revision: 'retirado', evidencia_revision: 'captura #12' })
       })))
-    it.effect('un perfil pendiente sin usar admite pasos y dependencias', conBase((f) =>
+    it.effect('un perfil pendiente sin usar admite cambios, pasos y dependencias', conBase((f) =>
       Effect.andThen(
-        acepta(f.sql`INSERT INTO paso_configuracion (perfil_id, orden, titulo, instruccion) VALUES (${f.perfil}, 1, 't', 'i')`),
+        acepta(Effect.andThen(f.sql`UPDATE perfil_configuracion SET titulo = 'título corregido' WHERE id = ${f.perfil}`, paso(f, f.perfil))),
         acepta(f.sql`INSERT INTO perfil_dependencia (perfil_id, dependencia_id, obligatoria, instruccion_instalacion) VALUES (${f.perfil}, ${f.dependencia}, true, 'i')`),
       )))
   })
