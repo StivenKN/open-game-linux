@@ -66,4 +66,12 @@ describe('fronteras', () => {
       .map((f) => `${f} writes the review block; call decidir() from servidor/aportes/revision.ts instead`)
     expect(violaciones).toEqual([])
   })
+
+  it('only servidor/aportes/diagnostico.ts writes equipo and diagnostico (RF-04 single writer)', () => {
+    const escritura = /\b(INSERT INTO|UPDATE)\s+(equipo|diagnostico)\b/
+    const violaciones = [...archivos('src'), ...archivos('scripts')]
+      .filter((f) => f !== 'src/servidor/aportes/diagnostico.ts' && !f.startsWith('src/servidor/esquema/') && escritura.test(leer(f)))
+      .map((f) => `${f} writes equipo or diagnostico; call registrarDiagnostico() from servidor/aportes/diagnostico.ts instead`)
+    expect(violaciones).toEqual([])
+  })
 })
