@@ -1,15 +1,9 @@
 // Probe (a): can the report form post its FormData straight into NuevoReporte?
 // Run: node scripts/probes/probe-formulario.ts
-import { Effect, Schema } from 'effect'
-import { FalloObservado, NuevoReporte } from '../../src/dominio/aportes.ts'
-import { exigeFallo } from '../../src/dominio/compatibilidad.ts'
-
-// FormData cannot express an empty array, so the candidate fix defaults an absent `fallos` key to [].
-// Spreading `.fields` drops NuevoReporte's check, so the 8.7 filter is restated here.
-const NuevoReporteConDefecto = Schema.Struct({
-  ...NuevoReporte.fields,
-  fallos: Schema.Array(FalloObservado).pipe(Schema.withDecodingDefaultKey(Effect.succeed([]))),
-}).check(Schema.makeFilter((r) => !exigeFallo[r.resultado] || r.fallos.length > 0, { message: 'regla 8.7: falta un tipo de fallo' }))
+// U2 folded the probe's fix into NuevoReporte (fallos defaults to [], the 8.7 rule lands on `fallos`),
+// so the sketch-schema case is gone and the "con defecto" cases run against NuevoReporte itself.
+import { Schema } from 'effect'
+import { NuevoReporte } from '../../src/dominio/aportes.ts'
 
 type Par = readonly [string, string]
 
@@ -53,9 +47,8 @@ const casos: ReadonlyArray<readonly [string, Schema.Codec<unknown, unknown>, Rea
       'medicion[metodo_medicion]': 'MangoHud',
     }),
   ],
-  ['funciona sin fallos, esquema del sketch', NuevoReporte, con(sinFallos, { resultado: 'funciona', perfil_id: 'null', medicion: 'null' })],
-  ['funciona sin fallos, fallos con defecto []', NuevoReporteConDefecto, con(sinFallos, { resultado: 'funciona', perfil_id: 'null', medicion: 'null' })],
-  ['no_inicia sin fallos, fallos con defecto [] (regla 8.7)', NuevoReporteConDefecto, con(sinFallos, { perfil_id: 'null', medicion: 'null' })],
+  ['funciona sin fallos, fallos con defecto []', NuevoReporte, con(sinFallos, { resultado: 'funciona', perfil_id: 'null', medicion: 'null' })],
+  ['no_inicia sin fallos, fallos con defecto [] (regla 8.7)', NuevoReporte, con(sinFallos, { perfil_id: 'null', medicion: 'null' })],
   ['id no numérico', NuevoReporte, con(base, { 'version_capa[id]': 'abc', perfil_id: 'null', medicion: 'null' })],
   ['texto opcional escrito "null"', NuevoReporte, con(base, { version_lanzador: 'null', perfil_id: 'null', medicion: 'null' })],
 ]

@@ -3,9 +3,9 @@
 // Each schema is used three times with no copy: the browser form decodes FormData with it
 // (field errors before any request), the server fn validator decodes the same Encoded value
 // (`Schema.toStandardSchemaV1`), and the handler receives the decoded Type.
-import { Schema } from 'effect'
-import { exigeFallo, EstadoCompatibilidad, Resultado } from './compatibilidad.ts'
-import { Sistema, SoporteVulkan } from './evaluacion.ts'
+import { Array as Arr, Effect, Schema } from 'effect'
+import { EstadoCompatibilidad, ResultadoFallido, ResultadoFuncional } from './compatibilidad.ts'
+import { SoporteVulkan } from './evaluacion.ts'
 import type { Discrepancia } from './fallos.ts'
 import {
   DiagnosticoId,
@@ -46,25 +46,38 @@ export const MedicionFps = Schema.Struct({
 
 export const FalloObservado = Schema.Struct({ tipo_fallo_id: TipoFalloId, detalle: Texto })
 
-/** RF-08. The failing-result rule (8.7) lives here, so the form shows it on `fallos` before submitting. */
-export const NuevoReporte = Schema.Struct({
+// FormData cannot express an empty array, so a form with no fallos rows posts no `fallos` key (probe a).
+const FallosOpcionales = Schema.Array(FalloObservado).pipe(Schema.withDecodingDefaultKey(Effect.succeed([])))
+const FallosExigidos = Schema.Array(FalloObservado).pipe(
+  Schema.refine(Arr.isReadonlyArrayNonEmpty, {
+    message: 'Si no inicia o falla, indica al menos un tipo de fallo (usa «otro» si no sabes la causa).',
+  }),
+  Schema.withDecodingDefaultKey(Effect.succeed([])),
+)
+
+const camposReporte = {
   edicion_id: EdicionId,
   diagnostico_id: DiagnosticoId,
   version_capa: VersionCapaRef,
   perfil_id: Schema.NullOr(PerfilId),
   version_juego: Texto,
   version_lanzador: TextoOpcional,
-  fecha_prueba: Schema.DateFromString,
-  resultado: Resultado,
-  fallos: Schema.Array(FalloObservado), // duplicates: DB PK reporte_fallo_pkey is the home -> Regla fallo duplicado
+  fecha_prueba: Schema.DateFromString, // a date-only value parses as UTC midnight (probe a); render it in UTC
   medicion: Schema.NullOr(MedicionFps),
   observaciones: Texto,
-}).check(
-  Schema.makeFilter((r) => !exigeFallo[r.resultado] || r.fallos.length > 0, {
-    message: 'Si no inicia o falla, indica al menos un tipo de fallo (usa «otro» si no sabes la causa).',
-    // TODO(U2): attach the issue to path ['fallos'] so useEnvio places it on that field.
-  }),
-)
+}
+
+/**
+ * RF-08. The failing-result rule (8.7) is the type: one member per result, and the failing ones
+ * require a non-empty `fallos`, so the form shows the message on `fallos` before submitting.
+ * One member per literal (not one per half) because a union only picks its member by a single
+ * literal field; with a literal set it would try every member and report all their issues.
+ * Duplicate fallos: DB PK reporte_fallo_pkey is the home -> Regla fallo_duplicado.
+ */
+export const NuevoReporte = Schema.Union([
+  ...ResultadoFuncional.members.map((resultado) => Schema.Struct({ ...camposReporte, resultado, fallos: FallosOpcionales })),
+  ...ResultadoFallido.members.map((resultado) => Schema.Struct({ ...camposReporte, resultado, fallos: FallosExigidos })),
+])
 export type NuevoReporte = typeof NuevoReporte.Type
 
 export const NuevaSolucion = Schema.Struct({
@@ -83,15 +96,9 @@ export const NuevoJuego = Schema.Struct({
   ediciones: Schema.NonEmptyArray(Schema.Struct({ lanzador_id: LanzadorId, identificador_externo: TextoOpcional })),
 })
 
-/**
- * The content of one diagnostico row. Two producers: the manual form (decoded with this schema)
- * and servidor/diagnostico/payload.ts (the only detector parser). Mirrors the diagnostico CHECKs.
- */
-export const Captura = Schema.Struct({
+const camposCaptura = {
   capturado_en: Schema.DateFromString,
-  sistema: Sistema,
   version_sistema: Texto,
-  distribucion: Schema.NullOr(Schema.Struct({ nombre: Texto, version: Texto })), // resolved to distribucion.id by upsert
   arquitectura: Texto,
   cpu_modelo: Texto,
   gpu_modelo: Texto,
@@ -101,10 +108,22 @@ export const Captura = Schema.Struct({
   version_controlador: TextoOpcional,
   soporte_vulkan: SoporteVulkan,
   version_vulkan: TextoOpcional,
-}).check(
-  Schema.makeFilter((c) => (c.sistema === 'Linux') === (c.distribucion !== null), {
-    message: 'Linux necesita distribución; Windows no la lleva.',
+}
+
+/**
+ * The content of one diagnostico row. Two producers: the manual form (decoded with this schema)
+ * and servidor/diagnostico/payload.ts (the only detector parser). Linux carries a distribution and
+ * Windows has none, as a type (a diagnostico CHECK is the backstop). A Windows
+ * capture only orients (8.10); a report needs a Linux one.
+ */
+export const Captura = Schema.Union([
+  Schema.Struct({
+    ...camposCaptura,
+    sistema: Schema.Literal('Linux'),
+    distribucion: Schema.Struct({ nombre: Texto, version: Texto }), // resolved to distribucion.id by upsert
   }),
+  Schema.Struct({ ...camposCaptura, sistema: Schema.Literal('Windows') }),
+]).check(
   Schema.makeFilter((c) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
     message: 'Solo hay versión de Vulkan si hay soporte.',
   }),
