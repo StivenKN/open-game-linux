@@ -15,3 +15,8 @@ const unDecimal = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 })
 
 /** 61.5 -> "61,5" */
 export const fps = (n: number) => unDecimal.format(n)
+
+const fechaHoraUtc = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })
+
+/** "10 oct 2026, 6:43 p. m. UTC": a capture time, printed in UTC so server and browser agree. */
+export const fechaHora = (d: Date) => `${fechaHoraUtc.format(d)} UTC`

@@ -4,6 +4,7 @@
 import type { EstadoCompatibilidad } from '../dominio/compatibilidad.ts'
 import type { Resultado } from '../dominio/literales.ts'
 import type { Comprobacion, Sistema, SoporteVulkan, VeredictoRequisitos } from '../dominio/evaluacion.ts'
+import type { PayloadInvalido } from '../dominio/fallos.ts'
 import type { Bloqueo, EstadoRevision } from '../dominio/revision.ts'
 import type { TipoGuia } from '../dominio/guias.ts'
 
@@ -88,3 +89,10 @@ export const tipoGuia = {
   instalacion: 'Instalación',
   arranque_dual: 'Arranque dual',
 } as const satisfies Record<TipoGuia, string>
+
+/** Why the server could not read a detector payload or pasted text (PayloadInvalido.motivo). */
+export const motivoPayload = {
+  ilegible: 'No pudimos leer ese texto. Copia toda la salida del detector, o la dirección completa que abrió tu navegador.',
+  version_esquema: 'Ese diagnóstico viene de otra versión del detector. Descárgalo de nuevo y vuelve a ejecutarlo.',
+  campo_invalido: 'Al diagnóstico le falta un dato o trae uno que no reconocemos.',
+} as const satisfies Record<PayloadInvalido['motivo'], string>
