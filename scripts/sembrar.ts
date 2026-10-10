@@ -10,7 +10,9 @@
 // builds) are real facts, not claims, so they carry no mark.
 //
 // Idempotent: each row is looked up by its natural key and inserted only when missing, and decidir()
-// answers `cambio: false` for a decision already applied, so a second run changes nothing and says so. The rows go in one transaction, so a crash leaves no half seed.
+// answers `cambio: false` for a decision already applied, so a second run changes nothing and says so.
+// That holds while nobody has rejected or retired a seeded row by hand; then decidir refuses the
+// approval (TransicionInvalida) and the run stops: reset the dev database with `pnpm db:reset`. The rows go in one transaction, so a crash leaves no half seed.
 // A profile's steps and dependencies are written only together with a new profile: once a profile is
 // used or reviewed, og_perfil_congelado refuses any write to them, even an ON CONFLICT DO NOTHING.
 import { Effect, Option, Record, Schema } from 'effect'
@@ -397,7 +399,7 @@ const reportes: ReadonlyArray<ReporteDemo> = [
 
 /** demo_bruno answers the launcher failure on Ana's Fedora tower (8.10: "otro usuario puede aportar una solución"). */
 const solucionDemo = {
-  reporte: 3,
+  reporte: 3, // index in `reportes`: the falla_en_ejecucion on Ana's Fedora tower
   tipoFallo: 'lanzador',
   titulo: 'Reinstalar el Rockstar Games Launcher dentro del prefijo de Proton',
   instrucciones: [
@@ -567,7 +569,7 @@ const programa = Effect.gen(function* () {
           reporteDe.set(i, existente.id)
           continue
         }
-        const fallos = []
+        const fallos: Array<{ tipo_fallo_id: number; detalle: string }> = []
         for (const [codigo, detalle] of r.fallos) fallos.push({ tipo_fallo_id: yield* de(tipoFallo, codigo), detalle })
         const nuevo = yield* Schema.decodeUnknownEffect(NuevoReporte)({
           edicion_id,

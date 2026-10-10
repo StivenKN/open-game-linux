@@ -6,7 +6,7 @@ import { NuevaSolucion } from '../../dominio/aportes.ts'
 import { TipoFalloId } from '../../dominio/ids.ts'
 import { opcionesSolucionFn, registrarSolucionFn } from '../../fns/aportes.ts'
 import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
-import { fecha } from '../../ui/formato.ts'
+import { momento } from '../../ui/formato.ts'
 import { Campo, campo, nulo } from '../../ui/formulario.tsx'
 import { Insignia } from '../../ui/Insignia.tsx'
 import { erroresDeRegla, useAccion } from '../../ui/useAccion.ts'
@@ -37,7 +37,7 @@ function ProponerSolucion() {
           <Insignia etiqueta={resultado[reporte.resultado]} />
           <Insignia etiqueta={estadoRevision[reporte.estado_revision]} />
           <span className="dato">
-            {reporte.lanzador} · {reporte.distribucion} · {reporte.capa} · versión {reporte.version_juego} · {fecha(reporte.fecha_prueba)}
+            {reporte.lanzador} · {reporte.distribucion} · {reporte.capa} · versión {reporte.version_juego} · {momento(reporte.fecha_prueba)}
           </span>
         </p>
         <p>{reporte.observaciones}</p>

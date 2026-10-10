@@ -148,6 +148,8 @@ layer(PgTest)('aportes', (it) => {
     it.effect('una prueba anterior al diagnóstico', enEscenario((e) =>
       Effect.gen(function* () {
         expect(yield* Effect.flip(reportar(e, { fecha_prueba: '2026-10-01T09:59:00.000Z' }))).toEqual(regla('fecha_antes_del_diagnostico'))
+        // The capture instant itself is allowed: "no anterior al diagnóstico".
+        yield* reportar(e, { fecha_prueba: '2026-10-01T10:00:00.000Z' })
       })))
 
     it.effect('un perfil de otra edición, antes de que lo note la FK', enEscenario((e) =>
@@ -253,9 +255,12 @@ layer(PgTest)('aportes', (it) => {
         expect(yield* Effect.flip(como(null)(registrarReporte(nuevoReporte(e))))).toEqual(new NoAutenticado())
       })))
 
-    it.effect('rechazar lo que ya está aprobado', enEscenario((e) =>
+    it.effect('rechazar lo que ya está aprobado, o retirar lo que sigue pendiente', enEscenario((e) =>
       Effect.gen(function* () {
         const { id } = yield* reportar(e)
+        expect(yield* Effect.flip(como(e.rita)(decidir(ref('reporte', id), retirar)))).toEqual(
+          new TransicionInvalida({ de: 'pendiente', a: 'retirado' }),
+        )
         yield* como(e.rita)(decidir(ref('reporte', id), aprobar))
         expect(yield* Effect.flip(como(e.rita)(decidir(ref('reporte', id), rechazar)))).toEqual(
           new TransicionInvalida({ de: 'aprobado', a: 'rechazado' }),

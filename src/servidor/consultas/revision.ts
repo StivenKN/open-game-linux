@@ -54,6 +54,7 @@ const ColaSolucion = Schema.Struct({
   perfil: Schema.NullOr(Nombre),
 })
 
+/** One bloqueosAprobacion call per pending row: the queue is short, and the rule keeps a single home. */
 const conBloqueos = <A extends { readonly estado_revision: string }>(elementos: ReadonlyArray<A>, refDe: (a: A) => AporteRef) =>
   Effect.forEach(elementos, (e) =>
     Effect.map(e.estado_revision === 'pendiente' ? bloqueosAprobacion(refDe(e)) : Effect.succeed([]), (bloqueos: ReadonlyArray<Bloqueo>) => ({ ...e, bloqueos })),

@@ -4,16 +4,16 @@ import { createFileRoute, Link, notFound, redirect, useRouter } from '@tanstack/
 import { Schema } from 'effect'
 import type { ReactNode } from 'react'
 import { avisoTransicionInvalida, type AprobacionBloqueada, type Codificado, type ReglaIncumplida, type TransicionInvalida } from '../dominio/fallos.ts'
-import { AporteRef, Decision, type TipoAporte, TipoAporte as Tipo } from '../dominio/revision.ts'
+import { AporteRef, Decision, TipoAporte } from '../dominio/revision.ts'
 import { colaFn, decidirFn } from '../fns/revision.ts'
 import { Chip, Insignia } from '../ui/Insignia.tsx'
 import { ErrorCampo } from '../ui/ErrorCampo.tsx'
-import { contar, fecha, fps } from '../ui/formato.ts'
+import { contar, fecha, fps, momento } from '../ui/formato.ts'
 import { erroresDeRegla, type Errores, useAccion } from '../ui/useAccion.ts'
 import { bloqueo, estadoRevision, resultado, tipoFallo } from '../ui/vocabulario.ts'
 
 export const Route = createFileRoute('/revision')({
-  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipo: Schema.optionalKey(Tipo) })),
+  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipo: Schema.optionalKey(TipoAporte) })),
   beforeLoad: ({ context }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar' })
     if (context.visitante.rol === 'usuario') throw notFound()
@@ -39,7 +39,7 @@ function Revision() {
         Aprobar exige evidencia verificable. Lo pendiente no cuenta en ningún resumen; lo aprobado se puede retirar si deja de ser válido.
       </p>
       <nav aria-label="Tipo de aporte" className="fila pestanas">
-        {Tipo.literals.map((t) => (
+        {TipoAporte.literals.map((t) => (
           <Link key={t} to="/revision" search={{ tipo: t }} aria-current={t === cola.tipo ? 'page' : undefined} className={t === cola.tipo ? 'boton' : 'boton-secundario'}>
             {pestanas[t]}
           </Link>
@@ -47,6 +47,7 @@ function Revision() {
       </nav>
       <p className="pequeno tenue">{contar(pendientes, 'pendiente', 'pendientes')}</p>
       {cola.elementos.length === 0 && <p className="tarjeta">No hay {pestanas[cola.tipo].toLowerCase()} pendientes ni aprobados.</p>}
+      {/* Keyed by state too, so a decided row remounts with an empty form instead of keeping the old motivo. */}
       <div className="pila">
         {cola.tipo === 'reporte' &&
           cola.elementos.map((e) => (
@@ -71,7 +72,6 @@ function Revision() {
   )
 }
 
-// Keyed by state too, so a decided row remounts with an empty form instead of keeping the old motivo.
 const FormDecision = Schema.Struct({ ref: AporteRef, decision: Decision })
 
 /** One queue row: its evidence (children), its blockers, and the decision form. */
@@ -168,7 +168,7 @@ function DetalleReporte({ e }: { e: ElementoDe<'reporte'> }) {
       <p className="fila">
         <Insignia etiqueta={resultado[e.resultado]} />
         <span className="dato">
-          {e.distribucion} · {e.arquitectura} · {e.capa} · versión {e.version_juego} · probado el {fecha(e.fecha_prueba)}
+          {e.distribucion} · {e.arquitectura} · {e.capa} · versión {e.version_juego} · probado el {momento(e.fecha_prueba)}
         </span>
       </p>
       <p className="pequeno">{e.perfil === null ? 'Sin perfil.' : `Siguió el perfil «${e.perfil}».`}</p>

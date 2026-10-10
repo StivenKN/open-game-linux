@@ -63,7 +63,7 @@ const camposReporte = {
   perfil_id: Schema.NullOr(PerfilId),
   version_juego: Reporte.fields.version_juego,
   version_lanzador: TextoOpcionalHasta(largo.reporte.version_lanzador),
-  fecha_prueba: Schema.DateFromString, // a date-only value parses as UTC midnight (probe a); render it in UTC
+  fecha_prueba: Schema.DateFromString, // the form's datetime-local value, read in the browser's own zone
   medicion: Schema.NullOr(MedicionFps),
   observaciones: Texto,
 }

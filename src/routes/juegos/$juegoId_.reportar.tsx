@@ -10,7 +10,7 @@ import { FamiliaCapa, exigeFallo, Resultado } from '../../dominio/literales.ts'
 import { PerfilId } from '../../dominio/ids.ts'
 import { opcionesReporteFn, registrarReporteFn } from '../../fns/aportes.ts'
 import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
-import { fecha } from '../../ui/formato.ts'
+import { momento } from '../../ui/formato.ts'
 import { Campo, campo, GrupoOpcional, nulo } from '../../ui/formulario.tsx'
 import { erroresDeRegla, type Errores, useAccion } from '../../ui/useAccion.ts'
 import { estadoRevision, resultado as etiquetaResultado, tipoFallo } from '../../ui/vocabulario.ts'
@@ -31,7 +31,7 @@ type Opciones = Awaited<ReturnType<typeof opcionesReporteFn>>
 
 function Reportar() {
   const opciones = Route.useLoaderData()
-  const [enviado, setEnviado] = useState<number | null>(null)
+  const [enviado, setEnviado] = useState<{ readonly id: number; readonly conFallos: boolean } | null>(null)
   const { juego } = opciones
 
   return (
@@ -46,6 +46,7 @@ function Reportar() {
           </p>
           <p className="fila">
             <a href={`/juegos/${juego.id}`}>Volver a la ficha del juego</a>
+            {enviado.conFallos && <a href={`/reportes/${enviado.id}/solucion`}>¿Conoces una solución? Propónla</a>}
             <button type="button" className="boton-secundario" onClick={() => setEnviado(null)}>
               Reportar otro resultado
             </button>
@@ -93,7 +94,7 @@ const nombres = (o: Opciones) => {
   }
 }
 
-function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (id: number) => void }) {
+function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (enviado: { readonly id: number; readonly conFallos: boolean }) => void }) {
   const { diagnosticos, ediciones, capas, perfiles, tiposFallo, perfilElegido } = opciones
   const elegido = perfiles.find((p) => p.id === perfilElegido)
 
@@ -133,7 +134,7 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (id
         }
       }
     },
-    alCompletar: (v) => alEnviar(v.id),
+    alCompletar: (v) => alEnviar({ id: v.id, conFallos: fallos.length > 0 }),
   })
 
   const agregarFallo = () => {
@@ -150,7 +151,7 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (id
         <select {...campo(r.errores, 'diagnostico_id')} value={diagnosticoId ?? ''} onChange={(e) => setDiagnosticoId(porId(diagnosticos, e.currentTarget.value))}>
           {diagnosticos.map((d) => (
             <option key={d.id} value={d.id}>
-              {d.equipo} · {d.distribucion} · {d.arquitectura} · {fecha(d.capturado_en)}
+              {d.equipo} · {d.distribucion} · {d.arquitectura} · {momento(d.capturado_en)}
             </option>
           ))}
         </select>

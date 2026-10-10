@@ -40,14 +40,15 @@ const revisables = {
   perfil: {
     tabla: 'perfil_configuracion',
     bloquear: (sql, id) => sql`SELECT estado_revision, autor_id FROM perfil_configuracion WHERE id = ${id} FOR UPDATE`,
-    // 8.9: at least one approved report that used the profile with a functional result.
+    // 8.9: at least one approved report that used the profile with a functional result. FOR SHARE holds
+    // that report until decidir commits, so a reviewer retiring it at the same time waits instead.
     bloqueos: (id) =>
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient
         const [fila] = yield* filas(
           Hay,
           sql`SELECT EXISTS (SELECT 1 FROM reporte WHERE perfil_id = ${id} AND estado_revision = ${aprobado}
-                AND resultado IN ${sql.in(ResultadoFuncional.literals)}) AS hay`,
+                AND resultado IN ${sql.in(ResultadoFuncional.literals)} LIMIT 1 FOR SHARE) AS hay`,
         )
         return fila?.hay === true ? [] : ['perfil_sin_reporte_funcional_aprobado']
       }),
@@ -59,7 +60,8 @@ const revisables = {
       sql`SELECT r.estado_revision, e.usuario_id AS autor_id
           FROM reporte r JOIN diagnostico d ON d.id = r.diagnostico_id JOIN equipo e ON e.id = d.equipo_id
           WHERE r.id = ${id} FOR UPDATE OF r`,
-    // 8.7: comparability is checked again at approval.
+    // 8.7: comparability is checked again at approval. Unreachable by construction today (a used profile,
+    // the report and its diagnosis are all frozen by triggers), so it guards against a future writer only.
     bloqueos: (id) =>
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient
@@ -80,16 +82,17 @@ const revisables = {
   solucion: {
     tabla: 'solucion',
     bloquear: (sql, id) => sql`SELECT estado_revision, autor_id FROM solucion WHERE id = ${id} FOR UPDATE`,
-    // 8.9: the source report is approved, and so is a recommended profile. The evidence that the fix
-    // works is Decision's required `evidencia`.
+    // 8.9: the source report is approved, and so is a recommended profile, both held FOR SHARE until
+    // decidir commits. The evidence that the fix works is Decision's required `evidencia`.
     bloqueos: (id) =>
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient
         const [estados] = yield* filas(
           EstadosSolucion,
-          sql`SELECT r.estado_revision AS reporte, p.estado_revision AS perfil
-              FROM solucion s JOIN reporte r ON r.id = s.reporte_id LEFT JOIN perfil_configuracion p ON p.id = s.perfil_id
-              WHERE s.id = ${id}`,
+          sql`SELECT r.estado_revision AS reporte,
+                     (SELECT p.estado_revision FROM perfil_configuracion p WHERE p.id = s.perfil_id FOR SHARE) AS perfil
+              FROM solucion s JOIN reporte r ON r.id = s.reporte_id
+              WHERE s.id = ${id} FOR SHARE OF r`,
         )
         if (estados === undefined) return []
         const bloqueos: Array<Bloqueo> = []

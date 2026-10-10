@@ -20,3 +20,11 @@ const fechaHoraUtc = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', tim
 
 /** "10 oct 2026, 6:43 p. m. UTC": a capture time, printed in UTC so server and browser agree. */
 export const fechaHora = (d: Date) => `${fechaHoraUtc.format(d)} UTC`
+
+// Instants (timestamptz: a test, a capture) in the app's audience zone, fixed so SSR and the browser
+// agree. 24-hour digits only: ICU builds differ in how they space "p. m.", which would break hydration.
+const diaBogota = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', timeZone: 'America/Bogota' })
+const horaBogota = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'America/Bogota' })
+
+/** "2 de oct, 19:00", Colombia time */
+export const momento = (d: Date) => `${diaBogota.format(d)}, ${horaBogota.format(d)}`
