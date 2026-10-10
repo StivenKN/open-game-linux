@@ -1,20 +1,22 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { ErrorCampo, idError } from '../ui/ErrorCampo.tsx'
 import { useAccion } from '../ui/useAccion.ts'
-import { Entrada, entrar, erroresDeCuenta } from './-cuenta.ts'
+import { Entrada, entrar, erroresDeCuenta, Volver } from './-cuenta.ts'
 
 export const Route = createFileRoute('/entrar')({
   head: () => ({ meta: [{ title: 'Entrar · OpenGame Linux' }] }),
+  validateSearch: Volver,
   component: Entrar,
 })
 
 function Entrar() {
   const router = useRouter()
+  const { volver } = Route.useSearch()
   const r = useAccion(Entrada, entrar, {
     alFallar: erroresDeCuenta,
     alCompletar: async () => {
       await router.invalidate()
-      await router.navigate({ to: '/' })
+      await router.navigate({ to: volver ?? '/' })
     },
   })
   return (
@@ -48,7 +50,7 @@ function Entrar() {
         </button>
       </form>
       <p>
-        ¿No tienes cuenta? <Link to="/registro">Crea una</Link>.
+        ¿No tienes cuenta? <Link to="/registro" search={volver ? { volver } : {}}>Crea una</Link>.
       </p>
     </main>
   )
