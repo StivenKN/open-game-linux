@@ -12,7 +12,7 @@ ui/ ─────┴───────────────────�
 | `src/dominio/` | `effect`, `dominio/` | `src/fronteras.test.ts` |
 | `src/servidor/` | `effect`, `@effect/*`, `better-auth`, `pg`, `@tanstack/react-start/server`, `@tanstack/react-router` (only for `notFound`/`redirect` in `ejecutar.ts`), `dominio/`, `servidor/` | same |
 | `src/fns/` | `@tanstack/react-start`, `effect`, `dominio/`, `servidor/` | same, plus the rule that **a top-level line is only an import or `export const x = createServerFn(`** (gotcha 3) |
-| `src/routes/` | `@tanstack/*`, `react`, `effect`, `dominio/`, `fns/`, `ui/`, `detector/`, `better-auth/react` | same. One allowlisted exception: `routes/api/auth/$.ts`, a server handler with no component |
+| `src/routes/` | `@tanstack/*`, `react`, `effect`, `dominio/`, `fns/`, `ui/`, `routes/` (helpers in `-*.ts` files the router skips), `detector/`, `assets/`, `better-auth/react` | same. One allowlisted exception: `routes/api/auth/$.ts`, a server handler with no component |
 | `src/ui/` | `react`, `effect`, `@tanstack/react-router`, `dominio/`, `ui/` | same |
 | review block writes | only `servidor/aportes/revision.ts` (and DDL in `servidor/esquema/`) | same test: an SQL template with `SET`/`INSERT INTO` that touches `estado_revision`, `revisor_id` or `evidencia_revision` anywhere else, `scripts/` included, fails |
 | browser bundle | no server code | `scripts/sin-servidor-en-cliente.ts` after `vite build`, inside `pnpm check` |
