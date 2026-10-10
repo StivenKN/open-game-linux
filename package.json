@@ -11,7 +11,8 @@
     "start": "vite preview --port 3000",
     "generate-routes": "tsr generate",
     "test": "vitest run",
-    "db:up": "docker compose up -d --wait db"
+    "db:up": "docker compose up -d --wait db",
+    "check": "tsr generate && tsc --noEmit && oxlint && vitest run && vite build && node scripts/sin-servidor-en-cliente.ts"
   },
   "dependencies": {
     "@effect/platform-node": "4.0.2",
@@ -32,6 +33,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "oxlint": "1.87.0",
     "typescript": "7.0.2",
     "vite": "^8.0.0",
     "vitest": "5.0.3"
