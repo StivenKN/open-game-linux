@@ -3,6 +3,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useState } from 'react'
 import { NuevaSolucion } from '../../dominio/aportes.ts'
+import { TipoFalloId } from '../../dominio/ids.ts'
 import { opcionesSolucionFn, registrarSolucionFn } from '../../fns/aportes.ts'
 import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
 import { fecha } from '../../ui/formato.ts'
@@ -12,7 +13,7 @@ import { erroresDeRegla, useAccion } from '../../ui/useAccion.ts'
 import { estadoRevision, resultado, tipoFallo } from '../../ui/vocabulario.ts'
 
 export const Route = createFileRoute('/reportes/$reporteId/solucion')({
-  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipoFallo: Schema.optionalKey(Schema.NumberFromString) })),
+  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipoFallo: Schema.optionalKey(TipoFalloId) })),
   beforeLoad: ({ context }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar' })
   },

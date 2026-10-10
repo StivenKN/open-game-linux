@@ -50,19 +50,19 @@ function Revision() {
       <div className="pila">
         {cola.tipo === 'reporte' &&
           cola.elementos.map((e) => (
-            <Elemento key={e.id} refAporte={{ _tag: 'reporte', id: e.id }} elemento={e}>
+            <Elemento key={`${e.id}-${e.estado_revision}`} refAporte={{ _tag: 'reporte', id: e.id }} elemento={e}>
               <DetalleReporte e={e} />
             </Elemento>
           ))}
         {cola.tipo === 'perfil' &&
           cola.elementos.map((e) => (
-            <Elemento key={e.id} refAporte={{ _tag: 'perfil', id: e.id }} elemento={e}>
+            <Elemento key={`${e.id}-${e.estado_revision}`} refAporte={{ _tag: 'perfil', id: e.id }} elemento={e}>
               <DetallePerfil e={e} />
             </Elemento>
           ))}
         {cola.tipo === 'solucion' &&
           cola.elementos.map((e) => (
-            <Elemento key={e.id} refAporte={{ _tag: 'solucion', id: e.id }} elemento={e}>
+            <Elemento key={`${e.id}-${e.estado_revision}`} refAporte={{ _tag: 'solucion', id: e.id }} elemento={e}>
               <DetalleSolucion e={e} />
             </Elemento>
           ))}
@@ -71,6 +71,7 @@ function Revision() {
   )
 }
 
+// Keyed by state too, so a decided row remounts with an empty form instead of keeping the old motivo.
 const FormDecision = Schema.Struct({ ref: AporteRef, decision: Decision })
 
 /** One queue row: its evidence (children), its blockers, and the decision form. */

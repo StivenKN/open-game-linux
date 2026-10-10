@@ -593,3 +593,10 @@ select[aria-invalid='true'] {
   gap: 6px;
 }
 
+.grupo-opcional-campos[hidden] {
+  display: none;
+}
+.decision label {
+  display: grid;
+  gap: 4px;
+}

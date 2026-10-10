@@ -16,7 +16,8 @@ import { erroresDeRegla, type Errores, useAccion } from '../../ui/useAccion.ts'
 import { estadoRevision, resultado as etiquetaResultado, tipoFallo } from '../../ui/vocabulario.ts'
 
 export const Route = createFileRoute('/juegos/$juegoId_/reportar')({
-  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ perfil: Schema.optionalKey(Schema.NumberFromString.pipe(Schema.decodeTo(PerfilId))) })),
+  // The router already parses `?perfil=7` into a number.
+  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ perfil: Schema.optionalKey(PerfilId) })),
   beforeLoad: ({ context }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar' })
   },
