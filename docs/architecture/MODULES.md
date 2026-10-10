@@ -15,7 +15,9 @@ ui/ ─────┴───────────────────�
 | `src/routes/` | `@tanstack/*`, `react`, `effect`, `dominio/`, `fns/`, `ui/`, `routes/` (helpers in `-*.ts` files the router skips), `detector/`, `assets/`, `better-auth/react` | same. One allowlisted exception: `routes/api/auth/$.ts`, a server handler with no component |
 | `src/ui/` | `react`, `effect`, `@tanstack/react-router`, `dominio/`, `ui/` | same |
 | review block writes | only `servidor/aportes/revision.ts` (and DDL in `servidor/esquema/`) | same test: an SQL template with `SET`/`INSERT INTO` that touches `estado_revision`, `revisor_id` or `evidencia_revision` anywhere else, `scripts/` included, fails |
+| equipo/diagnostico writes | only `servidor/aportes/diagnostico.ts` | `src/fronteras.test.ts`, same scan of `src/` and `scripts/` |
 | browser bundle | no server code | `scripts/sin-servidor-en-cliente.ts` after `vite build`, inside `pnpm check` |
+| `styles.css` | every rule closed (no accidental nesting), one rule per selector | `src/styles.test.ts` |
 
 Each failure message names the fix, for example: "routes call server fns from src/fns/; never import src/servidor/ (it would ship pg to the browser)". All three planted violations failed as intended (RATIONALE, Evidence).
 
@@ -36,13 +38,16 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `servidor/ejecutar.ts` | `leer`, `accion`: session → `Visitante`, transaction per action, control errors → `notFound`/`redirect`, domain failures → `Respuesta` | Business rules |
 | `servidor/esquema/migraciones.ts` | All DDL, the rule-home index, and CHECK lists generated from Schema literals | |
 | `servidor/esquema/restricciones.ts` | `reglaDeRestriccion` (constraint name → `Regla`), `conReglasDeBd` | |
-| `servidor/aportes/aportes.ts` | **Single writer** of diagnostico/equipo/distribucion upsert, reporte/reporte_fallo/version_capa upsert, solucion, juego/edicion. App-side 8.7/8.9 write rules | The review block |
+| `servidor/aportes/aportes.ts` | **Single writer** of reporte/reporte_fallo/version_capa upsert, solucion, and juego/edicion_juego (`crearJuego`, reviewers only). App-side 8.7/8.9 write rules | The review block, equipo/diagnostico |
+| `servidor/aportes/diagnostico.ts` | **Single writer** of equipo and diagnostico, and the distribucion a capture names (`registrarDiagnostico`, converging on one equipo per alias and one capture per time) | |
 | `servidor/aportes/revision.ts` | **Single writer** of the review block. `decidir`, `bloqueosAprobacion`, the reviewable-table registry | |
-| `servidor/consultas/*.ts` | Read models: `catalogo`, `perfil`, `guias`, `guia`, `opcionesReporte`, `fichaJuego`, `cola`, `evaluarSinGuardar`, `miDiagnostico`, `misEquipos`. Their success types are the page types | Writes |
+| `servidor/consultas/*.ts` | Read models: `catalogo`, `perfil`, `guias`, `guia`, `opcionesReporte`, `opcionesSolucion`, `opcionesJuego`, `fichaJuego`, `cola`, `evaluarSinGuardar`, `miDiagnostico`, `misEquipos`. Their success types are the page types | Writes |
 | `servidor/diagnostico/payload.ts` | **The only detector parser**: `parsearPayload`, `etiquetaPci`, `rolling` normalization | |
 | `fns/*.ts` | The server API surface: one `createServerFn` per operation | Anything else |
 | `routes/**` | Pages, loaders, search params, route guards (UX only) | Data rules |
 | `ui/useAccion.ts` | The one form hook: decode FormData → call fn → narrow `Respuesta` → field errors | |
+| `ui/formato.ts` | Display formatting. Every instant prints in Bogotá time (`fecha` day, `momento` day and 24-hour time) | |
+| `ui/progreso.ts` | The profile page's local step checklist (`localStorage`, SSR-safe) | |
 | `ui/vocabulario.ts` | Spanish label and tone for every domain literal, exhaustive via `satisfies Record` | |
 | `ui/compatibilidad/*` | `EstadoJuego` (variant 1 badge), `MatrizEntornos`, `VeredictoParaMi` (with the "En tu distribución" line), evaluation checklist, copy box | |
 | `detector/opengame-detect.sh` | The productionized prototype script: payload v1 + `gpu_pci_id`, with `__OPENGAME_URL__` filled in by the server route | |
@@ -69,4 +74,4 @@ Each failure message names the fix, for example: "routes call server fns from sr
 
 ## Rule homes
 
-The authoritative table is the header of `sketch/src/servidor/esquema/migraciones.ts`. In short: row-local rules are DB constraints and three triggers. Cross-row write rules are in `servidor/aportes/aportes.ts`. Review rules are in `servidor/aportes/revision.ts`. Comparability is in `dominio/aportes.ts` `discrepancias`. The failing-result rule is in `dominio/aportes.ts` `NuevoReporte`. Reviewer role is in `servidor/auth.ts` `exigirRevisor`.
+The authoritative table is the header of `src/servidor/esquema/migraciones.ts`, which also lists the single writers. In short: row-local rules are DB constraints and three triggers. Cross-row write rules are in `servidor/aportes/aportes.ts`, except equipo/diagnostico convergence in `servidor/aportes/diagnostico.ts`. Review rules are in `servidor/aportes/revision.ts`. Comparability is in `dominio/aportes.ts` `discrepancias`. The failing-result rule is in `dominio/aportes.ts` `NuevoReporte`. Reviewer role is in `servidor/auth.ts` `exigirRevisor`.

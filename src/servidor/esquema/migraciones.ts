@@ -23,12 +23,20 @@
 // |   (edition + layer also a composite FK backstop, unmapped)   |   (+ DB reporte_perfil_fk)                |
 // | own equipo; Linux diagnosis; fecha_prueba >= capturado_en    | app: servidor/aportes/aportes.ts          |
 // | solution's profile in the report's edition                   | app: servidor/aportes/aportes.ts          |
+// | one equipo per alias per user, one capture per time          | app: servidor/aportes/diagnostico.ts      |
 // | failing result has >= 1 fallo                                | app: dominio/aportes.ts NuevoReporte      |
-// | reviewer role + activo                                       | app: servidor/auth.ts exigirRevisor       |
+// | reviewer role + activo (also: only reviewers register games) | app: servidor/auth.ts exigirRevisor       |
 // | author != reviewer (all three tables), transitions,          | app: servidor/aportes/revision.ts decidir |
 // |   approval preconditions                                     |                                           |
 // | only reviewers publish guides                                | no write path this delivery (seeded)      |
 // | public view hides retired rows                               | app: servidor/consultas (WHERE aprobado)  |
+//
+// Single writers (src/fronteras.test.ts checks the SQL in src/ and scripts/ for the first two;
+// scripts/sembrar.ts part 1 still inserts catalog lookups such as juego and edicion_juego directly):
+//   equipo, diagnostico (+ the distribucion a capture names) -> servidor/aportes/diagnostico.ts
+//   review block of perfil, reporte, solucion                -> servidor/aportes/revision.ts decidir
+//   reporte (+ reporte_fallo, version_capa upsert), solucion,
+//     juego (+ edicion_juego)                                -> servidor/aportes/aportes.ts
 import { Effect, Schema } from 'effect'
 import { Migrator, SqlClient } from 'effect/sql'
 import { PgMigrator } from '@effect/sql-pg'
