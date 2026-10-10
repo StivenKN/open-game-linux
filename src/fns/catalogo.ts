@@ -1,5 +1,5 @@
-// Public reads: the catalog, the ficha and the profile page. Route params arrive already decoded to
-// branded ids (routes/-ids.ts), so a bad id never reaches the server; an unknown one comes back notFound.
+// Public reads: the catalog, the ficha and the profile page. Routes decode path ids before calling
+// (routes/-ids.ts), so text that is not an id is a 404 there; an unknown id comes back notFound from leer.
 import { createServerFn } from '@tanstack/react-start'
 import { Schema } from 'effect'
 import { FiltroCatalogo } from '../dominio/aportes.ts'

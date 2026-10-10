@@ -1,7 +1,7 @@
 // Catalog and search (wireframe 9.1). The filters live in the URL, validated by the same Schema the
 // server fn uses, so a filtered catalog is a link anyone can share.
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { Effect, Schema, Struct } from 'effect'
+import { Effect, Schema, SchemaTransformation, Struct } from 'effect'
 import type { FormEvent, ReactNode } from 'react'
 import { FiltroCatalogo } from '../dominio/aportes.ts'
 import { EstadoCompatibilidad } from '../dominio/compatibilidad.ts'
@@ -14,8 +14,12 @@ import { estadoCompatibilidad } from '../ui/vocabulario.ts'
 
 /** A URL is typed by hand: a value that does not decode drops its filter instead of failing the page. */
 const opcional = <S extends Schema.Constraint>(campo: S) => Schema.catchDecoding<S>(() => Effect.succeedNone)(campo)
+// The router JSON-parses each query value, so a title typed as `?q=2` arrives as the number 2.
+const TextoBuscado = Schema.Union([Schema.String, Schema.Finite, Schema.Boolean]).pipe(
+  Schema.decodeTo(Schema.String, SchemaTransformation.transform<string, string | number | boolean>({ decode: String, encode: (s) => s })),
+)
 const Busqueda = FiltroCatalogo.mapFields((f) => ({
-  q: opcional(f.q),
+  q: opcional(Schema.optionalKey(TextoBuscado)),
   estado: opcional(f.estado),
   lanzador: opcional(f.lanzador),
   sin_anti_cheat: opcional(f.sin_anti_cheat),
@@ -66,6 +70,10 @@ function Catalogo() {
             Buscar un juego por título
           </label>
           <input id="q" name="q" type="search" placeholder="Escribe un juego, por ejemplo GTA V" defaultValue={filtro.q ?? ''} key={filtro.q} />
+          {/* Without JavaScript the browser submits only the form's fields; these keep the active filters. */}
+          {filtro.estado !== undefined && <input type="hidden" name="estado" value={filtro.estado} />}
+          {filtro.lanzador !== undefined && <input type="hidden" name="lanzador" value={filtro.lanzador} />}
+          {filtro.sin_anti_cheat === true && <input type="hidden" name="sin_anti_cheat" value="true" />}
           <button type="submit">Buscar</button>
         </form>
         <div className="pila filtros" aria-label="Filtros">
