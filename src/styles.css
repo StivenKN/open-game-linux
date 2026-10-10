@@ -468,6 +468,9 @@ button:disabled {
   font-family: var(--mono);
   color: var(--tenue);
 }
+.pasos > li[data-hecho] > :not(label) {
+  opacity: 0.6;
+}
 .nombre-juego {
   font-size: 17px;
   font-weight: 650;

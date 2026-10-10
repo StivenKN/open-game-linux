@@ -7,6 +7,7 @@ import { CajaCopiar } from '../../ui/compatibilidad/CajaCopiar.tsx'
 import { ChecklistEvaluacion } from '../../ui/compatibilidad/ChecklistEvaluacion.tsx'
 import { fecha, memoria } from '../../ui/formato.ts'
 import { Chip, Insignia } from '../../ui/Insignia.tsx'
+import { useProgreso } from '../../ui/progreso.ts'
 import { SelloEjemplo } from '../../ui/SelloEjemplo.tsx'
 import { estadoRevision } from '../../ui/vocabulario.ts'
 import { idDeRuta } from '../-ids.ts'
@@ -62,6 +63,11 @@ function Perfil() {
         <p className="pequeno nota" data-tono="azul">
           OpenGame no descarga ni ejecuta nada. Sigue los pasos tú mismo; los comandos se copian tal cual.
         </p>
+        <p>
+          <Link to="/juegos/$juegoId/reportar" params={{ juegoId: String(p.juego_id) }} search={{ perfil: p.id }} className="boton">
+            Reportar resultado con este perfil
+          </Link>
+        </p>
       </header>
 
       <div className="rejilla-2">
@@ -70,14 +76,7 @@ function Perfil() {
           {pasos.length === 0 ? (
             <p className="tarjeta tenue">Este perfil no tiene pasos.</p>
           ) : (
-            <ol className="pasos">
-              {pasos.map((s) => (
-                <li key={s.orden} className="tarjeta pila">
-                  <b>{s.titulo}</b>
-                  <p className="texto-largo">{s.instruccion}</p>
-                </li>
-              ))}
-            </ol>
+            <Pasos clave={`opengame:perfil:${p.id}:r${p.revision}:pasos`} pasos={pasos} />
           )}
           {p.parametros_lanzamiento && (
             <div className="bloque">
@@ -151,5 +150,39 @@ function Perfil() {
         </div>
       </div>
     </main>
+  )
+}
+
+type Paso = ReturnType<typeof Route.useLoaderData>['pasos'][number]
+
+/** The steps with a done mark each, kept in this browser only (`clave` names the profile revision). */
+function Pasos({ clave, pasos }: { clave: string; pasos: ReadonlyArray<Paso> }) {
+  const { hechos, alternar, reiniciar } = useProgreso(clave)
+  const cuenta = pasos.filter((s) => hechos.includes(s.orden)).length
+  return (
+    <>
+      <div className="fila pequeno">
+        <span className="tenue" aria-live="polite">
+          {cuenta} de {pasos.length} pasos hechos · se guarda solo en este navegador
+        </span>
+        {cuenta > 0 && (
+          <button type="button" className="boton-secundario" onClick={reiniciar}>
+            Reiniciar
+          </button>
+        )}
+      </div>
+      <ol className="pasos">
+        {pasos.map((s) => (
+          <li key={s.orden} className="tarjeta pila" data-hecho={hechos.includes(s.orden) || undefined}>
+            <b>{s.titulo}</b>
+            <p className="texto-largo">{s.instruccion}</p>
+            <label className="casilla pequeno">
+              <input type="checkbox" checked={hechos.includes(s.orden)} onChange={() => alternar(s.orden)} />
+              Hecho
+            </label>
+          </li>
+        ))}
+      </ol>
+    </>
   )
 }
