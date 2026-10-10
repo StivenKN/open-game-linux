@@ -16,6 +16,8 @@ export const Regla = Schema.Literals([
   'diagnostico_no_linux',
   'fecha_antes_del_diagnostico',
   'fallo_duplicado', // DB home: PK reporte_fallo_pkey (8.11 "el esquema debe rechazar fallos duplicados")
+  'perfil_no_disponible', // the profile does not exist, or was rejected or retired: nobody tests it any more
+  'solucion_sin_fallo', // the report is not public, or has no fallo of that tipo (DB backstop: solucion_fallo_fk)
   'solucion_perfil_otra_edicion',
   'version_capa_no_exacta', // DB home: CHECK version_capa_version_exacta, reachable through VersionCapaRef nueva
   'autorrevision', // home: decidir, for all three reviewable tables
@@ -24,7 +26,16 @@ export const Regla = Schema.Literals([
 export type Regla = typeof Regla.Type
 
 /** Form field a rule attaches to. Every form names its inputs after its input schema's Encoded keys. */
-export type Campo = 'diagnostico_id' | 'fecha_prueba' | 'perfil_id' | 'version_juego' | 'fallos' | 'version_capa' | 'decision' | 'formulario'
+export type Campo =
+  | 'diagnostico_id'
+  | 'fecha_prueba'
+  | 'perfil_id'
+  | 'version_juego'
+  | 'fallos'
+  | 'version_capa'
+  | 'tipo_fallo_id'
+  | 'decision'
+  | 'formulario'
 
 /** One row per rule: the field it lands on and its Spanish message. `Record<Regla, …>` fails the build on a gap. */
 export const reglas: Record<Regla, { readonly campo: Campo; readonly mensaje: string }> = {
@@ -32,6 +43,8 @@ export const reglas: Record<Regla, { readonly campo: Campo; readonly mensaje: st
   diagnostico_no_linux: { campo: 'diagnostico_id', mensaje: 'Un reporte necesita un diagnóstico hecho en Linux.' },
   fecha_antes_del_diagnostico: { campo: 'fecha_prueba', mensaje: 'La prueba no puede ser anterior al diagnóstico.' },
   fallo_duplicado: { campo: 'fallos', mensaje: 'Ese tipo de fallo ya está en el reporte; describe ambos síntomas en un solo detalle.' },
+  perfil_no_disponible: { campo: 'perfil_id', mensaje: 'Ese perfil ya no está disponible para pruebas.' },
+  solucion_sin_fallo: { campo: 'tipo_fallo_id', mensaje: 'Ese reporte no registra ese tipo de fallo.' },
   solucion_perfil_otra_edicion: { campo: 'perfil_id', mensaje: 'El perfil recomendado debe ser de la misma edición que el reporte.' },
   version_capa_no_exacta: { campo: 'version_capa', mensaje: 'Escribe la versión exacta, no «última».' },
   autorrevision: { campo: 'decision', mensaje: 'No puedes revisar tu propio aporte.' },
@@ -51,13 +64,19 @@ export const Discrepancia = Schema.Union([
 ])
 export type Discrepancia = typeof Discrepancia.Type
 
-/** The field and message for each kind of discrepancy, like `reglas` for PerfilNoComparable. */
-export const discrepanciasPerfil: Record<Discrepancia['de'], { readonly campo: Campo; readonly mensaje: string }> = {
-  edicion: { campo: 'perfil_id', mensaje: 'El perfil es de otra edición del juego.' },
-  capa: { campo: 'perfil_id', mensaje: 'El perfil usa otra capa (Wine, Proton o nativo) u otra versión de ella.' },
-  distribucion: { campo: 'perfil_id', mensaje: 'El perfil es para otra distribución que la de tu diagnóstico.' },
-  arquitectura: { campo: 'perfil_id', mensaje: 'El perfil es para otra arquitectura.' },
-  version_juego: { campo: 'version_juego', mensaje: 'El perfil limita la versión del juego y la prueba no la respeta.' },
+/**
+ * The field and message for each kind of discrepancy, like `reglas` for PerfilNoComparable. The caller
+ * passes display names for both sides (an edition, layer or distro id means nothing to a person).
+ */
+export const discrepanciasPerfil: Record<
+  Discrepancia['de'],
+  { readonly campo: Campo; readonly mensaje: (esperado: string, observado: string) => string }
+> = {
+  edicion: { campo: 'perfil_id', mensaje: (e, o) => `El perfil es para la edición de ${e}; elegiste la de ${o}.` },
+  capa: { campo: 'perfil_id', mensaje: (e, o) => `El perfil usa ${e}; tu prueba usó ${o}.` },
+  distribucion: { campo: 'perfil_id', mensaje: (e, o) => `El perfil es para ${e}; tu diagnóstico es de ${o}.` },
+  arquitectura: { campo: 'perfil_id', mensaje: (e, o) => `El perfil es para ${e}; tu diagnóstico es ${o}.` },
+  version_juego: { campo: 'version_juego', mensaje: (e, o) => `El perfil es para la versión ${e} del juego; probaste la ${o}.` },
 }
 
 export class ReglaIncumplida extends Schema.TaggedError<ReglaIncumplida>()('ReglaIncumplida', { regla: Regla }) {}

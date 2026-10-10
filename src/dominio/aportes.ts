@@ -1,5 +1,8 @@
 // Input schemas for every write, and the 8.7 comparability rule. Isomorphic.
 //
+// Text fields reuse the row Schemas' "Texto n" (tablas.ts), so an over-long value is a field error in the
+// form instead of a varchar overflow on insert.
+//
 // Each schema is used three times with no copy: the browser form decodes FormData with it
 // (field errors before any request), the server fn validator decodes the same Encoded value
 // (`Schema.toStandardSchemaV1`), and the handler receives the decoded Type.
@@ -16,28 +19,29 @@ import {
   PerfilId,
   ReporteId,
   Texto,
-  TextoOpcional,
   TipoFalloId,
   VersionCapaId,
 } from './ids.ts'
 import { FamiliaCapa, ResultadoFallido, ResultadoFuncional } from './literales.ts'
+import { Diagnostico, Distribucion, Equipo, Juego, largo, Reporte, Solucion, TextoHasta, TextoOpcionalHasta, VersionCapa } from './tablas.ts'
 
 /** Round 1 graft: report on a Proton build the seeders missed. Registration upserts on (familia, variante, version). */
 export const VersionCapaRef = Schema.Union([
   Schema.TaggedStruct('existente', { id: VersionCapaId }),
-  Schema.TaggedStruct('nueva', { familia: FamiliaCapa, variante: Texto, version: Texto }),
+  Schema.TaggedStruct('nueva', { familia: FamiliaCapa, variante: VersionCapa.fields.variante, version: VersionCapa.fields.version }),
 ])
 
 export const EquipoDestino = Schema.Union([
   Schema.TaggedStruct('existente', { id: EquipoId }),
-  Schema.TaggedStruct('nuevo', { alias: Texto }),
+  Schema.TaggedStruct('nuevo', { alias: Equipo.fields.alias }),
 ])
 
 /** 8.7: FPS is all-or-nothing with its context. A report without a measurement has `medicion: null`, never 0. */
 export const MedicionFps = Schema.Struct({
-  fps_promedio: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
-  resolucion: Texto,
-  calidad_grafica: Texto,
+  // numeric(7,2): anything from 100000 up would overflow the column.
+  fps_promedio: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 99999.99 }, { message: 'Escribe un promedio de FPS entre 0 y 99999.99.' })),
+  resolucion: TextoHasta(largo.reporte.resolucion),
+  calidad_grafica: TextoHasta(largo.reporte.calidad_grafica),
   metodo_medicion: Texto,
 })
 
@@ -57,8 +61,8 @@ const camposReporte = {
   diagnostico_id: DiagnosticoId,
   version_capa: VersionCapaRef,
   perfil_id: Schema.NullOr(PerfilId),
-  version_juego: Texto,
-  version_lanzador: TextoOpcional,
+  version_juego: Reporte.fields.version_juego,
+  version_lanzador: TextoOpcionalHasta(largo.reporte.version_lanzador),
   fecha_prueba: Schema.DateFromString, // a date-only value parses as UTC midnight (probe a); render it in UTC
   medicion: Schema.NullOr(MedicionFps),
   observaciones: Texto,
@@ -81,30 +85,32 @@ export const NuevaSolucion = Schema.Struct({
   reporte_id: ReporteId,
   tipo_fallo_id: TipoFalloId,
   perfil_id: Schema.NullOr(PerfilId),
-  titulo: Texto,
+  titulo: Solucion.fields.titulo,
   instrucciones: Texto,
 })
 export type NuevaSolucion = typeof NuevaSolucion.Type
 
 /** RF-03, reviewers only. Editions are (lanzador, identificador externo opcional). */
 export const NuevoJuego = Schema.Struct({
-  titulo: Texto,
+  titulo: Juego.fields.titulo,
   descripcion: Texto,
-  ediciones: Schema.NonEmptyArray(Schema.Struct({ lanzador_id: LanzadorId, identificador_externo: TextoOpcional })),
+  ediciones: Schema.NonEmptyArray(
+    Schema.Struct({ lanzador_id: LanzadorId, identificador_externo: TextoOpcionalHasta(largo.edicion_juego.identificador_externo) }),
+  ),
 })
 
 const camposCaptura = {
   capturado_en: Schema.DateFromString,
-  version_sistema: Texto,
-  arquitectura: Texto,
-  cpu_modelo: Texto,
-  gpu_modelo: Texto,
-  ram_mb: Schema.Int.check(Schema.isGreaterThan(0)),
-  vram_mb: Schema.NullOr(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
-  controlador: TextoOpcional,
-  version_controlador: TextoOpcional,
+  version_sistema: Diagnostico.fields.version_sistema,
+  arquitectura: Diagnostico.fields.arquitectura,
+  cpu_modelo: Diagnostico.fields.cpu_modelo,
+  gpu_modelo: Diagnostico.fields.gpu_modelo,
+  ram_mb: Diagnostico.fields.ram_mb,
+  vram_mb: Diagnostico.fields.vram_mb,
+  controlador: TextoOpcionalHasta(largo.diagnostico.controlador),
+  version_controlador: TextoOpcionalHasta(largo.diagnostico.version_controlador),
   soporte_vulkan: SoporteVulkan,
-  version_vulkan: TextoOpcional,
+  version_vulkan: TextoOpcionalHasta(largo.diagnostico.version_vulkan),
 }
 
 /**
@@ -117,7 +123,7 @@ export const Captura = Schema.Union([
   Schema.Struct({
     ...camposCaptura,
     sistema: Schema.Literal('Linux'),
-    distribucion: Schema.Struct({ nombre: Texto, version: Texto }), // resolved to distribucion.id by upsert
+    distribucion: Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version }), // resolved to distribucion.id by upsert
   }),
   Schema.Struct({ ...camposCaptura, sistema: Schema.Literal('Windows') }),
 ]).check(

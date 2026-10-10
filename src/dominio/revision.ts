@@ -63,7 +63,10 @@ export const AporteRef = Schema.Union([
   Schema.TaggedStruct('solucion', { id: SolucionId }),
 ])
 export type AporteRef = typeof AporteRef.Type
-export type TipoAporte = AporteRef['_tag']
+
+/** The review queue's `?tipo=`. Indexing the registry in servidor/aportes/revision.ts by AporteRef tags keeps the two in step. */
+export const TipoAporte = Schema.Literals(['perfil', 'reporte', 'solucion'])
+export type TipoAporte = typeof TipoAporte.Type
 
 /**
  * Typed approval blockers (round 1 graft). `bloqueosAprobacion` in servidor/aportes/revision.ts

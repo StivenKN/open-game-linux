@@ -18,6 +18,7 @@ import {
   ReporteId,
   SolucionId,
   Texto,
+  TextoOpcionalDe,
   TipoFalloId,
   UsuarioId,
   VersionCapaId,
@@ -57,6 +58,9 @@ export const largo = {
 
 /** "Texto n": trimmed, non-empty, at most n characters. Unbounded "Texto largo" is plain `Texto`. */
 export const TextoHasta = (n: number) => Texto.pipe(Schema.check(Schema.isMaxLength(n)))
+
+/** An optional "Texto n" as a form posts it: blank becomes null, a present value obeys TextoHasta(n). */
+export const TextoOpcionalHasta = (n: number) => TextoOpcionalDe(TextoHasta(n))
 
 const Positivo = Schema.Int.check(Schema.isGreaterThan(0))
 const NoNegativo = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
