@@ -13,15 +13,18 @@ export type VersionVulkan = { readonly texto: string; readonly partes: readonly 
 
 /** Null for anything that is not dot-separated integers. */
 export const versionVulkan = (texto: string | null): VersionVulkan | null => {
-  void texto
-  throw new Error('not implemented')
+  if (texto === null || !/^\d+(\.\d+)*$/.test(texto)) return null
+  const [mayor, ...resto] = texto.split('.').map(Number)
+  return mayor === undefined ? null : { texto, partes: [mayor, ...resto] }
 }
 
 /** Component-wise; a missing component counts as 0, so 1.3 satisfies a minimum of 1.3.0. */
 export const alMenos = (v: VersionVulkan, minimo: VersionVulkan): boolean => {
-  void v
-  void minimo
-  throw new Error('not implemented')
+  for (let i = 0; i < Math.max(v.partes.length, minimo.partes.length); i++) {
+    const diferencia = (v.partes[i] ?? 0) - (minimo.partes[i] ?? 0)
+    if (diferencia !== 0) return diferencia > 0
+  }
+  return true
 }
 
 /**
@@ -77,9 +80,42 @@ export type Evaluacion = {
  *            else zero comprobaciones -> informacion_insuficiente (a vacuous "cumple" misleads); else cumple.
  */
 export const evaluar = (equipo: Capacidades, perfil: CondicionesConocidas): Evaluacion => {
-  void equipo
-  void perfil
-  throw new Error('not implemented')
+  const comprobaciones: Array<Comprobacion> = []
+  if (perfil.ram_min_mb !== null)
+    comprobaciones.push({
+      requisito: 'ram',
+      estado: equipo.ram_mb >= perfil.ram_min_mb ? 'cumple' : 'no_cumple',
+      exigido: String(perfil.ram_min_mb),
+      detectado: String(equipo.ram_mb),
+    })
+  if (perfil.vram_min_mb !== null)
+    comprobaciones.push({
+      requisito: 'vram',
+      estado: equipo.vram_mb === null ? 'desconocido' : equipo.vram_mb >= perfil.vram_min_mb ? 'cumple' : 'no_cumple',
+      exigido: String(perfil.vram_min_mb),
+      detectado: equipo.vram_mb === null ? null : String(equipo.vram_mb),
+    })
+  if (perfil.requiere_vulkan === true)
+    comprobaciones.push({
+      requisito: 'vulkan',
+      estado: estadoVulkan(equipo.vulkan, perfil.version_vulkan_min),
+      exigido: perfil.version_vulkan_min?.texto ?? 'si',
+      detectado: equipo.vulkan.soporte === 'si' ? (equipo.vulkan.version?.texto ?? 'si') : equipo.vulkan.soporte === 'no' ? 'no' : null,
+    })
+  const veredicto: VeredictoRequisitos = comprobaciones.some((c) => c.estado === 'no_cumple')
+    ? 'no_cumple'
+    : comprobaciones.length === 0 || comprobaciones.some((c) => c.estado === 'desconocido')
+      ? 'informacion_insuficiente'
+      : 'cumple'
+  return { veredicto, comprobaciones, solo_orientativa: equipo.sistema === 'Windows' }
+}
+
+const estadoVulkan = (vulkan: Vulkan, minimo: VersionVulkan | null): Comprobacion['estado'] => {
+  if (vulkan.soporte === 'no') return 'no_cumple'
+  if (vulkan.soporte === 'desconocido') return 'desconocido'
+  if (minimo === null) return 'cumple'
+  if (vulkan.version === null) return 'desconocido'
+  return alMenos(vulkan.version, minimo) ? 'cumple' : 'no_cumple'
 }
 
 /**
@@ -121,12 +157,16 @@ export const condiciones = (p: ColumnasCondicion): CondicionesConocidas => ({
 /**
  * Pure ranking for "perfil sugerido", approved profiles only: same distribucion + arquitectura as
  * the diagnosis first, then cumple > informacion_insuficiente > no_cumple, then highest revision.
+ * A profile without an evaluation ranks as informacion_insuficiente. Ties keep the input order.
  */
 export const sugerirPerfil = <P extends { readonly distribucion_id: number; readonly arquitectura: string; readonly revision: number; readonly evaluacion: Evaluacion | null }>(
   perfiles: ReadonlyArray<P>,
   diagnostico: { readonly distribucion_id: number | null; readonly arquitectura: string },
 ): P | null => {
-  void perfiles
-  void diagnostico
-  throw new Error('not implemented')
+  const distinto = (p: P) => (p.distribucion_id === diagnostico.distribucion_id && p.arquitectura === diagnostico.arquitectura ? 0 : 1)
+  const veredicto = (p: P) => rangoVeredicto[p.evaluacion?.veredicto ?? 'informacion_insuficiente']
+  const comparar = (a: P, b: P) => distinto(a) - distinto(b) || veredicto(a) - veredicto(b) || b.revision - a.revision
+  return perfiles.reduce<P | null>((mejor, p) => (mejor === null || comparar(p, mejor) < 0 ? p : mejor), null)
 }
+
+const rangoVeredicto = { cumple: 0, informacion_insuficiente: 1, no_cumple: 2 } as const satisfies Record<VeredictoRequisitos, number>
