@@ -9,7 +9,7 @@ import type { PayloadInvalido } from '../../dominio/fallos.ts'
 import { evaluarDiagnosticoFn, misEquiposFn, origenFn } from '../../fns/diagnostico.ts'
 import { CajaCopiar } from '../../ui/compatibilidad/CajaCopiar.tsx'
 import { ErrorCampo, idError } from '../../ui/ErrorCampo.tsx'
-import { fechaHora, memoria } from '../../ui/formato.ts'
+import { memoria, momento } from '../../ui/formato.ts'
 import { type Errores, useAccion } from '../../ui/useAccion.ts'
 import { motivoPayload, sistema as etiquetaSistema, soporteVulkan } from '../../ui/vocabulario.ts'
 import { type Entrada, entradaManual, FormularioManual, guardarPendiente, Pegado } from './-entrada.ts'
@@ -51,7 +51,7 @@ function Diagnostico() {
                   {e.diagnosticos.map((d) => (
                     <li key={d.id}>
                       <Link to="/diagnosticos/$diagnosticoId" params={{ diagnosticoId: String(d.id) }}>
-                        {fechaHora(d.capturado_en)}
+                        {momento(d.capturado_en)}
                       </Link>{' '}
                       <span className="pequeno tenue dato">
                         {d.distribucion ?? etiquetaSistema[d.sistema]} · {d.gpu_modelo} · {memoria(d.ram_mb)} RAM

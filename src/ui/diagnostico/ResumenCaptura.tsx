@@ -1,6 +1,6 @@
 // The captured hardware as tiles (wireframe 9.2 "Perfil detectado"). Unknown values say so in words.
 import type { Captura } from '../../dominio/aportes.ts'
-import { fechaHora, memoria } from '../formato.ts'
+import { memoria, momento } from '../formato.ts'
 import { sistema, soporteVulkan } from '../vocabulario.ts'
 
 export function ResumenCaptura({ captura }: { captura: Captura }) {
@@ -29,7 +29,7 @@ export function ResumenCaptura({ captura }: { captura: Captura }) {
           </div>
         ))}
       </dl>
-      <p className="pequeno tenue">Capturado el {fechaHora(captura.capturado_en)}.</p>
+      <p className="pequeno tenue">Capturado el {momento(captura.capturado_en)}.</p>
     </section>
   )
 }

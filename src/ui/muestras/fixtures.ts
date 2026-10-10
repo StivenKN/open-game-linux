@@ -36,7 +36,8 @@ const capa = {
   wine9: { version_capa_id: VersionCapaId.make(4), capa: 'Wine 9.0' },
 }
 const sinPerfil = { perfil_id: null, perfil: null }
-const dia = (iso: string) => new Date(`${iso}T00:00:00Z`)
+// Noon UTC is the same calendar day in Bogotá, the zone ui/formato.ts prints in.
+const dia = (iso: string) => new Date(`${iso}T12:00:00Z`)
 
 /** The 8.10 grouping key, the way `resumir` keys its groups. */
 const entorno = (e: Omit<EntornoProbado, 'clave'>): EntornoProbado => ({
