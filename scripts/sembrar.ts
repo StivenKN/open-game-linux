@@ -1,6 +1,6 @@
 // `pnpm db:sembrar`: demo data. Part 1: lookups, games and editions, pending profiles with their steps
 // and dependencies, published guides, and the demo accounts. Part 2 replays the 8.10 walkthrough through
-// the app's own writers: Linux captures, reports (registrarReporte), a solution by a second user
+// the app's own writers: Linux captures (registrarDiagnostico), reports (registrarReporte), a solution by a second user
 // (registrarSolucion), and every approval through decidir() as demo_revisor, so the rules admit the demo.
 // GTA V ends with "Resultados variables" like dominio/muestras.ts; ETS2 keeps only pending reports, and
 // the other games have none, so they honestly show "Sin evidencia verificada".
@@ -9,20 +9,22 @@
 // "Datos de ejemplo" (servidor/auth.ts dominioDemo). Catalog rows (games, distributions, Proton
 // builds) are real facts, not claims, so they carry no mark.
 //
-// Idempotent: each row is looked up by its natural key and inserted only when missing, and decidir()
-// answers `cambio: false` for a decision already applied, so a second run changes nothing and says so.
+// Idempotent: each row is looked up by its natural key and inserted only when missing, registrarDiagnostico
+// converges on one equipo per alias and one capture per time, and decidir() answers `cambio: false` for a
+// decision already applied, so a second run changes nothing and says so.
 // That holds while nobody has rejected or retired a seeded row by hand; then decidir refuses the
 // approval (TransicionInvalida) and the run stops: reset the dev database with `pnpm db:reset`. The rows go in one transaction, so a crash leaves no half seed.
 // A profile's steps and dependencies are written only together with a new profile: once a profile is
 // used or reviewed, og_perfil_congelado refuses any write to them, even an ON CONFLICT DO NOTHING.
 import { Effect, Option, Record, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { NuevaSolucion, NuevoReporte } from '../src/dominio/aportes.ts'
+import { GuardarDiagnostico, NuevaSolucion, NuevoReporte } from '../src/dominio/aportes.ts'
 import type { TipoGuia } from '../src/dominio/guias.ts'
 import { UsuarioId } from '../src/dominio/ids.ts'
 import { exigeFallo, type FamiliaCapa, type Resultado } from '../src/dominio/literales.ts'
 import { AporteRef, Decision, type Rol } from '../src/dominio/revision.ts'
 import { registrarReporte, registrarSolucion } from '../src/servidor/aportes/aportes.ts'
+import { registrarDiagnostico } from '../src/servidor/aportes/diagnostico.ts'
 import { decidir } from '../src/servidor/aportes/revision.ts'
 import { asignarRol, auth, dominioDemo, Visitante } from '../src/servidor/auth.ts'
 import { PgLive } from '../src/servidor/runtime.ts'
@@ -543,17 +545,19 @@ const programa = Effect.gen(function* () {
           Effect.provideService(programa, Visitante, Option.some({ id: Schema.decodeSync(UsuarioId)(id), alias, rol: cuentas[alias] })),
         )
 
-      // Raw SQL because the capture writer (U6, servidor/aportes/diagnostico.ts) does not exist yet.
-      // TODO(U6 integration): write these through registrarDiagnostico instead.
       const diagnosticoDe = new Map<keyof typeof equipos, number>()
       for (const [k, eq] of Record.toEntries(equipos)) {
-        const equipo_id = yield* idDe('equipo', { usuario_id: yield* de(usuario, eq.dueno), alias: eq.alias })
-        const { capturado_en, ...captura } = eq.diagnostico
-        const distribucion_id = yield* de(distribucion, eq.distribucion)
-        diagnosticoDe.set(
-          k,
-          yield* idDe('diagnostico', { equipo_id, capturado_en }, { ...captura, sistema: 'Linux', distribucion_id, arquitectura: 'x86_64', soporte_vulkan: 'si' }),
-        )
+        const { nombre, version } = distribuciones[eq.distribucion]
+        const guardar = yield* Schema.decodeUnknownEffect(GuardarDiagnostico)({
+          equipo: { _tag: 'nuevo', alias: eq.alias },
+          entrada: {
+            _tag: 'manual',
+            captura: { ...eq.diagnostico, sistema: 'Linux', distribucion: { nombre, version }, arquitectura: 'x86_64', soporte_vulkan: 'si' },
+          },
+        })
+        const { id, nuevo } = yield* como(eq.dueno, registrarDiagnostico(guardar))
+        if (nuevo) contar('diagnostico')
+        diagnosticoDe.set(k, id)
       }
 
       const reporteDe = new Map<number, number>()
