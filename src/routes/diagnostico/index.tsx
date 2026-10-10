@@ -16,7 +16,10 @@ import { type Entrada, entradaManual, FormularioManual, guardarPendiente, Pegado
 
 export const Route = createFileRoute('/diagnostico/')({
   head: () => ({ meta: [{ title: 'Diagnóstico · OpenGame Linux' }] }),
-  loader: async () => ({ origen: await origenFn(), equipos: await misEquiposFn() }),
+  loader: async () => {
+    const [origen, equipos] = await Promise.all([origenFn(), misEquiposFn()])
+    return { origen, equipos }
+  },
   component: Diagnostico,
 })
 

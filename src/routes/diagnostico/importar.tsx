@@ -13,7 +13,7 @@ import { ResumenCaptura } from '../../ui/diagnostico/ResumenCaptura.tsx'
 import { ErrorCampo, idError } from '../../ui/ErrorCampo.tsx'
 import { useAccion } from '../../ui/useAccion.ts'
 import { motivoPayload } from '../../ui/vocabulario.ts'
-import { type Entrada, guardarPendiente, leerPendiente } from './-entrada.ts'
+import { type Entrada, guardarPendiente, leerPendiente, olvidarPendiente } from './-entrada.ts'
 
 export const Route = createFileRoute('/diagnostico/importar')({
   ssr: false,
@@ -100,7 +100,10 @@ function Guardar({ entrada }: { entrada: Entrada }) {
       f._tag === 'ReglaIncumplida'
         ? { 'equipo[id]': 'Ese equipo no es tuyo. Elige uno de tu lista.' }
         : { formulario: motivoPayload[f.motivo] },
-    alCompletar: setGuardado,
+    alCompletar: (valor) => {
+      olvidarPendiente()
+      setGuardado(valor)
+    },
   })
 
   if (visitante === null)

@@ -12,6 +12,9 @@ const Guardada = Schema.fromJsonString(Schema.toEncoded(EntradaDiagnostico))
 
 export const guardarPendiente = (entrada: Entrada) => sessionStorage.setItem(CLAVE, JSON.stringify(entrada))
 
+/** After a save: the entry now lives in the database, so a later visit should not offer it again. */
+export const olvidarPendiente = () => sessionStorage.removeItem(CLAVE)
+
 export const leerPendiente = (): Option.Option<Entrada> => Schema.decodeUnknownOption(Guardada)(sessionStorage.getItem(CLAVE))
 
 /** The paste box: detector JSON, its base64url fragment, or the whole URL. */
