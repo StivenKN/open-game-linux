@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.output/
+.tanstack/
+.env
+.env.local
+*.log
+.scratch/
+todo.md
+.audit/

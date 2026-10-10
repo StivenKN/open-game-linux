@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Prototipo: presentación de compatibilidad</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --bg:#0d1117;--card:#151b23;--card2:#1b222c;--line:#2a313c;--fg:#e6edf3;--mut:#8b949e;
+  --ok:#3fb950;--warn:#d29922;--bad:#f85149;--none:#8b949e;--var:#a371f7;--info:#58a6ff;
+  --mono:ui-monospace,"JetBrains Mono","SFMono-Regular",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.mono{font-family:var(--mono)}
+.mut{color:var(--mut)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 40px}
+header.bar{position:sticky;top:0;z-index:5;background:#0d1117f2;border-bottom:1px solid var(--line);margin-bottom:18px}
+header.bar .wrap{display:flex;gap:12px;align-items:center;padding:10px 20px;flex-wrap:wrap}
+.brand{font-weight:700}
+.demo{font-family:var(--mono);font-size:11px;color:#000;background:var(--warn);padding:2px 8px;border-radius:4px;font-weight:700}
+.sw{display:flex;gap:6px;margin-left:auto}
+.sw button,.tog{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer}
+.sw button.on{border-color:var(--info);background:#11253f;color:#cfe3ff}
+.sw kbd{font-family:var(--mono);font-size:11px;color:var(--mut);margin-right:4px}
+.tog{display:flex;gap:6px;align-items:center}
+.vlabel{font-family:var(--mono);font-size:12px;color:var(--info);letter-spacing:.04em;text-transform:uppercase;margin:6px 0 2px}
+.vdesc{color:var(--mut);margin:0 0 16px;max-width:900px}
+.section-title{font-family:var(--mono);font-size:11px;color:var(--mut);letter-spacing:.08em;text-transform:uppercase;margin:26px 0 10px;display:flex;gap:10px;align-items:center}
+.section-title::after{content:"";flex:1;height:1px;background:var(--line)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;align-items:start}
+.crumbs{font-family:var(--mono);font-size:11px;color:var(--mut);margin-bottom:8px}
+h1{font-size:34px;margin:4px 0 6px;letter-spacing:-.01em}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line);border-radius:5px;padding:2px 7px;background:var(--card2);white-space:nowrap}
+/* tone system: filled = evidencia de reportes; outline = evaluación de hardware */
+.t-ok{--t:var(--ok)}.t-warn{--t:var(--warn)}.t-bad{--t:var(--bad)}.t-none{--t:var(--none)}.t-var{--t:var(--var)}.t-info{--t:var(--info)}
+.fill{background:color-mix(in srgb,var(--t) 18%,transparent);color:color-mix(in srgb,var(--t) 85%,white);border:1px solid color-mix(in srgb,var(--t) 55%,transparent)}
+.outl{background:transparent;color:color-mix(in srgb,var(--t) 85%,white);border:1px dashed color-mix(in srgb,var(--t) 70%,transparent)}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:3px 9px;font-weight:600;font-size:12.5px;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--t);display:inline-block;flex:none}
+.big{font-size:22px;font-weight:750;padding:10px 14px;border-radius:9px;display:flex;gap:10px;align-items:center}
+.big .ic{font-size:22px}
+.kv{font-family:var(--mono);font-size:12px;color:var(--mut)}
+table{width:100%;border-collapse:collapse}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);text-align:left;font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tr.me td{background:#11253f55}
+tr.click{cursor:pointer}
+tr.click:hover td{background:#ffffff08}
+tr.sel td{box-shadow:inset 0 0 0 0 transparent;background:#ffffff0c}
+.gname{font-weight:650;font-size:15px}
+.small{font-size:12px}
+.rep{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--card2);margin-bottom:8px}
+.rep .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
+.pending{border-style:dashed;opacity:.85}
+.note{border-left:3px solid var(--t,var(--info));padding:8px 12px;background:#ffffff06;border-radius:0 6px 6px 0;margin:10px 0}
+.hw{display:grid;grid-template-columns:90px 1fr 1fr 28px;gap:4px 10px;font-family:var(--mono);font-size:12.5px;align-items:center}
+.hw .h{color:var(--mut);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em}
+.flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.stack>*+*{margin-top:10px}
+.fps{font-family:var(--mono);font-weight:700}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:8px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.split>div{padding:14px}
+.split>div+div{border-left:1px solid var(--line)}
+.headline{font-size:20px;font-weight:750;line-height:1.25;margin:6px 0}
+</style>
+</head>
+<body>
+<header class="bar"><div class="wrap">
+  <span class="brand">OpenGame Linux</span>
+  <span class="demo">DATOS DE EJEMPLO</span>
+  <span class="mut small">Prototipo desechable · presentación de compatibilidad</span>
+  <label class="tog"><input type="checkbox" id="hasDiag" checked> Con diagnóstico</label>
+  <div class="sw" id="sw"></div>
+</div></header>
+<main class="wrap" id="app"></main>
+
+<script>
+// ---------- Datos de ejemplo: solo hechos crudos. Ningún juego guarda un veredicto. ----------
+const DIAG = {
+  equipo: "Portátil de ejemplo", cpu: "Intel Core i5-8250U", gpu: "Intel UHD 620",
+  ram: 8, vram: null /* memoria compartida: el detector no la pudo leer */, vulkan: 1.3,
+  distro: "Linux Mint 21.3", arch: "x86_64", driver: "Mesa 24.0.9",
+};
+
+const JUEGOS = [
+  { id: "gta5", nombre: "Grand Theft Auto V", estudio: "Rockstar Games", ediciones: ["Steam", "Epic (Heroic)"],
+    perfiles: [{ nombre: "GTAV-BAJO", rev: 2, estado: "aprobado", min: { ram: 8, vram: null, vulkan: 1.1 } }],
+    soluciones: [],
+    reportes: [
+      { estado: "aprobado", edicion: "Steam", version: "1.0.3179", distro: "Linux Mint 21.3", capa: "Proton 8.0-5", perfil: "GTAV-BAJO r2", fecha: "2026-09-28", resultado: "funciona", fps: 54, res: "1280x720", calidad: "Bajo", metodo: "MangoHud · misión Prólogo · 5 min", alias: "carlos_g99" },
+      { estado: "aprobado", edicion: "Steam", version: "1.0.3179", distro: "Linux Mint 21.3", capa: "Proton 8.0-5", perfil: "GTAV-BAJO r2", fecha: "2026-09-14", resultado: "funciona", fps: null, alias: "nadia.lx" },
+      { estado: "aprobado", edicion: "Epic (Heroic)", version: "1.0.3179", distro: "Arch Linux", capa: "GE-Proton 9-4", perfil: null, fecha: "2026-09-02", resultado: "funciona_con_ajustes", fps: 60, res: "1920x1080", calidad: "Medio", metodo: "MangoHud · conducción en ciudad · 10 min", obs: "Se desactivó MSAA a mano.", alias: "tuxplayer_ar" },
+      { estado: "aprobado", edicion: "Steam", version: "1.0.3258", distro: "Fedora 40", capa: "Proton 9.0-3", perfil: null, fecha: "2026-10-02", resultado: "falla_en_ejecucion", fps: null, fallos: [{ tipo: "lanzador", detalle: "Rockstar Games Launcher se cierra tras actualizar a 1.0.3258." }], alias: "fedorian" },
+      { estado: "pendiente", edicion: "Steam", version: "1.0.3258", distro: "Linux Mint 21.3", capa: "Proton 9.0-3", perfil: null, fecha: "2026-10-08", resultado: "no_inicia", fps: null, fallos: [{ tipo: "lanzador", detalle: "Pantalla negra al abrir el lanzador." }], alias: "mint_kid" },
+    ] },
+  { id: "tw3", nombre: "The Witcher 3: Wild Hunt", estudio: "CD PROJEKT RED", ediciones: ["Steam", "GOG (Heroic)"],
+    perfiles: [{ nombre: "TW3-IGPU", rev: 1, estado: "aprobado", min: { ram: 6, vram: 2, vulkan: 1.1 } }],
+    soluciones: [],
+    reportes: [
+      { estado: "aprobado", edicion: "Steam", version: "4.04", distro: "Linux Mint 21.3", capa: "Proton 8.0-5", perfil: "TW3-IGPU r1", fecha: "2026-08-20", resultado: "funciona", fps: 31, res: "1280x720", calidad: "Bajo", metodo: "MangoHud · Novigrado · 5 min", alias: "geralt_ok" },
+      { estado: "aprobado", edicion: "GOG (Heroic)", version: "4.04", distro: "Pop!_OS 22.04", capa: "GE-Proton 9-4", perfil: null, fecha: "2026-09-10", resultado: "funciona", fps: null, alias: "popuser" },
+    ] },
+  { id: "er", nombre: "Elden Ring", estudio: "FromSoftware", ediciones: ["Steam"],
+    perfiles: [{ nombre: "ER-BASE", rev: 3, estado: "aprobado", min: { ram: 12, vram: 4, vulkan: 1.3 } }],
+    soluciones: [],
+    reportes: [
+      { estado: "aprobado", edicion: "Steam", version: "1.12", distro: "Linux Mint 21.3", capa: "Proton 9.0-3", perfil: "ER-BASE r3", fecha: "2026-09-21", resultado: "funciona_con_ajustes", fps: 38, res: "1600x900", calidad: "Bajo + FSR", metodo: "MangoHud · Limgrave · 10 min", obs: "Equipo con 16 GB RAM y GTX 1650. Se activó FSR.", alias: "tarnished" },
+      { estado: "aprobado", edicion: "Steam", version: "1.12", distro: "Ubuntu 24.04", capa: "Proton 9.0-3", perfil: "ER-BASE r3", fecha: "2026-09-30", resultado: "funciona_con_ajustes", fps: null, obs: "Hay que borrar la caché de shaders tras actualizar.", alias: "ubu_ring" },
+    ] },
+  { id: "val", nombre: "Valorant", estudio: "Riot Games", ediciones: ["Riot Client"],
+    perfiles: [],
+    soluciones: [],
+    reportes: [
+      { estado: "aprobado", edicion: "Riot Client", version: "9.07", distro: "Linux Mint 21.3", capa: "Wine 9.0", perfil: null, fecha: "2026-07-11", resultado: "no_inicia", fps: null, fallos: [{ tipo: "anti_cheat", detalle: "Vanguard exige un controlador de kernel de Windows; el cliente se cierra al iniciar." }], alias: "jett_main" },
+      { estado: "aprobado", edicion: "Riot Client", version: "9.07", distro: "Arch Linux", capa: "GE-Proton 9-4", perfil: null, fecha: "2026-08-03", resultado: "no_inicia", fps: null, fallos: [{ tipo: "anti_cheat", detalle: "Error VAN 1067 al abrir el cliente." }], alias: "archer" },
+    ] },
+  { id: "ets2", nombre: "Euro Truck Simulator 2", estudio: "SCS Software", ediciones: ["Steam"],
+    perfiles: [{ nombre: "ETS2-NATIVO", rev: 1, estado: "pendiente", min: { ram: 4, vram: 1, vulkan: null } }],
+    soluciones: [],
+    reportes: [
+      { estado: "pendiente", edicion: "Steam", version: "1.50", distro: "Linux Mint 21.3", capa: "Nativo Linux", perfil: "ETS2-NATIVO r1", fecha: "2026-10-06", resultado: "funciona", fps: 62, res: "1280x720", calidad: "Bajo", metodo: "MangoHud · ruta Berlín-Praga · 10 min", alias: "camionero" },
+      { estado: "pendiente", edicion: "Steam", version: "1.50", distro: "Zorin OS 17", capa: "Nativo Linux", perfil: "ETS2-NATIVO r1", fecha: "2026-10-09", resultado: "funciona", fps: null, alias: "zorin_fan" },
+    ] },
+];
+
+// ---------- Vocabulario ----------
+const RES = {
+  funciona:             { t: "Funciona",             tone: "ok",   ic: "✓" },
+  funciona_con_ajustes: { t: "Funciona con ajustes", tone: "warn", ic: "⚙" },
+  no_inicia:            { t: "No inicia",            tone: "bad",  ic: "✕" },
+  falla_en_ejecucion:   { t: "Falla en ejecución",   tone: "bad",  ic: "✕" },
+};
+const SUMMARY = {
+  ...RES,
+  sin_evidencia: { t: "Sin evidencia verificada", tone: "none", ic: "?" },
+  variable:      { t: "Resultados variables",     tone: "var",  ic: "◐" },
+};
+const EVAL = {
+  no:     { t: "No cumple",                         tone: "bad",  ic: "✕" },
+  insuf:  { t: "Información insuficiente",          tone: "none", ic: "?" },
+  cumple: { t: "Cumple las condiciones conocidas",  tone: "ok",   ic: "✓" },
+};
+const FALLO = { anti_cheat: "Anti-cheat", drm: "DRM", lanzador: "Lanzador", controlador: "Controlador", dependencia: "Dependencia", rendimiento: "Rendimiento", otro: "Otro" };
+const BLOQUEO = new Set(["anti_cheat", "drm"]);
+
+// ---------- Derivaciones (lo que haría la consulta, sección 8.10) ----------
+const fmt = d => new Date(d + "T12:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short" });
+const latest = rs => rs.map(r => r.fecha).sort().at(-1);
+const envKey = r => [r.edicion, r.version, r.distro, r.capa, r.perfil ?? "sin perfil"].join(" · ");
+
+function summarize(reports) {
+  const ok = reports.filter(r => r.estado === "aprobado");
+  const results = [...new Set(ok.map(r => r.resultado))];
+  const estado = ok.length === 0 ? "sin_evidencia" : results.length > 1 ? "variable" : results[0];
+  return { estado, n: ok.length, ultima: ok.length ? latest(ok) : null };
+}
+
+function analyze(j) {
+  const aprobados = j.reportes.filter(r => r.estado === "aprobado");
+  const pendientes = j.reportes.filter(r => r.estado === "pendiente");
+  const groups = Map.groupBy(aprobados, envKey);
+  const entornos = [...groups].map(([key, rs]) => ({ key, ...rs[0], rs, ...summarize(rs) }))
+    .sort((a, b) => b.ultima.localeCompare(a.ultima));
+  const fallos = aprobados.flatMap(r => r.fallos ?? []);
+  const nonFunctional = aprobados.length > 0 && aprobados.every(r => RES[r.resultado].tone === "bad");
+  const bloqueo = nonFunctional && aprobados.every(r => (r.fallos ?? []).some(f => BLOQUEO.has(f.tipo))) && j.soluciones.length === 0
+    ? [...new Set(fallos.filter(f => BLOQUEO.has(f.tipo)).map(f => f.tipo))] : null;
+  const fps = aprobados.filter(r => r.fps != null);
+  return { ...summarize(j.reportes), aprobados, pendientes, entornos, fallos, bloqueo, fps };
+}
+
+// Evaluación previa: solo RAM, VRAM y Vulkan contra un perfil aprobado.
+function evaluate(diag, j) {
+  const p = j.perfiles.find(p => p.estado === "aprobado");
+  if (!diag) return null;
+  if (!p) return { v: "insuf", perfil: null, checks: [], motivo: j.perfiles.length ? "El único perfil está pendiente de revisión; no hay condiciones aprobadas." : "No hay un perfil aprobado con condiciones conocidas." };
+  const checks = [["RAM", diag.ram, p.min.ram, " GB"], ["VRAM", diag.vram, p.min.vram, " GB"], ["Vulkan", diag.vulkan, p.min.vulkan, ""]]
+    .map(([campo, tiene, min, u]) => ({ campo, tiene, min, u,
+      st: min == null ? "na" : tiene == null ? "?" : tiene >= min ? "ok" : "bad" }));
+  const v = checks.some(c => c.st === "bad") ? "no" : checks.some(c => c.st === "?") ? "insuf" : "cumple";
+  const bad = checks.find(c => c.st === "bad"), unk = checks.find(c => c.st === "?");
+  const motivo = v === "no" ? `${bad.campo}: tienes ${bad.tiene}${bad.u}, el perfil exige ${bad.min}${bad.u}.`
+    : v === "insuf" ? `No conocemos tu ${unk.campo}; el perfil exige ${unk.min}${unk.u}.`
+    : "Superas las comprobaciones disponibles (RAM, VRAM, Vulkan). Esto no predice FPS.";
+  return { v, perfil: p, checks, motivo };
+}
+
+const mine = (a, diag) => diag ? a.entornos.filter(e => e.distro === diag.distro) : [];
+
+// ---------- Piezas de UI ----------
+const badge = (s, cls = "fill", extra = "") => `<span class="badge ${cls} t-${s.tone}" ${extra}><span>${s.ic}</span>${s.t}</span>`;
+const chip = (txt, tone, cls = "fill") => `<span class="chip ${cls} t-${tone}">${txt}</span>`;
+const fallosChips = fs => [...new Set(fs.map(f => f.tipo))].map(t => chip(FALLO[t], BLOQUEO.has(t) ? "bad" : "warn")).join(" ");
+const fpsLine = r => r.fps != null
+  ? `<span class="fps">${r.fps} FPS</span> <span class="kv">${r.res} · ${r.calidad} · ${r.metodo}</span>`
+  : `<span class="kv">FPS no medido</span>`;
+const evidenceLine = a => a.n
+  ? `Basado en <b>${a.n}</b> reporte${a.n > 1 ? "s" : ""} aprobado${a.n > 1 ? "s" : ""} · última prueba ${fmt(a.ultima)}`
+  : `0 reportes aprobados`;
+const pendingLine = a => a.pendientes.length ? `<span class="mut">+ ${a.pendientes.length} pendiente${a.pendientes.length > 1 ? "s" : ""} de revisión (no cuentan)</span>` : "";
+
+function bloqueoNote(a) {
+  if (!a.bloqueo) return "";
+  return `<div class="note t-bad" style="--t:var(--bad)"><b>Limitación documentada: ${a.bloqueo.map(t => FALLO[t]).join(" / ")}.</b>
+    Ningún entorno probado lo ejecuta y no hay solución verificada. No recomendamos configuraciones para evadirlo.</div>`;
+}
+
+function reportCard(r) {
+  return `<div class="rep ${r.estado === "pendiente" ? "pending" : ""}">
+    <div class="top">${badge(RES[r.resultado])}<span class="kv">${envKey(r)}</span><span class="kv" style="margin-left:auto">${r.alias} · ${fmt(r.fecha)}</span></div>
+    <div>${fpsLine(r)}</div>
+    ${r.fallos ? `<div class="small" style="margin-top:4px">${fallosChips(r.fallos)} <span class="mut">${r.fallos.map(f => f.detalle).join(" ")}</span></div>` : ""}
+    ${r.obs ? `<div class="small mut" style="margin-top:4px">Ajustes/observaciones: ${r.obs}</div>` : ""}
+  </div>`;
+}
+
+function evidenceArea(a) {
+  return `<div class="grid2">
+    <div><div class="section-title">Reportes aprobados (${a.n})</div>
+      ${a.aprobados.length ? a.aprobados.map(reportCard).join("") : `<div class="card mut">Ningún reporte aprobado todavía. No mostramos estado de compatibilidad.</div>`}
+    </div>
+    <div><div class="section-title">Pendientes de revisión (${a.pendientes.length})</div>
+      ${a.pendientes.length ? `<p class="small mut" style="margin:0 0 8px">Aún no revisados. No cuentan para el resumen ni para el FPS.</p>` + a.pendientes.map(reportCard).join("") : `<div class="card mut small">No hay reportes pendientes.</div>`}
+    </div></div>`;
+}
+
+function envTable(a, diag, { showFps = true } = {}) {
+  if (!a.entornos.length) return `<div class="card mut">Sin entornos con evidencia aprobada.</div>`;
+  return `<div class="card" style="padding:4px 6px"><table>
+    <tr><th>Distribución</th><th>Capa</th><th>Edición · versión</th><th>Perfil</th><th>Resultado</th><th>Pruebas</th>${showFps ? "<th>FPS medido</th>" : ""}</tr>
+    ${a.entornos.map(e => `<tr class="${diag && e.distro === diag.distro ? "me" : ""}">
+      <td>${e.distro}${diag && e.distro === diag.distro ? ` <span class="chip t-info outl">tu distro</span>` : ""}</td>
+      <td class="mono small">${e.capa}</td><td class="mono small">${e.edicion} · ${e.version}</td>
+      <td class="mono small">${e.perfil ?? "<span class=mut>sin perfil</span>"}</td>
+      <td>${badge(SUMMARY[e.estado])}${e.rs.some(r => r.fallos) ? `<div style="margin-top:4px">${fallosChips(e.rs.flatMap(r => r.fallos ?? []))}</div>` : ""}</td>
+      <td class="mono small">${e.n} · ${fmt(e.ultima)}</td>
+      ${showFps ? `<td class="small">${e.rs.filter(r => r.fps != null).map(fpsLine).join("<br>") || "<span class=kv>no medido</span>"}</td>` : ""}
+    </tr>`).join("")}
+  </table></div>`;
+}
+
+function hwBlock(ev, diag) {
+  if (!ev) return `<div class="mut small">Sin diagnóstico. <a href="#" style="color:var(--info)">Ejecuta el detector</a> para comparar RAM, VRAM y Vulkan con un perfil aprobado.</div>`;
+  const icon = { ok: "✓", bad: "✕", "?": "?", na: "·" }, col = { ok: "var(--ok)", bad: "var(--bad)", "?": "var(--warn)", na: "var(--mut)" };
+  return `<div class="stack">
+    <div class="flex">${badge(EVAL[ev.v], "outl")}<span class="kv">${ev.perfil ? `perfil ${ev.perfil.nombre} r${ev.perfil.rev}` : "sin perfil aprobado"}</span></div>
+    ${ev.checks.length ? `<div class="hw"><span class="h">Dato</span><span class="h">Tu equipo</span><span class="h">Mínimo conocido</span><span></span>
+      ${ev.checks.map(c => `<span>${c.campo}</span><span>${c.tiene == null ? "desconocido" : c.tiene + c.u}</span><span>${c.min == null ? "<span class=mut>sin condición</span>" : c.min + c.u}</span><span style="color:${col[c.st]}">${icon[c.st]}</span>`).join("")}
+    </div>` : ""}
+    <div class="small mut">${ev.motivo}</div>
+  </div>`;
+}
+
+const diagStrip = diag => diag
+  ? `<div class="kv">Tu diagnóstico: ${diag.equipo} · ${diag.cpu} · ${diag.gpu} · RAM ${diag.ram} GB · VRAM ${diag.vram ?? "desconocida"} · Vulkan ${diag.vulkan} · ${diag.distro}</div>`
+  : `<div class="kv">Sin diagnóstico cargado</div>`;
+
+function sheetHead(j, right) {
+  return `<div class="grid2">
+    <div>
+      <div class="crumbs">CATÁLOGO / ${j.estudio.toUpperCase()} / ${j.id.toUpperCase()}</div>
+      <h1>${j.nombre}</h1>
+      <div class="chips" style="margin:8px 0">${j.ediciones.map(e => `<span class="chip">${e}</span>`).join("")}</div>
+      <p class="mut small" style="max-width:560px">El estado se calcula al consultar a partir de reportes aprobados. Un resultado favorable no garantiza que funcione en cualquier equipo.</p>
+    </div>
+    <div>${right}</div>
+  </div>`;
+}
+
+// ---------- Variante 1: Semáforo derivado ----------
+const V1 = {
+  name: "Semáforo derivado",
+  desc: "Un distintivo grande por juego, pero su valor es un estado derivado de 5 posibles (verde, amarillo, rojo, gris sin evidencia, morado variable), siempre acompañado de la base de evidencia. Hardware como fila secundaria.",
+  sheet(j, a, ev, diag) {
+    const s = SUMMARY[a.estado];
+    const right = `<div class="card stack">
+      <div class="kv">ESTADO CALCULADO</div>
+      <div class="big fill t-${s.tone}"><span class="ic">${s.ic}</span>${a.bloqueo ? "No funciona · bloqueado" : s.t}</div>
+      <div class="small">${evidenceLine(a)}</div>
+      ${pendingLine(a) ? `<div class="small">${pendingLine(a)}</div>` : ""}
+      ${a.estado === "variable" ? `<div class="small">Depende del entorno: ${a.entornos.map(e => chip(`${e.distro} · ${e.capa}`, SUMMARY[e.estado].tone)).join(" ")}</div>` : ""}
+      ${a.fallos.length ? `<div class="small">Causas observadas: ${fallosChips(a.fallos)}</div>` : ""}
+      <div style="border-top:1px solid var(--line);padding-top:10px"><div class="kv" style="margin-bottom:6px">TU EQUIPO</div>${hwBlock(ev, diag)}</div>
+    </div>`;
+    return sheetHead(j, right) + bloqueoNote(a)
+      + `<div class="section-title">Entornos probados</div>` + envTable(a, diag) + evidenceArea(a);
+  },
+  matrix(js, diag) {
+    return `<table><tr><th>Juego</th><th>Estado</th><th>Base de evidencia</th><th>FPS medido (aprobado)</th><th>Tu equipo</th></tr>
+    ${js.map(({ j, a, ev }) => { const s = SUMMARY[a.estado]; const best = a.fps[0]; return `<tr class="click" data-id="${j.id}">
+      <td><div class="gname">${j.nombre}</div><div class="kv">${j.estudio}</div></td>
+      <td>${badge(a.bloqueo ? { ...s, t: "Bloqueado" } : s)}${a.fallos.length ? `<div style="margin-top:4px">${fallosChips(a.fallos)}</div>` : ""}</td>
+      <td class="small">${evidenceLine(a)}<br>${pendingLine(a)}</td>
+      <td class="small">${best ? fpsLine(best) : "<span class=kv>sin medición aprobada</span>"}</td>
+      <td>${ev ? badge(EVAL[ev.v], "outl") + `<div class="small mut" style="margin-top:4px">${ev.motivo}</div>` : "<span class=kv>sin diagnóstico</span>"}</td>
+    </tr>`; }).join("")}</table>`;
+  },
+};
+
+// ---------- Variante 2: Matriz por entorno ----------
+const V2 = {
+  name: "Matriz por entorno",
+  desc: "Sin distintivo global. La cabecera responde «¿Funciona en tu entorno?» con la evidencia de tu distribución y muestra la tabla de entornos, cada uno con su color y conteo. El estado global queda como texto llano.",
+  sheet(j, a, ev, diag) {
+    const m = mine(a, diag); const ms = m.length ? summarize(m.flatMap(e => e.rs)) : null;
+    const right = `<div class="card stack">
+      ${diag ? `<div class="kv">¿FUNCIONA EN TU ENTORNO? · ${diag.distro}</div>
+        ${ms ? `<div class="flex">${badge(SUMMARY[ms.estado])}<span class="small">${ms.n} reporte${ms.n > 1 ? "s" : ""} aprobado${ms.n > 1 ? "s" : ""} en ${diag.distro} · ${fmt(ms.ultima)}</span></div>`
+             : `<div class="flex">${badge(SUMMARY.sin_evidencia)}<span class="small mut">nadie ha aprobado una prueba en ${diag.distro}</span></div>`}
+        <div class="kv" style="margin-top:6px">TU EQUIPO FRENTE AL PERFIL</div>${hwBlock(ev, diag)}`
+      : `<div class="kv">¿FUNCIONA EN TU ENTORNO?</div><div class="mut small">Carga un diagnóstico para ver la evidencia de tu distribución.</div>`}
+      <div style="border-top:1px solid var(--line);padding-top:10px" class="small">
+        <b>En todos los entornos:</b> ${SUMMARY[a.estado].t}. ${evidenceLine(a)}. ${pendingLine(a)}
+      </div>
+    </div>`;
+    return sheetHead(j, right) + bloqueoNote(a)
+      + `<div class="section-title">Entornos con evidencia aprobada (${a.entornos.length})</div>` + envTable(a, diag) + evidenceArea(a);
+  },
+  matrix(js, diag) {
+    return `<table><tr><th>Juego</th><th>En tu entorno${diag ? ` (${diag.distro})` : ""}</th><th>Otros entornos</th><th>Tu equipo</th><th>FPS medido (aprobado)</th></tr>
+    ${js.map(({ j, a, ev }) => { const m = mine(a, diag); const ms = m.length ? summarize(m.flatMap(e => e.rs)) : null;
+      const others = a.entornos.filter(e => !diag || e.distro !== diag.distro);
+      const mineFps = m.flatMap(e => e.rs).find(r => r.fps != null);
+      return `<tr class="click" data-id="${j.id}">
+      <td><div class="gname">${j.nombre}</div><div class="kv">${j.estudio}</div></td>
+      <td>${!diag ? "<span class=kv>sin diagnóstico</span>" : ms ? badge(SUMMARY[ms.estado]) + `<div class="kv" style="margin-top:4px">${ms.n} aprobado${ms.n > 1 ? "s" : ""} · ${m.map(e => `${e.capa} · v${e.version}`).join(", ")}</div>` : badge(SUMMARY.sin_evidencia) + `<div class="kv" style="margin-top:4px">${pendingLine(a) || "ninguna prueba aprobada"}</div>`}
+        ${m.some(e => e.rs.some(r => r.fallos)) ? `<div style="margin-top:4px">${fallosChips(m.flatMap(e => e.rs.flatMap(r => r.fallos ?? [])))}</div>` : ""}</td>
+      <td class="small">${others.length ? others.map(e => `<div style="display:grid;grid-template-columns:12px 1fr auto;gap:6px;align-items:baseline;margin-bottom:3px"><span class="dot t-${SUMMARY[e.estado].tone}"></span><span class="mono" style="font-size:11.5px">${e.distro} · ${e.capa} · v${e.version}</span><span class="kv">×${e.n}</span></div>`).join("") : "<span class=kv>—</span>"}</td>
+      <td>${ev ? badge(EVAL[ev.v], "outl") + `<div class="small mut" style="margin-top:4px">${ev.motivo}</div>` : "<span class=kv>—</span>"}</td>
+      <td class="small">${mineFps ? fpsLine(mineFps) : a.fps[0] ? `<span class=kv>en tu distro: no medido<br>otro entorno:</span> ` + fpsLine(a.fps[0]) : "<span class=kv>sin medición aprobada</span>"}</td>
+    </tr>`; }).join("")}</table>`;
+  },
+};
+
+// ---------- Variante 3: Veredicto personal ----------
+// Tabla de decisión: el titular combina evaluación de hardware y evidencia del entorno más cercano.
+function personal(a, ev, diag) {
+  const m = mine(a, diag); const ms = m.length ? summarize(m.flatMap(e => e.rs)) : null;
+  if (a.bloqueo) return { tone: "bad", ic: "⛔", t: "Bloqueado en Linux", why: `Ningún entorno probado lo ejecuta: ${a.bloqueo.map(t => FALLO[t]).join(" / ")}. Tu equipo no cambia esto.` };
+  if (a.estado === "sin_evidencia") return { tone: "none", ic: "?", t: "Aún no sabemos", why: `No hay reportes aprobados.${a.pendientes.length ? ` Hay ${a.pendientes.length} pendiente${a.pendientes.length > 1 ? "s" : ""} de revisión.` : ""}` };
+  if (!diag) return { tone: SUMMARY[a.estado].tone, ic: SUMMARY[a.estado].ic, t: SUMMARY[a.estado].t, why: "Carga un diagnóstico para una respuesta sobre tu equipo." };
+  if (ev.v === "no") return { tone: "bad", ic: "✕", t: "Tu equipo no cumple lo conocido", why: ev.motivo + (a.n ? ` Hay ${a.n} prueba${a.n > 1 ? "s" : ""} aprobada${a.n > 1 ? "s" : ""} en otros equipos.` : "") };
+  const envTxt = ms ? `En ${diag.distro}: ${SUMMARY[ms.estado].t.toLowerCase()} (${ms.n} aprobado${ms.n > 1 ? "s" : ""}).` : `Sin pruebas aprobadas en ${diag.distro}.`;
+  if (ev.v === "insuf") return { tone: "none", ic: "?", t: "No podemos comprobar tu equipo", why: `${ev.motivo} ${envTxt}` };
+  if (!ms) return { tone: "none", ic: "?", t: "Cumple lo conocido, sin pruebas en tu distro", why: envTxt };
+  const map = { funciona: ["ok", "✓", "Cumple lo conocido y hay pruebas que funcionan en tu distro"], funciona_con_ajustes: ["warn", "⚙", "Cumple lo conocido; en tu distro necesita ajustes"], variable: ["var", "◐", "Cumple lo conocido; resultados variables en tu distro"] };
+  const [tone, ic, t] = map[ms.estado] ?? ["bad", "✕", "Cumple lo conocido, pero falla en tu distro"];
+  return { tone, ic, t, why: envTxt };
+}
+
+const V3 = {
+  name: "Veredicto personal",
+  desc: "El distintivo responde para tu diagnóstico: combina la evaluación de hardware con la evidencia de tu distribución. La evidencia global pasa a segundo plano.",
+  sheet(j, a, ev, diag) {
+    const p = personal(a, ev, diag);
+    const right = `<div class="card stack">
+      <div class="kv">${diag ? `PARA TU EQUIPO · ${diag.equipo.toUpperCase()}` : "RESUMEN"}</div>
+      <div class="headline" style="color:color-mix(in srgb,var(--${p.tone}) 80%,white)">${p.ic} ${p.t}</div>
+      <div class="small">${p.why}</div>
+      <div class="split">
+        <div><div class="kv" style="margin-bottom:6px">TU HARDWARE</div>${hwBlock(ev, diag)}</div>
+        <div><div class="kv" style="margin-bottom:6px">EVIDENCIA GLOBAL</div>${badge(SUMMARY[a.estado])}<div class="small" style="margin-top:6px">${evidenceLine(a)}</div><div class="small">${pendingLine(a)}</div></div>
+      </div>
+    </div>`;
+    return sheetHead(j, right) + bloqueoNote(a)
+      + `<div class="section-title">Todos los entornos</div>` + envTable(a, diag) + evidenceArea(a);
+  },
+  matrix(js, diag) {
+    return `<table><tr><th>Juego</th><th>Para ti</th><th>Por qué</th><th>Evidencia global</th></tr>
+    ${js.map(({ j, a, ev }) => { const p = personal(a, ev, diag); return `<tr class="click" data-id="${j.id}">
+      <td><div class="gname">${j.nombre}</div><div class="kv">${j.estudio}</div></td>
+      <td>${badge(p)}</td>
+      <td class="small">${p.why}</td>
+      <td class="small">${badge(SUMMARY[a.estado])}<div class="kv" style="margin-top:4px">${a.n} aprobado${a.n === 1 ? "" : "s"}${a.pendientes.length ? ` · ${a.pendientes.length} pendiente${a.pendientes.length > 1 ? "s" : ""}` : ""}</div></td>
+    </tr>`; }).join("")}</table>`;
+  },
+};
+
+// ---------- Render ----------
+const VARIANTS = [V1, V2, V3];
+const state = { v: Number(new URLSearchParams(location.hash.slice(1)).get("v") || 1) - 1, game: new URLSearchParams(location.hash.slice(1)).get("g") || "gta5", diag: !location.hash.includes("nodiag") };
+document.getElementById("hasDiag").checked = state.diag;
+
+function render() {
+  const V = VARIANTS[state.v]; const diag = state.diag ? DIAG : null;
+  const rows = JUEGOS.map(j => ({ j, a: analyze(j), ev: evaluate(diag, j) }));
+  const cur = rows.find(r => r.j.id === state.game);
+  document.getElementById("sw").innerHTML = VARIANTS.map((x, i) => `<button class="${i === state.v ? "on" : ""}" data-v="${i}"><kbd>${i + 1}</kbd>${x.name}</button>`).join("");
+  document.getElementById("app").innerHTML = `
+    <div class="vlabel">Variante ${state.v + 1} · ${V.name}</div><p class="vdesc">${V.desc}</p>
+    <div class="section-title">(a) Ficha de juego · <span style="color:var(--fg)">${cur.j.nombre}</span> · haz clic en una fila de la matriz para cambiar</div>
+    ${V.sheet(cur.j, cur.a, cur.ev, diag)}
+    <div class="section-title">(b) Diagnóstico · matriz de 5 juegos</div>
+    ${diagStrip(diag)}
+    <div class="card" style="padding:4px 6px;margin-top:8px">${V.matrix(rows, diag)}</div>
+    <div class="legend"><span>Relleno = resultado de reportes aprobados</span><span>Borde punteado = evaluación de hardware (RAM, VRAM, Vulkan), no predice FPS</span><span>FPS solo medidos en reportes aprobados</span></div>`;
+  document.querySelectorAll("tr.click").forEach(tr => { if (tr.dataset.id === state.game) tr.classList.add("sel"); });
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-v]"); if (b) { state.v = +b.dataset.v; render(); }
+  const tr = e.target.closest("tr.click"); if (tr) { state.game = tr.dataset.id; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+});
+document.addEventListener("keydown", e => { if (["1", "2", "3"].includes(e.key)) { state.v = +e.key - 1; render(); } });
+document.getElementById("hasDiag").addEventListener("change", e => { state.diag = e.target.checked; render(); });
+render();
+</script>
+</body>
+</html>
