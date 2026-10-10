@@ -18,14 +18,11 @@ export const Route = createFileRoute('/_muestras')({
 function Muestras() {
   return (
     <>
-      <header className="barra">
-        <div className="envoltura fila">
-          <strong>OpenGame Linux</strong>
+      <main className="envoltura">
+        <p className="fila">
           <span className="sello">Datos de ejemplo</span>
           <span className="pequeno tenue">Muestras de veredicto · solo en desarrollo</span>
-        </div>
-      </header>
-      <main className="envoltura">
+        </p>
         <p className="dato tenue">Tu diagnóstico: {diagnostico.resumen}</p>
         {muestras.map((m, i) => (
           <Ficha key={m.clave} muestra={m} numero={i + 1} />

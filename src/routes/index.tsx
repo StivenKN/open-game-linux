@@ -1,14 +1,13 @@
+// Placeholder until U4 builds the catalog here.
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/')({ component: Home })
+export const Route = createFileRoute('/')({ component: Inicio })
 
-function Home() {
+function Inicio() {
   return (
-    <main>
-      <h1>Welcome to TanStack Start</h1>
-      <p>
-        Edit <code>src/routes/index.tsx</code> to get started.
-      </p>
+    <main className="envoltura">
+      <h1>Compatibilidad de juegos en Linux</h1>
+      <p className="tenue">El catálogo llega pronto. Mientras tanto puedes crear tu cuenta.</p>
     </main>
   )
 }
