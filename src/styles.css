@@ -483,3 +483,6 @@ button:disabled {
 .estrecha-lectura {
   max-width: 760px;
 }
+.bloque {
+  margin-top: 26px;
+}

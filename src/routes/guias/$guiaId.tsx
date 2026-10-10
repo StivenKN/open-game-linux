@@ -19,7 +19,7 @@ export const Route = createFileRoute('/guias/$guiaId')({
 function Guia() {
   const g = Route.useLoaderData()
   return (
-    <main className="envoltura estrecha-lectura">
+    <main className="envoltura estrecha-lectura pila">
       <div className="migas">
         <Link to="/guias">Guías</Link> / {tipoGuia[g.tipo]}
       </div>

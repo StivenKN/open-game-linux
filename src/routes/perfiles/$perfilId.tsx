@@ -32,35 +32,37 @@ function Perfil() {
   const aprobado = p.estado_revision === 'aprobado'
   return (
     <main className="envoltura">
-      <div className="migas">
-        <Link to="/">Catálogo</Link> / <Link to="/juegos/$juegoId" params={{ juegoId: p.juego_id }}>{p.juego}</Link> / Perfil
-      </div>
-      <h1 className="titulo-juego">
-        {p.titulo} <span className="tenue">r{p.revision}</span>
-      </h1>
-      <div className="fila">
-        {aprobado ? <Insignia etiqueta={estadoRevision.aprobado} /> : <Chip tono="gris">en prueba</Chip>}
-        <span className="pequeno tenue">
-          {aprobado && p.revisado_en ? `Aprobado el ${fecha(p.revisado_en)}` : 'Pendiente de revisión'} · autor {p.autor}
-        </span>
-        {p.ejemplo && <SelloEjemplo />}
-      </div>
-      <div className="fila-chips">
-        <span className="chip">{p.lanzador}</span>
-        <span className="chip">{p.distribucion}</span>
-        <span className="chip">{p.capa}</span>
-        <span className="chip">{p.arquitectura}</span>
-        {p.version_juego_objetivo && <span className="chip">versión del juego {p.version_juego_objetivo}</span>}
-      </div>
-      {!aprobado && (
-        <p className="pequeno nota" data-tono="amarillo">
-          Este perfil aún no está aprobado. Puedes probarlo: un reporte aprobado con resultado funcional es lo que su
-          aprobación necesita.
+      <header className="pila">
+        <div className="migas">
+          <Link to="/">Catálogo</Link> / <Link to="/juegos/$juegoId" params={{ juegoId: p.juego_id }}>{p.juego}</Link> / Perfil
+        </div>
+        <h1 className="titulo-juego">
+          {p.titulo} <span className="tenue">r{p.revision}</span>
+        </h1>
+        <div className="fila">
+          {aprobado ? <Insignia etiqueta={estadoRevision.aprobado} /> : <Chip tono="gris">en prueba</Chip>}
+          <span className="pequeno tenue">
+            {aprobado && p.revisado_en ? `Aprobado el ${fecha(p.revisado_en)}` : 'Pendiente de revisión'} · autor {p.autor}
+          </span>
+          {p.ejemplo && <SelloEjemplo />}
+        </div>
+        <div className="fila-chips">
+          <span className="chip">{p.lanzador}</span>
+          <span className="chip">{p.distribucion}</span>
+          <span className="chip">{p.capa}</span>
+          <span className="chip">{p.arquitectura}</span>
+          {p.version_juego_objetivo && <span className="chip">versión del juego {p.version_juego_objetivo}</span>}
+        </div>
+        {!aprobado && (
+          <p className="pequeno nota" data-tono="amarillo">
+            Este perfil aún no está aprobado. Puedes probarlo: un reporte aprobado con resultado funcional es lo que su
+            aprobación necesita.
+          </p>
+        )}
+        <p className="pequeno nota" data-tono="azul">
+          OpenGame no descarga ni ejecuta nada. Sigue los pasos tú mismo; los comandos se copian tal cual.
         </p>
-      )}
-      <p className="pequeno nota" data-tono="azul">
-        OpenGame no descarga ni ejecuta nada. Sigue los pasos tú mismo; los comandos se copian tal cual.
-      </p>
+      </header>
 
       <div className="rejilla-2">
         <div>
@@ -78,10 +80,9 @@ function Perfil() {
             </ol>
           )}
           {p.parametros_lanzamiento && (
-            <>
-              <h2 className="titulo-seccion">Parámetros de lanzamiento</h2>
+            <div className="bloque">
               <CajaCopiar etiqueta="Parámetros de lanzamiento" texto={p.parametros_lanzamiento} />
-            </>
+            </div>
           )}
           <h2 className="titulo-seccion">Dependencias</h2>
           {dependencias.length === 0 ? (
