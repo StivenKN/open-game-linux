@@ -5,6 +5,7 @@ import type { EstadoCompatibilidad } from '../dominio/compatibilidad.ts'
 import type { Resultado } from '../dominio/literales.ts'
 import type { Comprobacion, Sistema, SoporteVulkan, VeredictoRequisitos } from '../dominio/evaluacion.ts'
 import type { Bloqueo, EstadoRevision } from '../dominio/revision.ts'
+import type { TipoGuia } from '../dominio/guias.ts'
 
 export type Tono = 'verde' | 'amarillo' | 'rojo' | 'gris' | 'morado' | 'azul'
 export type Etiqueta = { readonly texto: string; readonly tono: Tono; readonly icono: string }
@@ -80,3 +81,10 @@ const tiposFallo: Readonly<Record<string, EtiquetaFallo>> = {
 }
 
 export const tipoFallo = (codigo: string): EtiquetaFallo => tiposFallo[codigo] ?? { texto: codigo.replaceAll('_', ' '), tono: 'amarillo' }
+
+/** RF-09 guide kinds. */
+export const tipoGuia = {
+  eleccion_distribucion: 'Elegir distribución',
+  instalacion: 'Instalación',
+  arranque_dual: 'Arranque dual',
+} as const satisfies Record<TipoGuia, string>

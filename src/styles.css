@@ -396,3 +396,90 @@ button:disabled {
   margin: 0;
   color: var(--rojo);
 }
+/* ------------------------------------------------------------ páginas de lectura (U4) */
+.portada {
+  text-align: center;
+  max-width: 760px;
+  margin: 10px auto 26px;
+}
+.portada h1 {
+  font-size: 32px;
+  margin: 0 0 8px;
+}
+.buscador {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0 12px;
+}
+.buscador input {
+  flex: 1;
+}
+.filtros .fila {
+  justify-content: center;
+}
+.filtro {
+  color: var(--tenue);
+  text-decoration: none;
+}
+.filtro:hover,
+.filtro[data-activo] {
+  color: var(--texto);
+  border-color: var(--azul);
+}
+.filtro[data-activo] {
+  background: color-mix(in srgb, var(--azul) 18%, transparent);
+}
+.contadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.contadores li {
+  display: grid;
+  gap: 2px;
+}
+.cifra {
+  font-family: var(--mono);
+  font-size: 24px;
+}
+.lista-juegos,
+.lista-tarjetas,
+.pasos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+.lista-juegos {
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+}
+.pasos {
+  counter-reset: paso;
+}
+.pasos > li {
+  counter-increment: paso;
+}
+.pasos > li > b::before {
+  content: counter(paso) '. ';
+  font-family: var(--mono);
+  color: var(--tenue);
+}
+.nombre-juego {
+  font-size: 17px;
+  font-weight: 650;
+  text-decoration: none;
+}
+.texto-largo {
+  white-space: pre-line;
+}
+.solucion {
+  border-top: 1px solid var(--linea);
+  padding-top: 10px;
+}
+.estrecha-lectura {
+  max-width: 760px;
+}
