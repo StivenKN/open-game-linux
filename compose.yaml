@@ -1,0 +1,19 @@
+# Local PostgreSQL 18 only. Databases: opengame (dev) and opengame_test (wiped by the test setup).
+# The fixed project name lets every lane's worktree share this one container instead of starting its own.
+name: opengame
+services:
+  db:
+    image: postgres:18
+    container_name: opengame-pg
+    ports: ["55432:5432"]
+    environment: { POSTGRES_USER: opengame, POSTGRES_PASSWORD: opengame, POSTGRES_DB: opengame }
+    volumes:
+      - datos:/var/lib/postgresql
+      - ./scripts/crear-bases.sql:/docker-entrypoint-initdb.d/1.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opengame -d opengame_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+volumes:
+  datos:

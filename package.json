@@ -10,7 +10,8 @@
     "build": "vite build",
     "start": "vite preview --port 3000",
     "generate-routes": "tsr generate",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:up": "docker compose up -d --wait db"
   },
   "dependencies": {
     "@effect/platform-node": "4.0.2",
