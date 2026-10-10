@@ -1,0 +1,26 @@
+// Server fns for contributions (RF-08). Each write validates with the same schema the form decoded in
+// the browser, then returns Respuesta<A, Fallos.Encoded> through `accion`.
+import { createServerFn } from '@tanstack/react-start'
+import { Schema } from 'effect'
+import { NuevaSolucion, NuevoReporte } from '../dominio/aportes.ts'
+import { PerfilNoComparable, ReglaIncumplida } from '../dominio/fallos.ts'
+import { IdDesdeTexto, JuegoId, PerfilId, ReporteId } from '../dominio/ids.ts'
+import { registrarReporte, registrarSolucion } from '../servidor/aportes/aportes.ts'
+import { opcionesReporte, opcionesSolucion } from '../servidor/consultas/reportar.ts'
+import { accion, leer } from '../servidor/ejecutar.ts'
+
+export const opcionesReporteFn = createServerFn({ method: 'GET' })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ juegoId: IdDesdeTexto(JuegoId), perfil: Schema.NullOr(PerfilId) })))
+  .handler(({ data }) => leer(opcionesReporte(data.juegoId, data.perfil)))
+
+export const registrarReporteFn = createServerFn({ method: 'POST' })
+  .validator(Schema.toStandardSchemaV1(NuevoReporte))
+  .handler(({ data }) => accion(Schema.Union([ReglaIncumplida, PerfilNoComparable]), registrarReporte(data)))
+
+export const opcionesSolucionFn = createServerFn({ method: 'GET' })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ reporteId: IdDesdeTexto(ReporteId) })))
+  .handler(({ data }) => leer(opcionesSolucion(data.reporteId)))
+
+export const registrarSolucionFn = createServerFn({ method: 'POST' })
+  .validator(Schema.toStandardSchemaV1(NuevaSolucion))
+  .handler(({ data }) => accion(ReglaIncumplida, registrarSolucion(data)))
