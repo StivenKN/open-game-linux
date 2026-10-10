@@ -17,6 +17,13 @@ export const siguientes = {
   retirado: [],
 } as const satisfies Record<EstadoRevision, ReadonlyArray<EstadoRevision>>
 
+/**
+ * Rows the public sees (pending ones marked as such, 8.7) and that a new contribution may build on:
+ * a report may follow a pending profile (8.9 "se pueden probar perfiles pendientes"), and a solution may
+ * answer a pending report. Rejected and retired rows are out of both.
+ */
+export const estadosVigentes = ['pendiente', 'aprobado'] as const satisfies ReadonlyArray<EstadoRevision>
+
 /** usuario.rol. One role per account (8, "Decisiones de alcance"). */
 export const Rol = Schema.Literals(['usuario', 'revisor', 'administrador'])
 export type Rol = typeof Rol.Type

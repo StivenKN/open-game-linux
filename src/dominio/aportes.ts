@@ -6,7 +6,7 @@
 // Each schema is used three times with no copy: the browser form decodes FormData with it
 // (field errors before any request), the server fn validator decodes the same Encoded value
 // (`Schema.toStandardSchemaV1`), and the handler receives the decoded Type.
-import { Array as Arr, Effect, Schema } from 'effect'
+import { Array as Arr, Effect, Schema, Struct } from 'effect'
 import { EstadoCompatibilidad } from './compatibilidad.ts'
 import { SoporteVulkan } from './evaluacion.ts'
 import type { Discrepancia } from './fallos.ts'
@@ -23,7 +23,7 @@ import {
   VersionCapaId,
 } from './ids.ts'
 import { FamiliaCapa, ResultadoFallido, ResultadoFuncional } from './literales.ts'
-import { Diagnostico, Distribucion, Equipo, Juego, largo, Reporte, Solucion, TextoHasta, TextoOpcionalHasta, VersionCapa } from './tablas.ts'
+import { Diagnostico, Distribucion, Equipo, Juego, largo, PerfilConfiguracion, Reporte, Solucion, TextoHasta, TextoOpcionalHasta, VersionCapa } from './tablas.ts'
 
 /** Round 1 graft: report on a Proton build the seeders missed. Registration upserts on (familia, variante, version). */
 export const VersionCapaRef = Schema.Union([
@@ -165,7 +165,11 @@ export type ContextoPrueba = {
   readonly version_juego: string
 }
 
-export type PerfilObjetivo = Omit<ContextoPrueba, 'version_juego'> & { readonly version_juego_objetivo: string | null }
+/** The profile side, as read from perfil_configuracion. */
+export const PerfilObjetivo = PerfilConfiguracion.mapFields(
+  Struct.pick(['edicion_id', 'version_capa_id', 'distribucion_id', 'arquitectura', 'version_juego_objetivo']),
+)
+export type PerfilObjetivo = typeof PerfilObjetivo.Type
 
 /**
  * 8.7 "Condiciones para que un reporte sea comparable". The single home of the rule. Called at save
