@@ -6,7 +6,7 @@ import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Exit, Option, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { type ResumenCompatibilidad, resumir } from '../src/dominio/compatibilidad.ts'
-import { GuiaId, JuegoId, PerfilId, UsuarioId } from '../src/dominio/ids.ts'
+import { GuiaId, JuegoId, LanzadorId, PerfilId, UsuarioId } from '../src/dominio/ids.ts'
 import { gtaV } from '../src/dominio/muestras.ts'
 import { Visitante } from '../src/servidor/auth.ts'
 import { catalogo } from '../src/servidor/consultas/catalogo.ts'
@@ -117,6 +117,11 @@ const escenario = Effect.gen(function* () {
     resultado: 'falla_en_ejecucion', fecha_prueba: new Date('2026-10-02T12:00:00Z'),
   })
   yield* sql`INSERT INTO reporte_fallo (reporte_id, tipo_fallo_id, detalle) VALUES (${gtaFedora}, ${lanzadorFallo}, 'el lanzador no abre')`
+  const solucion = (titulo: string, perfil_id: number | null, revision: Record<string, Valor>) =>
+    insertar('solucion', { reporte_id: gtaFedora, tipo_fallo_id: lanzadorFallo, autor_id: 'ana', titulo, instrucciones: 'i', perfil_id, ...revision })
+  yield* solucion('Volver a Proton 8.0-5', null, aprobado)
+  yield* solucion('Usar el perfil retirado', perfilRetirado, aprobado)
+  yield* solucion('Sin revisar', null, {})
   // Pending evidence: listed as a count, never part of a summary.
   yield* reporte({ edicion_id: gtaSteam, diagnostico_id: enMint, version_capa_id: proton8, version_juego: '1.0.3179', resultado: 'no_inicia', fecha_prueba: new Date('2026-10-05T12:00:00Z') }, {})
   yield* reporte({ edicion_id: ets2Steam, diagnostico_id: enMint, version_capa_id: proton8, version_juego: '1.5', resultado: 'funciona', fecha_prueba: new Date('2026-10-05T12:00:00Z') }, {})
@@ -139,6 +144,7 @@ const escenario = Effect.gen(function* () {
 
   return {
     gta: JuegoId.make(gta),
+    epic: LanzadorId.make(epic),
     perfilAprobado: PerfilId.make(perfilAprobado),
     perfilEnPrueba: PerfilId.make(perfilEnPrueba),
     perfilRetirado: PerfilId.make(perfilRetirado),
@@ -179,7 +185,10 @@ layer(PgTest)('consultas', (it) => {
           expect(ficha.pendientes).toBe(1)
           expect(ficha.ejemplo).toBe(true)
           expect(ficha.personal).toBeNull()
-          expect(ficha.causas.map((c) => [c.codigo, c.descripcion])).toEqual([['lanzador', 'El lanzador no abre.']])
+          // A pending solution, and an approved one that recommends a retired profile (8.9 vigencia), stay hidden.
+          expect(ficha.causas.map((c) => [c.codigo, c.descripcion, c.soluciones.map((x) => x.titulo)])).toEqual([
+            ['lanzador', 'El lanzador no abre.', ['Volver a Proton 8.0-5']],
+          ])
         }),
       ),
     )
@@ -215,14 +224,14 @@ layer(PgTest)('consultas', (it) => {
     it.effect('filtra por estado calculado, anti-cheat y título, y cuenta solo lo aprobado', () =>
       enRollback(
         Effect.gen(function* () {
-          yield* escenario
-          const ver = (filtro: Parameters<typeof catalogo>[0]) => catalogo(filtro)
-          expect(titulos(yield* ver({ estado: 'funciona' }))).toEqual(['Counter-Strike 2'])
-          expect(titulos(yield* ver({ estado: 'sin_evidencia' }))).toEqual(['Euro Truck Simulator 2'])
-          expect(titulos(yield* ver({ sin_anti_cheat: true }))).not.toContain('Valorant')
-          expect(titulos(yield* ver({ q: 'theft' }))).toEqual(['Grand Theft Auto V'])
-          expect(titulos(yield* ver({ q: '%' }))).toEqual([])
-          const todo = yield* ver({})
+          const e = yield* escenario
+          expect(titulos(yield* catalogo({ estado: 'funciona' }))).toEqual(['Counter-Strike 2'])
+          expect(titulos(yield* catalogo({ estado: 'sin_evidencia' }))).toEqual(['Euro Truck Simulator 2'])
+          expect(titulos(yield* catalogo({ sin_anti_cheat: true }))).not.toContain('Valorant')
+          expect(titulos(yield* catalogo({ q: 'theft' }))).toEqual(['Grand Theft Auto V'])
+          expect(titulos(yield* catalogo({ q: '%' }))).toEqual([])
+          expect(titulos(yield* catalogo({ lanzador: e.epic }))).toEqual(['Grand Theft Auto V'])
+          const todo = yield* catalogo({})
           expect(todo.juegos.find((j) => j.titulo === 'Euro Truck Simulator 2')).toMatchObject({ pendientes: 1, resumen: { pruebas: 0 } })
           expect(todo.contadores).toEqual({ juegos_verificados: 3, reportes_aprobados: 6, perfiles_aprobados: 1, distribuciones_probadas: 3 })
         }),
