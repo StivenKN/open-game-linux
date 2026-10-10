@@ -20,7 +20,7 @@
 // | profile, its steps and deps frozen once reviewed or used     | DB trigger og_perfil_congelado            |
 // | solucion -> reporte_fallo                                    | DB composite FK solucion_fallo_fk         |
 // | report comparability (edition, layer, distro, arch, version) | app: dominio/aportes.ts discrepancias     |
-// |   (edition + layer also a composite FK backstop, same Regla) |   (+ DB reporte_perfil_fk)                |
+// |   (edition + layer also a composite FK backstop, unmapped)   |   (+ DB reporte_perfil_fk)                |
 // | own equipo; Linux diagnosis; fecha_prueba >= capturado_en    | app: servidor/aportes/aportes.ts          |
 // | solution's profile in the report's edition                   | app: servidor/aportes/aportes.ts          |
 // | failing result has >= 1 fallo                                | app: dominio/aportes.ts NuevoReporte      |

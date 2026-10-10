@@ -10,7 +10,7 @@ import { ReglaIncumplida, type Regla } from '../../dominio/fallos.ts'
 export const reglaDeRestriccion = {
   reporte_fallo_pkey: 'fallo_duplicado',
   version_capa_version_exacta: 'version_capa_no_exacta',
-  reporte_perfil_fk: 'perfil_otra_edicion', // backstop of discrepancias(); unreachable when the app check runs first
+  // reporte_perfil_fk is absent on purpose: discrepancias() rejects first with PerfilNoComparable, so a hit is a writer bug.
   og_solo_revision: 'contenido_inmutable',
 } as const satisfies Record<string, Regla>
 
