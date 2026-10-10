@@ -5,8 +5,8 @@
 // Accepts what reaches the server by either handoff path:
 //   - the fragment value posted untouched by /diagnostico/importar (base64url JSON)
 //   - pasted text: raw JSON, the base64url string, or the whole URL containing "#d="
-import { Result, Schema, SchemaIssue } from 'effect'
-import { Captura } from '../../dominio/aportes.ts'
+import { Effect, Result, Schema, SchemaIssue } from 'effect'
+import { Captura, type EntradaDiagnostico } from '../../dominio/aportes.ts'
 import { PayloadInvalido } from '../../dominio/fallos.ts'
 
 export const VERSION_ESQUEMA = 1
@@ -66,6 +66,10 @@ export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInv
     }
     return yield* Result.mapError(Schema.decodeResult(Captura)(candidato), campoInvalido)
   })
+
+/** The capture an entry carries: detector text through the one parser, or the manual form's Captura as it came. */
+export const capturaDe = (entrada: EntradaDiagnostico): Effect.Effect<Captura, PayloadInvalido> =>
+  entrada._tag === 'manual' ? Effect.succeed(entrada.captura) : Effect.fromResult(parsearPayload(entrada.texto))
 
 const VENDORES: Readonly<Record<string, string>> = { '8086': 'Intel', '10de': 'NVIDIA', '1002': 'AMD' }
 
