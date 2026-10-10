@@ -220,6 +220,17 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 - **Retired profiles and the evidence that used them.** An approved report keeps its profile's name in the matrix after the profile is retired, because the test ran with it. An approved solution that recommends a retired profile is hidden (8.9 "comprueba la vigencia").
 - **`tests/consultas.test.ts` writes approved rows with direct SQL.** U3 seeds no approved report, and the fronteras single-writer test scans `src/` and `scripts/` only. The rows satisfy the review-block CHECK and roll back with the test.
 
+**U6** departs from the sketch as follows.
+
+- **`servidor/aportes/diagnostico.ts` is the single writer of `equipo` and `diagnostico`**, not `aportes.ts`, so lanes U5 and U6 never share a file. `src/fronteras.test.ts` fails on an `INSERT INTO`/`UPDATE` of either table anywhere else.
+- **Saving converges.** `registrarDiagnostico` locks the user's row, reuses the user's equipo with the same alias (case-insensitive) for `nuevo`, and returns `{ id, nuevo }`. A double click, a retry or a re-import of the same payload leaves one equipo and one diagnostico.
+- **Column limits are checked in `capturaDe`.** `Captura` in `dominio/aportes.ts` has unbounded text, so `servidor/diagnostico/payload.ts` checks the `tablas.ts` limits and answers `campo_invalido` instead of an SQL error at INSERT. The parser also names a null `cpu_modelo` "CPU no detectada" (ARM kernels).
+- **The manual form has its own schema**, `FormularioManual` in `routes/diagnostico/-entrada.ts`. It covers only what a person types, with the column limits, and `entradaManual` turns it into a `Captura` taken now. Nullable selects post `"null"` ("No sé").
+- **Paste and manual entries are evaluated twice.** `/diagnostico` evaluates first, so a bad paste keeps its error under the box. Then `/diagnostico/importar` evaluates again from sessionStorage. That page owns the result and the save. The read is cheap, and one result page is simpler than two.
+- **`/entrar` and `/registro` accept `?volver=`** from a closed list (`/diagnostico/importar`), so a guest who signs in to save returns to the unsaved result.
+- **The public origin comes from `BETTER_AUTH_URL`** (`servidor/origen.ts`), with the request URL only as a dev fallback. `origenFn` and `/opengame-detect.sh` use it for the `curl … | bash` command. That route is allowlisted in `fronteras.test.ts`, like `/api/auth/$`.
+- **The detector route imports the script inside its handler.** In a measured check, Start already stripped the handler from the client build even with a module-scope import. The bundle guard fails on `mem_info_vram_total` reaching the client, and a planted import in a component made it fail.
+
 ## Open questions and risks
 
 1. Does `Schema.fromFormData(Schema.toCodecStringTree(S))` decode the report form's nested shape (`fallos[0][tipo_fallo_id]`, the `version_capa[_tag]` union, a null `perfil_id`) at runtime? It typechecks. If not, U0 falls back to a controlled form object decoded with plain `Schema.decodeUnknownResult(S)`, and the hook signature stays the same.
