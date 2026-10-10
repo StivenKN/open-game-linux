@@ -1,0 +1,275 @@
+// One row Schema per table of section 8, column names verbatim. Queries decode rows with these and
+// input Schemas spread their `.fields` (restate any `.check` after a spread: probes.md (a)).
+// Isomorphic. `largo` holds every "Texto n" of the doc; the migration writes varchar(n) from it,
+// so a length lives in one place.
+import { Schema } from 'effect'
+import { Resultado } from './compatibilidad.ts'
+import { FamiliaCapa } from './aportes.ts'
+import { Sistema, SoporteVulkan } from './evaluacion.ts'
+import { EstadoGuia, TipoGuia } from './guias.ts'
+import {
+  DiagnosticoId,
+  DistribucionId,
+  EdicionId,
+  EquipoId,
+  GuiaId,
+  JuegoId,
+  LanzadorId,
+  PerfilId,
+  ReporteId,
+  SolucionId,
+  Texto,
+  TipoFalloId,
+  UsuarioId,
+  VersionCapaId,
+} from './ids.ts'
+import { EstadoRevision, Rol } from './revision.ts'
+
+export const largo = {
+  usuario: { alias: 60, correo: 254 },
+  equipo: { alias: 80 },
+  diagnostico: {
+    sistema: 20,
+    version_sistema: 80,
+    arquitectura: 20,
+    cpu_modelo: 160,
+    gpu_modelo: 160,
+    controlador: 120,
+    version_controlador: 80,
+    soporte_vulkan: 15,
+    version_vulkan: 30,
+  },
+  juego: { titulo: 180 },
+  lanzador: { nombre: 80, url_oficial: 500 },
+  edicion_juego: { identificador_externo: 120 },
+  distribucion: { nombre: 80, version: 40, url_oficial: 500 },
+  version_capa: { familia: 10, variante: 60, version: 60 },
+  bloque_revision: { estado_revision: 15 },
+  perfil_configuracion: { arquitectura: 20, titulo: 180, version_juego_objetivo: 80, version_vulkan_min: 30 },
+  paso_configuracion: { titulo: 160 },
+  dependencia: { nombre: 120, gestor: 60 },
+  perfil_dependencia: { version_requerida: 80 },
+  tipo_fallo: { codigo: 40 },
+  reporte: { version_juego: 80, version_lanzador: 80, resultado: 35, resolucion: 30, calidad_grafica: 80 },
+  solucion: { titulo: 180 },
+  guia_adopcion: { tipo: 25, titulo: 180, estado: 15 },
+} as const
+
+/** "Texto n": trimmed, non-empty, at most n characters. Unbounded "Texto largo" is plain `Texto`. */
+export const TextoHasta = (n: number) => Texto.pipe(Schema.check(Schema.isMaxLength(n)))
+
+const Positivo = Schema.Int.check(Schema.isGreaterThan(0))
+const NoNegativo = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
+
+// Belongs in ids.ts with the other ids; it lives here until lane U2, which owns ids.ts, moves it.
+export const DependenciaId = Schema.Int.pipe(Schema.brand('DependenciaId'))
+export type DependenciaId = typeof DependenciaId.Type
+
+// ------------------------------------------------------------------ 8.3 usuarios y diagnósticos
+
+/** Created by better-auth (servidor/esquema/auth.ts). `image` is better-auth's own unmapped column. */
+export const Usuario = Schema.Struct({
+  id: UsuarioId,
+  alias: TextoHasta(largo.usuario.alias),
+  correo: TextoHasta(largo.usuario.correo),
+  correo_verificado: Schema.Boolean,
+  image: Schema.NullOr(Schema.String),
+  creado_en: Schema.Date,
+  actualizado_en: Schema.Date,
+  rol: Rol,
+  activo: Schema.Boolean,
+})
+export type Usuario = typeof Usuario.Type
+
+export const Equipo = Schema.Struct({
+  id: EquipoId,
+  usuario_id: UsuarioId,
+  alias: TextoHasta(largo.equipo.alias),
+  creado_en: Schema.Date,
+})
+export type Equipo = typeof Equipo.Type
+
+export const Diagnostico = Schema.Struct({
+  id: DiagnosticoId,
+  equipo_id: EquipoId,
+  capturado_en: Schema.Date,
+  sistema: Sistema,
+  version_sistema: TextoHasta(largo.diagnostico.version_sistema),
+  distribucion_id: Schema.NullOr(DistribucionId),
+  arquitectura: TextoHasta(largo.diagnostico.arquitectura),
+  cpu_modelo: TextoHasta(largo.diagnostico.cpu_modelo),
+  gpu_modelo: TextoHasta(largo.diagnostico.gpu_modelo),
+  ram_mb: Positivo,
+  vram_mb: Schema.NullOr(NoNegativo),
+  controlador: Schema.NullOr(TextoHasta(largo.diagnostico.controlador)),
+  version_controlador: Schema.NullOr(TextoHasta(largo.diagnostico.version_controlador)),
+  soporte_vulkan: SoporteVulkan,
+  version_vulkan: Schema.NullOr(TextoHasta(largo.diagnostico.version_vulkan)),
+})
+export type Diagnostico = typeof Diagnostico.Type
+
+// ------------------------------------------------------------------ 8.4 catálogo y entorno
+
+export const Juego = Schema.Struct({
+  id: JuegoId,
+  titulo: TextoHasta(largo.juego.titulo),
+  descripcion: Texto,
+  actualizado_en: Schema.Date,
+})
+export type Juego = typeof Juego.Type
+
+export const Lanzador = Schema.Struct({
+  id: LanzadorId,
+  nombre: TextoHasta(largo.lanzador.nombre),
+  url_oficial: Schema.NullOr(TextoHasta(largo.lanzador.url_oficial)),
+})
+export type Lanzador = typeof Lanzador.Type
+
+export const EdicionJuego = Schema.Struct({
+  id: EdicionId,
+  juego_id: JuegoId,
+  lanzador_id: LanzadorId,
+  identificador_externo: Schema.NullOr(TextoHasta(largo.edicion_juego.identificador_externo)),
+  actualizado_en: Schema.Date,
+})
+export type EdicionJuego = typeof EdicionJuego.Type
+
+export const Distribucion = Schema.Struct({
+  id: DistribucionId,
+  nombre: TextoHasta(largo.distribucion.nombre),
+  version: TextoHasta(largo.distribucion.version),
+  url_oficial: Schema.NullOr(TextoHasta(largo.distribucion.url_oficial)),
+})
+export type Distribucion = typeof Distribucion.Type
+
+export const VersionCapa = Schema.Struct({
+  id: VersionCapaId,
+  familia: FamiliaCapa,
+  variante: TextoHasta(largo.version_capa.variante),
+  version: TextoHasta(largo.version_capa.version),
+})
+export type VersionCapa = typeof VersionCapa.Type
+
+// ------------------------------------------------------------------ 8.9 bloque de revisión
+
+/** The five columns physically on perfil_configuracion, reporte and solucion. The DB CHECK fixes their shape per state. */
+export const BloqueRevision = Schema.Struct({
+  estado_revision: EstadoRevision,
+  revisor_id: Schema.NullOr(UsuarioId),
+  revisado_en: Schema.NullOr(Schema.Date),
+  motivo_revision: Schema.NullOr(Texto),
+  evidencia_revision: Schema.NullOr(Texto),
+})
+export type BloqueRevision = typeof BloqueRevision.Type
+
+// ------------------------------------------------------------------ 8.5 / 8.6 configuraciones, dependencias y fallos
+
+export const PerfilConfiguracion = Schema.Struct({
+  id: PerfilId,
+  edicion_id: EdicionId,
+  distribucion_id: DistribucionId,
+  version_capa_id: VersionCapaId,
+  autor_id: UsuarioId,
+  arquitectura: TextoHasta(largo.perfil_configuracion.arquitectura),
+  revision: Positivo,
+  titulo: TextoHasta(largo.perfil_configuracion.titulo),
+  version_juego_objetivo: Schema.NullOr(TextoHasta(largo.perfil_configuracion.version_juego_objetivo)),
+  ram_min_mb: Schema.NullOr(Positivo),
+  vram_min_mb: Schema.NullOr(NoNegativo),
+  requiere_vulkan: Schema.NullOr(Schema.Boolean),
+  version_vulkan_min: Schema.NullOr(TextoHasta(largo.perfil_configuracion.version_vulkan_min)),
+  condicion_cpu: Schema.NullOr(Texto),
+  condicion_gpu: Schema.NullOr(Texto),
+  parametros_lanzamiento: Schema.NullOr(Texto),
+  creado_en: Schema.Date,
+  ...BloqueRevision.fields,
+})
+export type PerfilConfiguracion = typeof PerfilConfiguracion.Type
+
+export const PasoConfiguracion = Schema.Struct({
+  perfil_id: PerfilId,
+  orden: Positivo,
+  titulo: TextoHasta(largo.paso_configuracion.titulo),
+  instruccion: Texto,
+})
+export type PasoConfiguracion = typeof PasoConfiguracion.Type
+
+export const Dependencia = Schema.Struct({
+  id: DependenciaId,
+  nombre: TextoHasta(largo.dependencia.nombre),
+  gestor: TextoHasta(largo.dependencia.gestor),
+  descripcion: Texto,
+})
+export type Dependencia = typeof Dependencia.Type
+
+export const PerfilDependencia = Schema.Struct({
+  perfil_id: PerfilId,
+  dependencia_id: DependenciaId,
+  version_requerida: Schema.NullOr(TextoHasta(largo.perfil_dependencia.version_requerida)),
+  obligatoria: Schema.Boolean,
+  instruccion_instalacion: Texto,
+})
+export type PerfilDependencia = typeof PerfilDependencia.Type
+
+export const TipoFallo = Schema.Struct({
+  id: TipoFalloId,
+  codigo: TextoHasta(largo.tipo_fallo.codigo),
+  descripcion: Texto,
+})
+export type TipoFallo = typeof TipoFallo.Type
+
+// ------------------------------------------------------------------ 8.7 / 8.8 resultados, soluciones y guías
+
+export const Reporte = Schema.Struct({
+  id: ReporteId,
+  edicion_id: EdicionId,
+  diagnostico_id: DiagnosticoId,
+  version_capa_id: VersionCapaId,
+  perfil_id: Schema.NullOr(PerfilId),
+  version_juego: TextoHasta(largo.reporte.version_juego),
+  version_lanzador: Schema.NullOr(TextoHasta(largo.reporte.version_lanzador)),
+  fecha_prueba: Schema.Date,
+  resultado: Resultado,
+  fps_promedio: Schema.NullOr(Schema.FiniteFromString), // numeric(7,2) arrives as text (probes.md (c))
+  resolucion: Schema.NullOr(TextoHasta(largo.reporte.resolucion)),
+  calidad_grafica: Schema.NullOr(TextoHasta(largo.reporte.calidad_grafica)),
+  metodo_medicion: Schema.NullOr(Texto),
+  observaciones: Texto,
+  creado_en: Schema.Date,
+  ...BloqueRevision.fields,
+})
+export type Reporte = typeof Reporte.Type
+
+export const ReporteFallo = Schema.Struct({
+  reporte_id: ReporteId,
+  tipo_fallo_id: TipoFalloId,
+  detalle: Texto,
+})
+export type ReporteFallo = typeof ReporteFallo.Type
+
+export const Solucion = Schema.Struct({
+  id: SolucionId,
+  reporte_id: ReporteId,
+  tipo_fallo_id: TipoFalloId,
+  autor_id: UsuarioId,
+  perfil_id: Schema.NullOr(PerfilId),
+  titulo: TextoHasta(largo.solucion.titulo),
+  instrucciones: Texto,
+  creado_en: Schema.Date,
+  ...BloqueRevision.fields,
+})
+export type Solucion = typeof Solucion.Type
+
+export const GuiaAdopcion = Schema.Struct({
+  id: GuiaId,
+  autor_id: UsuarioId,
+  distribucion_id: Schema.NullOr(DistribucionId),
+  tipo: TipoGuia,
+  titulo: TextoHasta(largo.guia_adopcion.titulo),
+  contenido: Texto,
+  revision: Positivo,
+  estado: EstadoGuia,
+  creado_en: Schema.Date,
+  actualizado_en: Schema.Date,
+})
+export type GuiaAdopcion = typeof GuiaAdopcion.Type
