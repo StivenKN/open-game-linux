@@ -52,7 +52,7 @@ const r = useAccion(NuevoReporte, registrarReporteFn, {
   alFallar: erroresDeRegla,                   // fallo: { _tag: 'ReglaIncumplida'; regla: Regla }, the only failure registrarReporte returns
   alCompletar: () => navigate({ to: '/juegos/$juegoId', params: { juegoId } }),
 })
-<form action={r.enviar}>
+<form onSubmit={r.enviar} noValidate>
   <select name="perfil_id">…</select>
   <ErrorCampo errores={r.errores} campo="perfil_id" />   {/* "El perfil es para otra distribución que la de tu diagnóstico." */}
   <button disabled={r.enviando}>Enviar reporte</button>
@@ -197,6 +197,15 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 | U2 | `planificar` returns `'transicion_invalida'`; `decidir` builds `TransicionInvalida` | Avoids an import cycle between `fallos.ts` and `revision.ts` | U2 report |
 | U2c | Route file `src/routes/[_]muestras.tsx` | `_muestras.tsx` is a pathless layout to the router generator | U2c report |
 
+**U3** departs from the sketch as follows.
+
+- **`useAccion` binds `onSubmit`, not `<form action>`.** React 19 resets an action form's fields after every action, so a field error would wipe what the user typed. `enviar` builds the FormData with the submitter, so `<button name="decision[_tag]" value="Aprobar">` still posts its value.
+- **Field errors are keyed by the input's name.** A nested issue lands on `fallos[0][detalle]`, not on `fallos`. A rule from `reglas` still lands on its `campo`. Decoding reports every invalid field at once.
+- **No better-auth cookie cache.** With it, `pnpm rol` and deactivation would take up to five minutes to apply. Each request reads the session from the database instead.
+- **`asignarRol` lives in `servidor/auth.ts`.** `pnpm rol` and the seed share it, so role writes have one home.
+- **Demo content is marked by its author.** No table has a demo column. Every seeded profile and guide belongs to a `@demo.opengame.test` account (`dominioDemo`), a reserved domain no real person can register. Queries can derive "Datos de ejemplo" from the author's correo.
+- **`src/start.ts` adds Start's CSRF middleware for server fns.** A cross-site call gets 403.
+- **Placeholder routes** for `/diagnostico`, `/guias` and `/revision` keep the header's links typed until U4, U5 and U6 replace them.
 
 ## Open questions and risks
 
