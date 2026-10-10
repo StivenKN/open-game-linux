@@ -170,15 +170,22 @@ export const fichaJuego = (juegoId: JuegoId) =>
     })(juegoId)
     const tiposFallo = yield* SqlSchema.findAll({
       Request: Schema.Void,
-      Result: TipoFallo.mapFields(Struct.pick(['codigo', 'descripcion'])),
-      execute: () => sql`SELECT codigo, descripcion FROM tipo_fallo`,
+      Result: TipoFallo.mapFields(Struct.pick(['id', 'codigo', 'descripcion'])),
+      execute: () => sql`SELECT id, codigo, descripcion FROM tipo_fallo`,
     })(undefined)
-    const descripcion = new Map(tiposFallo.map((t) => [t.codigo, t.descripcion]))
-    const causas = resumen.fallos.map((f) => ({
-      ...f,
-      descripcion: descripcion.get(f.codigo) ?? null,
-      soluciones: soluciones.filter((s) => s.codigo === f.codigo),
-    }))
+    const tipoPorCodigo = new Map(tiposFallo.map((t) => [t.codigo, t]))
+    // A new solution answers one fallo of one approved report (8.8): the newest report that saw it.
+    const masRecientes = [...pruebas].sort((a, b) => b.fecha_prueba.getTime() - a.fecha_prueba.getTime())
+    const causas = resumen.fallos.map((f) => {
+      const tipo = tipoPorCodigo.get(f.codigo)
+      const reporte = masRecientes.find((p) => p.fallos.includes(f.codigo))
+      return {
+        ...f,
+        descripcion: tipo?.descripcion ?? null,
+        soluciones: soluciones.filter((s) => s.codigo === f.codigo),
+        responder: tipo && reporte ? { reporte_id: reporte.reporte_id, tipo_fallo_id: tipo.id } : null,
+      }
+    })
 
     const diagnostico = yield* diagnosticoDelVisitante
 

@@ -23,6 +23,7 @@ export const Route = createFileRoute('/juegos/$juegoId')({
 
 function Ficha() {
   const { juego, ediciones, resumen, ejemplo, pendientes, perfiles, causas, diagnostico, personal } = Route.useLoaderData()
+  const { visitante } = Route.useRouteContext()
   return (
     <main className="envoltura">
       <div className="rejilla-2">
@@ -43,6 +44,11 @@ function Ficha() {
           <p className="pequeno tenue">
             El estado se calcula al consultar a partir de reportes aprobados. Un resultado favorable no garantiza que
             funcione en cualquier equipo.
+          </p>
+          <p>
+            <Link to="/juegos/$juegoId/reportar" params={{ juegoId: String(juego.id) }} className="boton">
+              Reportar un resultado
+            </Link>
           </p>
         </div>
         <div className="tarjeta pila">
@@ -126,6 +132,17 @@ function Ficha() {
                       </p>
                     </div>
                   ))
+                )}
+                {visitante !== null && c.responder !== null && (
+                  <p className="pequeno">
+                    <Link
+                      to="/reportes/$reporteId/solucion"
+                      params={{ reporteId: String(c.responder.reporte_id) }}
+                      search={{ tipoFallo: c.responder.tipo_fallo_id }}
+                    >
+                      Proponer una solución
+                    </Link>
+                  </p>
                 )}
               </li>
             )
