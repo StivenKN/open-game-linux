@@ -107,7 +107,7 @@ const DiagnosticoGuardado = Schema.Struct({
   distribucion: Schema.NullOr(Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version })),
 })
 
-const capturaGuardada = (d: typeof DiagnosticoGuardado.Type): Captura => {
+const capturaGuardada = (d: typeof DiagnosticoGuardado.Type): Effect.Effect<Captura> => {
   const comunes = {
     capturado_en: d.capturado_en,
     version_sistema: d.version_sistema,
@@ -121,9 +121,10 @@ const capturaGuardada = (d: typeof DiagnosticoGuardado.Type): Captura => {
     soporte_vulkan: d.soporte_vulkan,
     version_vulkan: d.version_vulkan,
   }
-  // CHECK diagnostico_linux_con_distribucion makes a Linux row without distribucion unreachable.
-  if (d.sistema === 'Linux' && d.distribucion !== null) return { ...comunes, sistema: 'Linux', distribucion: d.distribucion }
-  return { ...comunes, sistema: 'Windows' }
+  if (d.sistema === 'Windows') return Effect.succeed({ ...comunes, sistema: 'Windows' })
+  // CHECK diagnostico_linux_con_distribucion makes this unreachable; reaching it is schema drift.
+  if (d.distribucion === null) return Effect.die(`diagnostico ${d.id}: Linux sin distribucion`)
+  return Effect.succeed({ ...comunes, sistema: 'Linux', distribucion: d.distribucion })
 }
 
 /** /diagnosticos/$id: the owner only (8.9 "el diagnóstico detallado es privado"). Anyone else gets NoEncontrado. */
@@ -141,7 +142,7 @@ export const miDiagnostico = (id: DiagnosticoId) =>
         WHERE d.id = ${id} AND e.usuario_id = ${usuario.id}`,
     )
     if (d === undefined) return yield* Effect.fail(new NoEncontrado())
-    return { id: d.id, equipo: d.equipo, captura: capturaGuardada(d), matriz: yield* matriz(d) }
+    return { id: d.id, equipo: d.equipo, captura: yield* capturaGuardada(d), matriz: yield* matriz(d) }
   })
 
 const EquipoFila = Schema.Struct({ id: Equipo.fields.id, alias: Equipo.fields.alias })

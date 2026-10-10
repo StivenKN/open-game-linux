@@ -8,6 +8,7 @@ import { DiagnosticoId } from '../dominio/ids.ts'
 import { registrarDiagnostico } from '../servidor/aportes/diagnostico.ts'
 import { evaluarSinGuardar, miDiagnostico, misEquipos } from '../servidor/consultas/diagnostico.ts'
 import { accion, leer } from '../servidor/ejecutar.ts'
+import { origenPublico } from '../servidor/origen.ts'
 
 export const evaluarDiagnosticoFn = createServerFn({ method: 'POST' })
   .validator(Schema.toStandardSchemaV1(EntradaDiagnostico))
@@ -23,5 +24,5 @@ export const miDiagnosticoFn = createServerFn({ method: 'GET' })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ id: DiagnosticoId })))
   .handler(({ data }) => leer(miDiagnostico(data.id)))
 
-/** This deployment's origin, for the detector command the page shows (the script route bakes in the same one). */
-export const origenFn = createServerFn({ method: 'GET' }).handler(() => new URL(getRequest().url).origin)
+/** The public origin for the detector command the page shows (the script route bakes in the same one). */
+export const origenFn = createServerFn({ method: 'GET' }).handler(() => origenPublico(getRequest()))

@@ -8,6 +8,7 @@
 import { Effect, Result, Schema, SchemaIssue } from 'effect'
 import { Captura, type EntradaDiagnostico } from '../../dominio/aportes.ts'
 import { PayloadInvalido } from '../../dominio/fallos.ts'
+import { Diagnostico, Distribucion } from '../../dominio/tablas.ts'
 
 export const VERSION_ESQUEMA = 1
 
@@ -19,7 +20,7 @@ const PayloadV1 = Schema.Struct({
   version_sistema: Schema.String,
   distribucion: Schema.Struct({ nombre: Schema.String, version: Schema.NullOr(Schema.String) }),
   arquitectura: Schema.String,
-  cpu_modelo: Schema.String,
+  cpu_modelo: Schema.NullOr(Schema.String), // ARM kernels may not name the CPU
   gpu_modelo: Schema.NullOr(Schema.String),
   gpu_pci_id: Schema.optionalKey(Schema.NullOr(Schema.String)), // absent in the prototype's out.json
   ram_mb: Schema.Int,
@@ -39,7 +40,8 @@ const PayloadV1 = Schema.Struct({
  * Normalization (server-owned, per detector FINDINGS):
  *   - distribucion.version: empty or /^\d{8}/ (Arch build date) -> "rolling"; a rule, not a list
  *   - soporte_vulkan !== 'si' -> version_vulkan = null (the ICD ceiling version is dropped, never promoted to support)
- *   - gpu_modelo null -> etiquetaPci(gpu_pci_id) ?? 'GPU no detectada'
+ *   - gpu_modelo null -> etiquetaPci(gpu_pci_id) ?? 'GPU no detectada'; cpu_modelo null -> 'CPU no detectada'
+ * 6. a text longer than its diagnostico/distribucion column -> campo_invalido (not an SQL error at INSERT)
  */
 export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInvalido> =>
   Result.gen(function* () {
@@ -55,7 +57,7 @@ export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInv
       version_sistema: p.version_sistema,
       distribucion: { nombre: p.distribucion.nombre, version: versionDistribucion(p.distribucion.version) },
       arquitectura: p.arquitectura,
-      cpu_modelo: p.cpu_modelo,
+      cpu_modelo: p.cpu_modelo ?? 'CPU no detectada',
       gpu_modelo: p.gpu_modelo ?? etiquetaPci(p.gpu_pci_id ?? null) ?? 'GPU no detectada',
       ram_mb: p.ram_mb,
       vram_mb: p.vram_mb,
@@ -64,12 +66,27 @@ export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInv
       soporte_vulkan: p.soporte_vulkan,
       version_vulkan: p.soporte_vulkan === 'si' ? p.version_vulkan : null,
     }
-    return yield* Result.mapError(Schema.decodeResult(Captura)(candidato), campoInvalido)
+    return yield* cabeEnColumnas(yield* Result.mapError(Schema.decodeResult(Captura)(candidato), campoInvalido))
   })
 
-/** The capture an entry carries: detector text through the one parser, or the manual form's Captura as it came. */
+/** The capture an entry carries: detector text through the one parser, or the manual form's Captura within the column limits. */
 export const capturaDe = (entrada: EntradaDiagnostico): Effect.Effect<Captura, PayloadInvalido> =>
-  entrada._tag === 'manual' ? Effect.succeed(entrada.captura) : Effect.fromResult(parsearPayload(entrada.texto))
+  Effect.fromResult(entrada._tag === 'manual' ? cabeEnColumnas(entrada.captura) : parsearPayload(entrada.texto))
+
+// Captura's text fields are unbounded (dominio/aportes.ts); the columns are varchar(n), so check the row Schemas' limits here.
+const Columnas = Schema.Struct({
+  version_sistema: Diagnostico.fields.version_sistema,
+  arquitectura: Diagnostico.fields.arquitectura,
+  cpu_modelo: Diagnostico.fields.cpu_modelo,
+  gpu_modelo: Diagnostico.fields.gpu_modelo,
+  controlador: Diagnostico.fields.controlador,
+  version_controlador: Diagnostico.fields.version_controlador,
+  version_vulkan: Diagnostico.fields.version_vulkan,
+  distribucion: Schema.optionalKey(Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version })),
+})
+
+const cabeEnColumnas = (captura: Captura): Result.Result<Captura, PayloadInvalido> =>
+  Result.map(Result.mapError(Schema.decodeUnknownResult(Columnas)(captura), campoInvalido), () => captura)
 
 const VENDORES: Readonly<Record<string, string>> = { '8086': 'Intel', '10de': 'NVIDIA', '1002': 'AMD' }
 

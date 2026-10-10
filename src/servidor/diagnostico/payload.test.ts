@@ -61,6 +61,10 @@ describe('parsearPayload', () => {
     expect(captura(`  http://localhost:3000/diagnostico/importar#d=${base64url(prototipo)}\n`)).toEqual(esperado)
   })
 
+  it('names an unnamed CPU (ARM kernels) instead of rejecting the payload', () => {
+    expect(captura(JSON.stringify({ ...prototipo, cpu_modelo: null })).cpu_modelo).toBe('CPU no detectada')
+  })
+
   it('rejects another version_esquema, telling the user to download the detector again', () => {
     expect(parsearPayload(JSON.stringify({ ...prototipo, version_esquema: 2 }))).toEqual(
       Result.fail(new PayloadInvalido({ motivo: 'version_esquema', campo: 'version_esquema' })),
@@ -76,6 +80,8 @@ describe('parsearPayload', () => {
     [{ cpu_modelo: '   ' }, 'cpu_modelo'],
     [{ distribucion: { nombre: '', version: '24.04' } }, 'distribucion.nombre'],
     [{ sistema: 'Windows' }, 'sistema'],
+    [{ gpu_modelo: 'G'.repeat(161) }, 'gpu_modelo'],
+    [{ distribucion: { nombre: 'D'.repeat(81), version: '1' } }, 'distribucion.nombre'],
   ])('a bad field %o is campo_invalido at %s', (cambio, campo) => {
     expect(parsearPayload(JSON.stringify({ ...prototipo, ...cambio }))).toEqual(
       Result.fail(new PayloadInvalido({ motivo: 'campo_invalido', campo })),

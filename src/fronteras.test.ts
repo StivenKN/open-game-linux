@@ -29,8 +29,8 @@ const capas = {
   'src/ui/': { permitidos: ['react', 'effect', '@tanstack/react-router', 'src/dominio/', 'src/ui/'], arreglo: 'ui is plain React over dominio types' },
 } as const
 
-/** The only route allowed to touch servidor/: a server-handler file with no component. */
-const excepciones = new Set(['src/routes/api/auth/$.ts'])
+/** The only routes allowed to touch servidor/: server-handler files with no component. */
+const excepciones = new Set(['src/routes/api/auth/$.ts', 'src/routes/opengame-detect[.]sh.ts'])
 
 const resolver = (desde: string, spec: string) => (spec.startsWith('.') ? relative(raiz, join(raiz, desde, '..', spec)) : spec)
 

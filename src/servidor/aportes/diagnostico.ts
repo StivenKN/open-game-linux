@@ -75,14 +75,17 @@ export const registrarDiagnostico = (
 
 type DistribucionCapturada = Extract<Captura, { readonly sistema: 'Linux' }>['distribucion']
 
-/** The distribucion row for a captured (nombre, version), created on first sight. DO UPDATE so RETURNING always yields the id. */
+/**
+ * The distribucion row for a captured (nombre, version), created on first sight. Two statements on
+ * purpose: under READ COMMITTED the SELECT takes a new snapshot, so it sees a row another user's
+ * transaction committed while this INSERT waited on the conflict.
+ */
 const distribucionDe = (d: DistribucionCapturada) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
+    yield* sql`INSERT INTO distribucion (nombre, version) VALUES (${d.nombre}, ${d.version}) ON CONFLICT (nombre, version) DO NOTHING`
     const [fila] = yield* Schema.decodeUnknownEffect(Schema.NonEmptyArray(Schema.Struct({ id: Distribucion.fields.id })))(
-      yield* sql`
-        INSERT INTO distribucion (nombre, version) VALUES (${d.nombre}, ${d.version})
-        ON CONFLICT (nombre, version) DO UPDATE SET nombre = EXCLUDED.nombre RETURNING id`,
+      yield* sql`SELECT id FROM distribucion WHERE nombre = ${d.nombre} AND version = ${d.version}`,
     )
     return fila.id
   })
