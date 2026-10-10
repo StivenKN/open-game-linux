@@ -3,8 +3,9 @@
 //   leer(programa)             loaders: Promise<A>. NoEncontrado/SinPermiso -> notFound(), NoAutenticado -> redirect.
 //   accion(fallos, programa)   UI events (writes, guest evaluation): one transaction, Promise<Respuesta<A, fallos.Encoded>>.
 //
-// Both resolve the session once into `Visitante`. SqlError and SchemaError are infra: they are thrown,
-// and the route's errorComponent renders them.
+// Both resolve the session once into `Visitante`. SqlError and SchemaError are infra: logged here in
+// full, then thrown as a bare Error (Start would send the SQL text to the browser), and the route's
+// errorComponent renders them.
 import { notFound, redirect } from '@tanstack/react-router'
 import { getRequest } from '@tanstack/react-start/server'
 import { Cause, Effect, Exit, Option, Schema } from 'effect'
@@ -33,13 +34,18 @@ const lanzarControl = (e: Control): never => {
   }
 }
 
+const fallaInterna = (causa: Cause.Cause<unknown>): never => {
+  console.error(Cause.pretty(causa))
+  throw new Error('Error interno del servidor')
+}
+
 /** For loaders and other reads. The type admits no domain failure: a read succeeds, redirects or breaks. */
 export const leer = async <A>(programa: Effect.Effect<A, Control | Infra, Servicios>): Promise<A> => {
   const exit = await runtime.runPromiseExit(conVisitante(programa))
   if (Exit.isSuccess(exit)) return exit.value
   const error = Exit.findErrorOption(exit)
   if (Option.isSome(error) && esControl(error.value)) return lanzarControl(error.value)
-  throw Cause.squash(exit.cause)
+  return fallaInterna(exit.cause)
 }
 
 /**
@@ -63,5 +69,5 @@ export const accion = async <A, S extends Schema.Codec<FalloDominio, unknown>>(
     if (esControl(e)) return lanzarControl(e)
     if (Schema.is(fallos)(e)) return { ok: false, fallo: Schema.encodeSync(fallos)(e) }
   }
-  throw Cause.squash(exit.cause)
+  return fallaInterna(exit.cause)
 }

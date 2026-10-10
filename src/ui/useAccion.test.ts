@@ -78,6 +78,14 @@ describe('leerFormulario', () => {
     expect(Result.isFailure(leido) && leido.failure).toEqual({ alias: 'Usa como máximo 60 caracteres.' })
   })
 
+  it('una variante desconocida de una unión cae en el nombre de la unión, en español', () => {
+    expect(errores({ 'version_capa[_tag]': 'inventada' })).toEqual({ version_capa: 'Revisa este valor.' })
+  })
+
+  it('un resultado fuera de la lista no muestra el volcado de tipos en inglés', () => {
+    expect(errores({ resultado: 'regular' })).toEqual({ formulario: 'Revisa este valor.' })
+  })
+
   it('un valor mal formado recibe el aviso genérico en español', () => {
     expect(errores({ 'version_capa[id]': 'abc' })).toEqual({ 'version_capa[id]': 'Revisa este valor.' })
   })

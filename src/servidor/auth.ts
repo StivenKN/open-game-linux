@@ -5,7 +5,7 @@
 // servidor/ejecutar.ts resolves the session once into the `Visitante` service.
 import { betterAuth } from 'better-auth'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
-import { Brand, Context, Effect, Option, Schema } from 'effect'
+import { Context, Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { Pool } from 'pg'
 import { NoAutenticado, NoEncontrado, SinPermiso } from '../dominio/fallos.ts'
@@ -40,32 +40,34 @@ const UsuarioDeSesion = Schema.Struct({
   activo: FilaUsuario.fields.activo,
 })
 
-/** The visitor behind a request's cookies. A session read failure is a defect, not a guest. */
+/**
+ * The visitor behind a request's cookies. A session read failure is a defect, not a guest, and so is
+ * a session user that no longer decodes (an unknown rol): that is schema drift, not a signed-out visitor.
+ */
 export const visitanteDe = (headers: Headers): Effect.Effect<Option.Option<Usuario>> =>
-  Effect.promise(() => auth.api.getSession({ headers })).pipe(
-    Effect.map((sesion) =>
-      Option.fromNullishOr(sesion).pipe(
-        Option.flatMap((s) => Schema.decodeUnknownOption(UsuarioDeSesion)(s.user)),
-        // 8.3 activo: a deactivated account keeps its contributions but can no longer act.
-        Option.filter((u) => u.activo),
-        Option.map((u): Usuario => ({ id: u.id, alias: u.name, rol: u.rol })),
-      ),
-    ),
-  )
+  Effect.gen(function* () {
+    const sesion = yield* Effect.promise(() => auth.api.getSession({ headers }))
+    if (sesion === null) return Option.none()
+    const u = yield* Effect.orDie(Schema.decodeUnknownEffect(UsuarioDeSesion)(sesion.user))
+    // 8.3 activo: a deactivated account keeps its contributions but can no longer act.
+    return u.activo ? Option.some({ id: u.id, alias: u.name, rol: u.rol }) : Option.none()
+  })
 
 export const exigirUsuario: Effect.Effect<Usuario, NoAutenticado, Visitante> = Effect.flatMap(Visitante, (visitante) =>
   Option.match(visitante, { onNone: () => Effect.fail(new NoAutenticado()), onSome: Effect.succeed }),
 )
 
+// Not exported, so no other module can name this key, and no cast is allowed: only exigirRevisor builds a Revisor.
+const revisor: unique symbol = Symbol('Revisor')
+
 /**
- * A Usuario proven to hold `revisor` or `administrador`. Only exigirRevisor mints it, so a program
- * taking a `Revisor` (decidir) cannot run for an unchecked account (8.9 reviewer role).
+ * A Usuario proven to hold `revisor` or `administrador`. A program taking a `Revisor` (decidir) cannot
+ * run for an unchecked account (8.9 reviewer role).
  */
-export type Revisor = Usuario & Brand.Brand<'Revisor'>
-const Revisor = Brand.nominal<Revisor>()
+export type Revisor = Usuario & { readonly [revisor]: true }
 
 export const exigirRevisor: Effect.Effect<Revisor, NoAutenticado | SinPermiso, Visitante> = Effect.flatMap(exigirUsuario, (u) =>
-  puedeRevisar[u.rol] ? Effect.succeed(Revisor(u)) : Effect.fail(new SinPermiso()),
+  puedeRevisar[u.rol] ? Effect.succeed({ ...u, [revisor]: true as const }) : Effect.fail(new SinPermiso()),
 )
 
 /**
@@ -74,15 +76,18 @@ export const exigirRevisor: Effect.Effect<Revisor, NoAutenticado | SinPermiso, V
  */
 export const dominioDemo = 'demo.opengame.test'
 
-const RolActual = Schema.Struct({ alias: FilaUsuario.fields.alias, rol: FilaUsuario.fields.rol })
+const RolCambiado = Schema.Array(Schema.Struct({ alias: FilaUsuario.fields.alias, antes: FilaUsuario.fields.rol }))
 
 /** Sets an account's role (scripts/rol.ts and the seed; there is no admin UI). `cambio` is false when it already had it. */
 export const asignarRol = (correo: string, rol: Rol) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const filas = yield* sql`SELECT alias, rol FROM usuario WHERE correo = lower(btrim(${correo}))`
-    const [actual] = yield* Schema.decodeUnknownEffect(Schema.Array(RolActual))(filas)
-    if (actual === undefined) return yield* Effect.fail(new NoEncontrado())
-    if (actual.rol !== rol) yield* sql`UPDATE usuario SET rol = ${rol} WHERE correo = lower(btrim(${correo}))`
-    return { alias: actual.alias, rol, cambio: actual.rol !== rol }
+    // One statement, so `cambio` stays right if two runs race, and an unchanged role writes nothing.
+    const filas = yield* sql`
+      WITH previo AS (SELECT id, alias, rol AS antes FROM usuario WHERE correo = lower(btrim(${correo})) FOR UPDATE),
+           cambio AS (UPDATE usuario u SET rol = ${rol} FROM previo WHERE u.id = previo.id AND previo.antes <> ${rol} RETURNING u.id)
+      SELECT alias, antes FROM previo`
+    const [fila] = yield* Schema.decodeUnknownEffect(RolCambiado)(filas)
+    if (fila === undefined) return yield* Effect.fail(new NoEncontrado())
+    return { alias: fila.alias, rol, cambio: fila.antes !== rol }
   })

@@ -9,7 +9,7 @@
 //
 // onSubmit rather than <form action>: React 19 resets an action form's fields after every action,
 // which would wipe what the user typed whenever we show an error.
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useRef, useState } from 'react'
 import { isNotFound, isRedirect, useRouter } from '@tanstack/react-router'
 import { Option, Result, Schema, SchemaIssue } from 'effect'
 import { reglas, type Regla, type Respuesta } from '../dominio/fallos.ts'
@@ -28,27 +28,50 @@ const Longitud = Schema.Struct({
   ]),
 })
 
-const formatear = SchemaIssue.makeFormatterStandardSchemaV1({
-  leafHook: (issue) => (issue._tag === 'MissingKey' ? 'Este campo es obligatorio.' : 'Revisa este valor.'),
-  // A check's own `message` annotation (Texto's 'Este campo es obligatorio.') wins over these.
-  checkHook: (issue) =>
-    SchemaIssue.defaultCheckHook(issue) ??
-    Option.match(Schema.decodeUnknownOption(Longitud)(issue.filter.annotations), {
-      onNone: () => 'Revisa este valor.',
-      onSome: ({ representation: r }) =>
-        r.id === 'effect/schema/isMaxLength' ? `Usa como máximo ${r.payload.maxLength} caracteres.` : `Usa al menos ${r.payload.minLength} caracteres.`,
-    }),
-})
+const revisa = 'Revisa este valor.'
+
+/** A failed check's text: its own `message` annotation (Texto's), else its length limit, else generic. */
+const mensajeDeCheck = (issue: SchemaIssue.Filter): string =>
+  SchemaIssue.defaultCheckHook(issue) ??
+  Option.match(Schema.decodeUnknownOption(Longitud)(issue.filter.annotations), {
+    onNone: () => revisa,
+    onSome: ({ representation: r }) =>
+      r.id === 'effect/schema/isMaxLength' ? `Usa como máximo ${r.payload.maxLength} caracteres.` : `Usa al menos ${r.payload.minLength} caracteres.`,
+  })
+
+/**
+ * Flattens an issue tree into Spanish messages with their paths. Effect's own formatter falls back to
+ * an English type dump for a union that matches no member (a bad `_tag`, a checkbox posting "on");
+ * here every node has a Spanish message. Such a union reports at its own name (`version_capa`).
+ */
+const aplanar = (issue: SchemaIssue.Issue, camino: ReadonlyArray<PropertyKey>): ReadonlyArray<readonly [ReadonlyArray<PropertyKey>, string]> => {
+  switch (issue._tag) {
+    case 'Pointer':
+      return aplanar(issue.issue, [...camino, ...issue.path])
+    case 'Encoding':
+      return aplanar(issue.issue, camino)
+    case 'Composite':
+      return issue.issues.flatMap((i) => aplanar(i, camino))
+    case 'AnyOf':
+      return issue.issues.length === 0 ? [[camino, revisa]] : issue.issues.flatMap((i) => aplanar(i, camino))
+    case 'Filter':
+      return issue.issue._tag === 'InvalidValue' ? [[camino, mensajeDeCheck(issue)]] : aplanar(issue.issue, camino)
+    case 'MissingKey':
+      return [[camino, 'Este campo es obligatorio.']]
+    default:
+      return [[camino, revisa]]
+  }
+}
 
 /** Rebuilds the bracket name a form input uses for this path: ['fallos', 0, 'detalle'] -> 'fallos[0][detalle]'. */
-const nombreDeCampo = (camino: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>): string => {
-  const [primero, ...resto] = camino.map((k) => String(typeof k === 'object' ? k.key : k))
+const nombreDeCampo = (camino: ReadonlyArray<PropertyKey>): string => {
+  const [primero, ...resto] = camino.map(String)
   return primero === undefined ? 'formulario' : primero + resto.map((k) => `[${k}]`).join('')
 }
 
 export const erroresDeIssue = (issue: SchemaIssue.Issue): Errores => {
   const errores: Record<string, string> = {}
-  for (const i of formatear(issue).issues) errores[nombreDeCampo(i.path ?? [])] ??= i.message
+  for (const [camino, mensaje] of aplanar(issue, [])) errores[nombreDeCampo(camino)] ??= mensaje
   return errores
 }
 
@@ -75,33 +98,46 @@ export function useAccion<T, E, A, F>(
   const router = useRouter()
   const [errores, setErrores] = useState<Errores>({})
   const [enviando, setEnviando] = useState(false)
+  // State lags a render behind, so a double click in one tick would pass a state check twice.
+  const enCurso = useRef(false)
+
+  /** The fn threw instead of answering: a control value from leer/accion, or a broken server. */
+  const alLanzar = async (e: unknown) => {
+    // leer/accion turn NoAutenticado into a redirect; outside a loader nobody else follows it.
+    if (isRedirect(e)) await router.navigate(router.resolveRedirect(e).options)
+    else if (isNotFound(e)) setErrores({ formulario: 'Lo que intentas modificar ya no existe o no tienes acceso.' })
+    else setErrores({ formulario: 'Algo falló de nuestro lado. Intenta de nuevo.' })
+  }
 
   const ejecutar = async (data: E) => {
-    setEnviando(true)
-    try {
-      const r = await fn({ data })
-      if (r.ok) {
-        setErrores({})
-        await manejo.alCompletar(r.valor)
-      } else setErrores(manejo.alFallar(r.fallo))
-    } catch (e) {
-      // leer/accion turn NoAutenticado into a redirect; outside a loader nobody else follows it.
-      if (isRedirect(e)) await router.navigate(router.resolveRedirect(e).options)
-      else if (isNotFound(e)) setErrores({ formulario: 'Lo que intentas modificar ya no existe o no tienes acceso.' })
-      else setErrores({ formulario: 'Algo falló de nuestro lado. Intenta de nuevo.' })
-    } finally {
-      setEnviando(false)
-    }
+    const r = await fn({ data }).then(
+      (respuesta) => respuesta,
+      async (e: unknown) => {
+        await alLanzar(e)
+        return null
+      },
+    )
+    if (r === null) return
+    // Outside the catch above: the write already committed, so a failing alCompletar must not invite a retry.
+    if (r.ok) {
+      setErrores({})
+      await manejo.alCompletar(r.valor)
+    } else setErrores(manejo.alFallar(r.fallo))
   }
 
   const enviar = (evento: FormEvent<HTMLFormElement>) => {
     evento.preventDefault()
-    if (enviando) return
+    if (enCurso.current) return
     // The submitter carries its own name/value (the review page's Aprobar/Rechazar buttons).
     const boton = evento.nativeEvent instanceof SubmitEvent ? evento.nativeEvent.submitter : null
     const leido = leerFormulario(esquema, new FormData(evento.currentTarget, boton))
-    if (Result.isFailure(leido)) setErrores(leido.failure)
-    else void ejecutar(leido.success)
+    if (Result.isFailure(leido)) return setErrores(leido.failure)
+    enCurso.current = true
+    setEnviando(true)
+    void ejecutar(leido.success).finally(() => {
+      enCurso.current = false
+      setEnviando(false)
+    })
   }
 
   return { enviar, errores, enviando }
