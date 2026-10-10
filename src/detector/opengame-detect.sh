@@ -13,15 +13,20 @@ APP_URL="${OPENGAME_URL:-__OPENGAME_URL__}"
 
 json_str() { # a JSON string, or null when empty
   if [ -z "${1:-}" ]; then printf 'null'; else
-    printf '"%s"' "$(printf '%s' "$1" | tr '\t' ' ' | tr -d '\n\r' | sed 's/\\/\\\\/g; s/"/\\"/g')"; fi
+    printf '"%s"' "$(printf '%s' "$1" | tr '\t' ' ' | tr -d '\000-\037\177' | sed 's/\\/\\\\/g; s/"/\\"/g')"; fi
 }
-json_num() { if [ -z "${1:-}" ]; then printf 'null'; else printf '%s' "$1"; fi; }
+json_num() { # a JSON integer, or null for anything else (nvidia-smi prints "[N/A]")
+  case "${1:-}" in ''|*[!0-9]*) printf 'null' ;; *) printf '%s' "$1" ;; esac
+}
 
 arquitectura=$(uname -m)
 version_sistema=$(uname -r)
 distro_nombre=$(. /etc/os-release 2>/dev/null; printf '%s' "${NAME:-}")
 distro_version=$(. /etc/os-release 2>/dev/null; printf '%s' "${VERSION_ID:-}")
+# x86 names the CPU in /proc/cpuinfo; ARM kernels often do not, while lscpu still does.
 cpu_modelo=$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2- | sed 's/^ *//')
+[ -z "$cpu_modelo" ] && command -v lscpu >/dev/null && cpu_modelo=$(lscpu 2>/dev/null | sed -n 's/^Model name: *//p' | head -1)
+[ -z "$cpu_modelo" ] && cpu_modelo=$(grep -m1 '^Hardware' /proc/cpuinfo 2>/dev/null | cut -d: -f2- | sed 's/^ *//')
 
 # Installed RAM from online memory blocks (16384 on a 16 GB machine). MemTotal is lower (kernel and
 # iGPU reservations) and would fail an exact "8 GB" minimum on an 8 GB laptop.
@@ -32,13 +37,16 @@ if [ -r /sys/devices/system/memory/block_size_bytes ]; then
 fi
 [ -z "$ram_mb" ] && ram_mb=$(awk '/MemTotal/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null)
 
-# GPU: the first DRM card with a PCI device. The kernel driver and PCI id come from sysfs, which every
-# distro has; the name needs lspci, so the server labels the PCI id when the name is missing.
+# GPU: the first DRM card with a PCI device (card1-HDMI-A-1 and the like are connectors, not cards).
+# The kernel driver and PCI id come from sysfs, which every distro has; the name needs lspci, so the
+# server labels the PCI id when the name is missing.
 gpu_modelo=""; gpu_pci_id=""; controlador=""; version_controlador=""; vram_mb=""; pci_slot=""
-for card in /sys/class/drm/card[0-9]; do
+for card in /sys/class/drm/card*; do
+  case "$card" in *-*) continue ;; esac
   [ -r "$card/device/uevent" ] || continue
-  controlador=$(sed -n 's/^DRIVER=//p' "$card/device/uevent")
   pci_slot=$(sed -n 's/^PCI_SLOT_NAME=//p' "$card/device/uevent")
+  [ -n "$pci_slot" ] || continue
+  controlador=$(sed -n 's/^DRIVER=//p' "$card/device/uevent")
   gpu_pci_id=$(sed -n 's/^PCI_ID=//p' "$card/device/uevent" | tr 'A-F' 'a-f')
   if [ -r "$card/device/mem_info_vram_total" ]; then # amdgpu
     vram_mb=$(( $(cat "$card/device/mem_info_vram_total") / 1048576 ))
