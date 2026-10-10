@@ -174,11 +174,11 @@ export const fichaJuego = (juegoId: JuegoId) =>
       execute: () => sql`SELECT id, codigo, descripcion FROM tipo_fallo`,
     })(undefined)
     const tipoPorCodigo = new Map(tiposFallo.map((t) => [t.codigo, t]))
-    // A new solution answers one fallo of one approved report (8.8): the newest report that saw it.
-    const masRecientes = [...pruebas].sort((a, b) => b.fecha_prueba.getTime() - a.fecha_prueba.getTime())
+    // A new solution answers one fallo of one approved report (8.8): the newest report that saw it
+    // (pruebasAprobadas orders by fecha_prueba DESC).
     const causas = resumen.fallos.map((f) => {
       const tipo = tipoPorCodigo.get(f.codigo)
-      const reporte = masRecientes.find((p) => p.fallos.includes(f.codigo))
+      const reporte = pruebas.find((p) => p.fallos.includes(f.codigo))
       return {
         ...f,
         descripcion: tipo?.descripcion ?? null,

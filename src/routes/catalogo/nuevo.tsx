@@ -53,7 +53,7 @@ function NuevoJuegoPagina() {
           {ediciones.map((clave, i) => (
             <div key={clave} className="fila campos-en-linea">
               <Campo errores={r.errores} nombre={`ediciones[${i}][lanzador_id]`} etiqueta="Lanzador">
-                {/* Each new row starts on a different launcher, so adding one is not a duplicate by default. */}
+                {/* Rows start on different launchers by position; a duplicate still comes back as edicion_repetida. */}
                 <select {...campo(r.errores, `ediciones[${i}][lanzador_id]`)} defaultValue={lanzadores[i % lanzadores.length]?.id}>
                   {lanzadores.map((l) => (
                     <option key={l.id} value={l.id}>

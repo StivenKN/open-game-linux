@@ -17,7 +17,7 @@ const suscribir = (aviso: () => void) => {
   }
 }
 
-// localStorage throws when the browser blocks storage; the checklist then simply does not persist.
+// localStorage throws when the browser blocks storage; the checklist then stays unchecked.
 const leer = (clave: string) => {
   try {
     return localStorage.getItem(clave)
