@@ -209,6 +209,17 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 - **`Revisor` is keyed by an unexported `unique symbol`**, not `Brand.nominal`, which any module could call.
 - **Placeholder routes** for `/diagnostico`, `/guias` and `/revision` keep the header's links typed until U4, U5 and U6 replace them.
 
+**U4** departs from the sketch as follows.
+
+- **Path ids decode in the route, not in the server fn.** Each `$id` route has `params.parse` built by `routes/-ids.ts`, which throws `notFound()` for anything but digits, so `/juegos/1.0` is not a second address for `/juegos/1`. A server fn validator failure renders the error page, not a 404. The server fns take the branded integer, and an unknown id still comes back as `NoEncontrado`.
+- **The ficha ships pending reports as a count only.** Section 8.9 makes only the alias, the approved result and its technical context public, so the ficha has no `pendientes` rows and no list of approved report cards. The matrix and the causes section show the approved evidence.
+- **The catalog search is lenient.** `validateSearch` drops a value that does not decode instead of failing the page, and reads a title the router parsed as a number (`?q=2`) back as text. router-core keeps the raw query keys in `search`, so `loaderDeps` decodes again and the page reads `useLoaderDeps()`.
+- **The four counters** are games with an approved report, approved reports, approved profiles, and distributions with an approved report.
+- **Display labels come from `servidor/consultas/etiquetas.ts`.** A layer reads "Proton 8.0-5 (Valve)", and a profile reads "título rN". The same file holds the `@demo.opengame.test` test that sets the `ejemplo` flag.
+- **The profile page names why it has no evaluation.** `evaluacion` is an `Evaluacion`, `'perfil_en_prueba'` or `'sin_diagnostico'`.
+- **Retired profiles and the evidence that used them.** An approved report keeps its profile's name in the matrix after the profile is retired, because the test ran with it. An approved solution that recommends a retired profile is hidden (8.9 "comprueba la vigencia").
+- **`tests/consultas.test.ts` writes approved rows with direct SQL.** U3 seeds no approved report, and the fronteras single-writer test scans `src/` and `scripts/` only. The rows satisfy the review-block CHECK and roll back with the test.
+
 ## Open questions and risks
 
 1. Does `Schema.fromFormData(Schema.toCodecStringTree(S))` decode the report form's nested shape (`fallos[0][tipo_fallo_id]`, the `version_capa[_tag]` union, a null `perfil_id`) at runtime? It typechecks. If not, U0 falls back to a controlled form object decoded with plain `Schema.decodeUnknownResult(S)`, and the hook signature stays the same.
