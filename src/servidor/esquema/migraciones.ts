@@ -14,9 +14,10 @@
 // | revisado_en >= creado_en                                     | DB CHECK *_revision_posterior             |
 // | fps => resolucion, calidad, metodo                           | DB CHECK reporte_fps_con_contexto         |
 // | Linux capture <=> distribucion_id; vulkan version only if si | DB CHECK                                  |
-// | capture immutable; equipo owner fixed                        | DB trigger og_inmutable                   |
-// | reviewed content never rewritten                             | DB trigger og_solo_revision               |
-// | profile steps/deps frozen once reviewed or used              | DB trigger og_perfil_congelado            |
+// | capture immutable                                            | DB trigger og_inmutable                   |
+// | equipo owner fixed once it has a capture                     | DB trigger og_propietario_fijo            |
+// | report / solution content never rewritten (frozen at birth)  | DB trigger og_solo_revision               |
+// | profile, its steps and deps frozen once reviewed or used     | DB trigger og_perfil_congelado            |
 // | solucion -> reporte_fallo                                    | DB composite FK solucion_fallo_fk         |
 // | report comparability (edition, layer, distro, arch, version) | app: dominio/aportes.ts discrepancias     |
 // |   (edition + layer also a composite FK backstop, same Regla) |   (+ DB reporte_perfil_fk)                |
@@ -28,7 +29,7 @@
 // |   approval preconditions                                     |                                           |
 // | only reviewers publish guides                                | no write path this delivery (seeded)      |
 // | public view hides retired rows                               | app: servidor/consultas (WHERE aprobado)  |
-import { Effect } from 'effect'
+import { Effect, Schema } from 'effect'
 import { Migrator, SqlClient } from 'effect/sql'
 import { PgMigrator } from '@effect/sql-pg'
 import { FamiliaCapa } from '../../dominio/aportes.ts'
@@ -36,7 +37,7 @@ import { Resultado } from '../../dominio/compatibilidad.ts'
 import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
 import { EstadoGuia, TipoGuia } from '../../dominio/guias.ts'
 import { type EstadoRevision, Rol } from '../../dominio/revision.ts'
-import { largo as L } from '../../dominio/tablas.ts'
+import { BloqueRevision, largo as L } from '../../dominio/tablas.ts'
 
 const ejecutar = (sentencias: ReadonlyArray<string>) =>
   Effect.gen(function* () {
@@ -81,10 +82,12 @@ const formaPorEstado = {
   retirado: revisado,
 } satisfies Record<EstadoRevision, string>
 
-const reglasRevision = (t: string) => [
+/** `congelar` guards the content columns: og_solo_revision freezes them from birth, og_perfil_contenido once reviewed or used. */
+const reglasRevision = (t: string, congelar: 'og_solo_revision' | 'og_perfil_contenido') => [
   check(t, 'bloque_revision', Object.entries(formaPorEstado).map(([estado, forma]) => `(estado_revision = '${estado}' AND ${forma})`).join(' OR ')),
   check(t, 'revision_posterior', 'revisado_en IS NULL OR revisado_en >= creado_en'),
-  `CREATE TRIGGER ${t}_solo_revision BEFORE UPDATE ON ${t} FOR EACH ROW EXECUTE FUNCTION og_solo_revision()`,
+  ...noVacio(t, 'evidencia_revision'),
+  `CREATE TRIGGER ${t}_contenido_congelado BEFORE UPDATE ON ${t} FOR EACH ROW EXECUTE FUNCTION ${congelar}()`,
 ]
 
 const id = 'id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY'
@@ -115,25 +118,47 @@ const funciones = [
      RAISE EXCEPTION '%: registro inmutable (id %)', TG_TABLE_NAME, OLD.id
        USING ERRCODE = 'check_violation', CONSTRAINT = 'og_inmutable';
    END $$`,
+  `CREATE FUNCTION og_contenido(fila jsonb) RETURNS jsonb LANGUAGE sql IMMUTABLE
+   AS $$ SELECT fila - ARRAY[${Object.keys(BloqueRevision.fields).map((c) => `'${c}'`).join(', ')}] $$`,
   `CREATE FUNCTION og_solo_revision() RETURNS trigger LANGUAGE plpgsql AS $$
-   DECLARE revision text[] := ARRAY['estado_revision','revisor_id','revisado_en','motivo_revision','evidencia_revision'];
    BEGIN
-     IF (to_jsonb(NEW) - revision) IS DISTINCT FROM (to_jsonb(OLD) - revision) THEN
+     IF og_contenido(to_jsonb(NEW)) IS DISTINCT FROM og_contenido(to_jsonb(OLD)) THEN
        RAISE EXCEPTION '%: el contenido no se reescribe; registre un aporte nuevo (id %)', TG_TABLE_NAME, OLD.id
          USING ERRCODE = 'check_violation', CONSTRAINT = 'og_solo_revision';
      END IF;
      RETURN NEW;
    END $$`,
-  // 8.9: a profile stops accepting content changes once reviewed or used by a report.
-  `CREATE FUNCTION og_perfil_congelado() RETURNS trigger LANGUAGE plpgsql AS $$
-   DECLARE pid integer := COALESCE(NEW.perfil_id, OLD.perfil_id);
+  // 8.5 / 8.9: a profile stops accepting content changes once reviewed or used by a report.
+  `CREATE FUNCTION og_perfil_fijo(pid integer) RETURNS boolean LANGUAGE plpgsql STABLE AS $$
    BEGIN
-     IF EXISTS (SELECT 1 FROM perfil_configuracion p WHERE p.id = pid AND p.estado_revision <> '${inicial}')
-        OR EXISTS (SELECT 1 FROM reporte r WHERE r.perfil_id = pid) THEN
-       RAISE EXCEPTION 'perfil %: revisión congelada; cree una revisión nueva', pid
+     RETURN EXISTS (SELECT 1 FROM perfil_configuracion p WHERE p.id = pid AND p.estado_revision <> '${inicial}')
+         OR EXISTS (SELECT 1 FROM reporte r WHERE r.perfil_id = pid);
+   END $$`,
+  `CREATE FUNCTION og_perfil_contenido() RETURNS trigger LANGUAGE plpgsql AS $$
+   BEGIN
+     IF og_contenido(to_jsonb(NEW)) IS DISTINCT FROM og_contenido(to_jsonb(OLD)) AND og_perfil_fijo(OLD.id) THEN
+       RAISE EXCEPTION 'perfil %: revisión congelada; cree una revisión nueva', OLD.id
+         USING ERRCODE = 'check_violation', CONSTRAINT = 'og_perfil_congelado';
+     END IF;
+     RETURN NEW;
+   END $$`,
+  // Steps and dependencies: OLD and NEW both, so an UPDATE cannot move a row out of a frozen profile.
+  `CREATE FUNCTION og_perfil_congelado() RETURNS trigger LANGUAGE plpgsql AS $$
+   BEGIN
+     IF og_perfil_fijo(OLD.perfil_id) OR og_perfil_fijo(NEW.perfil_id) THEN
+       RAISE EXCEPTION 'perfil %: revisión congelada; cree una revisión nueva', COALESCE(OLD.perfil_id, NEW.perfil_id)
          USING ERRCODE = 'check_violation', CONSTRAINT = 'og_perfil_congelado';
      END IF;
      RETURN COALESCE(NEW, OLD);
+   END $$`,
+  // 8.3 / 8.9: the owner may change until the equipo has a capture.
+  `CREATE FUNCTION og_propietario_fijo() RETURNS trigger LANGUAGE plpgsql AS $$
+   BEGIN
+     IF EXISTS (SELECT 1 FROM diagnostico d WHERE d.equipo_id = OLD.id) THEN
+       RAISE EXCEPTION 'equipo %: ya tiene diagnósticos; el propietario no cambia', OLD.id
+         USING ERRCODE = 'check_violation', CONSTRAINT = 'og_propietario_fijo';
+     END IF;
+     RETURN NEW;
    END $$`,
 ]
 
@@ -178,7 +203,7 @@ const diagnosticos = [
   `CREATE INDEX equipo_usuario_idx ON equipo (usuario_id)`,
   ...noVacio('equipo', 'alias'),
   `CREATE TRIGGER equipo_propietario_fijo BEFORE UPDATE OF usuario_id ON equipo FOR EACH ROW
-     WHEN (OLD.usuario_id IS DISTINCT FROM NEW.usuario_id) EXECUTE FUNCTION og_inmutable()`,
+     WHEN (OLD.usuario_id IS DISTINCT FROM NEW.usuario_id) EXECUTE FUNCTION og_propietario_fijo()`,
   `CREATE TABLE diagnostico (${id},
      equipo_id integer NOT NULL REFERENCES equipo(id) ON DELETE RESTRICT,
      capturado_en timestamptz NOT NULL,
@@ -227,7 +252,7 @@ const configuraciones = [
      CONSTRAINT perfil_configuracion_revision_uq UNIQUE (edicion_id, distribucion_id, version_capa_id, arquitectura, revision),
      CONSTRAINT perfil_configuracion_ref_reporte_uq UNIQUE (id, edicion_id, version_capa_id))`, // target of reporte_perfil_fk
   `CREATE INDEX perfil_configuracion_busqueda_idx ON perfil_configuracion (edicion_id, distribucion_id, estado_revision)`,
-  ...reglasRevision('perfil_configuracion'),
+  ...reglasRevision('perfil_configuracion', 'og_perfil_contenido'),
   ...noVacio('perfil_configuracion', 'arquitectura', 'titulo', 'version_juego_objetivo', 'version_vulkan_min', 'condicion_cpu', 'condicion_gpu', 'parametros_lanzamiento'),
   check('perfil_configuracion', 'revision_positiva', 'revision > 0'),
   check('perfil_configuracion', 'ram_min_positiva', 'ram_min_mb IS NULL OR ram_min_mb > 0'),
@@ -285,7 +310,7 @@ const resultados = [
   `CREATE INDEX reporte_perfil_idx ON reporte (perfil_id)`,
   `CREATE INDEX reporte_diagnostico_idx ON reporte (diagnostico_id)`,
   `CREATE INDEX reporte_edicion_estado_fecha_idx ON reporte (edicion_id, estado_revision, fecha_prueba)`,
-  ...reglasRevision('reporte'),
+  ...reglasRevision('reporte', 'og_solo_revision'),
   dominio('reporte', 'resultado', Resultado.literals),
   ...noVacio('reporte', 'version_juego', 'version_lanzador', 'resolucion', 'calidad_grafica', 'metodo_medicion', 'observaciones'),
   check('reporte', 'fps_no_negativo', 'fps_promedio IS NULL OR fps_promedio >= 0'),
@@ -310,7 +335,7 @@ const resultados = [
        REFERENCES reporte_fallo (reporte_id, tipo_fallo_id) ON DELETE RESTRICT)`,
   `CREATE INDEX solucion_fallo_idx ON solucion (reporte_id, tipo_fallo_id)`,
   `CREATE INDEX solucion_tipo_idx ON solucion (tipo_fallo_id)`,
-  ...reglasRevision('solucion'),
+  ...reglasRevision('solucion', 'og_solo_revision'),
   ...noVacio('solucion', 'titulo', 'instrucciones'),
 ]
 
@@ -346,5 +371,12 @@ export const migraciones = {
 /** Applies pending migrations; returns the ones it ran (`[]` when up to date). */
 export const migrar = PgMigrator.run({ loader: Migrator.fromRecord(migraciones) })
 
-/** Drops every table, the migrator's own included. Callers guard which database this may touch. */
+/** The name of the database the client is connected to, as the server reports it. */
+export const baseActual = Effect.gen(function* () {
+  const sql = yield* SqlClient.SqlClient
+  const [{ nombre }] = yield* Effect.flatMap(sql`SELECT current_database() AS nombre`, Schema.decodeUnknownEffect(Schema.Tuple([Schema.Struct({ nombre: Schema.String })])))
+  return nombre
+})
+
+/** Drops every table, the migrator's own included. Callers check `baseActual` first. */
 export const vaciarEsquema = ejecutar(['DROP SCHEMA public CASCADE', 'CREATE SCHEMA public'])
