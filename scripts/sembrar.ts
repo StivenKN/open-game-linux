@@ -1,21 +1,28 @@
-// `pnpm db:sembrar`: demo data, part 1. Lookups, games and editions, pending profiles with their steps and
-// dependencies, published guides, and the demo accounts. Part 2 (U5) replays the 8.10 walkthrough
-// through the app's writers and decidir(); this part writes no report and approves nothing.
+// `pnpm db:sembrar`: demo data. Part 1: lookups, games and editions, pending profiles with their steps
+// and dependencies, published guides, and the demo accounts. Part 2 replays the 8.10 walkthrough through
+// the app's own writers: Linux captures, reports (registrarReporte), a solution by a second user
+// (registrarSolucion), and every approval through decidir() as demo_revisor, so the rules admit the demo.
+// GTA V ends with "Resultados variables" like dominio/muestras.ts; ETS2 keeps only pending reports, and
+// the other games have none, so they honestly show "Sin evidencia verificada".
 //
 // Everything authored here belongs to a `@demo.opengame.test` account, which is what marks it as
 // "Datos de ejemplo" (servidor/auth.ts dominioDemo). Catalog rows (games, distributions, Proton
 // builds) are real facts, not claims, so they carry no mark.
 //
-// Idempotent: each row is looked up by its natural key and inserted only when missing, so a second
-// run changes nothing and says so. The rows go in one transaction, so a crash leaves no half seed.
+// Idempotent: each row is looked up by its natural key and inserted only when missing, and decidir()
+// answers `cambio: false` for a decision already applied, so a second run changes nothing and says so. The rows go in one transaction, so a crash leaves no half seed.
 // A profile's steps and dependencies are written only together with a new profile: once a profile is
 // used or reviewed, og_perfil_congelado refuses any write to them, even an ON CONFLICT DO NOTHING.
-import { Effect, Record, Schema } from 'effect'
+import { Effect, Option, Record, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
+import { NuevaSolucion, NuevoReporte } from '../src/dominio/aportes.ts'
 import type { TipoGuia } from '../src/dominio/guias.ts'
-import type { FamiliaCapa } from '../src/dominio/literales.ts'
-import type { Rol } from '../src/dominio/revision.ts'
-import { asignarRol, auth, dominioDemo } from '../src/servidor/auth.ts'
+import { UsuarioId } from '../src/dominio/ids.ts'
+import { exigeFallo, type FamiliaCapa, type Resultado } from '../src/dominio/literales.ts'
+import { AporteRef, Decision, type Rol } from '../src/dominio/revision.ts'
+import { registrarReporte, registrarSolucion } from '../src/servidor/aportes/aportes.ts'
+import { decidir } from '../src/servidor/aportes/revision.ts'
+import { asignarRol, auth, dominioDemo, Visitante } from '../src/servidor/auth.ts'
 import { PgLive } from '../src/servidor/runtime.ts'
 
 /** Shared by every demo account, and printed at the end so the team can sign in. */
@@ -262,6 +269,152 @@ const guias: ReadonlyArray<{ tipo: TipoGuia; distribucion: keyof typeof distribu
 
 type Valor = string | number | boolean | null
 
+// ------------------------------------------------------------------ part 2: the 8.10 walkthrough
+
+/** A profile is named by its environment; part 2 points reports at the part 1 profiles this way. */
+const clavePerfil = (p: Pick<Perfil, 'edicion' | 'distribucion' | 'capa'>) => `${p.edicion.join('/')}|${p.distribucion}|${p.capa}`
+
+/** One Linux capture per demo machine, with plausible hardware. Equipos are named by owner and alias. */
+const equipos = {
+  anaPortatil: {
+    dueno: 'demo_ana',
+    alias: 'Portátil de Ana',
+    distribucion: 'mint',
+    diagnostico: {
+      capturado_en: '2026-07-01T18:00:00Z',
+      version_sistema: '6.8.0-45-generic',
+      cpu_modelo: 'AMD Ryzen 5 5600H',
+      gpu_modelo: 'NVIDIA GeForce RTX 3050 Laptop GPU',
+      ram_mb: 16384,
+      vram_mb: 4096,
+      controlador: 'nvidia',
+      version_controlador: '550.107.02',
+      version_vulkan: '1.3.280',
+    },
+  },
+  anaTorre: {
+    dueno: 'demo_ana',
+    alias: 'Torre de Ana',
+    distribucion: 'fedora',
+    diagnostico: {
+      capturado_en: '2026-09-20T18:00:00Z',
+      version_sistema: '6.10.6-200.fc40.x86_64',
+      cpu_modelo: 'AMD Ryzen 7 5700X',
+      gpu_modelo: 'AMD Radeon RX 6600',
+      ram_mb: 32768,
+      vram_mb: 8192,
+      controlador: 'amdgpu',
+      version_controlador: 'Mesa 24.1.7',
+      version_vulkan: '1.3.278',
+    },
+  },
+  brunoPc: {
+    dueno: 'demo_bruno',
+    alias: 'PC de Bruno',
+    distribucion: 'arch',
+    diagnostico: {
+      capturado_en: '2026-08-01T18:00:00Z',
+      version_sistema: '6.10.3-arch1-1',
+      cpu_modelo: 'Intel Core i5-12400F',
+      gpu_modelo: 'NVIDIA GeForce RTX 3060',
+      ram_mb: 16384,
+      vram_mb: 12288,
+      controlador: 'nvidia',
+      version_controlador: '560.35.03',
+      version_vulkan: '1.3.289',
+    },
+  },
+} as const satisfies Record<string, { dueno: Cuenta; alias: string; distribucion: keyof typeof distribuciones; diagnostico: Readonly<Record<string, Valor>> }>
+
+type ReporteDemo = {
+  equipo: keyof typeof equipos
+  edicion: Edicion
+  capa: keyof typeof capas
+  /** Follows the part 1 profile for this edition, distro and layer. */
+  conPerfil: boolean
+  version_juego: string
+  fecha_prueba: string
+  resultado: Resultado
+  medicion: { fps_promedio: number; resolucion: string; calidad_grafica: string; metodo_medicion: string } | null
+  fallos: ReadonlyArray<readonly [keyof typeof tiposFallo, string]>
+  observaciones: string
+  aprobar: boolean
+}
+
+/** dominio/muestras.ts as real rows: four approved GTA V results in three environments, one pending. */
+const reportes: ReadonlyArray<ReporteDemo> = [
+  {
+    equipo: 'anaPortatil', edicion: ['gta5', 'steam'], capa: 'proton8', conPerfil: true, version_juego: '1.0.3179',
+    fecha_prueba: '2026-09-28T20:00:00Z', resultado: 'funciona',
+    medicion: { fps_promedio: 54, resolucion: '1280x720', calidad_grafica: 'Bajo', metodo_medicion: 'MangoHud · misión Prólogo · 5 min' },
+    fallos: [], observaciones: 'Seguí el perfil al pie de la letra. Historia y GTA Online sin cierres en dos horas.', aprobar: true,
+  },
+  {
+    equipo: 'anaPortatil', edicion: ['gta5', 'steam'], capa: 'proton8', conPerfil: true, version_juego: '1.0.3179',
+    fecha_prueba: '2026-09-14T20:00:00Z', resultado: 'funciona', medicion: null,
+    fallos: [], observaciones: 'Primera prueba con el perfil. Sin medir FPS; se juega fluido en gráficos bajos.', aprobar: true,
+  },
+  {
+    equipo: 'brunoPc', edicion: ['gta5', 'epic'], capa: 'ge94', conPerfil: false, version_juego: '1.0.3179',
+    fecha_prueba: '2026-09-02T21:00:00Z', resultado: 'funciona_con_ajustes',
+    medicion: { fps_promedio: 60, resolucion: '1920x1080', calidad_grafica: 'Medio', metodo_medicion: 'MangoHud · conducción en ciudad · 10 min' },
+    fallos: [], observaciones: 'Desde Heroic. Hubo que desactivar la superposición de Epic para que el juego pasara del menú.', aprobar: true,
+  },
+  {
+    equipo: 'anaTorre', edicion: ['gta5', 'steam'], capa: 'proton9', conPerfil: false, version_juego: '1.0.3258',
+    fecha_prueba: '2026-10-02T19:00:00Z', resultado: 'falla_en_ejecucion', medicion: null,
+    fallos: [['lanzador', 'El Rockstar Games Launcher se queda en «Actualizando» y se cierra tras unos minutos de juego.']],
+    observaciones: 'Tras la actualización 1.0.3258 el lanzador corta la partida a los pocos minutos.', aprobar: true,
+  },
+  {
+    equipo: 'brunoPc', edicion: ['gta5', 'steam'], capa: 'ge94', conPerfil: false, version_juego: '1.0.3258',
+    fecha_prueba: '2026-10-05T21:00:00Z', resultado: 'funciona_con_ajustes', medicion: null,
+    fallos: [], observaciones: 'Con GE-Proton 9-4 y el argumento -nobattleye funciona la historia; Online no probado.', aprobar: false,
+  },
+  {
+    equipo: 'anaPortatil', edicion: ['valorant', 'riot'], capa: 'wine9', conPerfil: false, version_juego: '9.07',
+    fecha_prueba: '2026-07-11T20:00:00Z', resultado: 'no_inicia', medicion: null,
+    fallos: [['anti_cheat', 'Vanguard exige su controlador de kernel de Windows y el cliente no deja entrar.']],
+    observaciones: 'El cliente de Riot se instala, pero Vanguard bloquea el juego antes del menú.', aprobar: true,
+  },
+  {
+    equipo: 'brunoPc', edicion: ['valorant', 'riot'], capa: 'ge94', conPerfil: false, version_juego: '9.07',
+    fecha_prueba: '2026-08-03T21:00:00Z', resultado: 'no_inicia', medicion: null,
+    fallos: [['anti_cheat', 'Vanguard no arranca fuera de Windows; el juego muestra el error VAN 1067.']],
+    observaciones: 'Mismo bloqueo con GE-Proton: el anti-trampas no admite Linux.', aprobar: true,
+  },
+  {
+    equipo: 'anaPortatil', edicion: ['ets2', 'steam'], capa: 'nativo', conPerfil: true, version_juego: '1.50.1.2s',
+    fecha_prueba: '2026-09-10T20:00:00Z', resultado: 'funciona', medicion: null,
+    fallos: [], observaciones: 'Versión nativa, sin herramienta de compatibilidad. Una hora de ruta sin problemas.', aprobar: false,
+  },
+  {
+    equipo: 'brunoPc', edicion: ['ets2', 'steam'], capa: 'nativo', conPerfil: false, version_juego: '1.50.1.2s',
+    fecha_prueba: '2026-09-12T21:00:00Z', resultado: 'funciona_con_ajustes', medicion: null,
+    fallos: [], observaciones: 'Funciona nativo; el volante necesitó configurar los ejes a mano.', aprobar: false,
+  },
+]
+
+/** demo_bruno answers the launcher failure on Ana's Fedora tower (8.10: "otro usuario puede aportar una solución"). */
+const solucionDemo = {
+  reporte: 3,
+  tipoFallo: 'lanzador',
+  titulo: 'Reinstalar el Rockstar Games Launcher dentro del prefijo de Proton',
+  instrucciones: [
+    '1. Cierra Steam y borra la carpeta del lanzador dentro del prefijo: steamapps/compatdata/271590/pfx/drive_c/Program Files/Rockstar Games/Launcher.',
+    '2. Abre el juego desde Steam: el lanzador se vuelve a instalar solo.',
+    '3. Inicia sesión y espera a que termine de actualizar antes de entrar al juego.',
+  ].join('\n'),
+} as const satisfies { reporte: number; tipoFallo: keyof typeof tiposFallo; titulo: string; instrucciones: string }
+
+/** Every seeded approval says it is demo data: nothing here is a real test run (open decision 3). */
+const aprobacionDemo = (que: string) =>
+  Schema.decodeUnknownSync(Decision)({
+    _tag: 'Aprobar',
+    motivo: `${que} coherente con su entorno; aprobado para la demostración.`,
+    evidencia: 'Datos de ejemplo: aporte sembrado por pnpm db:sembrar en una cuenta demo, no una prueba real.',
+  })
+
 const ConId = Schema.Array(Schema.Struct({ id: Schema.Int }))
 const ConIdTexto = Schema.Array(Schema.Struct({ id: Schema.String }))
 
@@ -315,7 +468,8 @@ const programa = Effect.gen(function* () {
       const capa = new Map<keyof typeof capas, number>()
       for (const [k, c] of Record.toEntries(capas)) capa.set(k, yield* idDe('version_capa', c))
 
-      for (const [codigo, descripcion] of Record.toEntries(tiposFallo)) yield* idDe('tipo_fallo', { codigo }, { descripcion })
+      const tipoFallo = new Map<keyof typeof tiposFallo, number>()
+      for (const [codigo, descripcion] of Record.toEntries(tiposFallo)) tipoFallo.set(codigo, yield* idDe('tipo_fallo', { codigo }, { descripcion }))
 
       const dependencia = new Map<keyof typeof dependencias, number>()
       for (const [k, d] of Record.toEntries(dependencias))
@@ -333,6 +487,7 @@ const programa = Effect.gen(function* () {
         }
       }
 
+      const perfilDe = new Map<string, number>()
       for (const p of perfiles) {
         const perfil = yield* asegurar(
           'perfil_configuracion',
@@ -353,6 +508,7 @@ const programa = Effect.gen(function* () {
             parametros_lanzamiento: p.parametros_lanzamiento,
           },
         )
+        perfilDe.set(clavePerfil(p), perfil.id)
         if (!perfil.nuevo) continue
         for (const [i, [titulo, instruccion]] of p.pasos.entries()) {
           yield* sql`INSERT INTO paso_configuracion ${sql.insert({ perfil_id: perfil.id, orden: i + 1, titulo, instruccion })}`
@@ -378,6 +534,84 @@ const programa = Effect.gen(function* () {
             estado: 'publicada',
           },
         )
+
+      // ---------------------------------------------------------------- part 2
+      const como = <A, E, R>(alias: Cuenta, programa: Effect.Effect<A, E, R>) =>
+        Effect.flatMap(de(usuario, alias), (id) =>
+          Effect.provideService(programa, Visitante, Option.some({ id: Schema.decodeSync(UsuarioId)(id), alias, rol: cuentas[alias] })),
+        )
+
+      // Raw SQL because the capture writer (U6, servidor/aportes/diagnostico.ts) does not exist yet.
+      // TODO(U6 integration): write these through registrarDiagnostico instead.
+      const diagnosticoDe = new Map<keyof typeof equipos, number>()
+      for (const [k, eq] of Record.toEntries(equipos)) {
+        const equipo_id = yield* idDe('equipo', { usuario_id: yield* de(usuario, eq.dueno), alias: eq.alias })
+        const { capturado_en, ...captura } = eq.diagnostico
+        const distribucion_id = yield* de(distribucion, eq.distribucion)
+        diagnosticoDe.set(
+          k,
+          yield* idDe('diagnostico', { equipo_id, capturado_en }, { ...captura, sistema: 'Linux', distribucion_id, arquitectura: 'x86_64', soporte_vulkan: 'si' }),
+        )
+      }
+
+      const reporteDe = new Map<number, number>()
+      for (const [i, r] of reportes.entries()) {
+        const eq = equipos[r.equipo]
+        const diagnostico_id = yield* de(diagnosticoDe, r.equipo)
+        const edicion_id = yield* de(edicion, r.edicion.join('/'))
+        // A report has no natural key; its capture, edition and test time identify it well enough here.
+        const [existente] = yield* Schema.decodeUnknownEffect(ConId)(
+          yield* sql`SELECT id FROM reporte WHERE diagnostico_id = ${diagnostico_id} AND edicion_id = ${edicion_id} AND fecha_prueba = ${r.fecha_prueba}`,
+        )
+        if (existente !== undefined) {
+          reporteDe.set(i, existente.id)
+          continue
+        }
+        const fallos = []
+        for (const [codigo, detalle] of r.fallos) fallos.push({ tipo_fallo_id: yield* de(tipoFallo, codigo), detalle })
+        const nuevo = yield* Schema.decodeUnknownEffect(NuevoReporte)({
+          edicion_id,
+          diagnostico_id,
+          version_capa: { _tag: 'existente', id: yield* de(capa, r.capa) },
+          perfil_id: r.conPerfil ? yield* de(perfilDe, clavePerfil({ edicion: r.edicion, distribucion: eq.distribucion, capa: r.capa })) : null,
+          version_juego: r.version_juego,
+          version_lanzador: null,
+          fecha_prueba: r.fecha_prueba,
+          resultado: r.resultado,
+          medicion: r.medicion,
+          fallos,
+          observaciones: r.observaciones,
+        })
+        reporteDe.set(i, (yield* como(eq.dueno, registrarReporte(nuevo))).id)
+        contar('reporte')
+      }
+
+      const sol = solucionDemo
+      const reporte_id = yield* de(reporteDe, sol.reporte)
+      const tipo_fallo_id = yield* de(tipoFallo, sol.tipoFallo)
+      const [solucionExistente] = yield* Schema.decodeUnknownEffect(ConId)(
+        yield* sql`SELECT id FROM solucion WHERE reporte_id = ${reporte_id} AND tipo_fallo_id = ${tipo_fallo_id} AND titulo = ${sol.titulo}`,
+      )
+      let solucion_id = solucionExistente?.id
+      if (solucion_id === undefined) {
+        const nueva = yield* Schema.decodeUnknownEffect(NuevaSolucion)({ reporte_id, tipo_fallo_id, perfil_id: null, titulo: sol.titulo, instrucciones: sol.instrucciones })
+        solucion_id = (yield* como('demo_bruno', registrarSolucion(nueva))).id
+        contar('solucion')
+      }
+
+      // Approvals, in the order 8.9 allows: reports, then the profiles they prove, then the solution.
+      const aprobar = (ref: { _tag: AporteRef['_tag']; id: number }, que: string) =>
+        Effect.gen(function* () {
+          const { cambio } = yield* como('demo_revisor', decidir(yield* Schema.decodeUnknownEffect(AporteRef)(ref), aprobacionDemo(que)))
+          if (cambio) contar(`aprobación de ${ref._tag}`)
+        })
+      for (const [i, r] of reportes.entries()) if (r.aprobar) yield* aprobar({ _tag: 'reporte', id: yield* de(reporteDe, i) }, 'Reporte')
+      const probados = new Set<number>()
+      for (const r of reportes)
+        if (r.aprobar && r.conPerfil && !exigeFallo[r.resultado])
+          probados.add(yield* de(perfilDe, clavePerfil({ edicion: r.edicion, distribucion: equipos[r.equipo].distribucion, capa: r.capa })))
+      for (const id of probados) yield* aprobar({ _tag: 'perfil', id }, 'Perfil con un reporte funcional aprobado,')
+      yield* aprobar({ _tag: 'solucion', id: solucion_id }, 'Solución')
     }),
   )
 
