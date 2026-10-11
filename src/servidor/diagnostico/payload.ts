@@ -8,6 +8,7 @@
 import { Effect, Result, Schema, SchemaIssue } from 'effect'
 import { Captura, type EntradaDiagnostico } from '../../dominio/aportes.ts'
 import { PayloadInvalido } from '../../dominio/fallos.ts'
+import { SoporteVulkan } from '../../dominio/evaluacion.ts'
 import { Diagnostico, Distribucion } from '../../dominio/tablas.ts'
 
 export const VERSION_ESQUEMA = 1
@@ -27,7 +28,7 @@ const PayloadV1 = Schema.Struct({
   vram_mb: Schema.NullOr(Schema.Int),
   controlador: Schema.NullOr(Schema.String),
   version_controlador: Schema.NullOr(Schema.String),
-  soporte_vulkan: Schema.Literals(['si', 'no', 'desconocido']),
+  soporte_vulkan: SoporteVulkan,
   version_vulkan: Schema.NullOr(Schema.String),
 })
 

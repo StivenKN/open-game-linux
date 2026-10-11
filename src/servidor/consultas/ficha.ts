@@ -6,7 +6,7 @@ import { enDistribucion, PruebaAprobada, resumir } from '../../dominio/compatibi
 import { capacidades, condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
 import { NoEncontrado } from '../../dominio/fallos.ts'
 import { JuegoId, UsuarioId } from '../../dominio/ids.ts'
-import { EstadoRevision } from '../../dominio/revision.ts'
+import { EstadoRevision, estadosVigentes } from '../../dominio/revision.ts'
 import { Diagnostico, EdicionJuego, Equipo, Juego, Lanzador, PerfilConfiguracion, Solucion, TipoFallo } from '../../dominio/tablas.ts'
 import { Visitante } from '../auth.ts'
 import { filas } from '../filas.ts'
@@ -88,7 +88,7 @@ const FilaPerfil = PerfilConfiguracion.mapFields(
   Struct.pick(['id', 'titulo', 'revision', 'distribucion_id', 'arquitectura', 'ram_min_mb', 'vram_min_mb', 'requiere_vulkan', 'version_vulkan_min']),
 ).mapFields(
   Struct.assign({
-    estado_revision: EstadoRevision.pick(['aprobado', 'pendiente']),
+    estado_revision: EstadoRevision.pick(estadosVigentes),
     lanzador: Schema.String,
     distribucion: Schema.String,
     capa: Schema.String,
@@ -149,7 +149,7 @@ export const fichaJuego = (juegoId: JuegoId) =>
         JOIN distribucion dist ON dist.id = p.distribucion_id
         JOIN version_capa vc ON vc.id = p.version_capa_id
         JOIN usuario u ON u.id = p.autor_id
-        WHERE e.juego_id = ${id} AND p.estado_revision IN ('aprobado', 'pendiente')
+        WHERE e.juego_id = ${id} AND p.estado_revision IN ${sql.in(estadosVigentes)}
         ORDER BY p.estado_revision = 'aprobado' DESC, p.titulo, p.revision DESC`,
     })(juegoId)
 

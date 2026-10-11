@@ -5,7 +5,7 @@ import { SqlClient, SqlSchema } from 'effect/sql'
 import { capacidades, condiciones, evaluar } from '../../dominio/evaluacion.ts'
 import { NoEncontrado } from '../../dominio/fallos.ts'
 import { PerfilId } from '../../dominio/ids.ts'
-import { EstadoRevision } from '../../dominio/revision.ts'
+import { EstadoRevision, estadosVigentes } from '../../dominio/revision.ts'
 import { Dependencia, Juego, PasoConfiguracion, PerfilConfiguracion, PerfilDependencia } from '../../dominio/tablas.ts'
 import { esDemo, etiquetaCapa, etiquetaDistribucion } from './etiquetas.ts'
 import { diagnosticoDelVisitante } from './ficha.ts'
@@ -28,7 +28,7 @@ const FilaPerfil = PerfilConfiguracion.mapFields(
   ]),
 ).mapFields(
   Struct.assign({
-    estado_revision: EstadoRevision.pick(['aprobado', 'pendiente']),
+    estado_revision: EstadoRevision.pick(estadosVigentes),
     juego_id: Juego.fields.id,
     juego: Juego.fields.titulo,
     lanzador: Schema.String,
@@ -69,7 +69,7 @@ export const perfil = (id: PerfilId) =>
         JOIN distribucion dist ON dist.id = p.distribucion_id
         JOIN version_capa vc ON vc.id = p.version_capa_id
         JOIN usuario u ON u.id = p.autor_id
-        WHERE p.id = ${id} AND p.estado_revision IN ('aprobado', 'pendiente')`,
+        WHERE p.id = ${id} AND p.estado_revision IN ${sql.in(estadosVigentes)}`,
     })(id)
     if (Option.isNone(fila)) return yield* new NoEncontrado()
     const p = fila.value
