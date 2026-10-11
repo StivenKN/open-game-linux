@@ -64,7 +64,7 @@ function Perfil() {
           OpenGame no descarga ni ejecuta nada. Sigue los pasos tú mismo; los comandos se copian tal cual.
         </p>
         <p>
-          <Link to="/juegos/$juegoId/reportar" params={{ juegoId: String(p.juego_id) }} search={{ perfil: p.id }} className="boton">
+          <Link to="/juegos/$juegoId/reportar" params={{ juegoId: p.juego_id }} search={{ perfil: p.id }} className="boton">
             Reportar resultado con este perfil
           </Link>
         </p>

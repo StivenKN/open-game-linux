@@ -50,7 +50,7 @@ function Diagnostico() {
                 <ul className="pila">
                   {e.diagnosticos.map((d) => (
                     <li key={d.id}>
-                      <Link to="/diagnosticos/$diagnosticoId" params={{ diagnosticoId: String(d.id) }}>
+                      <Link to="/diagnosticos/$diagnosticoId" params={{ diagnosticoId: d.id }}>
                         {momento(d.capturado_en)}
                       </Link>{' '}
                       <span className="pequeno tenue dato">

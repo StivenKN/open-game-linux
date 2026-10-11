@@ -35,10 +35,6 @@ export type GuiaId = typeof GuiaId.Type
 export const UsuarioId = Schema.String.pipe(Schema.brand('UsuarioId'))
 export type UsuarioId = typeof UsuarioId.Type
 
-/** Route params arrive as text. `/juegos/abc` fails here and the route renders notFound. */
-export const IdDesdeTexto = <T extends number>(s: Schema.Codec<T, number>) =>
-  Schema.NumberFromString.pipe(Schema.decodeTo(s))
-
 /**
  * 8.9 "las cadenas obligatorias no admiten texto vacío tras eliminar espacios exteriores".
  * Trims on decode, then rejects empty. The DB CHECK `nullif(btrim(x),'') IS NOT NULL` is the backstop.

@@ -7,16 +7,20 @@ import { useState } from 'react'
 import { discrepancias, NuevoReporte } from '../../dominio/aportes.ts'
 import { type Codificado, discrepanciasPerfil, type PerfilNoComparable, type ReglaIncumplida } from '../../dominio/fallos.ts'
 import { FamiliaCapa, exigeFallo, Resultado } from '../../dominio/literales.ts'
-import { PerfilId } from '../../dominio/ids.ts'
+import { JuegoId, PerfilId } from '../../dominio/ids.ts'
 import { opcionesReporteFn, registrarReporteFn } from '../../fns/aportes.ts'
 import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
 import { momento } from '../../ui/formato.ts'
 import { Campo, campo, GrupoOpcional, nulo } from '../../ui/formulario.tsx'
 import { erroresDeRegla, type Errores, useAccion } from '../../ui/useAccion.ts'
 import { estadoRevision, resultado as etiquetaResultado, tipoFallo } from '../../ui/vocabulario.ts'
+import { idDeRuta } from '../-ids.ts'
 import { volverAqui } from '../-volver.ts'
 
+const juegoId = idDeRuta(JuegoId)
+
 export const Route = createFileRoute('/juegos/$juegoId_/reportar')({
+  params: { parse: (p) => ({ juegoId: juegoId(p.juegoId) }), stringify: (p) => ({ juegoId: String(p.juegoId) }) },
   // The router already parses `?perfil=7` into a number.
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ perfil: Schema.optionalKey(PerfilId) })),
   beforeLoad: ({ context, location }) => {

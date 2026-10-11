@@ -3,7 +3,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useState } from 'react'
 import { NuevaSolucion } from '../../dominio/aportes.ts'
-import { TipoFalloId } from '../../dominio/ids.ts'
+import { ReporteId, TipoFalloId } from '../../dominio/ids.ts'
 import { opcionesSolucionFn, registrarSolucionFn } from '../../fns/aportes.ts'
 import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
 import { momento } from '../../ui/formato.ts'
@@ -11,9 +11,13 @@ import { Campo, campo, nulo } from '../../ui/formulario.tsx'
 import { Insignia } from '../../ui/Insignia.tsx'
 import { erroresDeRegla, useAccion } from '../../ui/useAccion.ts'
 import { estadoRevision, resultado, tipoFallo } from '../../ui/vocabulario.ts'
+import { idDeRuta } from '../-ids.ts'
 import { volverAqui } from '../-volver.ts'
 
+const reporteId = idDeRuta(ReporteId)
+
 export const Route = createFileRoute('/reportes/$reporteId/solucion')({
+  params: { parse: (p) => ({ reporteId: reporteId(p.reporteId) }), stringify: (p) => ({ reporteId: String(p.reporteId) }) },
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipoFallo: Schema.optionalKey(TipoFalloId) })),
   beforeLoad: ({ context, location }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })

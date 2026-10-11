@@ -45,7 +45,7 @@ function Ficha() {
             funcione en cualquier equipo.
           </p>
           <p>
-            <Link to="/juegos/$juegoId/reportar" params={{ juegoId: String(juego.id) }} className="boton">
+            <Link to="/juegos/$juegoId/reportar" params={{ juegoId: juego.id }} className="boton">
               Reportar un resultado
             </Link>
           </p>
@@ -136,7 +136,7 @@ function Ficha() {
                   <p className="pequeno">
                     <Link
                       to="/reportes/$reporteId/solucion"
-                      params={{ reporteId: String(c.responder.reporte_id) }}
+                      params={{ reporteId: c.responder.reporte_id }}
                       search={{ tipoFallo: c.responder.tipo_fallo_id }}
                     >
                       Proponer una solución

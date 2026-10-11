@@ -7,6 +7,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { Option, Schema } from 'effect'
 import { useEffect, useState } from 'react'
 import { EquipoDestino } from '../../dominio/aportes.ts'
+import type { DiagnosticoId } from '../../dominio/ids.ts'
 import { evaluarDiagnosticoFn, guardarDiagnosticoFn, misEquiposFn } from '../../fns/diagnostico.ts'
 import { MatrizDiagnostico } from '../../ui/diagnostico/MatrizDiagnostico.tsx'
 import { ResumenCaptura } from '../../ui/diagnostico/ResumenCaptura.tsx'
@@ -87,7 +88,7 @@ function Importar() {
 }
 
 const Destino = Schema.Struct({ equipo: EquipoDestino })
-type Guardado = { readonly id: number; readonly nuevo: boolean }
+type Guardado = { readonly id: DiagnosticoId; readonly nuevo: boolean }
 
 /** "Guardar en mi equipo": needs an account; a guest goes to sign in and comes back to this page. */
 function Guardar({ entrada }: { entrada: Entrada }) {
@@ -159,7 +160,7 @@ function Guardar({ entrada }: { entrada: Entrada }) {
       {guardado && (
         <p role="status" className="pequeno">
           {guardado.nuevo ? 'Guardado.' : 'Ya estaba guardado; no se creó una copia.'}{' '}
-          <Link to="/diagnosticos/$diagnosticoId" params={{ diagnosticoId: String(guardado.id) }}>
+          <Link to="/diagnosticos/$diagnosticoId" params={{ diagnosticoId: guardado.id }}>
             Ver el diagnóstico guardado
           </Link>
         </p>
