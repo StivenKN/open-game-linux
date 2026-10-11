@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { ErrorCampo, idError } from '../ui/ErrorCampo.tsx'
+import { ErrorCampo } from '../ui/ErrorCampo.tsx'
+import { campo } from '../ui/formulario.tsx'
 import { useAccion } from '../ui/useAccion.ts'
 import { erroresDeCuenta, Registro, registrar } from './-cuenta.ts'
 import { Volver } from './-volver.ts'
@@ -27,27 +28,13 @@ function CrearCuenta() {
       <form className="tarjeta formulario" {...r.formulario}>
         <ErrorCampo errores={r.errores} campo="formulario" />
         <label htmlFor="alias">Alias</label>
-        <input id="alias" name="alias" autoComplete="nickname" aria-invalid={r.errores.alias !== undefined} aria-describedby={idError('alias')} />
+        <input {...campo(r.errores, 'alias')} autoComplete="nickname" />
         <ErrorCampo errores={r.errores} campo="alias" />
         <label htmlFor="correo">Correo</label>
-        <input
-          id="correo"
-          name="correo"
-          type="email"
-          autoComplete="email"
-          aria-invalid={r.errores.correo !== undefined}
-          aria-describedby={idError('correo')}
-        />
+        <input {...campo(r.errores, 'correo')} type="email" autoComplete="email" />
         <ErrorCampo errores={r.errores} campo="correo" />
         <label htmlFor="contrasena">Contraseña</label>
-        <input
-          id="contrasena"
-          name="contrasena"
-          type="password"
-          autoComplete="new-password"
-          aria-invalid={r.errores.contrasena !== undefined}
-          aria-describedby={idError('contrasena')}
-        />
+        <input {...campo(r.errores, 'contrasena')} type="password" autoComplete="new-password" />
         <ErrorCampo errores={r.errores} campo="contrasena" />
         <button type="submit" disabled={r.enviando}>
           {r.enviando ? 'Creando cuenta…' : 'Crear cuenta'}

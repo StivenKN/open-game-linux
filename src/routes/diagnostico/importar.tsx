@@ -11,7 +11,8 @@ import type { DiagnosticoId } from '../../dominio/ids.ts'
 import { evaluarDiagnosticoFn, guardarDiagnosticoFn, misEquiposFn } from '../../fns/diagnostico.ts'
 import { MatrizDiagnostico } from '../../ui/diagnostico/MatrizDiagnostico.tsx'
 import { ResumenCaptura } from '../../ui/diagnostico/ResumenCaptura.tsx'
-import { ErrorCampo, idError } from '../../ui/ErrorCampo.tsx'
+import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
+import { campo } from '../../ui/formulario.tsx'
 import { useAccion } from '../../ui/useAccion.ts'
 import { motivoPayload } from '../../ui/vocabulario.ts'
 import { type Entrada, guardarPendiente, leerPendiente, olvidarPendiente } from './-entrada.ts'
@@ -125,14 +126,7 @@ function Guardar({ entrada }: { entrada: Entrada }) {
       <form className="fila" {...r.formulario}>
         <input type="hidden" name="equipo[_tag]" value={destino === 'nuevo' ? 'nuevo' : 'existente'} />
         <label htmlFor="equipo[id]">Guardar en</label>
-        <select
-          id="equipo[id]"
-          name="equipo[id]"
-          value={destino}
-          onChange={(e) => setDestino(e.currentTarget.value)}
-          aria-invalid={r.errores['equipo[id]'] !== undefined}
-          aria-describedby={idError('equipo[id]')}
-        >
+        <select {...campo(r.errores, 'equipo[id]')} value={destino} onChange={(e) => setDestino(e.currentTarget.value)}>
           {equipos.map((e) => (
             <option key={e.id} value={e.id}>
               {e.alias}
@@ -142,12 +136,10 @@ function Guardar({ entrada }: { entrada: Entrada }) {
         </select>
         {destino === 'nuevo' && (
           <input
-            name="equipo[alias]"
+            {...campo(r.errores, 'equipo[alias]')}
             aria-label="Nombre del equipo nuevo"
             defaultValue={equipos.length === 0 ? 'Mi equipo' : ''}
             placeholder="Portátil del trabajo"
-            aria-invalid={r.errores['equipo[alias]'] !== undefined}
-            aria-describedby={idError('equipo[alias]')}
           />
         )}
         <button type="submit" disabled={r.enviando}>

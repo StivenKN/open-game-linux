@@ -8,8 +8,9 @@ import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
 import type { PayloadInvalido } from '../../dominio/fallos.ts'
 import { evaluarDiagnosticoFn, misEquiposFn, origenFn } from '../../fns/diagnostico.ts'
 import { CajaCopiar } from '../../ui/compatibilidad/CajaCopiar.tsx'
-import { ErrorCampo, idError } from '../../ui/ErrorCampo.tsx'
+import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
 import { memoria, momento } from '../../ui/formato.ts'
+import { campo } from '../../ui/formulario.tsx'
 import { type Errores, useAccion } from '../../ui/useAccion.ts'
 import { motivoPayload, sistema as etiquetaSistema, soporteVulkan } from '../../ui/vocabulario.ts'
 import { type Entrada, entradaManual, FormularioManual, guardarPendiente, Pegado } from './-entrada.ts'
@@ -111,14 +112,7 @@ function Detector({ origen }: { origen: string }) {
       </p>
       <form className="formulario" {...r.formulario}>
         <label htmlFor="texto">¿Sin navegador en ese equipo? Pega aquí lo que imprimió el detector</label>
-        <textarea
-          id="texto"
-          name="texto"
-          spellCheck={false}
-          placeholder='{"version_esquema":1,…} o la dirección completa con #d='
-          aria-invalid={r.errores.texto !== undefined}
-          aria-describedby={idError('texto')}
-        />
+        <textarea {...campo(r.errores, 'texto')} spellCheck={false} placeholder='{"version_esquema":1,…} o la dirección completa con #d=' />
         <ErrorCampo errores={r.errores} campo="texto" />
         <ErrorCampo errores={r.errores} campo="formulario" />
         <button type="submit" disabled={r.enviando}>
@@ -149,7 +143,6 @@ function Manual() {
     alFallar: erroresDePayload('formulario'),
     alCompletar: () => undefined,
   })
-  const campo = (nombre: string) => ({ id: nombre, name: nombre, 'aria-invalid': r.errores[nombre] !== undefined, 'aria-describedby': idError(nombre) })
   return (
     <section className="tarjeta pila" aria-labelledby="manual">
       <h2 id="manual" className="sin-margen">
@@ -161,7 +154,7 @@ function Manual() {
         <div className="campos-2">
           <div>
             <label htmlFor="sistema">Sistema</label>
-            <select {...campo('sistema')} value={so} onChange={(e) => esSistema(e.currentTarget.value) && setSo(e.currentTarget.value)}>
+            <select {...campo(r.errores, 'sistema')} value={so} onChange={(e) => esSistema(e.currentTarget.value) && setSo(e.currentTarget.value)}>
               {Sistema.literals.map((s) => (
                 <option key={s} value={s}>
                   {etiquetaSistema[s]}
@@ -171,7 +164,7 @@ function Manual() {
           </div>
           <div>
             <label htmlFor="version_sistema">Versión</label>
-            <input {...campo('version_sistema')} placeholder={so === 'Windows' ? 'Windows 11' : 'Kernel, p. ej. 6.8'} defaultValue={so === 'Windows' ? 'Windows 11' : ''} key={so} />
+            <input {...campo(r.errores, 'version_sistema')} placeholder={so === 'Windows' ? 'Windows 11' : 'Kernel, p. ej. 6.8'} defaultValue={so === 'Windows' ? 'Windows 11' : ''} key={so} />
             <ErrorCampo errores={r.errores} campo="version_sistema" />
           </div>
         </div>
@@ -179,26 +172,26 @@ function Manual() {
           <div className="campos-2">
             <div>
               <label htmlFor="distribucion[nombre]">Distribución</label>
-              <input {...campo('distribucion[nombre]')} placeholder="Linux Mint" />
+              <input {...campo(r.errores, 'distribucion[nombre]')} placeholder="Linux Mint" />
               <ErrorCampo errores={r.errores} campo="distribucion[nombre]" />
             </div>
             <div>
               <label htmlFor="distribucion[version]">Versión de la distribución</label>
-              <input {...campo('distribucion[version]')} placeholder="21.3 o rolling" />
+              <input {...campo(r.errores, 'distribucion[version]')} placeholder="21.3 o rolling" />
               <ErrorCampo errores={r.errores} campo="distribucion[version]" />
             </div>
           </div>
         )}
         <label htmlFor="cpu_modelo">Procesador (CPU)</label>
-        <input {...campo('cpu_modelo')} placeholder="Intel Core i5-4590" />
+        <input {...campo(r.errores, 'cpu_modelo')} placeholder="Intel Core i5-4590" />
         <ErrorCampo errores={r.errores} campo="cpu_modelo" />
         <label htmlFor="gpu_modelo">Tarjeta gráfica (GPU)</label>
-        <input {...campo('gpu_modelo')} placeholder="NVIDIA GeForce GTX 1050" />
+        <input {...campo(r.errores, 'gpu_modelo')} placeholder="NVIDIA GeForce GTX 1050" />
         <ErrorCampo errores={r.errores} campo="gpu_modelo" />
         <div className="campos-2">
           <div>
             <label htmlFor="ram_mb">Memoria RAM</label>
-            <select {...campo('ram_mb')} defaultValue="8192">
+            <select {...campo(r.errores, 'ram_mb')} defaultValue="8192">
               {ramGb.map((gb) => (
                 <option key={gb} value={gb * 1024}>
                   {gb} GB
@@ -208,7 +201,7 @@ function Manual() {
           </div>
           <div>
             <label htmlFor="vram_mb">Memoria de video (VRAM)</label>
-            <select {...campo('vram_mb')} defaultValue="null">
+            <select {...campo(r.errores, 'vram_mb')} defaultValue="null">
               <option value="null">No sé</option>
               {vramMb.map((mb) => (
                 <option key={mb} value={mb}>
@@ -221,7 +214,7 @@ function Manual() {
         <div className="campos-2">
           <div>
             <label htmlFor="soporte_vulkan">Vulkan</label>
-            <select {...campo('soporte_vulkan')} value={vulkan} onChange={(e) => esSoporte(e.currentTarget.value) && setVulkan(e.currentTarget.value)}>
+            <select {...campo(r.errores, 'soporte_vulkan')} value={vulkan} onChange={(e) => esSoporte(e.currentTarget.value) && setVulkan(e.currentTarget.value)}>
               <option value="desconocido">No sé</option>
               <option value="si">{soporteVulkan.si}</option>
               <option value="no">{soporteVulkan.no}</option>
@@ -230,7 +223,7 @@ function Manual() {
           <div>
             <label htmlFor="version_vulkan">Versión de Vulkan</label>
             {vulkan === 'si' ? (
-              <select {...campo('version_vulkan')} defaultValue="null">
+              <select {...campo(r.errores, 'version_vulkan')} defaultValue="null">
                 <option value="null">No sé</option>
                 {versionesVulkan.map((v) => (
                   <option key={v} value={v}>
@@ -247,7 +240,7 @@ function Manual() {
           </div>
         </div>
         <label htmlFor="arquitectura">Arquitectura</label>
-        <select {...campo('arquitectura')} defaultValue="x86_64">
+        <select {...campo(r.errores, 'arquitectura')} defaultValue="x86_64">
           <option value="x86_64">x86_64 (Intel o AMD)</option>
           <option value="aarch64">aarch64 (ARM)</option>
         </select>
