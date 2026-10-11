@@ -33,7 +33,8 @@ export function CajaCopiar({ texto, etiqueta }: { texto: string; etiqueta: strin
     <figure className="caja-copiar">
       <figcaption className="rotulo">{etiqueta}</figcaption>
       <div className="caja-copiar-cuerpo">
-        <pre>
+        {/* Focusable so a keyboard user can scroll a command wider than the box. */}
+        <pre tabIndex={0}>
           <code>{texto}</code>
         </pre>
         <button type="button" onClick={copiar} aria-label={`Copiar ${etiqueta.toLowerCase()}`} data-estado={estado}>
