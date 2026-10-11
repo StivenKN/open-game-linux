@@ -21,12 +21,23 @@ export type Destino =
 
 // Resolving against a fixed origin turns `//host/…`, `/\host/…` and absolute URLs into another origin.
 const origen = 'http://opengame.invalid'
-const id = (texto: string | null | undefined) => (typeof texto === 'string' && /^[1-9]\d*$/.test(texto) ? Number(texto) : undefined)
+const id = (texto: string | null | undefined) => {
+  const n = typeof texto === 'string' && /^[1-9]\d*$/.test(texto) ? Number(texto) : Number.NaN
+  return Number.isSafeInteger(n) ? n : undefined
+}
 const esTipoAporte = Schema.is(TipoAporte)
+// `new URL` in a try, not `URL.parse`, which browsers before 2024 lack.
+const leerUrl = (texto: string) => {
+  try {
+    return new URL(texto, origen)
+  } catch {
+    return null
+  }
+}
 
 /** Parses an untrusted return address into a Destino, keeping only the query key that page reads. */
 const destino = (texto: unknown): Destino | undefined => {
-  const url = typeof texto === 'string' ? URL.parse(texto, origen) : null
+  const url = typeof texto === 'string' ? leerUrl(texto) : null
   if (url === null || url.origin !== origen) return undefined
   const ruta = url.pathname
   const consulta = (clave: string) => url.searchParams.get(clave)

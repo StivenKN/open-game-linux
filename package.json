@@ -2,13 +2,16 @@
   "name": "opengame-linux",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "imports": {
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "vite dev --port 3000",
+    "dev": "vite dev",
     "build": "vite build",
-    "start": "vite preview --port 3000",
+    "start": "vite preview",
     "generate-routes": "tsr generate",
     "test": "vitest run",
     "db:up": "docker compose up -d --wait db",

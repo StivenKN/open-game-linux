@@ -30,6 +30,7 @@ describe('Volver (?volver= on /entrar and /registro)', () => {
     'javascript:alert(1)',
     '/juegos/4/reportar/../../entrar',
     '/juegos/01/reportar',
+    '/diagnosticos/99999999999999999999999',
     '/juegos/4',
     '/',
     42,

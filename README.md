@@ -97,7 +97,7 @@ pnpm build
 pnpm start
 ```
 
-`pnpm start` serves the build with `vite preview` on port 3000. It reads `.env` the same way `pnpm dev` does, and variables already set in the environment win. To use another port, run `pnpm start --port <port>` and set `BETTER_AUTH_URL` to match, because sign-in accepts only requests from that origin.
+`pnpm start` serves the build with `vite preview` on port 3000, like `pnpm dev`. It reads `.env` the same way `pnpm dev` does, and variables already set in the environment win. To use another port, run `pnpm start --port <port>` and set `BETTER_AUTH_URL` to match, because sign-in accepts only requests from that origin.
 
 ## Architecture
 
