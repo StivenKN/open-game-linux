@@ -1,0 +1,35 @@
+# Production stack for a VPS panel (Coolify, Dokploy) or plain Docker. The panel's proxy reaches `app` on port 3000;
+# nothing is published to the host. Every start applies pending migrations before serving.
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: opengame
+      POSTGRES_DB: opengame
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - datos:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opengame -d opengame"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+
+  app:
+    build: .
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      # POSTGRES_PASSWORD goes into a URL, so it must be URL-safe (`openssl rand -hex 32`).
+      DATABASE_URL: postgres://opengame:${POSTGRES_PASSWORD:?}@db:5432/opengame
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?}
+      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
+    command: ["sh", "-c", "pnpm db:migrar && exec pnpm start"]
+    init: true
+    expose: ["3000"]
+    restart: unless-stopped
+
+volumes:
+  datos:
