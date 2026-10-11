@@ -47,4 +47,4 @@ These ran on the U9 branch against the dev server, with the scripts kept outside
 - **Phone width.** At 390px no page scrolls sideways. Before U9 the report and solution forms overflowed by 139px and 388px.
 - **Language.** Every page has `lang="es"`. A scan of the rendered text and the `aria-label`, `placeholder`, `title` and `alt` attributes finds no English UI words. Its only hits are the title "The Witcher 3" and the detector flag `--open`.
 - **Errors.** With the database unreachable, every page answers 500 with "Algo falló de nuestro lado", and neither the HTML nor its dehydrated data contains SQL or connection text (`u9-error-bd-caida.png`). The server log keeps the full cause.
-- **Empty states.** A catalog search with no match says "Ningún juego coincide con estos filtros." An empty review queue, an empty guide list and a game with no approved environment each say so in words.
+- **Empty states.** On an empty database the catalog says "Todavía no hay juegos en el catálogo.", and a search with no match says "Ningún juego coincide con estos filtros." An empty review queue, an empty guide list and a game with no approved environment each say so in words.

@@ -125,7 +125,7 @@ function Catalogo() {
 
       <h2 className="titulo-seccion">{filtrado ? contar(juegos.length, 'juego coincide', 'juegos coinciden') : 'Catálogo'}</h2>
       {juegos.length === 0 ? (
-        <p className="tarjeta tenue">Ningún juego coincide con estos filtros.</p>
+        <p className="tarjeta tenue">{filtrado ? 'Ningún juego coincide con estos filtros.' : 'Todavía no hay juegos en el catálogo.'}</p>
       ) : (
         <ul className="lista-juegos">
           {juegos.map((j) => (
