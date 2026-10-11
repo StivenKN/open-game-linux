@@ -249,7 +249,7 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 - **A pending report has no public page.** In the 8.10 walkthrough the second user proposes the solution after the reviewer approves the report, because 8.9 keeps pending reports private and the ficha links only approved ones.
 - **Scrollable regions are focusable.** The copy box's `<pre>` and the ficha's matrix card take `tabIndex={0}`, so a keyboard can scroll them (axe `scrollable-region-focusable`). Form grids use `minmax(0, 1fr)` so a long `<select>` option no longer widens the page at 390px.
 - **The catalog explains each state, and a diagnosis links the adoption guides** (wireframes 9.1 and 9.2). No rule picks a distribution from hardware, so the link replaces 9.2's recommended distributions.
-- **Ports default to 3000 in `vite.config.ts`**, not in the `dev` and `start` scripts, so `pnpm start --port N` passes one flag.
+- **Ports default to 3000 in `vite.config.ts`** for dev. The Nitro production server reads `PORT`.
 - **A rate-limited sign-in says so.** better-auth's limiter answers 429 with no code in production; `routes/-cuenta.ts` maps the status to "Demasiados intentos seguidos".
 - **Coverage lives in `cobertura.md`**, with each requirement's route, program, tests, screenshots and gaps.
 
@@ -274,7 +274,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 4. Will the panel accept `usuario.id` as text, and the hash living in `account`? The alternative, `generateId: 'serial'` (unverified on 1.7.7), would make `id` an integer.
 5. Native Linux games: we default to `familia = 'Nativo'`, carried from round 1 open decision 2. Is that acceptable?
 6. Strict "Resultados variables" (funciona + funciona_con_ajustes shows purple), carried from round 1 open decision 5. Keep it?
-7. Defense hosting: `vite preview` on a team laptop (spike: it serves SSR, RPC and auth) versus a Nitro deployment. This plan assumes the laptop.
+7. Defense hosting: settled after U9. Nitro builds the production server (`pnpm start` on a laptop) and a Vercel function, with Neon Postgres. See the README.
 
 ## Next implementation step
 

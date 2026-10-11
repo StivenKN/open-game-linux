@@ -97,7 +97,23 @@ pnpm build
 pnpm start
 ```
 
-`pnpm start` serves the build with `vite preview` on port 3000, like `pnpm dev`. It reads `.env` the same way `pnpm dev` does, and variables already set in the environment win. To use another port, run `pnpm start --port <port>` and set `BETTER_AUTH_URL` to match, because sign-in accepts only requests from that origin.
+`pnpm build` produces a Node server in `.output/`, built by Nitro. `pnpm start` runs it on port 3000 and reads `.env`; variables already set in the environment win. Set `PORT` to use another port, and set `BETTER_AUTH_URL` to the public address, because sign-in accepts only requests from that origin and the detector command is built from it. Extra origins go in `BETTER_AUTH_TRUSTED_ORIGINS`, comma-separated.
+
+## Deploy on Vercel
+
+On Vercel, Nitro builds a Node 24 function instead of a server. The database is Neon Postgres from the Vercel Marketplace.
+
+1. In Vercel, import this GitHub repository. Keep the detected settings (build command `pnpm build`).
+2. In the project's Storage tab, add a Neon database and connect it to the project. This sets `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED`.
+3. In Settings, Environment Variables, add `BETTER_AUTH_SECRET` (`openssl rand -base64 32`) and `BETTER_AUTH_URL` (the deployment address, for example `https://open-game-linux.vercel.app`). Add `ENABLE_EXPERIMENTAL_COREPACK=1` so the build uses the pnpm version in `package.json`.
+4. From your machine, create the schema and the demo data in Neon with the unpooled address:
+
+   ```sh
+   DATABASE_URL='<DATABASE_URL_UNPOOLED>' pnpm db:migrar
+   DATABASE_URL='<DATABASE_URL_UNPOOLED>' pnpm db:sembrar
+   ```
+
+5. Redeploy. Promote a reviewer with `DATABASE_URL='<DATABASE_URL_UNPOOLED>' pnpm rol <correo> revisor`.
 
 ## Architecture
 
