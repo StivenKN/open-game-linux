@@ -7,10 +7,11 @@ import { crearJuegoFn, opcionesJuegoFn } from '../../fns/aportes.ts'
 import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
 import { Campo, campo } from '../../ui/formulario.tsx'
 import { erroresDeRegla, useAccion } from '../../ui/useAccion.ts'
+import { volverAqui } from '../-volver.ts'
 
 export const Route = createFileRoute('/catalogo/nuevo')({
-  beforeLoad: ({ context }) => {
-    if (context.visitante === null) throw redirect({ to: '/entrar' })
+  beforeLoad: ({ context, location }) => {
+    if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
     if (context.visitante.rol === 'usuario') throw notFound()
   },
   loader: () => opcionesJuegoFn(),

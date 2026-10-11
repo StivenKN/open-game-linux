@@ -11,11 +11,12 @@ import { Campo, campo, nulo } from '../../ui/formulario.tsx'
 import { Insignia } from '../../ui/Insignia.tsx'
 import { erroresDeRegla, useAccion } from '../../ui/useAccion.ts'
 import { estadoRevision, resultado, tipoFallo } from '../../ui/vocabulario.ts'
+import { volverAqui } from '../-volver.ts'
 
 export const Route = createFileRoute('/reportes/$reporteId/solucion')({
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipoFallo: Schema.optionalKey(TipoFalloId) })),
-  beforeLoad: ({ context }) => {
-    if (context.visitante === null) throw redirect({ to: '/entrar' })
+  beforeLoad: ({ context, location }) => {
+    if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
   },
   loader: ({ params }) => opcionesSolucionFn({ data: { reporteId: params.reporteId } }),
   head: ({ loaderData }) => ({ meta: [{ title: `Proponer solución · ${loaderData?.reporte.juego ?? 'OpenGame Linux'}` }] }),

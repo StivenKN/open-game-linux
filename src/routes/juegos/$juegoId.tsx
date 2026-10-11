@@ -23,7 +23,6 @@ export const Route = createFileRoute('/juegos/$juegoId')({
 
 function Ficha() {
   const { juego, ediciones, resumen, ejemplo, pendientes, perfiles, causas, diagnostico, personal } = Route.useLoaderData()
-  const { visitante } = Route.useRouteContext()
   return (
     <main className="envoltura">
       <div className="rejilla-2">
@@ -133,7 +132,7 @@ function Ficha() {
                     </div>
                   ))
                 )}
-                {visitante !== null && c.responder !== null && (
+                {c.responder !== null && (
                   <p className="pequeno">
                     <Link
                       to="/reportes/$reporteId/solucion"

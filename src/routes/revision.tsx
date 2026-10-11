@@ -11,11 +11,12 @@ import { ErrorCampo } from '../ui/ErrorCampo.tsx'
 import { contar, fecha, fps, momento } from '../ui/formato.ts'
 import { erroresDeRegla, type Errores, useAccion } from '../ui/useAccion.ts'
 import { bloqueo, estadoRevision, resultado, tipoFallo } from '../ui/vocabulario.ts'
+import { volverAqui } from './-volver.ts'
 
 export const Route = createFileRoute('/revision')({
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipo: Schema.optionalKey(TipoAporte) })),
-  beforeLoad: ({ context }) => {
-    if (context.visitante === null) throw redirect({ to: '/entrar' })
+  beforeLoad: ({ context, location }) => {
+    if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
     if (context.visitante.rol === 'usuario') throw notFound()
   },
   loaderDeps: ({ search }) => ({ tipo: search.tipo ?? 'reporte' }),

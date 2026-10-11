@@ -1,16 +1,20 @@
 // A saved capture with its matrix. Owner only (8.9 "el diagnóstico detallado es privado"): anyone else,
-// and any id that is not a number, gets notFound; a guest is sent to sign in.
-import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+// and any id that is not a number, gets notFound; a guest is sent to sign in and back.
+import { createFileRoute, Link, notFound, redirect } from '@tanstack/react-router'
 import { Option, Schema } from 'effect'
 import { DiagnosticoId, IdDesdeTexto } from '../../dominio/ids.ts'
 import { miDiagnosticoFn } from '../../fns/diagnostico.ts'
 import { MatrizDiagnostico } from '../../ui/diagnostico/MatrizDiagnostico.tsx'
 import { ResumenCaptura } from '../../ui/diagnostico/ResumenCaptura.tsx'
+import { volverAqui } from '../-volver.ts'
 
 const idDeRuta = Schema.decodeUnknownOption(IdDesdeTexto(DiagnosticoId))
 
 export const Route = createFileRoute('/diagnosticos/$diagnosticoId')({
   head: () => ({ meta: [{ title: 'Diagnóstico guardado · OpenGame Linux' }] }),
+  beforeLoad: ({ context, location }) => {
+    if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
+  },
   loader: ({ params }) =>
     Option.match(idDeRuta(params.diagnosticoId), {
       onNone: () => {

@@ -42,11 +42,3 @@ const mensajes: Readonly<Partial<Record<string, Errores>>> = {
 
 export const erroresDeCuenta = (f: FalloCuenta): Errores =>
   (f.codigo === undefined ? undefined : mensajes[f.codigo]) ?? { formulario: 'No pudimos completar la operación. Intenta de nuevo.' }
-
-// Where to go after signing in or up. A closed list, so the parameter cannot become an open redirect.
-const destinos = ['/diagnostico/importar'] as const
-const esDestino = Schema.is(Schema.Literals(destinos))
-
-/** validateSearch for /entrar and /registro: `?volver=` keeps only a known destination. */
-export const Volver = (search: Record<string, unknown>): { readonly volver?: (typeof destinos)[number] } =>
-  esDestino(search.volver) ? { volver: search.volver } : {}

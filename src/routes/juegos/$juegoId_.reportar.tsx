@@ -14,12 +14,13 @@ import { momento } from '../../ui/formato.ts'
 import { Campo, campo, GrupoOpcional, nulo } from '../../ui/formulario.tsx'
 import { erroresDeRegla, type Errores, useAccion } from '../../ui/useAccion.ts'
 import { estadoRevision, resultado as etiquetaResultado, tipoFallo } from '../../ui/vocabulario.ts'
+import { volverAqui } from '../-volver.ts'
 
 export const Route = createFileRoute('/juegos/$juegoId_/reportar')({
   // The router already parses `?perfil=7` into a number.
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ perfil: Schema.optionalKey(PerfilId) })),
-  beforeLoad: ({ context }) => {
-    if (context.visitante === null) throw redirect({ to: '/entrar' })
+  beforeLoad: ({ context, location }) => {
+    if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
   },
   loaderDeps: ({ search }) => ({ perfil: search.perfil ?? null }),
   loader: ({ params, deps }) => opcionesReporteFn({ data: { juegoId: params.juegoId, perfil: deps.perfil } }),

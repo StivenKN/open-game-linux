@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { ErrorCampo, idError } from '../ui/ErrorCampo.tsx'
 import { useAccion } from '../ui/useAccion.ts'
-import { Entrada, entrar, erroresDeCuenta, Volver } from './-cuenta.ts'
+import { Entrada, entrar, erroresDeCuenta } from './-cuenta.ts'
+import { Volver } from './-volver.ts'
 
 export const Route = createFileRoute('/entrar')({
   head: () => ({ meta: [{ title: 'Entrar · OpenGame Linux' }] }),
@@ -16,7 +17,7 @@ function Entrar() {
     alFallar: erroresDeCuenta,
     alCompletar: async () => {
       await router.invalidate()
-      await router.navigate({ to: volver ?? '/' })
+      await router.navigate({ href: volver ?? '/' })
     },
   })
   return (
