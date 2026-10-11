@@ -28,7 +28,7 @@ const lanzado = <A>(d: Desenlace<A>): unknown => (d.ok ? undefined : d.lanzado)
 const sql = <A>(f: (sql: SqlClient.SqlClient) => Effect.Effect<A, unknown>) => runtime.runPromise(Effect.flatMap(SqlClient.SqlClient, f))
 
 const cuenta = async (rol: Rol, activo = true) => {
-  const correo = `${rol}-${crypto.randomUUID()}@demo.opengame.test`
+  const correo = `${rol}-${crypto.randomUUID()}@opengame.test`
   const { headers } = await auth.api.signUpEmail({
     body: { name: `demo_${rol}`, email: correo, password: 'contrasena-de-prueba' },
     returnHeaders: true,

@@ -1,6 +1,7 @@
 // better-auth owns usuario/session/account/verification on its own pg Pool: it cannot share the
 // @effect/sql-pg pool (spike Q7), so the two share DATABASE_URL only.
 import { betterAuth } from 'better-auth'
+import { APIError, createAuthMiddleware } from 'better-auth/api'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { Context, Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
@@ -15,10 +16,23 @@ const url = process.env.DATABASE_URL
 // Without this, pg silently falls back to PGHOST/localhost:5432 and auth talks to some other database.
 if (url === undefined || url === '') throw new Error('DATABASE_URL no está definida')
 
+// Queries label content "Datos de ejemplo" when its author's correo is in this domain (consultas/etiquetas.ts).
+export const dominioDemo = 'demo.opengame.test'
+
 export const auth = betterAuth({
   ...esquemaAuth,
   database: new Pool({ connectionString: url, max: 5 }),
   emailAndPassword: { enabled: true },
+  hooks: {
+    // Only a call through /api/auth carries `request`. An in-process auth.api call, like the seed's,
+    // does not, so only server code can create a demo account.
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== '/sign-up/email' || ctx.request === undefined) return
+      const correo: unknown = ctx.body?.email
+      if (typeof correo === 'string' && correo.trim().toLowerCase().endsWith(`@${dominioDemo}`))
+        throw new APIError('BAD_REQUEST', { code: 'DOMINIO_RESERVADO', message: `El dominio ${dominioDemo} está reservado para los datos de ejemplo` })
+    }),
+  },
   // tanstackStartCookies must stay the last plugin (better-auth warns otherwise).
   plugins: [tanstackStartCookies()],
 })
@@ -54,8 +68,6 @@ export type Revisor = Usuario & { readonly [revisor]: true }
 export const exigirRevisor: Effect.Effect<Revisor, NoAutenticado | SinPermiso, Visitante> = Effect.flatMap(exigirUsuario, (u) =>
   puedeRevisar[u.rol] ? Effect.succeed({ ...u, [revisor]: true as const }) : Effect.fail(new SinPermiso()),
 )
-
-export const dominioDemo = 'demo.opengame.test'
 
 const RolCambiado = Schema.Struct({ alias: FilaUsuario.fields.alias, antes: FilaUsuario.fields.rol })
 

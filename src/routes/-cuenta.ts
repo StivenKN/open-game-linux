@@ -32,6 +32,7 @@ const mensajes: Readonly<Partial<Record<string, Errores>>> = {
   USER_ALREADY_EXISTS: { correo: 'Ya existe una cuenta con ese correo. ¿Quieres entrar?' },
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: { correo: 'Ya existe una cuenta con ese correo. ¿Quieres entrar?' },
   INVALID_EMAIL: { correo: 'Escribe un correo válido.' },
+  DOMINIO_RESERVADO: { correo: 'Ese dominio está reservado para los datos de ejemplo. Usa otro correo.' },
   PASSWORD_TOO_SHORT: { contrasena: 'Usa al menos 8 caracteres.' },
   PASSWORD_TOO_LONG: { contrasena: 'Usa como máximo 128 caracteres.' },
   INVALID_EMAIL_OR_PASSWORD: { formulario: 'El correo o la contraseña no coinciden.' },

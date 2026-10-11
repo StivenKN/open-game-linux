@@ -203,7 +203,7 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 - **Field errors are keyed by the input's name.** A nested issue lands on `fallos[0][detalle]`, not on `fallos`. A rule from `reglas` still lands on its `campo`. Decoding reports every invalid field at once.
 - **No better-auth cookie cache.** With it, `pnpm rol` and deactivation would take up to five minutes to apply. Each request reads the session from the database instead.
 - **`asignarRol` lives in `servidor/auth.ts`.** `pnpm rol` and the seed share it, so role writes have one home.
-- **Demo content is marked by its author.** No table has a demo column. Every seeded profile and guide belongs to a `@demo.opengame.test` account (`dominioDemo`), a reserved domain no real person can register. Queries can derive "Datos de ejemplo" from the author's correo.
+- **Demo content is marked by its author.** No table has a demo column. Every seeded profile and guide belongs to a `@demo.opengame.test` account (`dominioDemo`), a reserved domain. A `hooks.before` in `servidor/auth.ts` rejects it on any `/sign-up/email` request that reaches `/api/auth` (`DOMINIO_RESERVADO`, shown under the correo field), while the seed's in-process `auth.api.signUpEmail` carries no request and passes. Queries can derive "Datos de ejemplo" from the author's correo.
 - **`src/start.ts` adds Start's CSRF middleware for server fns.** A cross-site call gets 403.
 - **Infra errors leave as a bare `Error`.** `leer` and `accion` log the full cause on the server, because Start serializes a thrown error's message to the browser, and a `SqlError` message carries SQL.
 - **`Revisor` is keyed by an unexported `unique symbol`**, not `Brand.nominal`, which any module could call.

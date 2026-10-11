@@ -34,7 +34,7 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `dominio/fallos.ts` | `Regla` + `reglas` (field + Spanish message per rule), failure classes, `FalloDominio`, `Respuesta`, control errors | |
 | `dominio/guias.ts` | `TipoGuia`, `EstadoGuia` | |
 | `servidor/runtime.ts` | `PgLive` (config `DATABASE_URL`), the one `ManagedRuntime`, HMR dispose | |
-| `servidor/auth.ts` | better-auth instance (usuario mapping, `rol`/`activo` additionalFields), `Visitante` service, `visitanteDe`, `exigirUsuario`, `exigirRevisor` → `Revisor` brand | Data rules |
+| `servidor/auth.ts` | better-auth instance (usuario mapping, `rol`/`activo` additionalFields, public sign-up refuses `dominioDemo`), `Visitante` service, `visitanteDe`, `exigirUsuario`, `exigirRevisor` → `Revisor` brand | Data rules |
 | `servidor/ejecutar.ts` | `leer`, `accion`: session → `Visitante`, transaction per action, control errors → `notFound`/`redirect`, domain failures → `Respuesta` | Business rules |
 | `servidor/esquema/migraciones.ts` | All DDL, the rule-home index, and CHECK lists generated from Schema literals | |
 | `servidor/esquema/restricciones.ts` | `reglaDeRestriccion` (constraint name → `Regla`), `conReglasDeBd` | |
