@@ -239,7 +239,17 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 - **The seed writes captures through `registrarDiagnostico`.** Part 1 catalog lookups (juego, edicion_juego, profiles) stay raw SQL, so the seed does not go through `crearJuego`.
 - **A merge had left two CSS rules without their closing brace.** Browsers parse nesting, so the diagnosis rules matched only inside `.bloque`, and the U5 rules, nested in `textarea` too, matched nothing. `src/styles.test.ts` now fails on nesting outside at-rules and on a selector styled in two rules.
 - **`fecha` prints the Bogotá day, not the UTC day.** Its comment assumed DB `date` columns, but every stored time is a `timestamptz`. The `/_muestras` fixtures moved from UTC midnight to noon so they keep their calendar day. `fechaHora` (UTC, "p. m.") is gone, and captures print with `momento`.
-- **Known gap.** A guest who follows "Reportar un resultado" or "Reportar resultado con este perfil" signs in and lands on `/`, because `?volver=` accepts only `/diagnostico/importar`. Returning to a report form needs typed dynamic destinations in `routes/-cuenta.ts`.
+- **Known gap, closed in U9.** A guest who followed "Reportar un resultado" or "Reportar resultado con este perfil" signed in and landed on `/`, because `?volver=` accepted only `/diagnostico/importar`.
+
+**U9** departs from the earlier units as follows.
+
+- **Every useAccion form posts.** `useAccion` returns `formulario` (`onSubmit`, `method="post"`, `noValidate`) and each form spreads it. With no method, a submit before hydration did a native GET, and `/entrar?correo=…&contrasena=…` put the password in the history and the server log.
+- **`?volver=` names any page that needs an account.** `routes/-volver.ts` parses the guard's own `location.href` into a `Destino`, a union of template literals rebuilt from the page's ids, so it can only name one of our pages. Each `beforeLoad` guard, `/diagnosticos/$id` included, sends `volverAqui(location)`. `Volver` always returns the `volver` key, because router-core spreads the validated search over the raw query: a validator that leaves a bad key out lets the raw value reach `useSearch()`.
+- **The ficha offers "Proponer una solución" to guests**, like "Reportar un resultado". The form's guard sends them to sign in and back.
+- **A pending report has no public page.** In the 8.10 walkthrough the second user proposes the solution after the reviewer approves the report, because 8.9 keeps pending reports private and the ficha links only approved ones.
+- **Scrollable regions are focusable.** The copy box's `<pre>` and the ficha's matrix card take `tabIndex={0}`, so a keyboard can scroll them (axe `scrollable-region-focusable`). Form grids use `minmax(0, 1fr)` so a long `<select>` option no longer widens the page at 390px.
+- **The catalog explains each state, and a diagnosis links the adoption guides** (wireframes 9.1 and 9.2). No rule picks a distribution from hardware, so the link replaces 9.2's recommended distributions.
+- **Coverage lives in `cobertura.md`**, with each requirement's route, program, tests, screenshots and gaps.
 
 ## Open questions and risks
 

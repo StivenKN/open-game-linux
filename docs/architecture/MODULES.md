@@ -45,7 +45,8 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `servidor/diagnostico/payload.ts` | **The only detector parser**: `parsearPayload`, `etiquetaPci`, `rolling` normalization | |
 | `fns/*.ts` | The server API surface: one `createServerFn` per operation | Anything else |
 | `routes/**` | Pages, loaders, search params, route guards (UX only) | Data rules |
-| `ui/useAccion.ts` | The one form hook: decode FormData → call fn → narrow `Respuesta` → field errors | |
+| `ui/useAccion.ts` | The one form hook: the form's props (`method="post"` included), decode FormData → call fn → narrow `Respuesta` → field errors | |
+| `routes/-volver.ts` | `Destino` and the only parser of `?volver=` on `/entrar` and `/registro`; `volverAqui` for route guards | |
 | `ui/formato.ts` | Display formatting. Every instant prints in Bogotá time (`fecha` day, `momento` day and 24-hour time) | |
 | `ui/progreso.ts` | The profile page's local step checklist (`localStorage`, SSR-safe) | |
 | `ui/vocabulario.ts` | Spanish label and tone for every domain literal, exhaustive via `satisfies Record` | |
