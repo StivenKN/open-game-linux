@@ -12,7 +12,8 @@ import { ChipsFallos } from './ChipsFallos.tsx'
 export function MatrizEntornos({ entornos, miDistribucion }: { entornos: ReadonlyArray<EntornoProbado>; miDistribucion: DistribucionId | null }) {
   if (entornos.length === 0) return <p className="tarjeta tenue">Sin entornos con evidencia aprobada.</p>
   return (
-    <div className="tarjeta tarjeta-tabla">
+    // A focusable region, so a keyboard user can scroll the table sideways on a narrow screen.
+    <div className="tarjeta tarjeta-tabla" role="region" aria-label="Entornos probados" tabIndex={0}>
       <table className="matriz">
         <caption className="solo-lector">Entornos probados con reportes aprobados</caption>
         <thead>
