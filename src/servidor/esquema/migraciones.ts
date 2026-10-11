@@ -316,10 +316,11 @@ export const migraciones = {
 
 export const migrar = PgMigrator.run({ loader: Migrator.fromRecord(migraciones) })
 
-export const baseActual = Effect.gen(function* () {
-  const sql = yield* SqlClient.SqlClient
-  const { nombre } = yield* unaFila(Schema.Struct({ nombre: Schema.String }), sql`SELECT current_database() AS nombre`)
-  return nombre
-})
-
-export const vaciarEsquema = ejecutar(['DROP SCHEMA public CASCADE', 'CREATE SCHEMA public'])
+/** Drops every table, and only when `base` names the database the client is connected to. */
+export const vaciarEsquema = (base: string) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    const { nombre } = yield* unaFila(Schema.Struct({ nombre: Schema.String }), sql`SELECT current_database() AS nombre`)
+    if (nombre !== base) return yield* Effect.die(`vaciarEsquema: la conexión llega a «${nombre}», no a «${base}»; no se borró nada`)
+    yield* ejecutar(['DROP SCHEMA public CASCADE', 'CREATE SCHEMA public'])
+  })

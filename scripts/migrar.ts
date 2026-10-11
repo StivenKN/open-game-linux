@@ -3,16 +3,12 @@
 import { Effect } from 'effect'
 import { NodeServices } from '@effect/platform-node'
 import { PgLive } from '../src/servidor/runtime.ts'
-import { baseActual, migrar, vaciarEsquema } from '../src/servidor/esquema/migraciones.ts'
+import { migrar, vaciarEsquema } from '../src/servidor/esquema/migraciones.ts'
 
 const reset = process.argv.indexOf('--reset')
 
 const programa = Effect.gen(function* () {
-  if (reset !== -1) {
-    const nombre = yield* baseActual
-    if (process.argv[reset + 1] !== nombre) return yield* Effect.die(`db:reset borra ${nombre}; confírmalo con: pnpm db:reset ${nombre}`)
-    yield* vaciarEsquema
-  }
+  if (reset !== -1) yield* vaciarEsquema(process.argv[reset + 1] ?? '')
   yield* Effect.log('migraciones aplicadas', yield* migrar)
 }).pipe(Effect.provide([PgLive, NodeServices.layer]))
 
