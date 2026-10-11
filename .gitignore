@@ -1,0 +1,16 @@
+node_modules/
+dist/
+dist-ssr/
+.output/
+.tanstack/
+.nitro/
+.vinxi/
+.env
+.env.local
+*.local
+*.log
+.DS_Store
+.scratch/
+todo.md
+.audit/
+src/routeTree.gen.ts

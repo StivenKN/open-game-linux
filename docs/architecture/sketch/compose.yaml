@@ -1,0 +1,7 @@
+# Local PostgreSQL 18 only. Two databases: opengame (dev) and opengame_test (wiped by tests/preparar.ts).
+services:
+  db:
+    image: postgres:18
+    ports: ["55432:5432"]
+    environment: { POSTGRES_USER: opengame, POSTGRES_PASSWORD: opengame, POSTGRES_DB: opengame }
+    volumes: ["./scripts/crear-test-db.sql:/docker-entrypoint-initdb.d/1.sql:ro"]
