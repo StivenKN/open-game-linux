@@ -1,5 +1,5 @@
 // RF-08 solution form: any signed-in user answers one fallo of a public report (8.8).
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useState } from 'react'
 import { NuevaSolucion } from '../../dominio/aportes.ts'
@@ -55,7 +55,9 @@ function ProponerSolucion() {
             Queda <strong>pendiente de revisión</strong>. Para publicarla, un revisor necesita evidencia de que resuelve el fallo, no solo que el fallo existe.
           </p>
           <p>
-            <a href={`/juegos/${reporte.juego_id}`}>Volver a la ficha del juego</a>
+            <Link to="/juegos/$juegoId" params={{ juegoId: reporte.juego_id }}>
+              Volver a la ficha del juego
+            </Link>
           </p>
         </section>
       ) : (

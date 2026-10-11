@@ -1,13 +1,13 @@
 // RF-08 report form. `$juegoId_` keeps this page out of the ficha's layout (it renders on its own).
 // Profiles on offer are the ones `discrepancias` finds comparable with what the user picked; a violated
 // rule comes back as data and lands under its field.
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useState } from 'react'
 import { discrepancias, NuevoReporte } from '../../dominio/aportes.ts'
 import { type Codificado, discrepanciasPerfil, type PerfilNoComparable, type ReglaIncumplida } from '../../dominio/fallos.ts'
 import { FamiliaCapa, exigeFallo, Resultado } from '../../dominio/literales.ts'
-import { JuegoId, PerfilId } from '../../dominio/ids.ts'
+import { JuegoId, PerfilId, type ReporteId } from '../../dominio/ids.ts'
 import { opcionesReporteFn, registrarReporteFn } from '../../fns/aportes.ts'
 import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
 import { momento } from '../../ui/formato.ts'
@@ -36,7 +36,7 @@ type Opciones = Awaited<ReturnType<typeof opcionesReporteFn>>
 
 function Reportar() {
   const opciones = Route.useLoaderData()
-  const [enviado, setEnviado] = useState<{ readonly id: number; readonly conFallos: boolean } | null>(null)
+  const [enviado, setEnviado] = useState<{ readonly id: ReporteId; readonly conFallos: boolean } | null>(null)
   const { juego } = opciones
 
   return (
@@ -50,8 +50,14 @@ function Reportar() {
             Queda <strong>pendiente de revisión</strong> y no cuenta en el resumen del juego hasta que un revisor lo apruebe.
           </p>
           <p className="fila">
-            <a href={`/juegos/${juego.id}`}>Volver a la ficha del juego</a>
-            {enviado.conFallos && <a href={`/reportes/${enviado.id}/solucion`}>¿Conoces una solución? Propónla</a>}
+            <Link to="/juegos/$juegoId" params={{ juegoId: juego.id }}>
+              Volver a la ficha del juego
+            </Link>
+            {enviado.conFallos && (
+              <Link to="/reportes/$reporteId/solucion" params={{ reporteId: enviado.id }}>
+                ¿Conoces una solución? Propónla
+              </Link>
+            )}
             <button type="button" className="boton-secundario" onClick={() => setEnviado(null)}>
               Reportar otro resultado
             </button>
@@ -61,7 +67,7 @@ function Reportar() {
         <section className="tarjeta nota pila">
           <p>Para reportar necesitas un diagnóstico de tu equipo hecho en Linux: el reporte guarda el entorno exacto de la prueba.</p>
           <p>
-            <a href="/diagnostico">Hacer un diagnóstico</a>
+            <Link to="/diagnostico">Hacer un diagnóstico</Link>
           </p>
         </section>
       ) : (
@@ -99,7 +105,7 @@ const nombres = (o: Opciones) => {
   }
 }
 
-function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (enviado: { readonly id: number; readonly conFallos: boolean }) => void }) {
+function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (enviado: { readonly id: ReporteId; readonly conFallos: boolean }) => void }) {
   const { diagnosticos, ediciones, capas, perfiles, tiposFallo, perfilElegido } = opciones
   const elegido = perfiles.find((p) => p.id === perfilElegido)
 
