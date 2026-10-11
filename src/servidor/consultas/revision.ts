@@ -7,8 +7,9 @@ import { ResultadoFuncional } from '../../dominio/literales.ts'
 import { type AporteRef, type Bloqueo, estadosVigentes, type TipoAporte } from '../../dominio/revision.ts'
 import { Diagnostico, Juego, Lanzador, PerfilConfiguracion, Reporte, Solucion, TipoFallo, Usuario } from '../../dominio/tablas.ts'
 import { bloqueosAprobacion } from '../aportes/revision.ts'
-import { dominioDemo, exigirRevisor } from '../auth.ts'
+import { exigirRevisor } from '../auth.ts'
 import { filas } from '../filas.ts'
+import { esDemo, etiquetaCapa, etiquetaDistribucion, etiquetaPerfil } from './etiquetas.ts'
 
 const Nombre = Schema.String // composed in SQL for display only
 
@@ -66,7 +67,7 @@ export const cola = (tipo: TipoAporte) =>
     const revisor = yield* exigirRevisor
     const sql = yield* SqlClient.SqlClient
     const vigentes = sql.in(estadosVigentes)
-    const demo = `%@${dominioDemo}`
+    const demo = sql.literal(esDemo('u'))
     const orden = sql`(estado_revision = 'pendiente') DESC, creado_en`
 
     switch (tipo) {
@@ -75,9 +76,9 @@ export const cola = (tipo: TipoAporte) =>
           ColaPerfil,
           sql`SELECT * FROM (
                 SELECT p.id, p.titulo, p.revision, p.arquitectura, p.version_juego_objetivo, p.parametros_lanzamiento, p.creado_en, p.estado_revision,
-                       u.alias AS autor, u.correo LIKE ${demo} AS demo, p.autor_id = ${revisor.id} AS es_propio,
-                       j.titulo AS juego, l.nombre AS lanzador, di.nombre || ' ' || di.version AS distribucion,
-                       c.familia || ' ' || c.variante || ' ' || c.version AS capa,
+                       u.alias AS autor, ${demo} AS demo, p.autor_id = ${revisor.id} AS es_propio,
+                       j.titulo AS juego, l.nombre AS lanzador, ${sql.literal(etiquetaDistribucion('di'))} AS distribucion,
+                       ${sql.literal(etiquetaCapa('c'))} AS capa,
                        (SELECT count(*)::int FROM paso_configuracion WHERE perfil_id = p.id) AS pasos,
                        (SELECT count(*)::int FROM reporte r WHERE r.perfil_id = p.id AND r.estado_revision = 'aprobado'
                           AND r.resultado IN ${sql.in(ResultadoFuncional.literals)}) AS reportes_funcionales
@@ -95,10 +96,10 @@ export const cola = (tipo: TipoAporte) =>
           sql`SELECT * FROM (
                 SELECT r.id, r.resultado, r.version_juego, r.fecha_prueba, r.fps_promedio, r.resolucion, r.calidad_grafica, r.metodo_medicion,
                        r.observaciones, r.creado_en, r.estado_revision,
-                       u.alias AS autor, u.correo LIKE ${demo} AS demo, eq.usuario_id = ${revisor.id} AS es_propio,
-                       j.titulo AS juego, l.nombre AS lanzador, di.nombre || ' ' || di.version AS distribucion, d.distribucion_id, d.arquitectura,
-                       c.familia || ' ' || c.variante || ' ' || c.version AS capa,
-                       CASE WHEN p.id IS NULL THEN NULL ELSE p.titulo || ' (r' || p.revision || ')' END AS perfil,
+                       u.alias AS autor, ${demo} AS demo, eq.usuario_id = ${revisor.id} AS es_propio,
+                       j.titulo AS juego, l.nombre AS lanzador, ${sql.literal(etiquetaDistribucion('di'))} AS distribucion, d.distribucion_id, d.arquitectura,
+                       ${sql.literal(etiquetaCapa('c'))} AS capa,
+                       ${sql.literal(etiquetaPerfil('p'))} AS perfil,
                        COALESCE((SELECT json_agg(json_build_object('codigo', t.codigo, 'detalle', f.detalle) ORDER BY t.id)
                                  FROM reporte_fallo f JOIN tipo_fallo t ON t.id = f.tipo_fallo_id WHERE f.reporte_id = r.id), '[]') AS fallos
                 FROM reporte r JOIN diagnostico d ON d.id = r.diagnostico_id JOIN equipo eq ON eq.id = d.equipo_id JOIN usuario u ON u.id = eq.usuario_id
@@ -115,9 +116,9 @@ export const cola = (tipo: TipoAporte) =>
           ColaSolucion,
           sql`SELECT * FROM (
                 SELECT s.id, s.titulo, s.instrucciones, s.reporte_id, s.creado_en, s.estado_revision,
-                       u.alias AS autor, u.correo LIKE ${demo} AS demo, s.autor_id = ${revisor.id} AS es_propio,
+                       u.alias AS autor, ${demo} AS demo, s.autor_id = ${revisor.id} AS es_propio,
                        j.titulo AS juego, l.nombre AS lanzador, t.codigo AS tipo_fallo, f.detalle AS fallo, r.estado_revision AS estado_reporte,
-                       CASE WHEN p.id IS NULL THEN NULL ELSE p.titulo || ' (r' || p.revision || ', ' || p.estado_revision || ')' END AS perfil
+                       ${sql.literal(etiquetaPerfil('p'))} || ' (' || p.estado_revision || ')' AS perfil
                 FROM solucion s JOIN usuario u ON u.id = s.autor_id
                   JOIN reporte_fallo f ON f.reporte_id = s.reporte_id AND f.tipo_fallo_id = s.tipo_fallo_id JOIN tipo_fallo t ON t.id = s.tipo_fallo_id
                   JOIN reporte r ON r.id = s.reporte_id JOIN edicion_juego e ON e.id = r.edicion_id

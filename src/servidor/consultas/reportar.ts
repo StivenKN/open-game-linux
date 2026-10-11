@@ -10,10 +10,11 @@ import { estadosVigentes } from '../../dominio/revision.ts'
 import { Diagnostico, Equipo, Juego, Lanzador, PerfilConfiguracion, Reporte, TipoFallo, VersionCapa } from '../../dominio/tablas.ts'
 import { exigirRevisor, exigirUsuario } from '../auth.ts'
 import { filas } from '../filas.ts'
+import { etiquetaCapa, etiquetaDistribucion } from './etiquetas.ts'
 
 const JuegoFila = Juego.mapFields(Struct.pick(['id', 'titulo']))
 const EdicionFila = Schema.Struct({ id: EdicionId, lanzador: Lanzador.fields.nombre })
-const Nombre = Schema.String // "Linux Mint 21.3", "Proton Valve 8.0-5": composed in SQL for display only
+const Nombre = Schema.String // etiquetas.ts composes it in SQL for display only
 
 const DiagnosticoFila = Schema.Struct({
   id: DiagnosticoId,
@@ -50,7 +51,7 @@ export const opcionesReporte = (juegoId: JuegoId, perfil: PerfilId | null) =>
     // Only Linux captures can back a report (8.7); a Windows one only orients.
     const diagnosticos = yield* filas(
       DiagnosticoFila,
-      sql`SELECT d.id, eq.alias AS equipo, di.nombre || ' ' || di.version AS distribucion, d.distribucion_id, d.arquitectura, d.capturado_en
+      sql`SELECT d.id, eq.alias AS equipo, ${sql.literal(etiquetaDistribucion('di'))} AS distribucion, d.distribucion_id, d.arquitectura, d.capturado_en
           FROM diagnostico d JOIN equipo eq ON eq.id = d.equipo_id JOIN distribucion di ON di.id = d.distribucion_id
           WHERE eq.usuario_id = ${usuario.id} ORDER BY d.capturado_en DESC`,
     )
@@ -58,7 +59,7 @@ export const opcionesReporte = (juegoId: JuegoId, perfil: PerfilId | null) =>
     const perfiles = yield* filas(
       PerfilFila,
       sql`SELECT p.id, p.titulo, p.revision, p.estado_revision, p.edicion_id, p.version_capa_id, p.distribucion_id, p.arquitectura,
-                 p.version_juego_objetivo, di.nombre || ' ' || di.version AS distribucion
+                 p.version_juego_objetivo, ${sql.literal(etiquetaDistribucion('di'))} AS distribucion
           FROM perfil_configuracion p JOIN edicion_juego e ON e.id = p.edicion_id JOIN distribucion di ON di.id = p.distribucion_id
           WHERE e.juego_id = ${juegoId} AND p.estado_revision IN ${sql.in(estadosVigentes)} ORDER BY p.titulo, p.revision`,
     )
@@ -89,8 +90,8 @@ export const opcionesSolucion = (reporteId: ReporteId) =>
     const [reporte] = yield* filas(
       ReporteOrigen,
       sql`SELECT r.id, r.edicion_id, r.resultado, r.version_juego, r.fecha_prueba, r.observaciones, r.estado_revision,
-                 j.id AS juego_id, j.titulo AS juego, l.nombre AS lanzador, di.nombre || ' ' || di.version AS distribucion,
-                 c.familia || ' ' || c.variante || ' ' || c.version AS capa
+                 j.id AS juego_id, j.titulo AS juego, l.nombre AS lanzador, ${sql.literal(etiquetaDistribucion('di'))} AS distribucion,
+                 ${sql.literal(etiquetaCapa('c'))} AS capa
           FROM reporte r JOIN edicion_juego e ON e.id = r.edicion_id JOIN juego j ON j.id = e.juego_id JOIN lanzador l ON l.id = e.lanzador_id
             JOIN diagnostico d ON d.id = r.diagnostico_id JOIN distribucion di ON di.id = d.distribucion_id
             JOIN version_capa c ON c.id = r.version_capa_id

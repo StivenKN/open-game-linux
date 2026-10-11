@@ -12,6 +12,7 @@ import { Diagnostico, Distribucion, Equipo, Juego, PerfilConfiguracion } from '.
 import { exigirUsuario, Visitante } from '../auth.ts'
 import { capturaDe } from '../diagnostico/payload.ts'
 import { filas, type Infra } from '../filas.ts'
+import { etiquetaCapa, etiquetaDistribucion } from './etiquetas.ts'
 
 const JuegoFila = Schema.Struct({ id: Juego.fields.id, titulo: Juego.fields.titulo })
 const ResultadoAprobado = Schema.Struct({ juego_id: Juego.fields.id, resultado: Resultado })
@@ -27,8 +28,8 @@ const PerfilAprobado = Schema.Struct({
   vram_min_mb: PerfilConfiguracion.fields.vram_min_mb,
   requiere_vulkan: PerfilConfiguracion.fields.requiere_vulkan,
   version_vulkan_min: PerfilConfiguracion.fields.version_vulkan_min,
-  capa: Schema.String, // "Proton GE 9-4"
-  distribucion: Schema.String, // "Linux Mint 21.3"
+  capa: Schema.String,
+  distribucion: Schema.String,
 })
 
 /** What the matrix compares: a capture's columns, plus where it runs for "perfil sugerido". */
@@ -55,7 +56,7 @@ const matriz = (equipo: EquipoEvaluado) =>
       sql`
         SELECT p.id, ej.juego_id, p.titulo, p.revision, p.distribucion_id, p.arquitectura,
                p.ram_min_mb, p.vram_min_mb, p.requiere_vulkan, p.version_vulkan_min,
-               vc.familia || ' ' || vc.variante || ' ' || vc.version AS capa, d.nombre || ' ' || d.version AS distribucion
+               ${sql.literal(etiquetaCapa('vc'))} AS capa, ${sql.literal(etiquetaDistribucion('d'))} AS distribucion
         FROM perfil_configuracion p
         JOIN edicion_juego ej ON ej.id = p.edicion_id
         JOIN version_capa vc ON vc.id = p.version_capa_id
@@ -156,7 +157,7 @@ const CapturaResumida = Schema.Struct({
   sistema: Diagnostico.fields.sistema,
   gpu_modelo: Diagnostico.fields.gpu_modelo,
   ram_mb: Diagnostico.fields.ram_mb,
-  distribucion: Schema.NullOr(Schema.String), // "Ubuntu 24.04"; null for Windows
+  distribucion: Schema.NullOr(Schema.String), // null for Windows
 })
 
 /**
@@ -175,7 +176,7 @@ export const misEquipos = () =>
     const capturas = yield* filas(
       CapturaResumida,
       sql`
-        SELECT d.id, d.equipo_id, d.capturado_en, d.sistema, d.gpu_modelo, d.ram_mb, dist.nombre || ' ' || dist.version AS distribucion
+        SELECT d.id, d.equipo_id, d.capturado_en, d.sistema, d.gpu_modelo, d.ram_mb, ${sql.literal(etiquetaDistribucion('dist'))} AS distribucion
         FROM diagnostico d
         JOIN equipo e ON e.id = d.equipo_id
         LEFT JOIN distribucion dist ON dist.id = d.distribucion_id
