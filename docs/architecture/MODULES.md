@@ -25,7 +25,7 @@ Each failure message names the fix, for example: "routes call server fns from sr
 
 | Path | Owns | Does not own |
 |---|---|---|
-| `dominio/ids.ts` | Branded integer ids (including `DependenciaId`), text `UsuarioId`, `Texto` (trim + non-empty), `TextoOpcional` (blank → null), `IdDesdeTexto` | |
+| `dominio/ids.ts` | Branded integer ids (including `DependenciaId`), text `UsuarioId`, `Texto` (trim + non-empty), `TextoOpcional` (blank → null), `idDeRuta` (`routes/-ids.ts`) | |
 | `dominio/literales.ts` | `FamiliaCapa`, `Resultado` with `ResultadoFuncional`/`ResultadoFallido`, `exigeFallo`. Imports only `effect`, so `aportes.ts` can spread `tablas.ts` fields without a cycle | |
 | `dominio/compatibilidad.ts` | `EstadoCompatibilidad`, `estadoDeResultado` (explicit map), **`estadoDe`** (the only result-set rule), `PruebaAprobada` (row schema that proves approval), `resumir`, `enDistribucion` | Queries |
 | `dominio/evaluacion.ts` | `Sistema`, `SoporteVulkan`, `Vulkan` (a version only with `si`), `versionVulkan`/`alMenos`, `Capacidades`, `CondicionesConocidas`, **`evaluar`** (3 outcomes, no FPS field), `capacidades`/`condiciones` column adapters, `sugerirPerfil` | |
@@ -75,4 +75,36 @@ Each failure message names the fix, for example: "routes call server fns from sr
 
 ## Rule homes
 
-The authoritative table is the header of `src/servidor/esquema/migraciones.ts`, which also lists the single writers. In short: row-local rules are DB constraints and three triggers. Cross-row write rules are in `servidor/aportes/aportes.ts`, except equipo/diagnostico convergence in `servidor/aportes/diagnostico.ts`. Review rules are in `servidor/aportes/revision.ts`. Comparability is in `dominio/aportes.ts` `discrepancias`. The failing-result rule is in `dominio/aportes.ts` `NuevoReporte`. Reviewer role is in `servidor/auth.ts` `exigirRevisor`.
+Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names are in `src/servidor/esquema/migraciones.ts`.
+
+| Rule | Home |
+|---|---|
+| PK, FK, UQ, composite keys, no duplicate dependencia / fallo | DB keys |
+| enumerated domains, magnitudes, ranges | DB CHECK (lists from dominio Schemas) |
+| blank strings | DB CHECK *_no_vacio (+ Texto on input) |
+| review block shape per state, approval needs evidence, valid estado_revision | DB CHECK *_bloque_revision |
+| revisado_en >= creado_en | DB CHECK *_revision_posterior |
+| fps => resolucion, calidad, metodo | DB CHECK reporte_fps_con_contexto |
+| Linux capture <=> distribucion_id; vulkan version only if si | DB CHECK |
+| capture immutable | DB trigger og_inmutable |
+| equipo owner fixed once it has a capture | DB trigger og_propietario_fijo |
+| report / solution content never rewritten (frozen at birth) | DB trigger og_solo_revision |
+| profile, its steps and deps frozen once reviewed or used | DB trigger og_perfil_congelado |
+| solucion -> reporte_fallo | DB composite FK solucion_fallo_fk |
+| report comparability (edition, layer, distro, arch, version) (edition + layer also a composite FK backstop, unmapped) | app: dominio/aportes.ts discrepancias (+ DB reporte_perfil_fk) |
+| own equipo; Linux diagnosis; fecha_prueba >= capturado_en | app: servidor/aportes/aportes.ts |
+| solution's profile in the report's edition | app: servidor/aportes/aportes.ts |
+| one equipo per alias per user, one capture per time | app: servidor/aportes/diagnostico.ts |
+| failing result has >= 1 fallo | app: dominio/aportes.ts NuevoReporte |
+| reviewer role + activo (also: only reviewers register games) | app: servidor/auth.ts exigirRevisor |
+| author != reviewer (all three tables), transitions, approval preconditions | app: servidor/aportes/revision.ts decidir |
+| only reviewers publish guides | no write path this delivery (seeded) |
+| public view hides retired rows | app: servidor/consultas (WHERE aprobado) |
+
+Single writers. `src/fronteras.test.ts` checks the SQL in `src/` and `scripts/` for the first two.
+
+| Tables | Writer |
+|---|---|
+| `equipo`, `diagnostico` (and the `distribucion` a capture names) | `servidor/aportes/diagnostico.ts` |
+| review block of `perfil_configuracion`, `reporte`, `solucion` | `servidor/aportes/revision.ts` `decidir` |
+| `reporte` (with `reporte_fallo` and the `version_capa` upsert), `solucion`, `juego` (with `edicion_juego`) | `servidor/aportes/aportes.ts` |

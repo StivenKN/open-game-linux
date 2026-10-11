@@ -183,7 +183,7 @@ See `ARCHITECTURE.md`, section Synthesis. The grafts listed there amend this rat
 
 ## Implementation reconciliation
 
-Once a unit lands, its code is authoritative and the sketch is history. The rule-home index lives in the header of `src/servidor/esquema/migraciones.ts`.
+Once a unit lands, its code is authoritative and the sketch is history. The rule-home index lives in `MODULES.md`, section Rule homes.
 
 | Unit | Deviation | Accepted because | Source |
 |---|---|---|---|
