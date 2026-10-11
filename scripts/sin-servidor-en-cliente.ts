@@ -1,5 +1,4 @@
 // Build guard (pnpm check): fails if server-only code reached the browser bundle (spike gotcha 3).
-// Ran against this sketch's build in /tmp: dist/client has no match; Effect Schema ships at ~29 kB gzip.
 import { readdirSync, readFileSync } from 'node:fs'
 
 const dir = 'dist/client/assets'

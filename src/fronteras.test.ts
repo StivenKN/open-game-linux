@@ -1,13 +1,12 @@
 // Module boundaries as a test (runs in `pnpm check`). Each failure message names the fix.
 // No dependency-cruiser or ESLint plugin: three regexes over the source tree are enough here.
 import { describe, expect, it } from '@effect/vitest'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const raiz = join(import.meta.dirname, '..')
-// A layer directory appears with the unit that first fills it; until then it has nothing to check.
 const archivos = (dir: string): ReadonlyArray<string> =>
-  !existsSync(join(raiz, dir)) ? [] : readdirSync(join(raiz, dir)).flatMap((n) => {
+  readdirSync(join(raiz, dir)).flatMap((n) => {
     const p = join(dir, n)
     return statSync(join(raiz, p)).isDirectory() ? archivos(p) : /\.(ts|tsx)$/.test(n) && !n.endsWith('.gen.ts') ? [p] : []
   })

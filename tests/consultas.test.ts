@@ -1,7 +1,7 @@
 // The read models against a real database. The scenario replays dominio/muestras.ts (GTA V across three
 // environments) as rows, so the ficha's summary must equal what `resumir` gives for the fixture.
-// U3 seeds no approved report and only decidir() may approve in app code, so approved rows are written
-// here with direct SQL that satisfies the review-block CHECK, inside a transaction that is rolled back.
+// Only decidir() may approve in app code, so approved rows are written here with direct SQL that
+// satisfies the review-block CHECK, inside a transaction that is rolled back.
 import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Exit, Option, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'

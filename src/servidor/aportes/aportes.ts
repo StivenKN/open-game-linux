@@ -1,5 +1,5 @@
 // The single writer of user contributions: reporte (+ reporte_fallo, version_capa upsert), solucion, and
-// juego/edicion_juego (RF-03). diagnostico/equipo/distribucion belong to aportes/diagnostico.ts (U6).
+// juego/edicion_juego (RF-03). diagnostico/equipo/distribucion belong to aportes/diagnostico.ts.
 // Every app-side 8.7/8.9 write rule the DB cannot express lives here or in revision.ts, nowhere else.
 //
 // Each program runs inside the one transaction servidor/ejecutar.ts `accion` opens, so a failure after a
