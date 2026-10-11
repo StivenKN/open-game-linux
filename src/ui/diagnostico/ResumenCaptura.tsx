@@ -1,4 +1,6 @@
 // The captured hardware as tiles (wireframe 9.2 "Perfil detectado"). Unknown values say so in words.
+// Ends with 9.2's pointer to distributions (RF-09): the adoption guides, since no rule picks a distro from hardware.
+import { Link } from '@tanstack/react-router'
 import type { Captura } from '../../dominio/aportes.ts'
 import { memoria, momento } from '../formato.ts'
 import { sistema, soporteVulkan } from '../vocabulario.ts'
@@ -30,6 +32,9 @@ export function ResumenCaptura({ captura }: { captura: Captura }) {
         ))}
       </dl>
       <p className="pequeno tenue">Capturado el {momento(captura.capturado_en)}.</p>
+      <p className="pequeno">
+        Para elegir una distribución, instalarla o hacer arranque dual con Windows, consulta las <Link to="/guias">guías de adopción</Link>.
+      </p>
     </section>
   )
 }
