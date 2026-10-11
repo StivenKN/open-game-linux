@@ -253,6 +253,19 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 - **A rate-limited sign-in says so.** better-auth's limiter answers 429 with no code in production; `routes/-cuenta.ts` maps the status to "Demasiados intentos seguidos".
 - **Coverage lives in `cobertura.md`**, with each requirement's route, program, tests, screenshots and gaps.
 
+## Follow-ups after the first delivery
+
+Found by the pre-PR comment audit. None is a correctness bug; each would make an illegal state unrepresentable or remove a hand-synced copy.
+
+- `Comprobacion.exigido` and `detectado` hold either MB or a Vulkan version in one string. A union tagged by requisito would remove the `Number()` parse in `ChecklistEvaluacion`.
+- `Personal` (`VeredictoParaMi`) and the FPS fields of `PruebaAprobada` are sets of nullables whose combinations mean different things. Each should be a tagged union or one nullable struct, like `MedicionFps`.
+- `MedicionFps.fps_promedio`'s maximum copies `numeric(7,2)` by hand, and the failure-type codes live in both `scripts/sembrar.ts` and `ui/vocabulario.ts`. Derive both from one source.
+- Migrations build their CHECK lists from today's literal Schemas, so an old migration renders different SQL after a literal changes. Snapshot the lists per migration before the first real deploy.
+- `registrarDiagnostico` serializes per user with a row lock. A unique index on `(usuario_id, lower(alias))` with `ON CONFLICT` would make convergence structural.
+- `ui/muestras/fixtures.ts` is hand-written and could be derived with `resumir` and `evaluar`.
+- `pnpm db:up` from a second checkout recreates `opengame-pg` because the init-script mount path differs per checkout. The data survives, but connections drop.
+- Open product gaps from `cobertura.md`: no game editing after creation (RF-03), guides and profiles only from the seed (RF-09), no distribution recommendation from hardware, no "hardware modesto" filter (wireframe 9.1).
+
 ## Open questions and risks
 
 1. Does `Schema.fromFormData(Schema.toCodecStringTree(S))` decode the report form's nested shape (`fallos[0][tipo_fallo_id]`, the `version_capa[_tag]` union, a null `perfil_id`) at runtime? It typechecks. If not, U0 falls back to a controlled form object decoded with plain `Schema.decodeUnknownResult(S)`, and the hook signature stays the same.
