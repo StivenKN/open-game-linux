@@ -274,7 +274,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 4. Will the panel accept `usuario.id` as text, and the hash living in `account`? The alternative, `generateId: 'serial'` (unverified on 1.7.7), would make `id` an integer.
 5. Native Linux games: we default to `familia = 'Nativo'`, carried from round 1 open decision 2. Is that acceptable?
 6. Strict "Resultados variables" (funciona + funciona_con_ajustes shows purple), carried from round 1 open decision 5. Keep it?
-7. Defense hosting: settled after U9. Nitro builds the production server (`pnpm start` on a laptop) and a Vercel function, with Neon Postgres. See the README.
+7. Defense hosting: settled after U9. Nitro builds a Node server (`pnpm start`), and `compose.prod.yaml` runs it in Docker with PostgreSQL 18 on a VPS under Coolify. See the README.
 
 ## Next implementation step
 
