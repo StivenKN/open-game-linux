@@ -97,7 +97,49 @@ pnpm build
 pnpm start
 ```
 
-`pnpm start` serves the build with `vite preview` on port 3000, like `pnpm dev`. It reads `.env` the same way `pnpm dev` does, and variables already set in the environment win. To use another port, run `pnpm start --port <port>` and set `BETTER_AUTH_URL` to match, because sign-in accepts only requests from that origin.
+`pnpm build` produces a Node server in `.output/`, built by Nitro. `pnpm start` runs it on port 3000 and reads `.env`; variables already set in the environment win. Set `PORT` to use another port, and set `BETTER_AUTH_URL` to the public address, because sign-in accepts only requests from that origin and the detector command is built from it. Extra origins go in `BETTER_AUTH_TRUSTED_ORIGINS`, comma-separated.
+
+## Deploy on a VPS
+
+`compose.prod.yaml` runs the app and PostgreSQL 18 in Docker. The `app` container applies pending migrations on every start, then serves on port 3000. Neither container publishes a port to the host, so a reverse proxy must front the app. The database lives in the `datos` volume.
+
+The stack reads four variables, listed in `.env.prod.example`:
+
+- `POSTGRES_PASSWORD`. Use `openssl rand -hex 32`, because the app puts it in a database URL.
+- `BETTER_AUTH_SECRET`. Use `openssl rand -base64 32`.
+- `BETTER_AUTH_URL`. The public https address, for example `https://opengame.example.com`. Sign-in accepts only this origin, and the detector command is built from it.
+- `BETTER_AUTH_TRUSTED_ORIGINS`. Optional extra origins, comma-separated.
+
+### Coolify
+
+1. In Coolify, select New Resource, then Public Repository, and enter `https://github.com/StivenKN/open-game-linux`. Select the branch.
+2. Set Build Pack to Docker Compose and the compose location to `/compose.prod.yaml`.
+3. In Environment Variables, fill in the variables above. Coolify blocks the deploy until the required ones have a value.
+4. Set the domain of the `app` service to `https://<domain>:3000`. The `:3000` tells Coolify which container port receives the requests. You can also let Coolify generate an sslip.io domain. Set `BETTER_AUTH_URL` to the same https address, without the port.
+5. Deploy.
+6. Load the demo data once. Open the `app` container's Terminal tab in Coolify and run `pnpm db:sembrar`. Promote an account from the same terminal with `pnpm rol <correo> revisor`.
+
+Every later deploy rebuilds the image and keeps the database.
+
+### Plain Docker
+
+1. Clone the repository on the server, copy `.env.prod.example` to `.env.prod`, and fill it in.
+2. Publish the app on the loopback interface with a `compose.local.yaml` next to it:
+
+   ```yaml
+   services:
+     app:
+       ports: ["127.0.0.1:3000:3000"]
+   ```
+
+3. Start the stack, then load the demo data once. To update, run `git pull` and the first command again.
+
+   ```sh
+   docker compose -p opengame-prod --env-file .env.prod -f compose.prod.yaml -f compose.local.yaml up -d --build
+   docker compose -p opengame-prod --env-file .env.prod -f compose.prod.yaml -f compose.local.yaml exec app pnpm db:sembrar
+   ```
+
+4. Serve it over https from the host's reverse proxy. With Caddy, the whole site entry is `opengame.example.com { reverse_proxy 127.0.0.1:3000 }`.
 
 ## Architecture
 
