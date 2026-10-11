@@ -22,8 +22,9 @@ export const Entrada = Schema.Struct({ correo, contrasena: Schema.String.pipe(Sc
 /** better-auth reports failures as an error code. Codes we do not expect land on the whole form. */
 type FalloCuenta = { readonly codigo: string | undefined }
 
-const respuesta = (error: { readonly code?: string | undefined } | null): Respuesta<null, FalloCuenta> =>
-  error === null ? { ok: true, valor: null } : { ok: false, fallo: { codigo: error.code } }
+// Its rate limiter (production only) answers 429 with no code, so the status names that one.
+const respuesta = (error: { readonly code?: string | undefined; readonly status: number } | null): Respuesta<null, FalloCuenta> =>
+  error === null ? { ok: true, valor: null } : { ok: false, fallo: { codigo: error.code ?? (error.status === 429 ? 'DEMASIADOS_INTENTOS' : undefined) } }
 
 export const registrar = async ({ data }: { readonly data: typeof Registro.Encoded }) =>
   respuesta((await authCliente.signUp.email({ name: data.alias, email: data.correo, password: data.contrasena })).error)
@@ -38,6 +39,7 @@ const mensajes: Readonly<Partial<Record<string, Errores>>> = {
   PASSWORD_TOO_SHORT: { contrasena: 'Usa al menos 8 caracteres.' },
   PASSWORD_TOO_LONG: { contrasena: 'Usa como máximo 128 caracteres.' },
   INVALID_EMAIL_OR_PASSWORD: { formulario: 'El correo o la contraseña no coinciden.' },
+  DEMASIADOS_INTENTOS: { formulario: 'Demasiados intentos seguidos. Espera unos segundos y vuelve a intentarlo.' },
 }
 
 export const erroresDeCuenta = (f: FalloCuenta): Errores =>
