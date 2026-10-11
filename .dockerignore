@@ -1,0 +1,14 @@
+node_modules
+.output
+.tanstack
+.nitro
+.git
+.env
+.env.*
+.scratch
+.audit
+.vscode
+docs
+prototypes
+tests
+src/routeTree.gen.ts
