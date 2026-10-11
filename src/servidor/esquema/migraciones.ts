@@ -45,6 +45,7 @@ import { EstadoGuia, TipoGuia } from '../../dominio/guias.ts'
 import { FamiliaCapa, Resultado } from '../../dominio/literales.ts'
 import { type EstadoRevision, Rol } from '../../dominio/revision.ts'
 import { BloqueRevision, largo as L } from '../../dominio/tablas.ts'
+import { unaFila } from '../filas.ts'
 
 const ejecutar = (sentencias: ReadonlyArray<string>) =>
   Effect.gen(function* () {
@@ -381,7 +382,7 @@ export const migrar = PgMigrator.run({ loader: Migrator.fromRecord(migraciones) 
 /** The name of the database the client is connected to, as the server reports it. */
 export const baseActual = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
-  const [{ nombre }] = yield* Effect.flatMap(sql`SELECT current_database() AS nombre`, Schema.decodeUnknownEffect(Schema.Tuple([Schema.Struct({ nombre: Schema.String })])))
+  const { nombre } = yield* unaFila(Schema.Struct({ nombre: Schema.String }), sql`SELECT current_database() AS nombre`)
   return nombre
 })
 

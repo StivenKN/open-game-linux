@@ -8,3 +8,7 @@ export type Infra = SqlError.SqlError | Schema.SchemaError
 /** The rows a statement returned, decoded with `fila`. Destructure `[primera]` for a single-row lookup. */
 export const filas = <A, I>(fila: Schema.Codec<A, I>, consulta: Effect.Effect<ReadonlyArray<unknown>, SqlError.SqlError>) =>
   Effect.flatMap(consulta, Schema.decodeUnknownEffect(Schema.Array(fila)))
+
+/** The row a statement always returns (INSERT ... RETURNING, an aggregate). An empty result is a defect. */
+export const unaFila = <A, I>(fila: Schema.Codec<A, I>, consulta: Effect.Effect<ReadonlyArray<unknown>, SqlError.SqlError>) =>
+  Effect.flatMap(filas(fila, consulta), ([primera]) => (primera === undefined ? Effect.die('la sentencia no devolvió ninguna fila') : Effect.succeed(primera)))

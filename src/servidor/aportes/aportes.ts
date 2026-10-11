@@ -13,7 +13,7 @@ import { estadosVigentes } from '../../dominio/revision.ts'
 import { Diagnostico, Equipo, PerfilConfiguracion, Reporte } from '../../dominio/tablas.ts'
 import { exigirRevisor, exigirUsuario, type Visitante } from '../auth.ts'
 import { conReglasDeBd } from '../esquema/restricciones.ts'
-import { filas, type Infra } from '../filas.ts'
+import { filas, type Infra, unaFila } from '../filas.ts'
 
 /** A writer program: run by `accion` in one transaction, for a signed-in visitor. */
 export type Escritura<A, E> = Effect.Effect<A, E | NoAutenticado | Infra, SqlClient.SqlClient | Visitante>
@@ -68,7 +68,7 @@ export const registrarReporte = (n: NuevoReporte): Escritura<{ readonly id: Repo
       if (Arr.isReadonlyArrayNonEmpty(encontradas)) return yield* Effect.fail(new PerfilNoComparable({ discrepancias: encontradas }))
     }
 
-    const [creado] = yield* filas(
+    const creado = yield* unaFila(
       ConIdReporte,
       sql`INSERT INTO reporte ${sql.insert({
         edicion_id: n.edicion_id,
@@ -86,7 +86,6 @@ export const registrarReporte = (n: NuevoReporte): Escritura<{ readonly id: Repo
         observaciones: n.observaciones,
       })} RETURNING id`,
     )
-    if (creado === undefined) return yield* Effect.die('INSERT INTO reporte no devolvió id')
     if (Arr.isReadonlyArrayNonEmpty(n.fallos))
       yield* conReglasDeBd(
         sql`INSERT INTO reporte_fallo ${sql.insert(n.fallos.map((f) => ({ reporte_id: creado.id, tipo_fallo_id: f.tipo_fallo_id, detalle: f.detalle })))}`,
@@ -102,14 +101,13 @@ const resolverVersionCapa = (ref: NuevoReporte['version_capa']) =>
     if (ref._tag === 'existente') return ref.id
     const sql = yield* SqlClient.SqlClient
     // DO UPDATE instead of DO NOTHING so RETURNING also yields the id of a row that already existed.
-    const [capa] = yield* conReglasDeBd(
-      filas(
+    const capa = yield* conReglasDeBd(
+      unaFila(
         ConIdCapa,
         sql`INSERT INTO version_capa (familia, variante, version) VALUES (${ref.familia}, ${ref.variante}, ${ref.version})
             ON CONFLICT ON CONSTRAINT version_capa_uq DO UPDATE SET familia = EXCLUDED.familia RETURNING id`,
       ),
     )
-    if (capa === undefined) return yield* Effect.die('INSERT INTO version_capa no devolvió id')
     return capa.id
   })
 
@@ -144,7 +142,7 @@ export const registrarSolucion = (s: NuevaSolucion): Escritura<{ readonly id: So
       if (perfil.edicion_id !== origen.edicion_id) return yield* falla('solucion_perfil_otra_edicion')
     }
 
-    const [creada] = yield* filas(
+    const creada = yield* unaFila(
       ConIdSolucion,
       sql`INSERT INTO solucion ${sql.insert({
         reporte_id: s.reporte_id,
@@ -155,7 +153,6 @@ export const registrarSolucion = (s: NuevaSolucion): Escritura<{ readonly id: So
         instrucciones: s.instrucciones,
       })} RETURNING id`,
     )
-    if (creada === undefined) return yield* Effect.die('INSERT INTO solucion no devolvió id')
     return { id: creada.id }
   })
 
@@ -170,8 +167,7 @@ export const crearJuego = (j: NuevoJuego): Escritura<{ readonly id: JuegoId }, R
   Effect.gen(function* () {
     yield* exigirRevisor
     const sql = yield* SqlClient.SqlClient
-    const [creado] = yield* filas(ConIdJuego, sql`INSERT INTO juego ${sql.insert({ titulo: j.titulo, descripcion: j.descripcion })} RETURNING id`)
-    if (creado === undefined) return yield* Effect.die('INSERT INTO juego no devolvió id')
+    const creado = yield* unaFila(ConIdJuego, sql`INSERT INTO juego ${sql.insert({ titulo: j.titulo, descripcion: j.descripcion })} RETURNING id`)
     yield* conReglasDeBd(sql`INSERT INTO edicion_juego ${sql.insert(j.ediciones.map((e) => ({ juego_id: creado.id, ...e })))}`)
     return { id: creado.id }
   })

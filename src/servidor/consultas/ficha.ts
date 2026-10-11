@@ -9,7 +9,7 @@ import { JuegoId, UsuarioId } from '../../dominio/ids.ts'
 import { EstadoRevision, estadosVigentes } from '../../dominio/revision.ts'
 import { Diagnostico, EdicionJuego, Equipo, Juego, Lanzador, PerfilConfiguracion, Solucion, TipoFallo } from '../../dominio/tablas.ts'
 import { Visitante } from '../auth.ts'
-import { filas } from '../filas.ts'
+import { filas, unaFila } from '../filas.ts'
 import { esDemo, etiquetaCapa, etiquetaDistribucion, etiquetaPerfil } from './etiquetas.ts'
 
 /** A PruebaAprobada row plus its game and whether a demo account reported it. */
@@ -130,10 +130,13 @@ export const fichaJuego = (juegoId: JuegoId) =>
     const pruebas = yield* pruebasAprobadas(juegoId)
     const resumen = resumir(pruebas)
 
-    const [pendientes] = yield* sql`
-      SELECT count(*)::int AS n
-      FROM reporte r JOIN edicion_juego e ON e.id = r.edicion_id
-      WHERE e.juego_id = ${juegoId} AND r.estado_revision = 'pendiente'`.pipe(Effect.flatMap(Schema.decodeUnknownEffect(Schema.Tuple([Conteo]))))
+    const pendientes = yield* unaFila(
+      Conteo,
+      sql`
+        SELECT count(*)::int AS n
+        FROM reporte r JOIN edicion_juego e ON e.id = r.edicion_id
+        WHERE e.juego_id = ${juegoId} AND r.estado_revision = 'pendiente'`,
+    )
 
     const filasPerfil = yield* SqlSchema.findAll({
       Request: JuegoId,

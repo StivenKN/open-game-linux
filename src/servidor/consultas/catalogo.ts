@@ -5,6 +5,7 @@ import { SqlClient, SqlSchema } from 'effect/sql'
 import type { FiltroCatalogo } from '../../dominio/aportes.ts'
 import { resumir } from '../../dominio/compatibilidad.ts'
 import { Juego, Lanzador } from '../../dominio/tablas.ts'
+import { unaFila } from '../filas.ts'
 import { pruebasAprobadas } from './ficha.ts'
 
 const FilaJuego = Juego.mapFields(Struct.pick(['id', 'titulo'])).mapFields(
@@ -66,7 +67,9 @@ export const catalogo = (filtro: FiltroCatalogo) =>
       )
 
     // The four home counters, from approved rows only (round 1 cut: no live "nodos activos").
-    const [contadores] = yield* sql`
+    const contadores = yield* unaFila(
+      Contadores,
+      sql`
         SELECT count(DISTINCT e.juego_id)::int AS juegos_verificados,
                count(*)::int AS reportes_aprobados,
                (SELECT count(*)::int FROM perfil_configuracion WHERE estado_revision = 'aprobado') AS perfiles_aprobados,
@@ -74,7 +77,8 @@ export const catalogo = (filtro: FiltroCatalogo) =>
         FROM reporte r
         JOIN edicion_juego e ON e.id = r.edicion_id
         JOIN diagnostico d ON d.id = r.diagnostico_id
-        WHERE r.estado_revision = 'aprobado'`.pipe(Effect.flatMap(Schema.decodeUnknownEffect(Schema.Tuple([Contadores]))))
+        WHERE r.estado_revision = 'aprobado'`,
+    )
 
     const lanzadores = yield* SqlSchema.findAll({
       Request: Schema.Void,

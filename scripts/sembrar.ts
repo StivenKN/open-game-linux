@@ -27,6 +27,7 @@ import { registrarReporte, registrarSolucion } from '../src/servidor/aportes/apo
 import { registrarDiagnostico } from '../src/servidor/aportes/diagnostico.ts'
 import { decidir } from '../src/servidor/aportes/revision.ts'
 import { asignarRol, auth, dominioDemo, Visitante } from '../src/servidor/auth.ts'
+import { filas, unaFila } from '../src/servidor/filas.ts'
 import { PgLive } from '../src/servidor/runtime.ts'
 
 /** Shared by every demo account, and printed at the end so the team can sign in. */
@@ -419,8 +420,8 @@ const aprobacionDemo = (que: string) =>
     evidencia: 'Datos de ejemplo: aporte sembrado por pnpm db:sembrar en una cuenta demo, no una prueba real.',
   })
 
-const ConId = Schema.Array(Schema.Struct({ id: Schema.Int }))
-const ConIdTexto = Schema.Array(Schema.Struct({ id: Schema.String }))
+const ConId = Schema.Struct({ id: Schema.Int })
+const ConIdTexto = Schema.Struct({ id: Schema.String })
 
 /** The id the seed stored under `clave`. A missing key is a mistake in the data above. */
 const de = <K, A>(ids: ReadonlyMap<K, A>, clave: K) => {
@@ -437,10 +438,9 @@ const programa = Effect.gen(function* () {
   const asegurar = (tabla: string, clave: Readonly<Record<string, Valor>>, resto: Readonly<Record<string, Valor>> = {}) =>
     Effect.gen(function* () {
       const donde = sql.and(Object.entries(clave).map(([c, v]) => sql`${sql(c)} IS NOT DISTINCT FROM ${v}`))
-      const [fila] = yield* Schema.decodeUnknownEffect(ConId)(yield* sql`SELECT id FROM ${sql(tabla)} WHERE ${donde}`)
+      const [fila] = yield* filas(ConId, sql`SELECT id FROM ${sql(tabla)} WHERE ${donde}`)
       if (fila !== undefined) return { id: fila.id, nuevo: false }
-      const [creada] = yield* Schema.decodeUnknownEffect(ConId)(yield* sql`INSERT INTO ${sql(tabla)} ${sql.insert({ ...clave, ...resto })} RETURNING id`)
-      if (creada === undefined) return yield* Effect.die(`INSERT en ${tabla} no devolvió id`)
+      const creada = yield* unaFila(ConId, sql`INSERT INTO ${sql(tabla)} ${sql.insert({ ...clave, ...resto })} RETURNING id`)
       contar(tabla)
       return { id: creada.id, nuevo: true }
     })
@@ -452,7 +452,7 @@ const programa = Effect.gen(function* () {
   const usuario = new Map<Cuenta, string>()
   for (const [alias, rol] of Record.toEntries(cuentas)) {
     const correo = correoDe(alias)
-    const [existente] = yield* Schema.decodeUnknownEffect(ConIdTexto)(yield* sql`SELECT id FROM usuario WHERE correo = ${correo}`)
+    const [existente] = yield* filas(ConIdTexto, sql`SELECT id FROM usuario WHERE correo = ${correo}`)
     if (existente === undefined) contar('usuario')
     const id =
       existente?.id ?? (yield* Effect.promise(() => auth.api.signUpEmail({ body: { name: alias, email: correo, password: contrasenaDemo } }))).user.id
@@ -566,8 +566,9 @@ const programa = Effect.gen(function* () {
         const diagnostico_id = yield* de(diagnosticoDe, r.equipo)
         const edicion_id = yield* de(edicion, r.edicion.join('/'))
         // A report has no natural key; its capture, edition and test time identify it well enough here.
-        const [existente] = yield* Schema.decodeUnknownEffect(ConId)(
-          yield* sql`SELECT id FROM reporte WHERE diagnostico_id = ${diagnostico_id} AND edicion_id = ${edicion_id} AND fecha_prueba = ${r.fecha_prueba}`,
+        const [existente] = yield* filas(
+          ConId,
+          sql`SELECT id FROM reporte WHERE diagnostico_id = ${diagnostico_id} AND edicion_id = ${edicion_id} AND fecha_prueba = ${r.fecha_prueba}`,
         )
         if (existente !== undefined) {
           reporteDe.set(i, existente.id)
@@ -595,8 +596,9 @@ const programa = Effect.gen(function* () {
       const sol = solucionDemo
       const reporte_id = yield* de(reporteDe, sol.reporte)
       const tipo_fallo_id = yield* de(tipoFallo, sol.tipoFallo)
-      const [solucionExistente] = yield* Schema.decodeUnknownEffect(ConId)(
-        yield* sql`SELECT id FROM solucion WHERE reporte_id = ${reporte_id} AND tipo_fallo_id = ${tipo_fallo_id} AND titulo = ${sol.titulo}`,
+      const [solucionExistente] = yield* filas(
+        ConId,
+        sql`SELECT id FROM solucion WHERE reporte_id = ${reporte_id} AND tipo_fallo_id = ${tipo_fallo_id} AND titulo = ${sol.titulo}`,
       )
       let solucion_id = solucionExistente?.id
       if (solucion_id === undefined) {

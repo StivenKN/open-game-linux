@@ -7,12 +7,11 @@ import { type PayloadInvalido, ReglaIncumplida } from '../../dominio/fallos.ts'
 import { Diagnostico, Distribucion, Equipo } from '../../dominio/tablas.ts'
 import { exigirUsuario } from '../auth.ts'
 import { capturaDe } from '../diagnostico/payload.ts'
-import { filas } from '../filas.ts'
+import { filas, unaFila } from '../filas.ts'
 import type { Escritura } from './aportes.ts'
 
 const IdEquipo = Schema.Struct({ id: Equipo.fields.id })
-// The insert either wrote the row or met the existing one, so one of the two SELECTs always returns it.
-const Guardado = Schema.NonEmptyArray(Schema.Struct({ id: Diagnostico.fields.id, nuevo: Schema.Boolean }))
+const Guardado = Schema.Struct({ id: Diagnostico.fields.id, nuevo: Schema.Boolean })
 
 /**
  * Saves one capture for the signed-in user:
@@ -61,14 +60,15 @@ export const registrarDiagnostico = (
       soporte_vulkan: captura.soporte_vulkan,
       version_vulkan: captura.version_vulkan,
     }
-    const [guardado] = yield* Schema.decodeUnknownEffect(Guardado)(
-      yield* sql`
+    // The insert either wrote the row or met the existing one, so one of the two SELECTs always returns it.
+    return yield* unaFila(
+      Guardado,
+      sql`
         WITH nuevo AS (INSERT INTO diagnostico ${sql.insert(fila)} ON CONFLICT (equipo_id, capturado_en) DO NOTHING RETURNING id)
         SELECT id, true AS nuevo FROM nuevo
         UNION ALL
         SELECT id, false AS nuevo FROM diagnostico WHERE equipo_id = ${equipo.id} AND capturado_en = ${captura.capturado_en}`,
     )
-    return guardado
   })
 
 type DistribucionCapturada = Extract<Captura, { readonly sistema: 'Linux' }>['distribucion']
@@ -82,8 +82,6 @@ const distribucionDe = (d: DistribucionCapturada) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     yield* sql`INSERT INTO distribucion (nombre, version) VALUES (${d.nombre}, ${d.version}) ON CONFLICT (nombre, version) DO NOTHING`
-    const [fila] = yield* Schema.decodeUnknownEffect(Schema.NonEmptyArray(Schema.Struct({ id: Distribucion.fields.id })))(
-      yield* sql`SELECT id FROM distribucion WHERE nombre = ${d.nombre} AND version = ${d.version}`,
-    )
+    const fila = yield* unaFila(Schema.Struct({ id: Distribucion.fields.id }), sql`SELECT id FROM distribucion WHERE nombre = ${d.nombre} AND version = ${d.version}`)
     return fila.id
   })
