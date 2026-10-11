@@ -9,13 +9,13 @@
 import { notFound, redirect } from '@tanstack/react-router'
 import { getRequest } from '@tanstack/react-start/server'
 import { Cause, Effect, Exit, Option, Schema } from 'effect'
-import { SqlClient, type SqlError } from 'effect/sql'
+import { SqlClient } from 'effect/sql'
 import { type FalloDominio, NoAutenticado, NoEncontrado, type Respuesta, SinPermiso } from '../dominio/fallos.ts'
 import { Visitante, visitanteDe } from './auth.ts'
+import type { Infra } from './filas.ts'
 import { runtime } from './runtime.ts'
 
 type Control = NoEncontrado | NoAutenticado | SinPermiso
-type Infra = SqlError.SqlError | Schema.SchemaError
 type Servicios = SqlClient.SqlClient | Visitante
 
 const conVisitante = <A, E>(programa: Effect.Effect<A, E, Servicios>): Effect.Effect<A, E, SqlClient.SqlClient> =>

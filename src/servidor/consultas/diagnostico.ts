@@ -1,7 +1,7 @@
 // Read models for diagnosis (wireframe 9.2): the evaluation matrix for one set of capacities, the
 // user's equipos with their capture history, and one saved capture. No FPS estimate exists anywhere.
 import { Effect, Option, Schema } from 'effect'
-import { SqlClient, type SqlError } from 'effect/sql'
+import { SqlClient } from 'effect/sql'
 import type { Captura, EntradaDiagnostico } from '../../dominio/aportes.ts'
 import { estadoDe } from '../../dominio/compatibilidad.ts'
 import { capacidades, condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
@@ -11,8 +11,7 @@ import { Resultado } from '../../dominio/literales.ts'
 import { Diagnostico, Distribucion, Equipo, Juego, PerfilConfiguracion } from '../../dominio/tablas.ts'
 import { exigirUsuario, Visitante } from '../auth.ts'
 import { capturaDe } from '../diagnostico/payload.ts'
-
-type Infra = SqlError.SqlError | Schema.SchemaError
+import { filas, type Infra } from '../filas.ts'
 
 const JuegoFila = Schema.Struct({ id: Juego.fields.id, titulo: Juego.fields.titulo })
 const ResultadoAprobado = Schema.Struct({ juego_id: Juego.fields.id, resultado: Resultado })
@@ -44,14 +43,16 @@ type EquipoEvaluado = Pick<Captura, 'sistema' | 'arquitectura' | 'ram_mb' | 'vra
 const matriz = (equipo: EquipoEvaluado) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const juegos = yield* Schema.decodeUnknownEffect(Schema.Array(JuegoFila))(yield* sql`SELECT id, titulo FROM juego ORDER BY titulo, id`)
-    const resultados = yield* Schema.decodeUnknownEffect(Schema.Array(ResultadoAprobado))(
-      yield* sql`
+    const juegos = yield* filas(JuegoFila, sql`SELECT id, titulo FROM juego ORDER BY titulo, id`)
+    const resultados = yield* filas(
+      ResultadoAprobado,
+      sql`
         SELECT ej.juego_id, r.resultado FROM reporte r JOIN edicion_juego ej ON ej.id = r.edicion_id
         WHERE r.estado_revision = 'aprobado'`,
     )
-    const perfiles = yield* Schema.decodeUnknownEffect(Schema.Array(PerfilAprobado))(
-      yield* sql`
+    const perfiles = yield* filas(
+      PerfilAprobado,
+      sql`
         SELECT p.id, ej.juego_id, p.titulo, p.revision, p.distribucion_id, p.arquitectura,
                p.ram_min_mb, p.vram_min_mb, p.requiere_vulkan, p.version_vulkan_min,
                vc.familia || ' ' || vc.variante || ' ' || vc.version AS capa, d.nombre || ' ' || d.version AS distribucion
@@ -94,8 +95,9 @@ export const evaluarSinGuardar = (
     const sql = yield* SqlClient.SqlClient
     const [distribucion] =
       captura.sistema === 'Linux'
-        ? yield* Schema.decodeUnknownEffect(Schema.Array(Schema.Struct({ id: Distribucion.fields.id })))(
-            yield* sql`SELECT id FROM distribucion WHERE nombre = ${captura.distribucion.nombre} AND version = ${captura.distribucion.version}`,
+        ? yield* filas(
+            Schema.Struct({ id: Distribucion.fields.id }),
+            sql`SELECT id FROM distribucion WHERE nombre = ${captura.distribucion.nombre} AND version = ${captura.distribucion.version}`,
           )
         : []
     return { captura, matriz: yield* matriz({ ...captura, distribucion_id: distribucion?.id ?? null }) }
@@ -132,8 +134,9 @@ export const miDiagnostico = (id: DiagnosticoId) =>
   Effect.gen(function* () {
     const usuario = yield* exigirUsuario
     const sql = yield* SqlClient.SqlClient
-    const [d] = yield* Schema.decodeUnknownEffect(Schema.Array(DiagnosticoGuardado))(
-      yield* sql`
+    const [d] = yield* filas(
+      DiagnosticoGuardado,
+      sql`
         SELECT d.*, e.alias AS equipo,
                CASE WHEN dist.id IS NULL THEN NULL ELSE json_build_object('nombre', dist.nombre, 'version', dist.version) END AS distribucion
         FROM diagnostico d
@@ -165,11 +168,13 @@ export const misEquipos = () =>
     const visitante = yield* Visitante
     if (Option.isNone(visitante)) return []
     const sql = yield* SqlClient.SqlClient
-    const equipos = yield* Schema.decodeUnknownEffect(Schema.Array(EquipoFila))(
-      yield* sql`SELECT id, alias FROM equipo WHERE usuario_id = ${visitante.value.id} ORDER BY creado_en, id`,
+    const equipos = yield* filas(
+      EquipoFila,
+      sql`SELECT id, alias FROM equipo WHERE usuario_id = ${visitante.value.id} ORDER BY creado_en, id`,
     )
-    const capturas = yield* Schema.decodeUnknownEffect(Schema.Array(CapturaResumida))(
-      yield* sql`
+    const capturas = yield* filas(
+      CapturaResumida,
+      sql`
         SELECT d.id, d.equipo_id, d.capturado_en, d.sistema, d.gpu_modelo, d.ram_mb, dist.nombre || ' ' || dist.version AS distribucion
         FROM diagnostico d
         JOIN equipo e ON e.id = d.equipo_id

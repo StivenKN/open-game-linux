@@ -2,6 +2,9 @@
 import { Effect, Schema } from 'effect'
 import type { SqlError } from 'effect/sql'
 
+/** What a statement and its row decoding fail with: infrastructure, never a domain failure. */
+export type Infra = SqlError.SqlError | Schema.SchemaError
+
 /** The rows a statement returned, decoded with `fila`. Destructure `[primera]` for a single-row lookup. */
 export const filas = <A, I>(fila: Schema.Codec<A, I>, consulta: Effect.Effect<ReadonlyArray<unknown>, SqlError.SqlError>) =>
   Effect.flatMap(consulta, Schema.decodeUnknownEffect(Schema.Array(fila)))

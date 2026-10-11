@@ -12,6 +12,7 @@ import { NoAutenticado, NoEncontrado, SinPermiso } from '../dominio/fallos.ts'
 import { puedeRevisar, type Rol } from '../dominio/revision.ts'
 import { Usuario as FilaUsuario } from '../dominio/tablas.ts'
 import { esquemaAuth } from './esquema/auth.ts'
+import { filas } from './filas.ts'
 
 const url = process.env.DATABASE_URL
 // Without this, pg silently falls back to PGHOST/localhost:5432 and auth talks to some other database.
@@ -76,18 +77,20 @@ export const exigirRevisor: Effect.Effect<Revisor, NoAutenticado | SinPermiso, V
  */
 export const dominioDemo = 'demo.opengame.test'
 
-const RolCambiado = Schema.Array(Schema.Struct({ alias: FilaUsuario.fields.alias, antes: FilaUsuario.fields.rol }))
+const RolCambiado = Schema.Struct({ alias: FilaUsuario.fields.alias, antes: FilaUsuario.fields.rol })
 
 /** Sets an account's role (scripts/rol.ts and the seed; there is no admin UI). `cambio` is false when it already had it. */
 export const asignarRol = (correo: string, rol: Rol) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     // One statement, so `cambio` stays right if two runs race, and an unchanged role writes nothing.
-    const filas = yield* sql`
+    const [fila] = yield* filas(
+      RolCambiado,
+      sql`
       WITH previo AS (SELECT id, alias, rol AS antes FROM usuario WHERE correo = lower(btrim(${correo})) FOR UPDATE),
            cambio AS (UPDATE usuario u SET rol = ${rol} FROM previo WHERE u.id = previo.id AND previo.antes <> ${rol} RETURNING u.id)
-      SELECT alias, antes FROM previo`
-    const [fila] = yield* Schema.decodeUnknownEffect(RolCambiado)(filas)
+      SELECT alias, antes FROM previo`,
+    )
     if (fila === undefined) return yield* Effect.fail(new NoEncontrado())
     return { alias: fila.alias, rol, cambio: fila.antes !== rol }
   })

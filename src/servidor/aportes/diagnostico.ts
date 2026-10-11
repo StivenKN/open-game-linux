@@ -1,17 +1,16 @@
 // The single writer of equipo and diagnostico (RF-04), and of the distribucion rows a capture names.
 // It runs inside the one transaction servidor/ejecutar.ts `accion` opens.
 import { Effect, Schema } from 'effect'
-import { SqlClient, type SqlError } from 'effect/sql'
+import { SqlClient } from 'effect/sql'
 import type { Captura, GuardarDiagnostico } from '../../dominio/aportes.ts'
-import { type NoAutenticado, type PayloadInvalido, ReglaIncumplida } from '../../dominio/fallos.ts'
+import { type PayloadInvalido, ReglaIncumplida } from '../../dominio/fallos.ts'
 import { Diagnostico, Distribucion, Equipo } from '../../dominio/tablas.ts'
-import { exigirUsuario, type Visitante } from '../auth.ts'
+import { exigirUsuario } from '../auth.ts'
 import { capturaDe } from '../diagnostico/payload.ts'
+import { filas } from '../filas.ts'
+import type { Escritura } from './aportes.ts'
 
-type Infra = SqlError.SqlError | Schema.SchemaError
-type Escritura<A, E> = Effect.Effect<A, E | NoAutenticado | Infra, SqlClient.SqlClient | Visitante>
-
-const IdsEquipo = Schema.Array(Schema.Struct({ id: Equipo.fields.id }))
+const IdEquipo = Schema.Struct({ id: Equipo.fields.id })
 // The insert either wrote the row or met the existing one, so one of the two SELECTs always returns it.
 const Guardado = Schema.NonEmptyArray(Schema.Struct({ id: Diagnostico.fields.id, nuevo: Schema.Boolean }))
 
@@ -36,11 +35,10 @@ export const registrarDiagnostico = (
 
     const [equipo] =
       g.equipo._tag === 'existente'
-        ? yield* Schema.decodeUnknownEffect(IdsEquipo)(
-            yield* sql`SELECT id FROM equipo WHERE id = ${g.equipo.id} AND usuario_id = ${usuario.id}`,
-          )
-        : yield* Schema.decodeUnknownEffect(IdsEquipo)(
-            yield* sql`
+        ? yield* filas(IdEquipo, sql`SELECT id FROM equipo WHERE id = ${g.equipo.id} AND usuario_id = ${usuario.id}`)
+        : yield* filas(
+            IdEquipo,
+            sql`
               WITH previo AS (SELECT id FROM equipo WHERE usuario_id = ${usuario.id} AND lower(alias) = lower(${g.equipo.alias}) ORDER BY id LIMIT 1),
                    creado AS (INSERT INTO equipo (usuario_id, alias) SELECT ${usuario.id}, ${g.equipo.alias} WHERE NOT EXISTS (SELECT 1 FROM previo) RETURNING id)
               SELECT id FROM previo UNION ALL SELECT id FROM creado`,

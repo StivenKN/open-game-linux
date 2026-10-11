@@ -9,6 +9,7 @@ import { JuegoId, UsuarioId } from '../../dominio/ids.ts'
 import { EstadoRevision } from '../../dominio/revision.ts'
 import { Diagnostico, EdicionJuego, Equipo, Juego, Lanzador, PerfilConfiguracion, Solucion, TipoFallo } from '../../dominio/tablas.ts'
 import { Visitante } from '../auth.ts'
+import { filas } from '../filas.ts'
 import { esDemo, etiquetaCapa, etiquetaDistribucion, etiquetaPerfil } from './etiquetas.ts'
 
 /** A PruebaAprobada row plus its game and whether a demo account reported it. */
@@ -22,7 +23,9 @@ const PruebaDeJuego = Schema.Struct({ ...PruebaAprobada.fields, juego_id: JuegoI
 export const pruebasAprobadas = (juego: JuegoId | null) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const filas = yield* sql`
+    return yield* filas(
+      PruebaDeJuego,
+      sql`
       SELECT e.juego_id, r.id AS reporte_id, r.estado_revision, r.edicion_id, l.nombre AS lanzador, r.version_juego,
              d.distribucion_id, ${sql.literal(etiquetaDistribucion('dist'))} AS distribucion,
              r.version_capa_id, ${sql.literal(etiquetaCapa('vc'))} AS capa,
@@ -43,8 +46,8 @@ export const pruebasAprobadas = (juego: JuegoId | null) =>
       LEFT JOIN tipo_fallo tf ON tf.id = rf.tipo_fallo_id
       WHERE ${sql.and([sql`r.estado_revision = 'aprobado'`, ...(juego === null ? [] : [sql`e.juego_id = ${juego}`])])}
       GROUP BY r.id, e.id, l.id, d.id, dist.id, u.id, vc.id, p.id
-      ORDER BY r.fecha_prueba DESC, r.id`
-    return yield* Schema.decodeUnknownEffect(Schema.Array(PruebaDeJuego))(filas)
+      ORDER BY r.fecha_prueba DESC, r.id`,
+    )
   })
 
 /** The viewer's latest capture. Round 1 decision: no "active diagnosis" state that could go stale. */

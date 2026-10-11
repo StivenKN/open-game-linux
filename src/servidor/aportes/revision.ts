@@ -10,9 +10,8 @@ import { ResultadoFuncional } from '../../dominio/literales.ts'
 import { type AporteRef, type Bloqueo, type Decision, destinoDe, EstadoRevision, planificar, type TipoAporte } from '../../dominio/revision.ts'
 import { Diagnostico, Reporte } from '../../dominio/tablas.ts'
 import { exigirRevisor, type Visitante } from '../auth.ts'
-import { filas } from '../filas.ts'
+import { filas, type Infra } from '../filas.ts'
 
-type Infra = SqlError.SqlError | Schema.SchemaError
 type Lectura<A> = Effect.Effect<A, Infra, SqlClient.SqlClient>
 
 const aprobado: EstadoRevision = 'aprobado'

@@ -5,7 +5,7 @@
 // Each program runs inside the one transaction servidor/ejecutar.ts `accion` opens, so a failure after a
 // partial insert rolls back. Rule failures are data for the form: ReglaIncumplida or PerfilNoComparable.
 import { Array as Arr, Effect, Schema, Struct } from 'effect'
-import { SqlClient, type SqlError } from 'effect/sql'
+import { SqlClient } from 'effect/sql'
 import { discrepancias, type NuevaSolucion, type NuevoJuego, type NuevoReporte, PerfilObjetivo } from '../../dominio/aportes.ts'
 import { type NoAutenticado, PerfilNoComparable, type Regla, ReglaIncumplida, type SinPermiso } from '../../dominio/fallos.ts'
 import { JuegoId, ReporteId, SolucionId, VersionCapaId } from '../../dominio/ids.ts'
@@ -13,10 +13,10 @@ import { estadosVigentes } from '../../dominio/revision.ts'
 import { Diagnostico, Equipo, PerfilConfiguracion, Reporte } from '../../dominio/tablas.ts'
 import { exigirRevisor, exigirUsuario, type Visitante } from '../auth.ts'
 import { conReglasDeBd } from '../esquema/restricciones.ts'
-import { filas } from '../filas.ts'
+import { filas, type Infra } from '../filas.ts'
 
-type Infra = SqlError.SqlError | Schema.SchemaError
-type Escritura<A, E> = Effect.Effect<A, E | NoAutenticado | Infra, SqlClient.SqlClient | Visitante>
+/** A writer program: run by `accion` in one transaction, for a signed-in visitor. */
+export type Escritura<A, E> = Effect.Effect<A, E | NoAutenticado | Infra, SqlClient.SqlClient | Visitante>
 
 const falla = (regla: Regla) => Effect.fail(new ReglaIncumplida({ regla }))
 
