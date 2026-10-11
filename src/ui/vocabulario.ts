@@ -96,3 +96,13 @@ export const motivoPayload = {
   version_esquema: 'Ese diagnóstico viene de otra versión del detector. Descárgalo de nuevo y vuelve a ejecutarlo.',
   campo_invalido: 'Al diagnóstico le falta un dato o trae uno que no reconocemos.',
 } as const satisfies Record<PayloadInvalido['motivo'], string>
+
+/** The catalog's legend (wireframe 9.1): what each computed state means, in estadoDe's terms. */
+export const significadoEstado = {
+  sin_evidencia: 'Ningún revisor ha aprobado todavía una prueba de este juego.',
+  funciona: 'Todas las pruebas aprobadas funcionan sin ajustes.',
+  funciona_con_ajustes: 'Todas las pruebas aprobadas funcionan después de algún ajuste o perfil.',
+  no_inicia: 'En todas las pruebas aprobadas el juego no llega a iniciar, por ejemplo por un anti-cheat a nivel de kernel.',
+  falla_en_ejecucion: 'En todas las pruebas aprobadas el juego inicia, pero falla durante la partida.',
+  resultados_variables: 'Las pruebas aprobadas dan resultados distintos. La ficha muestra cada entorno.',
+} as const satisfies Record<EstadoCompatibilidad, string>

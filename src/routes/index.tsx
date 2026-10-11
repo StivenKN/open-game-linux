@@ -10,7 +10,7 @@ import { ChipsFallos } from '../ui/compatibilidad/ChipsFallos.tsx'
 import { contar, fecha } from '../ui/formato.ts'
 import { Insignia } from '../ui/Insignia.tsx'
 import { SelloEjemplo } from '../ui/SelloEjemplo.tsx'
-import { estadoCompatibilidad } from '../ui/vocabulario.ts'
+import { estadoCompatibilidad, significadoEstado } from '../ui/vocabulario.ts'
 
 /** A URL is typed by hand: a value that does not decode drops its filter instead of failing the page. */
 const opcional = <S extends Schema.Constraint>(campo: S) => Schema.catchDecoding<S>(() => Effect.succeedNone)(campo)
@@ -110,6 +110,18 @@ function Catalogo() {
         <Contador valor={contadores.perfiles_aprobados} texto="perfiles aprobados" />
         <Contador valor={contadores.distribuciones_probadas} texto="distribuciones probadas" />
       </ul>
+      <details className="tarjeta">
+        <summary>¿Qué significa cada estado?</summary>
+        <ul className="pila pequeno">
+          {EstadoCompatibilidad.literals.map((e) => (
+            <li key={e} className="fila">
+              <Insignia etiqueta={estadoCompatibilidad[e]} />
+              <span>{significadoEstado[e]}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="pequeno tenue">Un resultado favorable no garantiza que el juego funcione en cualquier equipo.</p>
+      </details>
 
       <h2 className="titulo-seccion">{filtrado ? contar(juegos.length, 'juego coincide', 'juegos coinciden') : 'Catálogo'}</h2>
       {juegos.length === 0 ? (
