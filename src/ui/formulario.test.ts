@@ -1,5 +1,3 @@
-// The form conventions in dominio/ids.ts (blank number -> null, unchecked box -> false) and the column
-// lengths on the report schema, decoded the way a submitted form is: through leerFormulario.
 import { describe, expect, it } from '@effect/vitest'
 import { Result, Schema } from 'effect'
 import { NuevoReporte } from '../dominio/aportes.ts'

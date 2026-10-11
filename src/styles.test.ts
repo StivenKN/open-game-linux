@@ -7,7 +7,6 @@ import { join } from 'node:path'
 
 const css = readFileSync(join(import.meta.dirname, 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
 
-/** Every rule's prelude with the at-rules around it. */
 const reglas = () => {
   const abiertos: Array<string> = []
   const encontradas: Array<{ readonly preludio: string; readonly dentroDe: ReadonlyArray<string> }> = []

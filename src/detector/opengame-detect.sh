@@ -11,7 +11,7 @@ set -u
 
 APP_URL="${OPENGAME_URL:-__OPENGAME_URL__}"
 
-json_str() { # a JSON string, or null when empty
+json_str() {
   if [ -z "${1:-}" ]; then printf 'null'; else
     printf '"%s"' "$(printf '%s' "$1" | tr '\t' ' ' | tr -d '\000-\037\177' | sed 's/\\/\\\\/g; s/"/\\"/g')"; fi
 }

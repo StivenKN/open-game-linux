@@ -1,8 +1,3 @@
-// Result page for an unsaved capture: where `opengame-detect.sh --open` lands
-// ($ORIGEN/diagnostico/importar#d=<base64url>) and where /diagnostico sends the pasted or manual entry.
-// The fragment never reaches the server on navigation. This page strips it from the address bar,
-// keeps the raw string in sessionStorage (a guest can sign in and come back), and posts it untouched
-// to the server, the only parser. Nothing is stored until "Guardar en mi equipo".
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Option, Schema } from 'effect'
 import { useEffect, useState } from 'react'
@@ -26,7 +21,6 @@ export const Route = createFileRoute('/diagnostico/importar')({
 
 type Evaluado = Awaited<ReturnType<typeof evaluarDiagnosticoFn>>
 
-/** Moves a `#d=` fragment into sessionStorage, as is, and removes it from the address bar and history. */
 const tomarFragmento = () => {
   const { hash, pathname, search } = window.location
   if (!hash.startsWith('#d=')) return
@@ -91,7 +85,6 @@ function Importar() {
 const Destino = Schema.Struct({ equipo: EquipoDestino })
 type Guardado = { readonly id: DiagnosticoId; readonly nuevo: boolean }
 
-/** "Guardar en mi equipo": needs an account; a guest goes to sign in and comes back to this page. */
 function Guardar({ entrada }: { entrada: Entrada }) {
   const { visitante } = Route.useRouteContext()
   const equipos = Route.useLoaderData()

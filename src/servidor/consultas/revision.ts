@@ -1,5 +1,3 @@
-// Read model of the review queue (RF-10). Reviewers only. Lists the pending rows of one tipo (to approve
-// or reject) and then the approved ones (to retire), each with the same approval blockers decidir checks.
 import { Effect, Schema, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { DistribucionId } from '../../dominio/ids.ts'
@@ -11,15 +9,14 @@ import { exigirRevisor } from '../auth.ts'
 import { filas } from '../filas.ts'
 import { esDemo, etiquetaCapa, etiquetaDistribucion, etiquetaPerfil } from './etiquetas.ts'
 
-const Nombre = Schema.String // composed in SQL for display only
+const Nombre = Schema.String
 
-/** What every queue row shows: who wrote it (alias only, 8.9 privacy), whether it is demo data, and whether it is the reviewer's own. */
 const Comun = {
   creado_en: Schema.Date,
   estado_revision: PerfilConfiguracion.fields.estado_revision,
   autor: Usuario.fields.alias,
   demo: Schema.Boolean,
-  es_propio: Schema.Boolean, // decidir rejects it anyway; the page hides the buttons
+  es_propio: Schema.Boolean,
   juego: Juego.fields.titulo,
   lanzador: Lanzador.fields.nombre,
 }
@@ -55,13 +52,11 @@ const ColaSolucion = Schema.Struct({
   perfil: Schema.NullOr(Nombre),
 })
 
-/** One bloqueosAprobacion call per pending row: the queue is short, and the rule keeps a single home. */
 const conBloqueos = <A extends { readonly estado_revision: string }>(elementos: ReadonlyArray<A>, refDe: (a: A) => AporteRef) =>
   Effect.forEach(elementos, (e) =>
     Effect.map(e.estado_revision === 'pendiente' ? bloqueosAprobacion(refDe(e)) : Effect.succeed([]), (bloqueos: ReadonlyArray<Bloqueo>) => ({ ...e, bloqueos })),
   )
 
-/** One tipo's queue, discriminated by `tipo` so the page renders each kind with its own evidence. */
 export const cola = (tipo: TipoAporte) =>
   Effect.gen(function* () {
     const revisor = yield* exigirRevisor

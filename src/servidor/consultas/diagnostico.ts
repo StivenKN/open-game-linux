@@ -1,5 +1,3 @@
-// Read models for diagnosis (wireframe 9.2): the evaluation matrix for one set of capacities, the
-// user's equipos with their capture history, and one saved capture. No FPS estimate exists anywhere.
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import type { Captura, EntradaDiagnostico } from '../../dominio/aportes.ts'
@@ -32,15 +30,10 @@ const PerfilAprobado = Schema.Struct({
   distribucion: Schema.String,
 })
 
-/** What the matrix compares: a capture's columns, plus where it runs for "perfil sugerido". */
 type EquipoEvaluado = Pick<Captura, 'sistema' | 'arquitectura' | 'ram_mb' | 'vram_mb' | 'soporte_vulkan' | 'version_vulkan'> & {
   readonly distribucion_id: typeof Distribucion.Type.id | null
 }
 
-/**
- * One row per game: its compatibility from approved reports (estadoDe), and the hardware evaluation
- * against the approved profile sugerirPerfil picks for this equipo. Pending profiles and reports never count.
- */
 const matriz = (equipo: EquipoEvaluado) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
@@ -84,10 +77,6 @@ const matriz = (equipo: EquipoEvaluado) =>
 
 export type FilaMatriz = Effect.Success<ReturnType<typeof matriz>>[number]
 
-/**
- * Guests and users alike: parse on the server, evaluate, return. Stores nothing, not even an unknown
- * distribution (it just matches no profile). Saving goes through registrarDiagnostico.
- */
 export const evaluarSinGuardar = (
   entrada: EntradaDiagnostico,
 ): Effect.Effect<{ readonly captura: Captura; readonly matriz: ReadonlyArray<FilaMatriz> }, PayloadInvalido | Infra, SqlClient.SqlClient> =>
@@ -125,12 +114,10 @@ const capturaGuardada = (d: typeof DiagnosticoGuardado.Type): Effect.Effect<Capt
     version_vulkan: d.version_vulkan,
   }
   if (d.sistema === 'Windows') return Effect.succeed({ ...comunes, sistema: 'Windows' })
-  // CHECK diagnostico_linux_con_distribucion makes this unreachable; reaching it is schema drift.
   if (d.distribucion === null) return Effect.die(`diagnostico ${d.id}: Linux sin distribucion`)
   return Effect.succeed({ ...comunes, sistema: 'Linux', distribucion: d.distribucion })
 }
 
-/** /diagnosticos/$id: the owner only (8.9 "el diagnóstico detallado es privado"). Anyone else gets NoEncontrado. */
 export const miDiagnostico = (id: DiagnosticoId) =>
   Effect.gen(function* () {
     const usuario = yield* exigirUsuario
@@ -157,13 +144,9 @@ const CapturaResumida = Schema.Struct({
   sistema: Diagnostico.fields.sistema,
   gpu_modelo: Diagnostico.fields.gpu_modelo,
   ram_mb: Diagnostico.fields.ram_mb,
-  distribucion: Schema.NullOr(Schema.String), // null for Windows
+  distribucion: Schema.NullOr(Schema.String),
 })
 
-/**
- * The visitor's equipos, oldest first, each with its captures newest first (8.11 "varios diagnósticos
- * históricos"). A guest has none.
- */
 export const misEquipos = () =>
   Effect.gen(function* () {
     const visitante = yield* Visitante

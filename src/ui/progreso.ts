@@ -1,5 +1,3 @@
-// The profile page's progress checklist: which steps this browser marked done. It lives in
-// localStorage only and never reaches the server, so a new revision (new key) starts unchecked.
 import { Option, Schema } from 'effect'
 import { useSyncExternalStore } from 'react'
 
@@ -36,10 +34,6 @@ const escribir = (clave: string, hechos: ReadonlyArray<number>) => {
   for (const aviso of avisos) aviso()
 }
 
-/**
- * Steps (by `orden`) marked done under `clave`. The server snapshot is null, so SSR and hydration
- * render every step unchecked and the stored marks appear right after, without a mismatch.
- */
 export const useProgreso = (clave: string) => {
   const crudo = useSyncExternalStore(suscribir, () => leer(clave), () => null)
   const hechos: ReadonlyArray<number> = Option.getOrElse(Schema.decodeUnknownOption(Hechos)(crudo), () => [])

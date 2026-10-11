@@ -1,10 +1,3 @@
-// The ONLY parser of opengame-detect.sh output (fixed decision: parsed only on the server).
-// Pure, no DB, unit-tested on prototypes/detector/out.json. It lives under servidor/ (not dominio/)
-// so the browser cannot import it: fronteras.test.ts forbids routes/ and ui/ from importing servidor/.
-//
-// Accepts what reaches the server by either handoff path:
-//   - the fragment value posted untouched by /diagnostico/importar (base64url JSON)
-//   - pasted text: raw JSON, the base64url string, or the whole URL containing "#d="
 import { Effect, Result, Schema, SchemaIssue } from 'effect'
 import { Captura, type EntradaDiagnostico } from '../../dominio/aportes.ts'
 import { PayloadInvalido } from '../../dominio/fallos.ts'
@@ -13,17 +6,16 @@ import { Diagnostico, Distribucion } from '../../dominio/tablas.ts'
 
 export const VERSION_ESQUEMA = 1
 
-/** Payload v1 = the prototype's out.json plus gpu_pci_id ("8086:9a49"). Wire shape only; never leaves this file. */
 const PayloadV1 = Schema.Struct({
   version_esquema: Schema.Literal(VERSION_ESQUEMA),
   capturado_en: Schema.String,
-  sistema: Schema.Literal('Linux'), // the script only runs on Linux
+  sistema: Schema.Literal('Linux'),
   version_sistema: Schema.String,
   distribucion: Schema.Struct({ nombre: Schema.String, version: Schema.NullOr(Schema.String) }),
   arquitectura: Schema.String,
   cpu_modelo: Schema.NullOr(Schema.String), // ARM kernels may not name the CPU
   gpu_modelo: Schema.NullOr(Schema.String),
-  gpu_pci_id: Schema.optionalKey(Schema.NullOr(Schema.String)), // absent in the prototype's out.json
+  gpu_pci_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
   ram_mb: Schema.Int,
   vram_mb: Schema.NullOr(Schema.Int),
   controlador: Schema.NullOr(Schema.String),
@@ -32,18 +24,6 @@ const PayloadV1 = Schema.Struct({
   version_vulkan: Schema.NullOr(Schema.String),
 })
 
-/**
- * 1. trim; keep only what follows "#d=" when present
- * 2. not starting with "{": base64url-decode; anything else -> ilegible
- * 3. JSON.parse; failure or not an object -> ilegible
- * 4. version_esquema !== 1 -> version_esquema ("Descarga de nuevo el detector")
- * 5. decode PayloadV1 then Captura; failure -> campo_invalido with the first issue path
- * Normalization (server-owned, per detector FINDINGS):
- *   - distribucion.version: empty or /^\d{8}/ (Arch build date) -> "rolling"; a rule, not a list
- *   - soporte_vulkan !== 'si' -> version_vulkan = null (the ICD ceiling version is dropped, never promoted to support)
- *   - gpu_modelo null -> etiquetaPci(gpu_pci_id) ?? 'GPU no detectada'; cpu_modelo null -> 'CPU no detectada'
- * 6. a text longer than its diagnostico/distribucion column -> campo_invalido (not an SQL error at INSERT)
- */
 export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInvalido> =>
   Result.gen(function* () {
     const json = yield* cuerpoJson(texto)
@@ -70,11 +50,9 @@ export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInv
     return yield* cabeEnColumnas(yield* Result.mapError(Schema.decodeResult(Captura)(candidato), campoInvalido))
   })
 
-/** The capture an entry carries: detector text through the one parser, or the manual form's Captura within the column limits. */
 export const capturaDe = (entrada: EntradaDiagnostico): Effect.Effect<Captura, PayloadInvalido> =>
   Effect.fromResult(entrada._tag === 'manual' ? cabeEnColumnas(entrada.captura) : parsearPayload(entrada.texto))
 
-// Captura's text fields are unbounded (dominio/aportes.ts); the columns are varchar(n), so check the row Schemas' limits here.
 const Columnas = Schema.Struct({
   version_sistema: Diagnostico.fields.version_sistema,
   arquitectura: Diagnostico.fields.arquitectura,
@@ -91,7 +69,6 @@ const cabeEnColumnas = (captura: Captura): Result.Result<Captura, PayloadInvalid
 
 const VENDORES: Readonly<Record<string, string>> = { '8086': 'Intel', '10de': 'NVIDIA', '1002': 'AMD' }
 
-/** "8086:9a49" -> "Intel GPU [8086:9a49]". Three vendors, no device database (round 1 cut). */
 export const etiquetaPci = (pci: string | null): string | null => {
   const id = pci?.trim().toLowerCase() ?? ''
   const vendor = /^([0-9a-f]{4}):[0-9a-f]{4}$/.exec(id)?.[1]

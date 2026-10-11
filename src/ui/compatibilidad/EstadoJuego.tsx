@@ -1,12 +1,9 @@
-// Veredicto variant 1, "semáforo derivado": the colour is a computed state and always carries its
-// evidence line. Pending reports are counted apart and never colour the badge.
 import type { ResumenCompatibilidad } from '../../dominio/compatibilidad.ts'
 import { contar, fecha } from '../formato.ts'
 import { Chip, Insignia } from '../Insignia.tsx'
 import { estadoCompatibilidad } from '../vocabulario.ts'
 import { ChipsFallos } from './ChipsFallos.tsx'
 
-/** `pendientes`: reports awaiting review for this game. Shown as a count that does not count. */
 export function EstadoJuego({ resumen, pendientes }: { resumen: ResumenCompatibilidad; pendientes: number }) {
   return (
     <section className="pila" aria-label="Estado de compatibilidad">

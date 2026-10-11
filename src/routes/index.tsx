@@ -1,5 +1,3 @@
-// Catalog and search (wireframe 9.1). The filters live in the URL, validated by the same Schema the
-// server fn uses, so a filtered catalog is a link anyone can share.
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Effect, Schema, SchemaTransformation, Struct } from 'effect'
 import type { FormEvent, ReactNode } from 'react'
@@ -12,7 +10,6 @@ import { Insignia } from '../ui/Insignia.tsx'
 import { SelloEjemplo } from '../ui/SelloEjemplo.tsx'
 import { estadoCompatibilidad, significadoEstado } from '../ui/vocabulario.ts'
 
-/** A URL is typed by hand: a value that does not decode drops its filter instead of failing the page. */
 const opcional = <S extends Schema.Constraint>(campo: S) => Schema.catchDecoding<S>(() => Effect.succeedNone)(campo)
 // The router JSON-parses each query value, so a title typed as `?q=2` arrives as the number 2.
 const TextoBuscado = Schema.Union([Schema.String, Schema.Finite, Schema.Boolean]).pipe(
@@ -37,7 +34,6 @@ export const Route = createFileRoute('/')({
   component: Catalogo,
 })
 
-/** The same filter with `clave` set to `valor`, or without it when it already holds `valor` (a toggle). */
 const alternar = <K extends 'estado' | 'lanzador' | 'sin_anti_cheat'>(
   filtro: FiltroCatalogo,
   clave: K,
@@ -167,7 +163,6 @@ function Catalogo() {
   )
 }
 
-/** A filter is a link, so it works without JavaScript and the URL is the state. */
 function Filtro({ activo, search, children }: { activo: boolean; search: FiltroCatalogo; children: ReactNode }) {
   return (
     <Link to="/" search={search} className="chip filtro" data-activo={activo || undefined} aria-current={activo || undefined}>

@@ -1,4 +1,3 @@
-// Observed failure causes from approved reports ("Causas observadas"). Count in the title, label visible.
 import type { FalloContado } from '../../dominio/compatibilidad.ts'
 import { contar } from '../formato.ts'
 import { Chip } from '../Insignia.tsx'

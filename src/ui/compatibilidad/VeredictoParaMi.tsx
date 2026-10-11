@@ -1,16 +1,9 @@
-// The viewer's own verdict: variant 2's "En tu distribución" line over the same summary the badge
-// uses (enDistribucion), then the hardware evaluation as a separate dashed badge.
 import type { ResumenCompatibilidad } from '../../dominio/compatibilidad.ts'
 import { contar, fecha } from '../formato.ts'
 import { Insignia } from '../Insignia.tsx'
 import { estadoCompatibilidad } from '../vocabulario.ts'
 import { ChecklistEvaluacion, type PerfilEvaluado } from './ChecklistEvaluacion.tsx'
 
-/**
- * What the ficha knows about the viewer. null = no diagnosis (guest or never ran the detector).
- * `en_mi_distribucion` null = the diagnosis has no distribution (a Windows capture).
- * `perfil` null = no approved profile to evaluate against.
- */
 export type Personal = {
   readonly en_mi_distribucion: { readonly nombre: string; readonly resumen: ResumenCompatibilidad } | null
   readonly perfil: PerfilEvaluado | null

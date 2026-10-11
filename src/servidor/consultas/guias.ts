@@ -1,4 +1,3 @@
-// Read models of the adoption guides (RF-09). Only `publicada` is public; seeders author them (no authoring UI).
 import { Effect, Option, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
 import { NoEncontrado } from '../../dominio/fallos.ts'
@@ -6,7 +5,6 @@ import { GuiaId } from '../../dominio/ids.ts'
 import { GuiaAdopcion } from '../../dominio/tablas.ts'
 import { esDemo, etiquetaDistribucion } from './etiquetas.ts'
 
-/** distribucion null = a general guide, not tied to one distribution (8.11 "debe permitir"). */
 const extra = { distribucion: Schema.NullOr(Schema.String), ejemplo: Schema.Boolean }
 
 const FilaGuia = GuiaAdopcion.mapFields(Struct.pick(['id', 'tipo', 'titulo', 'actualizado_en'])).mapFields(Struct.assign(extra))

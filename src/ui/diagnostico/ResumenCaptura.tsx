@@ -1,5 +1,3 @@
-// The captured hardware as tiles (wireframe 9.2 "Perfil detectado"). Unknown values say so in words.
-// Ends with 9.2's pointer to distributions (RF-09): the adoption guides, since no rule picks a distro from hardware.
 import { Link } from '@tanstack/react-router'
 import type { Captura } from '../../dominio/aportes.ts'
 import { memoria, momento } from '../formato.ts'

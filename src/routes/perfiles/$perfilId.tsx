@@ -1,5 +1,3 @@
-// Profile page (replaces the 9.4 wizard): the steps in order, dependencies and known conditions.
-// Commands are shown to copy; nothing is downloaded or executed (8.5).
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { PerfilId } from '../../dominio/ids.ts'
 import { perfilFn } from '../../fns/catalogo.ts'
@@ -155,7 +153,6 @@ function Perfil() {
 
 type Paso = ReturnType<typeof Route.useLoaderData>['pasos'][number]
 
-/** The steps with a done mark each, kept in this browser only (`clave` names the profile revision). */
 function Pasos({ clave, pasos }: { clave: string; pasos: ReadonlyArray<Paso> }) {
   const { hechos, alternar, reiniciar } = useProgreso(clave)
   const cuenta = pasos.filter((s) => hechos.includes(s.orden)).length

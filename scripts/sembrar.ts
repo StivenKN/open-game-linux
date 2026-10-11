@@ -1,21 +1,3 @@
-// `pnpm db:sembrar`: demo data. Part 1: lookups, games and editions, pending profiles with their steps
-// and dependencies, published guides, and the demo accounts. Part 2 replays the 8.10 walkthrough through
-// the app's own writers: Linux captures (registrarDiagnostico), reports (registrarReporte), a solution by a second user
-// (registrarSolucion), and every approval through decidir() as demo_revisor, so the rules admit the demo.
-// GTA V ends with "Resultados variables" like dominio/muestras.ts; ETS2 keeps only pending reports, and
-// the other games have none, so they honestly show "Sin evidencia verificada".
-//
-// Everything authored here belongs to a `@demo.opengame.test` account, which is what marks it as
-// "Datos de ejemplo" (servidor/auth.ts dominioDemo). Catalog rows (games, distributions, Proton
-// builds) are real facts, not claims, so they carry no mark.
-//
-// Idempotent: each row is looked up by its natural key and inserted only when missing, registrarDiagnostico
-// converges on one equipo per alias and one capture per time, and decidir() answers `cambio: false` for a
-// decision already applied, so a second run changes nothing and says so.
-// That holds while nobody has rejected or retired a seeded row by hand; then decidir refuses the
-// approval (TransicionInvalida) and the run stops: reset the dev database with `pnpm db:reset`. The rows go in one transaction, so a crash leaves no half seed.
-// A profile's steps and dependencies are written only together with a new profile: once a profile is
-// used or reviewed, og_perfil_congelado refuses any write to them, even an ON CONFLICT DO NOTHING.
 import { Effect, Option, Record, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { GuardarDiagnostico, NuevaSolucion, NuevoReporte } from '../src/dominio/aportes.ts'
@@ -30,7 +12,6 @@ import { asignarRol, auth, dominioDemo, Visitante } from '../src/servidor/auth.t
 import { filas, unaFila } from '../src/servidor/filas.ts'
 import { PgLive } from '../src/servidor/runtime.ts'
 
-/** Shared by every demo account, and printed at the end so the team can sign in. */
 const contrasenaDemo = 'opengame-demo'
 
 const cuentas = {
@@ -65,7 +46,6 @@ const capas = {
   nativo: { familia: 'Nativo', variante: 'Steam Linux Runtime', version: '3.0' },
 } as const satisfies Record<string, { familia: FamiliaCapa; variante: string; version: string }>
 
-/** Codes match ui/vocabulario.ts `tiposFallo`, which labels them. */
 const tiposFallo = {
   anti_cheat: 'El sistema anti-trampas del juego bloquea Linux o la capa de compatibilidad.',
   drm: 'La protección anticopia impide iniciar el juego.',
@@ -116,7 +96,6 @@ const juegos = {
   },
 } as const satisfies Record<string, { titulo: string; descripcion: string; ediciones: Partial<Record<keyof typeof lanzadores, string | null>> }>
 
-/** An edition is a game on a launcher, so a profile names both; an edition that does not exist stops the seed. */
 type Edicion = { [J in keyof typeof juegos]: readonly [J, keyof (typeof juegos)[J]['ediciones']] }[keyof typeof juegos]
 
 type Perfil = {
@@ -148,7 +127,6 @@ const parametros = [
   'En Propiedades > General, pega los parámetros de este perfil en «Opciones de lanzamiento». Se copian tal cual; OpenGame nunca los ejecuta por ti.',
 ] as const
 
-/** All pending: approval needs a report that used the profile (8.9), which part 2 seeds through decidir(). */
 const perfiles: ReadonlyArray<Perfil> = [
   {
     edicion: ['gta5', 'steam'],
@@ -274,12 +252,8 @@ const guias: ReadonlyArray<{ tipo: TipoGuia; distribucion: keyof typeof distribu
 
 type Valor = string | number | boolean | null
 
-// ------------------------------------------------------------------ part 2: the 8.10 walkthrough
-
-/** A profile is named by its environment; part 2 points reports at the part 1 profiles this way. */
 const clavePerfil = (p: Pick<Perfil, 'edicion' | 'distribucion' | 'capa'>) => `${p.edicion.join('/')}|${p.distribucion}|${p.capa}`
 
-/** One Linux capture per demo machine, with plausible hardware. Equipos are named by owner and alias. */
 const equipos = {
   anaPortatil: {
     dueno: 'demo_ana',
@@ -335,7 +309,6 @@ type ReporteDemo = {
   equipo: keyof typeof equipos
   edicion: Edicion
   capa: keyof typeof capas
-  /** Follows the part 1 profile for this edition, distro and layer. */
   conPerfil: boolean
   version_juego: string
   fecha_prueba: string
@@ -346,7 +319,6 @@ type ReporteDemo = {
   aprobar: boolean
 }
 
-/** dominio/muestras.ts as real rows: four approved GTA V results in three environments, one pending. */
 const reportes: ReadonlyArray<ReporteDemo> = [
   {
     equipo: 'anaPortatil', edicion: ['gta5', 'steam'], capa: 'proton8', conPerfil: true, version_juego: '1.0.3179',
@@ -400,9 +372,8 @@ const reportes: ReadonlyArray<ReporteDemo> = [
   },
 ]
 
-/** demo_bruno answers the launcher failure on Ana's Fedora tower (8.10: "otro usuario puede aportar una solución"). */
 const solucionDemo = {
-  reporte: 3, // index in `reportes`: the falla_en_ejecucion on Ana's Fedora tower
+  reporte: 3,
   tipoFallo: 'lanzador',
   titulo: 'Reinstalar el Rockstar Games Launcher dentro del prefijo de Proton',
   instrucciones: [
@@ -412,7 +383,6 @@ const solucionDemo = {
   ].join('\n'),
 } as const satisfies { reporte: number; tipoFallo: keyof typeof tiposFallo; titulo: string; instrucciones: string }
 
-/** Every seeded approval says it is demo data: nothing here is a real test run (open decision 3). */
 const aprobacionDemo = (que: string) =>
   Schema.decodeUnknownSync(Decision)({
     _tag: 'Aprobar',
@@ -423,7 +393,6 @@ const aprobacionDemo = (que: string) =>
 const ConId = Schema.Struct({ id: Schema.Int })
 const ConIdTexto = Schema.Struct({ id: Schema.String })
 
-/** The id the seed stored under `clave`. A missing key is a mistake in the data above. */
 const de = <K, A>(ids: ReadonlyMap<K, A>, clave: K) => {
   const id = ids.get(clave)
   return id === undefined ? Effect.die(`la semilla no definió ${String(clave)}`) : Effect.succeed(id)
@@ -434,7 +403,6 @@ const programa = Effect.gen(function* () {
   const nuevas = new Map<string, number>()
   const contar = (tabla: string) => nuevas.set(tabla, (nuevas.get(tabla) ?? 0) + 1)
 
-  /** The row's id by natural key, inserting `clave` + `resto` when it is missing. */
   const asegurar = (tabla: string, clave: Readonly<Record<string, Valor>>, resto: Readonly<Record<string, Valor>> = {}) =>
     Effect.gen(function* () {
       const donde = sql.and(Object.entries(clave).map(([c, v]) => sql`${sql(c)} IS NOT DISTINCT FROM ${v}`))
@@ -539,7 +507,6 @@ const programa = Effect.gen(function* () {
           },
         )
 
-      // ---------------------------------------------------------------- part 2
       const como = <A, E, R>(alias: Cuenta, programa: Effect.Effect<A, E, R>) =>
         Effect.flatMap(de(usuario, alias), (id) =>
           Effect.provideService(programa, Visitante, Option.some({ id: Schema.decodeSync(UsuarioId)(id), alias, rol: cuentas[alias] })),
@@ -565,7 +532,6 @@ const programa = Effect.gen(function* () {
         const eq = equipos[r.equipo]
         const diagnostico_id = yield* de(diagnosticoDe, r.equipo)
         const edicion_id = yield* de(edicion, r.edicion.join('/'))
-        // A report has no natural key; its capture, edition and test time identify it well enough here.
         const [existente] = yield* filas(
           ConId,
           sql`SELECT id FROM reporte WHERE diagnostico_id = ${diagnostico_id} AND edicion_id = ${edicion_id} AND fecha_prueba = ${r.fecha_prueba}`,
@@ -607,7 +573,6 @@ const programa = Effect.gen(function* () {
         contar('solucion')
       }
 
-      // Approvals, in the order 8.9 allows: reports, then the profiles they prove, then the solution.
       const aprobar = (ref: { _tag: AporteRef['_tag']; id: number }, que: string) =>
         Effect.gen(function* () {
           const { cambio } = yield* como('demo_revisor', decidir(yield* Schema.decodeUnknownEffect(AporteRef)(ref), aprobacionDemo(que)))

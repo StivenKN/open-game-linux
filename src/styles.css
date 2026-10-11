@@ -1,6 +1,3 @@
-/* OpenGame Linux. Dark theme ported from prototypes/veredicto (variant 1). Plain CSS, no framework.
-   Tone system: [data-tono] sets --t; [data-forma=relleno] = evidence from approved reports,
-   [data-forma=punteado] = hardware evaluation. Colour never stands alone: every badge has text. */
 :root {
   --fondo: #0d1117;
   --tarjeta: #151b23;
@@ -43,7 +40,6 @@ body {
   white-space: nowrap;
 }
 
-/* ------------------------------------------------------------ layout */
 .envoltura {
   max-width: 1180px;
   margin: 0 auto;
@@ -103,7 +99,6 @@ hr {
   border-top: 1px solid var(--linea);
 }
 
-/* ------------------------------------------------------------ type */
 .titulo-seccion {
   font-family: var(--mono);
   font-size: 11px;
@@ -159,7 +154,6 @@ hr {
   border-radius: 4px;
 }
 
-/* ------------------------------------------------------------ tones */
 [data-tono='verde'] { --t: var(--verde); }
 [data-tono='amarillo'] { --t: var(--amarillo); }
 [data-tono='rojo'] { --t: var(--rojo); }
@@ -213,7 +207,6 @@ hr {
   border-radius: 0 6px 6px 0;
 }
 
-/* ------------------------------------------------------------ tables */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -273,7 +266,6 @@ table {
   text-align: right;
 }
 
-/* ------------------------------------------------------------ copy box */
 .caja-copiar {
   margin: 0;
 }
@@ -318,7 +310,6 @@ table {
   min-height: 1.45em;
 }
 
-/* ------------------------------------------------------------ cabecera */
 .cabecera {
   justify-content: space-between;
   flex-wrap: wrap;
@@ -344,7 +335,6 @@ a {
   text-underline-offset: 6px;
 }
 
-/* ------------------------------------------------------------ formularios */
 .estrecha {
   max-width: 440px;
 }
@@ -415,7 +405,6 @@ button:disabled {
   margin: 0;
   color: var(--rojo);
 }
-/* ------------------------------------------------------------ páginas de lectura (U4) */
 .portada {
   text-align: center;
   max-width: 760px;
@@ -518,7 +507,6 @@ button:disabled {
   margin-top: 26px;
 }
 
-/* ------------------------------------------------------------ diagnóstico */
 .mosaico {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
@@ -540,7 +528,6 @@ button:disabled {
   margin: 0;
 }
 
-/* ------------------------------------------------------------ aportes y revisión (U5) */
 .formulario-ancho {
   max-width: 760px;
 }

@@ -1,7 +1,3 @@
-// One row Schema per table of section 8, column names verbatim. Queries decode rows with these and
-// input Schemas spread their `.fields` (restate any `.check` after a spread: probes.md (a)).
-// Isomorphic. `largo` holds every "Texto n" of the doc; the migration writes varchar(n) from it,
-// so a length lives in one place.
 import { Schema } from 'effect'
 import { Sistema, SoporteVulkan } from './evaluacion.ts'
 import { EstadoGuia, TipoGuia } from './guias.ts'
@@ -56,16 +52,12 @@ export const largo = {
   guia_adopcion: { tipo: 25, titulo: 180, estado: 15 },
 } as const
 
-/** "Texto n": trimmed, non-empty, at most n characters. Unbounded "Texto largo" is plain `Texto`. */
 export const TextoHasta = (n: number) => Texto.pipe(Schema.check(Schema.isMaxLength(n)))
 
-/** An optional "Texto n" as a form posts it: blank becomes null, a present value obeys TextoHasta(n). */
 export const TextoOpcionalHasta = (n: number) => TextoOpcionalDe(TextoHasta(n))
 
 const Positivo = Schema.Int.check(Schema.isGreaterThan(0))
 const NoNegativo = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
-
-// ------------------------------------------------------------------ 8.3 usuarios y diagnósticos
 
 /** Created by better-auth (servidor/esquema/auth.ts). `image` is better-auth's own unmapped column. */
 export const Usuario = Schema.Struct({
@@ -108,8 +100,6 @@ export const Diagnostico = Schema.Struct({
 })
 export type Diagnostico = typeof Diagnostico.Type
 
-// ------------------------------------------------------------------ 8.4 catálogo y entorno
-
 export const Juego = Schema.Struct({
   id: JuegoId,
   titulo: TextoHasta(largo.juego.titulo),
@@ -150,9 +140,6 @@ export const VersionCapa = Schema.Struct({
 })
 export type VersionCapa = typeof VersionCapa.Type
 
-// ------------------------------------------------------------------ 8.9 bloque de revisión
-
-/** The five columns physically on perfil_configuracion, reporte and solucion. The DB CHECK fixes their shape per state. */
 export const BloqueRevision = Schema.Struct({
   estado_revision: EstadoRevision,
   revisor_id: Schema.NullOr(UsuarioId),
@@ -161,8 +148,6 @@ export const BloqueRevision = Schema.Struct({
   evidencia_revision: Schema.NullOr(Texto),
 })
 export type BloqueRevision = typeof BloqueRevision.Type
-
-// ------------------------------------------------------------------ 8.5 / 8.6 configuraciones, dependencias y fallos
 
 export const PerfilConfiguracion = Schema.Struct({
   id: PerfilId,
@@ -217,8 +202,6 @@ export const TipoFallo = Schema.Struct({
   descripcion: Texto,
 })
 export type TipoFallo = typeof TipoFallo.Type
-
-// ------------------------------------------------------------------ 8.7 / 8.8 resultados, soluciones y guías
 
 export const Reporte = Schema.Struct({
   id: ReporteId,

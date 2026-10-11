@@ -1,5 +1,3 @@
-// RF-10 review queue. Blockers come from the same function decidir runs, so a disabled "Aprobar" always
-// says why. Route guards are UX only: cola and decidir check the reviewer role again.
 import { createFileRoute, Link, notFound, redirect, useRouter } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import type { ReactNode } from 'react'
@@ -75,11 +73,9 @@ function Revision() {
 
 const FormDecision = Schema.Struct({ ref: AporteRef, decision: Decision })
 
-/** One queue row: its evidence (children), its blockers, and the decision form. */
 function Elemento({ refAporte, elemento, children }: { refAporte: AporteRef; elemento: ElementoDe<Cola['tipo']>; children: ReactNode }) {
   const router = useRouter()
   const r = useAccion(FormDecision, decidirFn, {
-    // Exhaustive over what decidir can return: a new failure in decidir breaks this switch.
     alFallar: (f: Codificado<ReglaIncumplida | TransicionInvalida | AprobacionBloqueada>): Errores => {
       switch (f._tag) {
         case 'ReglaIncumplida':

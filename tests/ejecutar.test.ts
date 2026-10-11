@@ -1,5 +1,3 @@
-// leer and accion as server fns run them: inside Start's request context, with the session read from
-// the request's cookie by the real better-auth instance, against the test database.
 import { describe, expect, it } from '@effect/vitest'
 import { isNotFound, isRedirect } from '@tanstack/react-router'
 import { requestHandler } from '@tanstack/react-start/server'
@@ -13,7 +11,6 @@ import { runtime } from '../src/servidor/runtime.ts'
 
 type Desenlace<A> = { readonly ok: true; readonly valor: A } | { readonly ok: false; readonly lanzado: unknown }
 
-/** Runs `fn` the way Start runs a server fn handler: inside the request context of a request with `cookie`. */
 const enPeticion = <A>(cookie: string | null, fn: () => Promise<A>) =>
   new Promise<Desenlace<A>>((resolver) => {
     const peticion = new Request('http://localhost:3000/_serverFn/prueba', { headers: cookie === null ? {} : { cookie } })
@@ -30,7 +27,6 @@ const lanzado = <A>(d: Desenlace<A>): unknown => (d.ok ? undefined : d.lanzado)
 
 const sql = <A>(f: (sql: SqlClient.SqlClient) => Effect.Effect<A, unknown>) => runtime.runPromise(Effect.flatMap(SqlClient.SqlClient, f))
 
-/** Signs up through better-auth, sets the account's rol/activo, and returns its session cookie. */
 const cuenta = async (rol: Rol, activo = true) => {
   const correo = `${rol}-${crypto.randomUUID()}@demo.opengame.test`
   const { headers } = await auth.api.signUpEmail({

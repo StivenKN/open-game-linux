@@ -1,12 +1,9 @@
-// Sign-up and sign-in through better-auth's browser client, shaped for useAccion. The leading '-'
-// keeps the router from treating this file as a route.
 import { Schema } from 'effect'
 import type { Respuesta } from '../dominio/fallos.ts'
 import { Usuario } from '../dominio/tablas.ts'
 import type { Errores } from '../ui/useAccion.ts'
 import { authCliente } from './-auth-cliente.ts'
 
-// Same limits as the usuario CHECKs, so the DB never sees a value it would refuse.
 const correo = Usuario.fields.correo.pipe(
   Schema.check(Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { message: 'Escribe un correo válido.' })),
 )
@@ -19,7 +16,6 @@ const contrasena = Schema.String.pipe(
 export const Registro = Schema.Struct({ alias: Usuario.fields.alias, correo, contrasena })
 export const Entrada = Schema.Struct({ correo, contrasena: Schema.String.pipe(Schema.check(Schema.isNonEmpty({ message: 'Escribe tu contraseña.' }))) })
 
-/** better-auth reports failures as an error code. Codes we do not expect land on the whole form. */
 type FalloCuenta = { readonly codigo: string | undefined }
 
 // Its rate limiter (production only) answers 429 with no code, so the status names that one.

@@ -1,4 +1,3 @@
-// Pure core, no DB. Fixture: prototypes/veredicto (GTA V, Valorant, ETS2) in muestras.ts.
 import { describe, expect, it } from '@effect/vitest'
 import { type EstadoCompatibilidad, enDistribucion, estadoDe, type PruebaAprobada, resumir } from './compatibilidad.ts'
 import { DistribucionId } from './ids.ts'
@@ -12,7 +11,7 @@ describe('estadoDe', () => {
     [['funciona_con_ajustes'], 'funciona_con_ajustes'],
     [['no_inicia', 'no_inicia'], 'no_inicia'],
     [['falla_en_ejecucion'], 'falla_en_ejecucion'],
-    [['funciona', 'funciona_con_ajustes'], 'resultados_variables'], // strict 8.10 (open decision 5)
+    [['funciona', 'funciona_con_ajustes'], 'resultados_variables'],
     [['no_inicia', 'falla_en_ejecucion'], 'resultados_variables'],
     [['funciona', 'no_inicia', 'funciona'], 'resultados_variables'],
   ]

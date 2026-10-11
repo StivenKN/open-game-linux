@@ -1,6 +1,3 @@
-// Minimal valid parent rows for schema tests: two users, two editions of different games, a Linux
-// diagnosis, a pending profile on the first edition, and a pending report without a profile.
-// Written with raw SQL on purpose: these tests probe the schema itself, below the app's writers.
 import { Effect } from 'effect'
 import { SqlClient } from 'effect/sql'
 import type { Rol } from '../src/dominio/revision.ts'

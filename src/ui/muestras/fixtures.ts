@@ -1,14 +1,10 @@
-// The five verdict edge cases of prototypes/veredicto, as the values `resumir`, `enDistribucion` and
-// `evaluar` must produce for them. Written by hand on purpose: these components run before the U2
-// bodies exist, and the U2 tests can assert their output against the same cases.
-// The viewer is the prototype's: Linux Mint 21.3, RAM 8 GB, VRAM unknown (shared memory), Vulkan 1.3.
 import type { EntornoProbado, ResumenCompatibilidad } from '../../dominio/compatibilidad.ts'
 import { DistribucionId, EdicionId, PerfilId, VersionCapaId } from '../../dominio/ids.ts'
 import type { Personal } from '../compatibilidad/VeredictoParaMi.tsx'
 
 export type Muestra = {
   readonly clave: string
-  readonly caso: string // the edge case this game demonstrates
+  readonly caso: string
   readonly titulo: string
   readonly estudio: string
   readonly ediciones: ReadonlyArray<string>
@@ -36,16 +32,13 @@ const capa = {
   wine9: { version_capa_id: VersionCapaId.make(4), capa: 'Wine 9.0' },
 }
 const sinPerfil = { perfil_id: null, perfil: null }
-// Noon UTC is the same calendar day in Bogotá, the zone ui/formato.ts prints in.
 const dia = (iso: string) => new Date(`${iso}T12:00:00Z`)
 
-/** The 8.10 grouping key, the way `resumir` keys its groups. */
 const entorno = (e: Omit<EntornoProbado, 'clave'>): EntornoProbado => ({
   ...e,
   clave: [e.edicion_id, e.version_juego, e.distribucion_id, e.version_capa_id, e.perfil_id ?? '-'].join('|'),
 })
 
-// ---------------------------------------------------------------- GTA V: resultados_variables, 3 entornos
 const gtaFedora = entorno({
   edicion_id: EdicionId.make(1), lanzador: 'Steam', version_juego: '1.0.3258', ...distro.fedora, ...capa.proton9, ...sinPerfil,
   estado: 'falla_en_ejecucion', pruebas: 1, por_resultado: { falla_en_ejecucion: 1 }, ultima_prueba: dia('2026-10-02'),
@@ -95,7 +88,6 @@ const gta: Muestra = {
   },
 }
 
-// ---------------------------------------------------------------- Valorant: no_inicia (anti-cheat)
 const valArch = entorno({
   edicion_id: EdicionId.make(5), lanzador: 'Riot Client', version_juego: '9.07', ...distro.arch, ...capa.ge94, ...sinPerfil,
   estado: 'no_inicia', pruebas: 1, por_resultado: { no_inicia: 1 }, ultima_prueba: dia('2026-08-03'),
@@ -127,7 +119,6 @@ const valorant: Muestra = {
   },
 }
 
-// ---------------------------------------------------------------- ETS2: only pending reports
 const ets2: Muestra = {
   clave: 'ets2',
   caso: 'Solo reportes pendientes: sin evidencia verificada',
@@ -145,7 +136,6 @@ const ets2: Muestra = {
   },
 }
 
-// ---------------------------------------------------------------- Elden Ring: funciona_con_ajustes, hardware no cumple
 const erUbuntu = entorno({
   edicion_id: EdicionId.make(4), lanzador: 'Steam', version_juego: '1.12', ...distro.ubuntu, ...capa.proton9,
   perfil_id: PerfilId.make(3), perfil: 'ER-BASE r3',
@@ -186,7 +176,6 @@ const eldenRing: Muestra = {
   },
 }
 
-// ---------------------------------------------------------------- The Witcher 3: evaluation "Información insuficiente"
 const twPop = entorno({
   edicion_id: EdicionId.make(7), lanzador: 'GOG (Heroic)', version_juego: '4.04', ...distro.pop, ...capa.ge94, ...sinPerfil,
   estado: 'funciona', pruebas: 1, por_resultado: { funciona: 1 }, ultima_prueba: dia('2026-09-10'), fallos: [], fps: [],
@@ -227,5 +216,4 @@ const witcher: Muestra = {
 
 export const muestras: ReadonlyArray<Muestra> = [gta, valorant, ets2, eldenRing, witcher]
 
-/** A profile step for the copy box (8.5: shown and copied, never executed). */
 export const parametrosLanzamiento = { etiqueta: 'Parámetros de lanzamiento · GTAV-BAJO r2', texto: 'PROTON_USE_WINED3D=0 DXVK_ASYNC=1 %command%' }

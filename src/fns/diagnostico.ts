@@ -1,4 +1,3 @@
-// Server fns for diagnosis (RF-04, RF-05). Evaluating is open to guests and stores nothing; saving needs login.
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
 import { Schema } from 'effect'
@@ -24,5 +23,4 @@ export const miDiagnosticoFn = createServerFn({ method: 'GET' })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ id: DiagnosticoId })))
   .handler(({ data }) => leer(miDiagnostico(data.id)))
 
-/** The public origin for the detector command the page shows (the script route bakes in the same one). */
 export const origenFn = createServerFn({ method: 'GET' }).handler(() => origenPublico(getRequest()))

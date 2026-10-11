@@ -1,5 +1,3 @@
-// Read model of the catalog home (wireframe 9.1). Each game's state comes from `resumir` over its
-// approved reports, the same rule as the ficha; no SQL CASE copies it.
 import { Effect, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
 import type { FiltroCatalogo } from '../../dominio/aportes.ts'
@@ -22,11 +20,6 @@ const Contadores = Schema.Struct({
 /** ILIKE treats % and _ as wildcards; a title search means them literally. */
 const literalLike = (texto: string) => `%${texto.replace(/[\\%_]/g, '\\$&')}%`
 
-/**
- * `q` and `lanzador` filter in SQL. `estado` and `sin_anti_cheat` filter after `resumir`, because both
- * are facts about approved evidence: "sin anti-cheat" means no approved report failed on anti_cheat.
- * Demo scale: one query reads every approved report and TS groups it per game.
- */
 export const catalogo = (filtro: FiltroCatalogo) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
@@ -66,7 +59,6 @@ export const catalogo = (filtro: FiltroCatalogo) =>
           (filtro.sin_anti_cheat !== true || !j.resumen.fallos.some((f) => f.codigo === 'anti_cheat')),
       )
 
-    // The four home counters, from approved rows only (round 1 cut: no live "nodos activos").
     const contadores = yield* unaFila(
       Contadores,
       sql`

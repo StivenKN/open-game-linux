@@ -1,5 +1,3 @@
-// A saved capture with its matrix. Owner only (8.9 "el diagnóstico detallado es privado"): anyone else,
-// and any id that is not a number, gets notFound; a guest is sent to sign in and back.
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { DiagnosticoId } from '../../dominio/ids.ts'
 import { miDiagnosticoFn } from '../../fns/diagnostico.ts'

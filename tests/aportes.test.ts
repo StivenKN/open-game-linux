@@ -1,10 +1,3 @@
-// 8.11 "La aplicación debe rechazar / permitir" and the 8.9 review rules, through the real writers.
-// Programs run directly (no HTTP) as a given visitor, each in a savepoint inside the test's rolled-back
-// transaction. Inputs are decoded with the same Schemas the server fn validators use.
-//
-// Parent rows the app has no writer for yet (accounts, catalog, equipo/diagnostico until U6, profiles)
-// are raw SQL; reports and solutions go through registrarReporte / registrarSolucion, and every review
-// through decidir, so a fixture cannot hold a state the app cannot reach.
 import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'

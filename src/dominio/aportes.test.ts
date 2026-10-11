@@ -40,7 +40,6 @@ describe('discrepancias (8.7 comparability)', () => {
   })
 })
 
-/** Decodes like ui/useAccion.ts: FormData through the StringTree codec. Issues come back as [path, message]. */
 const formulario = <S extends Schema.Top & { readonly DecodingServices: never }>(esquema: S) => {
   const decodificar = Schema.decodeUnknownResult(Schema.fromFormData(Schema.toCodecStringTree(esquema)))
   const formato = SchemaIssue.makeFormatterStandardSchemaV1()

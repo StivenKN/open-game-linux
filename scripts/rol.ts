@@ -1,5 +1,4 @@
 // `pnpm rol <correo> <usuario|revisor|administrador>`: the only way to promote an account (no admin UI).
-// The new role applies on the account's next request; sessions read it from the database each time.
 import { Effect, Schema } from 'effect'
 import { Rol } from '../src/dominio/revision.ts'
 import { asignarRol } from '../src/servidor/auth.ts'

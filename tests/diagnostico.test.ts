@@ -1,5 +1,3 @@
-// RF-04 through the real writer and read models: registrarDiagnostico's idempotence and ownership
-// rules (8.3, 8.11), and the guest evaluation that stores nothing.
 import { expect, layer } from '@effect/vitest'
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
@@ -13,7 +11,6 @@ import { enRollback, PgTest } from './apoyo.ts'
 import { base, type Base } from './fixtures.ts'
 
 const prototipo: object = JSON.parse(readFileSync(new URL('../prototypes/detector/out.json', import.meta.url), 'utf8'))
-/** A detector payload as the script prints it, with fields overridden. */
 const payload = (cambios: object = {}) => ({ _tag: 'detector' as const, texto: JSON.stringify({ ...prototipo, ...cambios }) })
 
 const como = (id: string) => Effect.provideService(Visitante, Option.some({ id: Schema.decodeSync(UsuarioId)(id), alias: id, rol: 'usuario' as const }))
@@ -82,7 +79,6 @@ layer(PgTest)('registrarDiagnostico', (it) => {
 })
 
 layer(PgTest)('consultas de diagnóstico', (it) => {
-  /** The fixture profile with known conditions, then approved; plus a pending one on the other game. */
   const perfiles = (f: Base) =>
     Effect.gen(function* () {
       yield* f.sql`UPDATE perfil_configuracion SET ram_min_mb = 32768, vram_min_mb = 2048 WHERE id = ${f.perfil}`

@@ -1,5 +1,3 @@
-// The single writer of equipo and diagnostico (RF-04), and of the distribucion rows a capture names.
-// It runs inside the one transaction servidor/ejecutar.ts `accion` opens.
 import { Effect, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import type { Captura, GuardarDiagnostico } from '../../dominio/aportes.ts'
@@ -13,15 +11,6 @@ import type { Escritura } from './aportes.ts'
 const IdEquipo = Schema.Struct({ id: Equipo.fields.id })
 const Guardado = Schema.Struct({ id: Diagnostico.fields.id, nuevo: Schema.Boolean })
 
-/**
- * Saves one capture for the signed-in user:
- *   equipo existente  must be the user's                  -> equipo_ajeno (also when it does not exist: no existence leak)
- *   equipo nuevo      reuses the user's equipo with that alias (case-insensitive), else creates it
- *   Linux             distribucion upserted on (nombre, version); the parser already turned build dates into "rolling"
- *   diagnostico       ON CONFLICT (equipo_id, capturado_en) DO NOTHING, then read back
- * A double click, a retry or re-importing the same payload converges on one equipo and one diagnostico
- * (`nuevo: false`). A later capture time is another historical snapshot of the same equipo (8.3, 8.11).
- */
 export const registrarDiagnostico = (
   g: typeof GuardarDiagnostico.Type,
 ): Escritura<{ readonly id: typeof Diagnostico.Type.id; readonly nuevo: boolean }, ReglaIncumplida | PayloadInvalido> =>
@@ -29,7 +18,6 @@ export const registrarDiagnostico = (
     const usuario = yield* exigirUsuario
     const captura = yield* capturaDe(g.entrada)
     const sql = yield* SqlClient.SqlClient
-    // Serializes this user's saves, so two concurrent "nuevo" requests cannot both create the equipo.
     yield* sql`SELECT 1 FROM usuario WHERE id = ${usuario.id} FOR UPDATE`
 
     const [equipo] =
@@ -60,7 +48,6 @@ export const registrarDiagnostico = (
       soporte_vulkan: captura.soporte_vulkan,
       version_vulkan: captura.version_vulkan,
     }
-    // The insert either wrote the row or met the existing one, so one of the two SELECTs always returns it.
     return yield* unaFila(
       Guardado,
       sql`

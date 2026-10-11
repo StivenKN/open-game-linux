@@ -1,5 +1,3 @@
-// Module boundaries as a test (runs in `pnpm check`). Each failure message names the fix.
-// No dependency-cruiser or ESLint plugin: three regexes over the source tree are enough here.
 import { describe, expect, it } from '@effect/vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -13,7 +11,6 @@ const archivos = (dir: string): ReadonlyArray<string> =>
 const leer = (p: string) => readFileSync(join(raiz, p), 'utf8')
 const importsDe = (codigo: string) => [...codigo.matchAll(/^\s*import\s[^'"]*['"]([^'"]+)['"]/gm)].map((m) => m[1] ?? '')
 
-/** Which import specifiers each layer may use. Relative specifiers are resolved against src/. */
 const capas = {
   'src/dominio/': { permitidos: ['effect', 'src/dominio/'], arreglo: 'dominio is pure and isomorphic; move I/O to servidor/' },
   'src/servidor/': {
@@ -28,7 +25,6 @@ const capas = {
   'src/ui/': { permitidos: ['react', 'effect', '@tanstack/react-router', 'src/dominio/', 'src/ui/'], arreglo: 'ui is plain React over dominio types' },
 } as const
 
-/** The only routes allowed to touch servidor/: server-handler files with no component. */
 const excepciones = new Set(['src/routes/api/auth/$.ts', 'src/routes/opengame-detect[.]sh.ts'])
 
 const resolver = (desde: string, spec: string) => (spec.startsWith('.') ? relative(raiz, join(raiz, desde, '..', spec)) : spec)

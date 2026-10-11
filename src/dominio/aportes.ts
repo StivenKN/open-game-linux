@@ -1,11 +1,3 @@
-// Input schemas for every write, and the 8.7 comparability rule. Isomorphic.
-//
-// Text fields reuse the row Schemas' "Texto n" (tablas.ts), so an over-long value is a field error in the
-// form instead of a varchar overflow on insert.
-//
-// Each schema is used three times with no copy: the browser form decodes FormData with it
-// (field errors before any request), the server fn validator decodes the same Encoded value
-// (`Schema.toStandardSchemaV1`), and the handler receives the decoded Type.
 import { Array as Arr, Effect, Schema, Struct } from 'effect'
 import { EstadoCompatibilidad } from './compatibilidad.ts'
 import { SoporteVulkan } from './evaluacion.ts'
@@ -25,7 +17,6 @@ import {
 import { FamiliaCapa, ResultadoFallido, ResultadoFuncional } from './literales.ts'
 import { Diagnostico, Distribucion, Equipo, Juego, largo, PerfilConfiguracion, Reporte, Solucion, TextoHasta, TextoOpcionalHasta, VersionCapa } from './tablas.ts'
 
-/** Round 1 graft: report on a Proton build the seeders missed. Registration upserts on (familia, variante, version). */
 export const VersionCapaRef = Schema.Union([
   Schema.TaggedStruct('existente', { id: VersionCapaId }),
   Schema.TaggedStruct('nueva', { familia: FamiliaCapa, variante: VersionCapa.fields.variante, version: VersionCapa.fields.version }),
@@ -36,9 +27,7 @@ export const EquipoDestino = Schema.Union([
   Schema.TaggedStruct('nuevo', { alias: Equipo.fields.alias }),
 ])
 
-/** 8.7: FPS is all-or-nothing with its context. A report without a measurement has `medicion: null`, never 0. */
 export const MedicionFps = Schema.Struct({
-  // numeric(7,2): anything from 100000 up would overflow the column.
   fps_promedio: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 99999.99 }, { message: 'Escribe un promedio de FPS entre 0 y 99999.99.' })),
   resolucion: TextoHasta(largo.reporte.resolucion),
   calidad_grafica: TextoHasta(largo.reporte.calidad_grafica),
@@ -69,11 +58,8 @@ const camposReporte = {
 }
 
 /**
- * RF-08. The failing-result rule (8.7) is the type: one member per result, and the failing ones
- * require a non-empty `fallos`, so the form shows the message on `fallos` before submitting.
- * One member per literal (not one per half) because a union only picks its member by a single
+ * One member per literal because a union only picks its member by a single
  * literal field; with a literal set it would try every member and report all their issues.
- * Duplicate fallos: DB PK reporte_fallo_pkey is the home -> Regla fallo_duplicado.
  */
 export const NuevoReporte = Schema.Union([
   ...ResultadoFuncional.members.map((resultado) => Schema.Struct({ ...camposReporte, resultado, fallos: FallosOpcionales })),
@@ -90,7 +76,6 @@ export const NuevaSolucion = Schema.Struct({
 })
 export type NuevaSolucion = typeof NuevaSolucion.Type
 
-/** RF-03, reviewers only. Editions are (lanzador, identificador externo opcional). */
 export const NuevoJuego = Schema.Struct({
   titulo: Juego.fields.titulo,
   descripcion: Texto,
@@ -114,17 +99,11 @@ const camposCaptura = {
   version_vulkan: TextoOpcionalHasta(largo.diagnostico.version_vulkan),
 }
 
-/**
- * The content of one diagnostico row. Two producers: the manual form (decoded with this schema)
- * and servidor/diagnostico/payload.ts (the only detector parser). Linux carries a distribution and
- * Windows has none, as a type (a diagnostico CHECK is the backstop). A Windows
- * capture only orients (8.10); a report needs a Linux one.
- */
 export const Captura = Schema.Union([
   Schema.Struct({
     ...camposCaptura,
     sistema: Schema.Literal('Linux'),
-    distribucion: Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version }), // resolved to distribucion.id by upsert
+    distribucion: Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version }),
   }),
   Schema.Struct({ ...camposCaptura, sistema: Schema.Literal('Windows') }),
 ]).check(
@@ -134,10 +113,6 @@ export const Captura = Schema.Union([
 )
 export type Captura = typeof Captura.Type
 
-/**
- * What reaches the server from /diagnostico and /diagnostico/importar. The browser never parses
- * `texto` (fragment value, base64url, raw JSON or a whole URL); it posts it untouched.
- */
 export const EntradaDiagnostico = Schema.Union([
   Schema.TaggedStruct('detector', { texto: Schema.String }),
   Schema.TaggedStruct('manual', { captura: Captura }),
@@ -146,7 +121,6 @@ export type EntradaDiagnostico = typeof EntradaDiagnostico.Type
 
 export const GuardarDiagnostico = Schema.Struct({ equipo: EquipoDestino, entrada: EntradaDiagnostico })
 
-/** Catalog search params (wireframe 9.1 filters that section 8 can back). Used as the route's validateSearch. */
 export const FiltroCatalogo = Schema.Struct({
   q: Schema.optionalKey(Schema.String),
   estado: Schema.optionalKey(EstadoCompatibilidad),
@@ -155,9 +129,6 @@ export const FiltroCatalogo = Schema.Struct({
 })
 export type FiltroCatalogo = typeof FiltroCatalogo.Type
 
-// ------------------------------------------------------------------ 8.7 comparability
-
-/** The report side: its own columns plus distro and arch read from its diagnostico. */
 export type ContextoPrueba = {
   readonly edicion_id: EdicionId
   readonly version_capa_id: VersionCapaId
@@ -166,18 +137,11 @@ export type ContextoPrueba = {
   readonly version_juego: string
 }
 
-/** The profile side, as read from perfil_configuracion. */
 export const PerfilObjetivo = PerfilConfiguracion.mapFields(
   Struct.pick(['edicion_id', 'version_capa_id', 'distribucion_id', 'arquitectura', 'version_juego_objetivo']),
 )
 export type PerfilObjetivo = typeof PerfilObjetivo.Type
 
-/**
- * 8.7 "Condiciones para que un reporte sea comparable". The single home of the rule. Called at save
- * (registrarReporte) and at approval (bloqueosAprobacion), the two moments 8.7 names, and by the
- * report form's loader to offer only comparable profiles. Empty = comparable.
- * Versions are identifiers: exact text equality, no numeric comparison.
- */
 export const discrepancias = (prueba: ContextoPrueba, perfil: PerfilObjetivo): ReadonlyArray<Discrepancia> => {
   const encontradas: Array<Discrepancia> = []
   if (prueba.edicion_id !== perfil.edicion_id)

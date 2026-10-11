@@ -1,5 +1,3 @@
-// A stored command or launch parameter, shown verbatim with a copy button (8.5: nothing downloads or
-// executes). The confirmation is visible on the button and announced through a polite live region.
 import { useEffect, useState } from 'react'
 
 type EstadoCopia = 'listo' | 'copiado' | 'fallo'
@@ -10,7 +8,6 @@ const aviso = {
   fallo: 'No se pudo copiar. Selecciona el texto y cópialo a mano.',
 } as const satisfies Record<EstadoCopia, string>
 
-/** `etiqueta` names the content ("Parámetros de lanzamiento") for the caption and the button. */
 export function CajaCopiar({ texto, etiqueta }: { texto: string; etiqueta: string }) {
   const [estado, setEstado] = useState<EstadoCopia>('listo')
 

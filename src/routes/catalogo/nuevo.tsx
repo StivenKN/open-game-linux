@@ -1,5 +1,3 @@
-// RF-03 new game, for reviewers and administrators. The guard is UX only: opcionesJuego and crearJuego
-// check the role again. On success the new game's ficha opens.
 import { createFileRoute, notFound, redirect, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { NuevoJuego } from '../../dominio/aportes.ts'
@@ -54,7 +52,6 @@ function NuevoJuegoPagina() {
           {ediciones.map((clave, i) => (
             <div key={clave} className="fila campos-en-linea">
               <Campo errores={r.errores} nombre={`ediciones[${i}][lanzador_id]`} etiqueta="Lanzador">
-                {/* Rows start on different launchers by position; a duplicate still comes back as edicion_repetida. */}
                 <select {...campo(r.errores, `ediciones[${i}][lanzador_id]`)} defaultValue={lanzadores[i % lanzadores.length]?.id}>
                   {lanzadores.map((l) => (
                     <option key={l.id} value={l.id}>

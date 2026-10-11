@@ -1,5 +1,3 @@
-// The pure half of useAccion: a submitted form becomes either the server fn's Encoded input or a
-// map of Spanish field errors keyed by input name. Uses the real report form schema.
 import { describe, expect, it } from '@effect/vitest'
 import { Result, Schema } from 'effect'
 import { NuevoReporte } from '../dominio/aportes.ts'

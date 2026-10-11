@@ -1,5 +1,3 @@
-// Read model of the profile page, which replaces the 9.4 wizard: ordered manual steps, dependencies and
-// known conditions. Nothing here is downloaded or executed (8.5); the page only shows text to copy.
 import { Effect, Option, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
 import { capacidades, condiciones, evaluar } from '../../dominio/evaluacion.ts'
@@ -45,11 +43,6 @@ const FilaDependencia = PerfilDependencia.mapFields(Struct.pick(['version_requer
   Struct.assign(Struct.pick(Dependencia.fields, ['nombre', 'gestor', 'descripcion'])),
 )
 
-/**
- * Approved profiles, and pending ones marked "en prueba" (8.9 lets users test them to produce the
- * evidence their approval needs). Rejected and retired profiles are not public: NoEncontrado.
- * `evaluacion` compares the viewer's latest diagnosis with an approved profile only (8.10), or says why it cannot.
- */
 export const perfil = (id: PerfilId) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
@@ -90,7 +83,6 @@ export const perfil = (id: PerfilId) =>
         ORDER BY pd.obligatoria DESC, d.nombre`,
     })(id)
 
-    // The reason there is no evaluation is part of the answer, so it is a value, not a null.
     const evaluacion =
       p.estado_revision === 'pendiente'
         ? ('perfil_en_prueba' as const)

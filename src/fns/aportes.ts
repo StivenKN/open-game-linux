@@ -1,5 +1,3 @@
-// Server fns for contributions (RF-03 games, RF-08 reports and solutions). Each write validates with the same schema the form decoded in
-// the browser, then returns Respuesta<A, Fallos.Encoded> through `accion`.
 import { createServerFn } from '@tanstack/react-start'
 import { Schema } from 'effect'
 import { NuevaSolucion, NuevoJuego, NuevoReporte } from '../dominio/aportes.ts'

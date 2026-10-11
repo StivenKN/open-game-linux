@@ -1,4 +1,3 @@
-// guia_adopcion vocabularies (RF-09). Guides are authored by seeders this delivery; only `publicada` is public.
 import { Schema } from 'effect'
 
 export const TipoGuia = Schema.Literals(['eleccion_distribucion', 'instalacion', 'arranque_dual'])

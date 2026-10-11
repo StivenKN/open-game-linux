@@ -1,4 +1,3 @@
-// RF-08 solution form: any signed-in user answers one fallo of a public report (8.8).
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useState } from 'react'

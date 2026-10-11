@@ -1,4 +1,3 @@
-// Root: resolves the visitor once per navigation for the header and route guards (UX only; programs re-check).
 import { HeadContent, Link, Outlet, Scripts, createRootRoute, useRouter } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
 import icono from '../../assets/icon.svg?url'

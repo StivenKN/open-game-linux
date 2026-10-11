@@ -1,13 +1,6 @@
-// `?volver=` on /entrar and /registro. A page that needs an account sends a guest to sign in with its
-// own address; after signing in or up they land back on it. The leading '-' keeps the router from
-// treating this file as a route.
 import { Schema } from 'effect'
 import { TipoAporte } from '../dominio/revision.ts'
 
-/**
- * Where /entrar and /registro send someone back to: the pages that need an account, rebuilt from their
- * ids, so a return address can only name one of our own pages.
- */
 export type Destino =
   | '/diagnostico/importar'
   | `/diagnosticos/${number}`
@@ -35,7 +28,6 @@ const leerUrl = (texto: string) => {
   }
 }
 
-/** Parses an untrusted return address into a Destino, keeping only the query key that page reads. */
 const destino = (texto: unknown): Destino | undefined => {
   const url = typeof texto === 'string' ? leerUrl(texto) : null
   if (url === null || url.origin !== origen) return undefined
@@ -68,5 +60,4 @@ const destino = (texto: unknown): Destino | undefined => {
  */
 export const Volver = (search: Record<string, unknown>): { readonly volver?: Destino | undefined } => ({ volver: destino(search.volver) })
 
-/** The /entrar search a page guard sends, so the guest comes back to this page after signing in. */
 export const volverAqui = (location: { readonly href: string }) => Volver({ volver: location.href })

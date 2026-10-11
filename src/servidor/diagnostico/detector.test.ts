@@ -1,5 +1,3 @@
-// The real detector script against the one parser: what it prints on this machine must parse, and the
-// --open URL must carry the same capture in its #d= fragment.
 import { describe, expect, it } from '@effect/vitest'
 import { Result } from 'effect'
 import { execFileSync } from 'node:child_process'
@@ -17,7 +15,6 @@ describe.skipIf(process.platform !== 'linux')('opengame-detect.sh', () => {
     const url = ejecutar('--open')
     expect(url).toMatch(/^http:\/\/ejemplo\.test\/diagnostico\/importar#d=[A-Za-z0-9_-]+$/)
     const desdeUrl = parsearPayload(url)
-    // Both runs read the same machine; only the capture time may differ by a second.
     const sinHora = Result.map((c: { readonly capturado_en: Date }) => ({ ...c, capturado_en: null }))
     expect(sinHora(desdeUrl)).toEqual(sinHora(json))
   })

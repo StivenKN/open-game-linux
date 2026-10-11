@@ -1,7 +1,3 @@
-// The read models against a real database. The scenario replays dominio/muestras.ts (GTA V across three
-// environments) as rows, so the ficha's summary must equal what `resumir` gives for the fixture.
-// Only decidir() may approve in app code, so approved rows are written here with direct SQL that
-// satisfies the review-block CHECK, inside a transaction that is rolled back.
 import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Exit, Option, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
@@ -91,10 +87,8 @@ const escenario = Effect.gen(function* () {
   })
   for (const [orden, titulo] of [[2, 'Elige Proton 8.0-5'], [1, 'Activa Steam Play']] as const)
     yield* sql`INSERT INTO paso_configuracion (perfil_id, orden, titulo, instruccion) VALUES (${perfilAprobado}, ${orden}, ${titulo}, 'i')`
-  // Steps freeze once a profile is reviewed (og_perfil_congelado), so the approval comes after them.
   yield* sql`UPDATE perfil_configuracion SET ${sql.update(Struct.omit(aprobado, ['creado_en']))} WHERE id = ${perfilAprobado}`
 
-  // Same rows as muestras.ts gtaV, in DB form.
   const sinFps = { fps_promedio: null, resolucion: null, calidad_grafica: null, metodo_medicion: null }
   const reporte = (fila: Record<string, Valor>, revision: Record<string, Valor> = aprobado) =>
     insertar('reporte', { observaciones: 'o', ...sinFps, ...fila, ...revision })
@@ -122,7 +116,6 @@ const escenario = Effect.gen(function* () {
   yield* solucion('Volver a Proton 8.0-5', null, aprobado)
   yield* solucion('Usar el perfil retirado', perfilRetirado, aprobado)
   yield* solucion('Sin revisar', null, {})
-  // Pending evidence: listed as a count, never part of a summary.
   yield* reporte({ edicion_id: gtaSteam, diagnostico_id: enMint, version_capa_id: proton8, version_juego: '1.0.3179', resultado: 'no_inicia', fecha_prueba: new Date('2026-10-05T12:00:00Z') }, {})
   yield* reporte({ edicion_id: ets2Steam, diagnostico_id: enMint, version_capa_id: proton8, version_juego: '1.5', resultado: 'funciona', fecha_prueba: new Date('2026-10-05T12:00:00Z') }, {})
 
@@ -132,7 +125,6 @@ const escenario = Effect.gen(function* () {
   yield* sql`INSERT INTO reporte_fallo (reporte_id, tipo_fallo_id, detalle) VALUES (${valorantFallo}, ${antiCheat}, 'Vanguard')`
   yield* reporte({ edicion_id: cs2Steam, diagnostico_id: enArch, version_capa_id: ge94, version_juego: '1.0', resultado: 'funciona', fecha_prueba: new Date('2026-09-01T12:00:00Z') })
 
-  // Ana's latest capture is on Mint; the older one on Fedora must not be the one compared.
   const pcAna = yield* equipo('ana')
   yield* diagnostico(pcAna, fedora, '2026-07-01T00:00:00Z')
   yield* diagnostico(pcAna, mint, '2026-09-01T00:00:00Z', { ram_mb: 16384, vram_mb: 4096, soporte_vulkan: 'si', version_vulkan: '1.3' })
@@ -153,7 +145,6 @@ const escenario = Effect.gen(function* () {
   }
 })
 
-/** The summary without ids and display labels, which differ between the fixture and the database. */
 const forma = (r: ResumenCompatibilidad) => ({
   estado: r.estado,
   pruebas: r.pruebas,
@@ -185,7 +176,6 @@ layer(PgTest)('consultas', (it) => {
           expect(ficha.pendientes).toBe(1)
           expect(ficha.ejemplo).toBe(true)
           expect(ficha.personal).toBeNull()
-          // A pending solution, and an approved one that recommends a retired profile (8.9 vigencia), stay hidden.
           expect(ficha.causas.map((c) => [c.codigo, c.descripcion, c.soluciones.map((x) => x.titulo)])).toEqual([
             ['lanzador', 'El lanzador no abre.', ['Volver a Proton 8.0-5']],
           ])

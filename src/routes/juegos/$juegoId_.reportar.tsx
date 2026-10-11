@@ -1,6 +1,4 @@
-// RF-08 report form. `$juegoId_` keeps this page out of the ficha's layout (it renders on its own).
-// Profiles on offer are the ones `discrepancias` finds comparable with what the user picked; a violated
-// rule comes back as data and lands under its field.
+// `$juegoId_` keeps this page out of the ficha's layout (it renders on its own).
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useState } from 'react'
@@ -77,10 +75,8 @@ function Reportar() {
   )
 }
 
-/** The branded id of the option a select now shows. */
 const porId = <I extends number>(lista: ReadonlyArray<{ readonly id: I }>, valor: string) => lista.find((x) => String(x.id) === valor)?.id
 
-/** Display names for the ids a PerfilNoComparable carries, from what the page already loaded. */
 const nombres = (o: Opciones) => {
   const distribuciones = new Map<number, string>([
     ...o.perfiles.map((p) => [p.distribucion_id, p.distribucion] as const),
@@ -109,7 +105,6 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
   const { diagnosticos, ediciones, capas, perfiles, tiposFallo, perfilElegido } = opciones
   const elegido = perfiles.find((p) => p.id === perfilElegido)
 
-  // The four choices comparability depends on are controlled, so the profile list can follow them.
   const [diagnosticoId, setDiagnosticoId] = useState(diagnosticos.at(0)?.id)
   const [edicionId, setEdicionId] = useState(elegido?.edicion_id ?? ediciones.at(0)?.id)
   const [tipoCapa, setTipoCapa] = useState<'existente' | 'nueva'>('existente')
@@ -125,7 +120,6 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
     diagnostico !== undefined && edicionId !== undefined && capaId !== undefined && tipoCapa === 'existente'
       ? { edicion_id: edicionId, version_capa_id: capaId, distribucion_id: diagnostico.distribucion_id, arquitectura: diagnostico.arquitectura, version_juego: versionJuego.trim() }
       : null
-  // A preselected profile (?perfil=) stays on offer even when it does not fit, so submitting it explains why.
   const comparables = perfiles.filter((p) => p.id === perfilElegido || (prueba !== null && discrepancias(prueba, p).length === 0))
   const perfilValor = comparables.some((p) => String(p.id) === perfilId) ? perfilId : nulo
 

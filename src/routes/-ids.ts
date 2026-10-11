@@ -5,6 +5,5 @@ import { Option, Schema } from 'effect'
 
 export const idDeRuta = <T extends number>(id: Schema.Codec<T, number>) => {
   const decodificar = Schema.decodeUnknownOption(Schema.NumberFromString.pipe(Schema.decodeTo(id)))
-  // Digits only, so `/juegos/1.0` or `/juegos/01` is not a second address for `/juegos/1`.
   return (texto: string): T => Option.getOrThrowWith(/^[1-9]\d*$/.test(texto) ? decodificar(texto) : Option.none(), () => notFound())
 }

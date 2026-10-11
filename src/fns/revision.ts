@@ -1,4 +1,3 @@
-// Server fns for the review queue (RF-10).
 import { createServerFn } from '@tanstack/react-start'
 import { Schema } from 'effect'
 import { AprobacionBloqueada, ReglaIncumplida, TransicionInvalida } from '../dominio/fallos.ts'

@@ -1,5 +1,3 @@
-// The diagnosis matrix (wireframe 9.2 minus its FPS estimates): per game, the compatibility approved
-// reports give (solid badge) and this equipo against the approved profile suggested for it (dashed badge).
 import { Link } from '@tanstack/react-router'
 import type { EstadoCompatibilidad } from '../../dominio/compatibilidad.ts'
 import type { JuegoId } from '../../dominio/ids.ts'

@@ -1,6 +1,3 @@
-// Spanish label, tone and icon for every domain literal the UI shows. `satisfies Record<Union, …>`:
-// adding a literal to a dominio Schema without a label here fails `tsc`.
-// Tone is never the only signal: every badge renders its icon and text next to the colour.
 import type { EstadoCompatibilidad } from '../dominio/compatibilidad.ts'
 import type { Resultado } from '../dominio/literales.ts'
 import type { Comprobacion, Sistema, SoporteVulkan, VeredictoRequisitos } from '../dominio/evaluacion.ts'
@@ -27,14 +24,12 @@ export const resultado = {
   falla_en_ejecucion: estadoCompatibilidad.falla_en_ejecucion,
 } as const satisfies Record<Resultado, Etiqueta>
 
-/** Dashed badge: hardware evaluation, never an FPS prediction. */
 export const veredictoRequisitos = {
   no_cumple: { texto: 'No cumple', tono: 'rojo', icono: '✕' },
   informacion_insuficiente: { texto: 'Información insuficiente', tono: 'gris', icono: '?' },
   cumple: { texto: 'Cumple las condiciones conocidas', tono: 'verde', icono: '✓' },
 } as const satisfies Record<VeredictoRequisitos, Etiqueta>
 
-/** One row of the evaluation checklist. */
 export const estadoComprobacion = {
   cumple: { texto: 'Cumple', tono: 'verde', icono: '✓' },
   no_cumple: { texto: 'No cumple', tono: 'rojo', icono: '✕' },
@@ -65,11 +60,6 @@ export const bloqueo = {
   reporte_incomparable: 'El perfil no coincide con el entorno del diagnóstico.',
 } as const satisfies Record<Bloqueo, string>
 
-/**
- * tipo_fallo.codigo is seeded data, not a Schema literal, so this table cannot be exhaustive.
- * Known codes get a label; anti-cheat and DRM read as blockers (red), the rest as causes (yellow).
- * An unknown code still renders, as its own text.
- */
 type EtiquetaFallo = Omit<Etiqueta, 'icono'>
 const tiposFallo: Readonly<Record<string, EtiquetaFallo>> = {
   anti_cheat: { texto: 'Anti-cheat', tono: 'rojo' },
@@ -83,21 +73,18 @@ const tiposFallo: Readonly<Record<string, EtiquetaFallo>> = {
 
 export const tipoFallo = (codigo: string): EtiquetaFallo => tiposFallo[codigo] ?? { texto: codigo.replaceAll('_', ' '), tono: 'amarillo' }
 
-/** RF-09 guide kinds. */
 export const tipoGuia = {
   eleccion_distribucion: 'Elegir distribución',
   instalacion: 'Instalación',
   arranque_dual: 'Arranque dual',
 } as const satisfies Record<TipoGuia, string>
 
-/** Why the server could not read a detector payload or pasted text (PayloadInvalido.motivo). */
 export const motivoPayload = {
   ilegible: 'No pudimos leer ese texto. Copia toda la salida del detector, o la dirección completa que abrió tu navegador.',
   version_esquema: 'Ese diagnóstico viene de otra versión del detector. Descárgalo de nuevo y vuelve a ejecutarlo.',
   campo_invalido: 'Al diagnóstico le falta un dato o trae uno que no reconocemos.',
 } as const satisfies Record<PayloadInvalido['motivo'], string>
 
-/** The catalog's legend (wireframe 9.1): what each computed state means, in estadoDe's terms. */
 export const significadoEstado = {
   sin_evidencia: 'Ningún revisor ha aprobado todavía una prueba de este juego.',
   funciona: 'Todas las pruebas aprobadas funcionan sin ajustes.',

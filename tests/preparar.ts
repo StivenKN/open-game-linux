@@ -1,5 +1,3 @@
-// vitest globalSetup: once per run, empty the test database and migrate it.
-// It drops the public schema, so it refuses any database whose name does not end in `_test`.
 import { Effect } from 'effect'
 import { NodeServices } from '@effect/platform-node'
 import { baseActual, migrar, vaciarEsquema } from '../src/servidor/esquema/migraciones.ts'

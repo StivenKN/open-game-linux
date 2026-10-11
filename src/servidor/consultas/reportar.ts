@@ -1,6 +1,3 @@
-// Read models behind the contribution forms: what a signed-in user may report on and what a solution may
-// answer (RF-08), and the launchers a new game's editions pick from (RF-03). Writes and their rules live
-// in servidor/aportes/aportes.ts.
 import { Effect, Schema, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { PerfilObjetivo } from '../../dominio/aportes.ts'
@@ -14,13 +11,13 @@ import { etiquetaCapa, etiquetaDistribucion } from './etiquetas.ts'
 
 const JuegoFila = Juego.mapFields(Struct.pick(['id', 'titulo']))
 const EdicionFila = Schema.Struct({ id: EdicionId, lanzador: Lanzador.fields.nombre })
-const Nombre = Schema.String // etiquetas.ts composes it in SQL for display only
+const Nombre = Schema.String
 
 const DiagnosticoFila = Schema.Struct({
   id: DiagnosticoId,
   equipo: Equipo.fields.alias,
   distribucion: Nombre,
-  distribucion_id: DistribucionId, // joined to distribucion, so only Linux captures come back
+  distribucion_id: DistribucionId,
   ...Diagnostico.mapFields(Struct.pick(['arquitectura', 'capturado_en'])).fields,
 })
 
@@ -30,12 +27,6 @@ const PerfilFila = Schema.Struct({
   distribucion: Nombre,
 })
 
-/**
- * The report form for one game. Profiles are every pending or approved profile of the game's
- * editions; the form keeps only those `discrepancias` finds comparable with the diagnosis, edition,
- * layer and version the user picks (the pure rule runs in the browser too). `?perfil=` preselects one
- * when it is among them, comparable or not, so the user sees why it does not fit.
- */
 export const opcionesReporte = (juegoId: JuegoId, perfil: PerfilId | null) =>
   Effect.gen(function* () {
     const usuario = yield* exigirUsuario
@@ -48,7 +39,6 @@ export const opcionesReporte = (juegoId: JuegoId, perfil: PerfilId | null) =>
       sql`SELECT e.id, l.nombre AS lanzador FROM edicion_juego e JOIN lanzador l ON l.id = e.lanzador_id
           WHERE e.juego_id = ${juegoId} ORDER BY l.nombre`,
     )
-    // Only Linux captures can back a report (8.7); a Windows one only orients.
     const diagnosticos = yield* filas(
       DiagnosticoFila,
       sql`SELECT d.id, eq.alias AS equipo, ${sql.literal(etiquetaDistribucion('di'))} AS distribucion, d.distribucion_id, d.arquitectura, d.capturado_en
@@ -78,11 +68,6 @@ const ReporteOrigen = Schema.Struct({
 const FalloOrigen = Schema.Struct({ tipo_fallo_id: TipoFallo.fields.id, codigo: TipoFallo.fields.codigo, detalle: Schema.String })
 const PerfilEdicion = PerfilConfiguracion.mapFields(Struct.pick(['id', 'titulo', 'revision', 'estado_revision']))
 
-/**
- * The solution form for one public report. A report with no fallo has nothing to solve, so it is
- * notFound like a missing one. Recommendable profiles are the pending and approved ones of the
- * report's edition (8.8); approving the solution later needs the profile approved too (8.9).
- */
 export const opcionesSolucion = (reporteId: ReporteId) =>
   Effect.gen(function* () {
     yield* exigirUsuario
@@ -114,7 +99,6 @@ export const opcionesSolucion = (reporteId: ReporteId) =>
 
 const LanzadorFila = Lanzador.mapFields(Struct.pick(['id', 'nombre']))
 
-/** The new-game form (RF-03): reviewers only, so anyone else gets notFound from the loader. */
 export const opcionesJuego = Effect.gen(function* () {
   yield* exigirRevisor
   const sql = yield* SqlClient.SqlClient

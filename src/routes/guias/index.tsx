@@ -1,4 +1,3 @@
-// Adoption guides (RF-09): choosing a distribution, installing it, dual boot. Published guides only.
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { guiasFn } from '../../fns/guias.ts'
 import { fecha } from '../../ui/formato.ts'

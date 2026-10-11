@@ -1,4 +1,3 @@
-// One published guide. Its content is plain text written by the seed; blank lines separate paragraphs.
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { GuiaId } from '../../dominio/ids.ts'
 import { guiaFn } from '../../fns/guias.ts'

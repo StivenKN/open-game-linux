@@ -1,42 +1,5 @@
-// The whole section 8 schema as Effect migrations (PgMigrator + Migrator.fromRecord, spike Q5).
-// Run by scripts/migrar.ts and by tests/preparar.ts. One SQL statement per sql.unsafe call
+// One SQL statement per sql.unsafe call
 // (the extended protocol rejects multi-statement strings), so each area is a string array.
-//
-// Every 8.7 / 8.9 / 8.11 rule has exactly one home. This table is the index.
-//
-// | rule                                                         | home                                      |
-// |--------------------------------------------------------------|-------------------------------------------|
-// | PK, FK, UQ, composite keys, no duplicate dependencia / fallo | DB keys                                   |
-// | enumerated domains, magnitudes, ranges                       | DB CHECK (lists from dominio Schemas)     |
-// | blank strings                                                | DB CHECK *_no_vacio (+ Texto on input)    |
-// | review block shape per state, approval needs evidence,       | DB CHECK *_bloque_revision                |
-// |   valid estado_revision                                      |                                           |
-// | revisado_en >= creado_en                                     | DB CHECK *_revision_posterior             |
-// | fps => resolucion, calidad, metodo                           | DB CHECK reporte_fps_con_contexto         |
-// | Linux capture <=> distribucion_id; vulkan version only if si | DB CHECK                                  |
-// | capture immutable                                            | DB trigger og_inmutable                   |
-// | equipo owner fixed once it has a capture                     | DB trigger og_propietario_fijo            |
-// | report / solution content never rewritten (frozen at birth)  | DB trigger og_solo_revision               |
-// | profile, its steps and deps frozen once reviewed or used     | DB trigger og_perfil_congelado            |
-// | solucion -> reporte_fallo                                    | DB composite FK solucion_fallo_fk         |
-// | report comparability (edition, layer, distro, arch, version) | app: dominio/aportes.ts discrepancias     |
-// |   (edition + layer also a composite FK backstop, unmapped)   |   (+ DB reporte_perfil_fk)                |
-// | own equipo; Linux diagnosis; fecha_prueba >= capturado_en    | app: servidor/aportes/aportes.ts          |
-// | solution's profile in the report's edition                   | app: servidor/aportes/aportes.ts          |
-// | one equipo per alias per user, one capture per time          | app: servidor/aportes/diagnostico.ts      |
-// | failing result has >= 1 fallo                                | app: dominio/aportes.ts NuevoReporte      |
-// | reviewer role + activo (also: only reviewers register games) | app: servidor/auth.ts exigirRevisor       |
-// | author != reviewer (all three tables), transitions,          | app: servidor/aportes/revision.ts decidir |
-// |   approval preconditions                                     |                                           |
-// | only reviewers publish guides                                | no write path this delivery (seeded)      |
-// | public view hides retired rows                               | app: servidor/consultas (WHERE aprobado)  |
-//
-// Single writers (src/fronteras.test.ts checks the SQL in src/ and scripts/ for the first two;
-// scripts/sembrar.ts part 1 still inserts catalog lookups such as juego and edicion_juego directly):
-//   equipo, diagnostico (+ the distribucion a capture names) -> servidor/aportes/diagnostico.ts
-//   review block of perfil, reporte, solucion                -> servidor/aportes/revision.ts decidir
-//   reporte (+ reporte_fallo, version_capa upsert), solucion,
-//     juego (+ edicion_juego)                                -> servidor/aportes/aportes.ts
 import { Effect, Schema } from 'effect'
 import { Migrator, SqlClient } from 'effect/sql'
 import { PgMigrator } from '@effect/sql-pg'
@@ -53,9 +16,6 @@ const ejecutar = (sentencias: ReadonlyArray<string>) =>
     for (const s of sentencias) yield* sql.unsafe(s)
   })
 
-// ------------------------------------------------------------------ helpers (one rule, written once)
-
-/** CHECK (col IN (...)) from a Schema literal list: the domain list IS the DB list. */
 const dominio = (t: string, c: string, valores: ReadonlyArray<string>) =>
   `ALTER TABLE ${t} ADD CONSTRAINT ${t}_${c}_dominio CHECK (${c} IN (${valores.map((v) => `'${v}'`).join(', ')}))`
 
@@ -69,7 +29,6 @@ const check = (t: string, nombre: string, expr: string) => `ALTER TABLE ${t} ADD
 
 const inicial: EstadoRevision = 'pendiente'
 
-/** The five 8.9 columns, identical on perfil_configuracion, reporte, solucion. Row Schema: dominio/tablas.ts BloqueRevision. */
 const bloqueRevision = `
   estado_revision varchar(${L.bloque_revision.estado_revision}) NOT NULL DEFAULT '${inicial}',
   revisor_id text REFERENCES usuario(id) ON DELETE RESTRICT,
@@ -79,10 +38,6 @@ const bloqueRevision = `
 
 const revisado = `revisor_id IS NOT NULL AND revisado_en IS NOT NULL AND ${conTexto('motivo_revision')}`
 
-/**
- * What each state demands of the review block (8.9). A new EstadoRevision is a compile error here, and an
- * unknown state matches no branch, so `<t>_bloque_revision` is also the domain check for estado_revision.
- */
 const formaPorEstado = {
   pendiente: 'revisor_id IS NULL AND revisado_en IS NULL AND motivo_revision IS NULL AND evidencia_revision IS NULL',
   aprobado: `${revisado} AND ${conTexto('evidencia_revision')}`,
@@ -90,7 +45,6 @@ const formaPorEstado = {
   retirado: revisado,
 } satisfies Record<EstadoRevision, string>
 
-/** `congelar` guards the content columns: og_solo_revision freezes them from birth, og_perfil_contenido once reviewed or used. */
 const reglasRevision = (t: string, congelar: 'og_solo_revision' | 'og_perfil_contenido') => [
   check(t, 'bloque_revision', Object.entries(formaPorEstado).map(([estado, forma]) => `(estado_revision = '${estado}' AND ${forma})`).join(' OR ')),
   check(t, 'revision_posterior', 'revisado_en IS NULL OR revisado_en >= creado_en'),
@@ -100,12 +54,6 @@ const reglasRevision = (t: string, congelar: 'og_solo_revision' | 'og_perfil_con
 
 const id = 'id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY'
 
-// ------------------------------------------------------------------ 1_auth
-
-/**
- * `node --env-file=.env scripts/auth-sql.ts` output for servidor/esquema/auth.ts, verbatim, one statement each.
- * tests/esquema.test.ts asserts better-auth finds nothing left to migrate after this runs.
- */
 const auth = [
   `create table "usuario" ("id" text not null primary key, "alias" text not null, "correo" text not null unique, "correo_verificado" boolean not null, "image" text, "creado_en" timestamptz default CURRENT_TIMESTAMP not null, "actualizado_en" timestamptz default CURRENT_TIMESTAMP not null, "rol" text not null, "activo" boolean not null)`,
   `create table "session" ("id" text not null primary key, "expiresAt" timestamptz not null, "token" text not null unique, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz not null, "ipAddress" text, "userAgent" text, "userId" text not null references "usuario" ("id") on delete cascade)`,
@@ -117,8 +65,6 @@ const auth = [
   `COMMENT ON COLUMN usuario.id IS 'Desviación de 8.3 (Entero): id de texto generado por better-auth'`,
   `COMMENT ON TABLE usuario IS 'Doc 8.3 usuario. Tabla de better-auth. Desviación: contrasena_hash vive en account.password (providerId = credential)'`,
 ]
-
-// ------------------------------------------------------------------ 2_opengame
 
 const funciones = [
   `CREATE FUNCTION og_inmutable() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -136,7 +82,6 @@ const funciones = [
      END IF;
      RETURN NEW;
    END $$`,
-  // 8.5 / 8.9: a profile stops accepting content changes once reviewed or used by a report.
   `CREATE FUNCTION og_perfil_fijo(pid integer) RETURNS boolean LANGUAGE plpgsql STABLE AS $$
    BEGIN
      RETURN EXISTS (SELECT 1 FROM perfil_configuracion p WHERE p.id = pid AND p.estado_revision <> '${inicial}')
@@ -150,7 +95,6 @@ const funciones = [
      END IF;
      RETURN NEW;
    END $$`,
-  // Steps and dependencies: OLD and NEW both, so an UPDATE cannot move a row out of a frozen profile.
   `CREATE FUNCTION og_perfil_congelado() RETURNS trigger LANGUAGE plpgsql AS $$
    BEGIN
      IF og_perfil_fijo(OLD.perfil_id) OR og_perfil_fijo(NEW.perfil_id) THEN
@@ -159,7 +103,6 @@ const funciones = [
      END IF;
      RETURN COALESCE(NEW, OLD);
    END $$`,
-  // 8.3 / 8.9: the owner may change until the equipo has a capture.
   `CREATE FUNCTION og_propietario_fijo() RETURNS trigger LANGUAGE plpgsql AS $$
    BEGIN
      IF EXISTS (SELECT 1 FROM diagnostico d WHERE d.equipo_id = OLD.id) THEN
@@ -227,7 +170,7 @@ const diagnosticos = [
      version_controlador varchar(${L.diagnostico.version_controlador}),
      soporte_vulkan varchar(${L.diagnostico.soporte_vulkan}) NOT NULL,
      version_vulkan varchar(${L.diagnostico.version_vulkan}),
-     CONSTRAINT diagnostico_captura_uq UNIQUE (equipo_id, capturado_en))`, // a double submit converges; also 8.11's index
+     CONSTRAINT diagnostico_captura_uq UNIQUE (equipo_id, capturado_en))`,
   dominio('diagnostico', 'sistema', Sistema.literals),
   dominio('diagnostico', 'soporte_vulkan', SoporteVulkan.literals),
   ...noVacio('diagnostico', 'version_sistema', 'arquitectura', 'cpu_modelo', 'gpu_modelo', 'controlador', 'version_controlador', 'version_vulkan'),
@@ -285,7 +228,7 @@ const configuraciones = [
      obligatoria boolean NOT NULL,
      instruccion_instalacion text NOT NULL,
      PRIMARY KEY (perfil_id, dependencia_id))`,
-  `CREATE INDEX perfil_dependencia_dependencia_idx ON perfil_dependencia (dependencia_id)`, // 8.11: both directions
+  `CREATE INDEX perfil_dependencia_dependencia_idx ON perfil_dependencia (dependencia_id)`,
   ...noVacio('perfil_dependencia', 'version_requerida', 'instruccion_instalacion'),
   ...['paso_configuracion', 'perfil_dependencia'].map(
     (h) => `CREATE TRIGGER ${h}_congelado BEFORE INSERT OR UPDATE OR DELETE ON ${h} FOR EACH ROW EXECUTE FUNCTION og_perfil_congelado()`,
@@ -293,7 +236,7 @@ const configuraciones = [
 ]
 
 const resultados = [
-  `CREATE TABLE tipo_fallo (${id}, codigo varchar(${L.tipo_fallo.codigo}) NOT NULL UNIQUE, descripcion text NOT NULL)`, // codes are seeded data
+  `CREATE TABLE tipo_fallo (${id}, codigo varchar(${L.tipo_fallo.codigo}) NOT NULL UNIQUE, descripcion text NOT NULL)`,
   check('tipo_fallo', 'codigo_formato', "codigo ~ '^[a-z][a-z0-9_]*$'"),
   ...noVacio('tipo_fallo', 'descripcion'),
   `CREATE TABLE reporte (${id},
@@ -366,25 +309,17 @@ const guias = [
   check('guia_adopcion', 'fechas_ordenadas', 'actualizado_en >= creado_en'),
 ]
 
-/**
- * Migrator.fromRecord keys are `<id>_<name>`. A shipped migration is never edited; a new rule is a
- * new key. Tradeoff accepted: `dominio(...)` reads today's literal list when an old migration runs
- * on a fresh DB, so adding a literal later means a new migration that drops and re-adds that CHECK.
- */
 export const migraciones = {
   '1_auth': ejecutar(auth),
   '2_opengame': ejecutar([...funciones, ...usuario, ...catalogo, ...diagnosticos, ...configuraciones, ...resultados, ...guias]),
 }
 
-/** Applies pending migrations; returns the ones it ran (`[]` when up to date). */
 export const migrar = PgMigrator.run({ loader: Migrator.fromRecord(migraciones) })
 
-/** The name of the database the client is connected to, as the server reports it. */
 export const baseActual = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
   const { nombre } = yield* unaFila(Schema.Struct({ nombre: Schema.String }), sql`SELECT current_database() AS nombre`)
   return nombre
 })
 
-/** Drops every table, the migrator's own included. Callers check `baseActual` first. */
 export const vaciarEsquema = ejecutar(['DROP SCHEMA public CASCADE', 'CREATE SCHEMA public'])

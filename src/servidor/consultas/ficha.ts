@@ -1,5 +1,3 @@
-// Read model of the ficha (wireframe 9.3). Its success type is the page data type, inferred through
-// fichaJuegoFn into Route.useLoaderData; nothing declares page props by hand.
 import { Effect, Option, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
 import { enDistribucion, PruebaAprobada, resumir } from '../../dominio/compatibilidad.ts'
@@ -12,14 +10,8 @@ import { Visitante } from '../auth.ts'
 import { filas, unaFila } from '../filas.ts'
 import { esDemo, etiquetaCapa, etiquetaDistribucion, etiquetaPerfil } from './etiquetas.ts'
 
-/** A PruebaAprobada row plus its game and whether a demo account reported it. */
 const PruebaDeJuego = Schema.Struct({ ...PruebaAprobada.fields, juego_id: JuegoId, ejemplo: Schema.Boolean })
 
-/**
- * THE summary query of 8.10: approved reports flattened for `resumir`. `juego` null reads every game
- * (the catalog groups them in TS). Pending rows never get here: the WHERE excludes them, and
- * PruebaAprobada's `estado_revision: 'aprobado'` would refuse one anyway.
- */
 export const pruebasAprobadas = (juego: JuegoId | null) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
@@ -50,7 +42,6 @@ export const pruebasAprobadas = (juego: JuegoId | null) =>
     )
   })
 
-/** The viewer's latest capture. Round 1 decision: no "active diagnosis" state that could go stale. */
 const MiDiagnostico = Diagnostico.mapFields(
   Struct.pick(['id', 'capturado_en', 'sistema', 'distribucion_id', 'arquitectura', 'ram_mb', 'vram_mb', 'soporte_vulkan', 'version_vulkan']),
 ).mapFields(Struct.assign({ equipo: Equipo.fields.alias, distribucion: Schema.NullOr(Schema.String) }))
@@ -72,7 +63,6 @@ export const ultimoDiagnostico = (usuario: UsuarioId) =>
     })(usuario),
   )
 
-/** The signed-in viewer's latest diagnosis, or none for guests and for accounts that never ran the detector. */
 export const diagnosticoDelVisitante = Effect.flatMap(Visitante, (visitante) =>
   Option.match(visitante, { onNone: () => Effect.succeedNone, onSome: (u) => ultimoDiagnostico(u.id) }),
 )
@@ -83,7 +73,6 @@ const FilaEdicion = EdicionJuego.mapFields(Struct.pick(['id', 'identificador_ext
   Struct.assign({ lanzador: Lanzador.fields.nombre }),
 )
 
-/** A profile as the ficha lists it: approved, or pending shown "en prueba" (8.9 lets users test it). Others never reach the page. */
 const FilaPerfil = PerfilConfiguracion.mapFields(
   Struct.pick(['id', 'titulo', 'revision', 'distribucion_id', 'arquitectura', 'ram_min_mb', 'vram_min_mb', 'requiere_vulkan', 'version_vulkan_min']),
 ).mapFields(
@@ -102,10 +91,6 @@ const FilaSolucion = Solucion.mapFields(Struct.pick(['id', 'titulo', 'instruccio
 
 const Conteo = Schema.Struct({ n: Schema.Int })
 
-/**
- * Everything the ficha shows. `pendientes` is a bare count: unreviewed content is not public (8.9),
- * and it never reaches `resumir`. `personal` is null without a diagnosis.
- */
 export const fichaJuego = (juegoId: JuegoId) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
@@ -156,8 +141,6 @@ export const fichaJuego = (juegoId: JuegoId) =>
         ORDER BY p.estado_revision = 'aprobado' DESC, p.titulo, p.revision DESC`,
     })(juegoId)
 
-    // RF-02/RF-03: approved solutions to failures seen in approved reports. A solution that recommends
-    // a profile shows only while that profile is approved (8.9 "comprueba la vigencia").
     const soluciones = yield* SqlSchema.findAll({
       Request: JuegoId,
       Result: FilaSolucion,
@@ -180,8 +163,6 @@ export const fichaJuego = (juegoId: JuegoId) =>
       execute: () => sql`SELECT id, codigo, descripcion FROM tipo_fallo`,
     })(undefined)
     const tipoPorCodigo = new Map(tiposFallo.map((t) => [t.codigo, t]))
-    // A new solution answers one fallo of one approved report (8.8): the newest report that saw it
-    // (pruebasAprobadas orders by fecha_prueba DESC).
     const causas = resumen.fallos.map((f) => {
       const tipo = tipoPorCodigo.get(f.codigo)
       const reporte = pruebas.find((p) => p.fallos.includes(f.codigo))
@@ -195,7 +176,6 @@ export const fichaJuego = (juegoId: JuegoId) =>
 
     const diagnostico = yield* diagnosticoDelVisitante
 
-    // 8.10: the hardware evaluation runs only against approved profiles, and only with a diagnosis.
     const perfiles = filasPerfil.map(({ ram_min_mb, vram_min_mb, requiere_vulkan, version_vulkan_min, ...p }) => ({
       ...p,
       evaluacion:

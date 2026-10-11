@@ -1,4 +1,3 @@
-// Published adoption guides (RF-09).
 import { createServerFn } from '@tanstack/react-start'
 import { Schema } from 'effect'
 import { GuiaId } from '../dominio/ids.ts'

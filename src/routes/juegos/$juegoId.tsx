@@ -1,5 +1,3 @@
-// Ficha (wireframe 9.3). Loader -> server fn -> one Effect program; the page data type is inferred end
-// to end from servidor/consultas/ficha.ts.
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { JuegoId } from '../../dominio/ids.ts'
 import { fichaJuegoFn } from '../../fns/catalogo.ts'

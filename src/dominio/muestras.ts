@@ -1,7 +1,3 @@
-// The prototypes/veredicto sample data as PruebaAprobada rows, decoded through the real row schema.
-// Feeds the domain tests and the dev-only /_muestras route. Ids are arbitrary but consistent:
-// distribucion 1 Linux Mint 21.3, 2 Arch Linux, 3 Fedora 40; capa 1 Proton 8.0-5, 2 GE-Proton 9-4,
-// 3 Proton 9.0-3, 4 Wine 9.0.
 import { Schema } from 'effect'
 import { PruebaAprobada } from './compatibilidad.ts'
 
@@ -12,10 +8,9 @@ const sinFps = { fps_promedio: null, resolucion: null, calidad_grafica: null, me
 export type Muestra = {
   readonly juego: string
   readonly pruebas: ReadonlyArray<PruebaAprobada>
-  readonly pendientes: number // pending reports: shown apart, never counted (8.7)
+  readonly pendientes: number
 }
 
-/** Three approved results across three environments: resultados_variables. */
 export const gtaV: Muestra = {
   juego: 'Grand Theft Auto V',
   pendientes: 1,
@@ -49,7 +44,6 @@ export const gtaV: Muestra = {
   ]),
 }
 
-/** Every approved report fails to start, both blocked by anti-cheat: no_inicia. */
 export const valorant: Muestra = {
   juego: 'Valorant',
   pendientes: 0,
@@ -69,5 +63,4 @@ export const valorant: Muestra = {
   ]),
 }
 
-/** Only pending reports: nothing approved, so sin_evidencia. */
 export const ets2: Muestra = { juego: 'Euro Truck Simulator 2', pendientes: 2, pruebas: [] }

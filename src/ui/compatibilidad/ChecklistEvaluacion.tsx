@@ -1,14 +1,10 @@
-// The hardware evaluation against one approved profile: dashed badge, one row per condition the
-// profile states, and one sentence of why. It compares RAM, VRAM and Vulkan; it never predicts FPS.
 import type { Comprobacion, Evaluacion } from '../../dominio/evaluacion.ts'
 import { memoria } from '../formato.ts'
 import { Insignia } from '../Insignia.tsx'
 import { estadoComprobacion, requisito, veredictoRequisitos } from '../vocabulario.ts'
 
-/** An approved profile already evaluated against the viewer's diagnosis. */
 export type PerfilEvaluado = { readonly titulo: string; readonly revision: number; readonly evaluacion: Evaluacion }
 
-/** Comprobacion carries raw values ("8192" MB, "1.3"); the UI owns units. */
 const valor = (c: Comprobacion, v: string) => (c.requisito === 'vulkan' ? v : memoria(Number(v)))
 
 const motivo = (e: Evaluacion): string => {
@@ -31,7 +27,6 @@ const motivo = (e: Evaluacion): string => {
   }
 }
 
-/** `perfil` null: the game has no approved profile with known conditions, so nothing can be compared. */
 export function ChecklistEvaluacion({ perfil }: { perfil: PerfilEvaluado | null }) {
   const evaluacion = perfil?.evaluacion
   return (

@@ -1,5 +1,3 @@
-// "Entornos probados": one row per 8.10 grouping key, each with its own computed state and count.
-// FPS appears only as measured by the community, one line per (resolución, calidad), never averaged across.
 import type { EntornoProbado } from '../../dominio/compatibilidad.ts'
 import type { DistribucionId } from '../../dominio/ids.ts'
 import { Resultado } from '../../dominio/literales.ts'
@@ -8,7 +6,6 @@ import { Chip, Insignia } from '../Insignia.tsx'
 import { estadoCompatibilidad, resultado } from '../vocabulario.ts'
 import { ChipsFallos } from './ChipsFallos.tsx'
 
-/** `miDistribucion` highlights the viewer's rows; null without a diagnosis. */
 export function MatrizEntornos({ entornos, miDistribucion }: { entornos: ReadonlyArray<EntornoProbado>; miDistribucion: DistribucionId | null }) {
   if (entornos.length === 0) return <p className="tarjeta tenue">Sin entornos con evidencia aprobada.</p>
   return (

@@ -1,6 +1,3 @@
-// 8.11 "El esquema debe rechazar" and the 8.9 rules the DB owns. Each case asserts the NAME of the
-// refusing constraint, so a dropped rule turns its test red and another rule firing by accident does
-// not pass. A report's content is frozen from birth (og_solo_revision), so FPS rules use INSERT.
 import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient, type SqlError } from 'effect/sql'

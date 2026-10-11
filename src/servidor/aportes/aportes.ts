@@ -1,9 +1,3 @@
-// The single writer of user contributions: reporte (+ reporte_fallo, version_capa upsert), solucion, and
-// juego/edicion_juego (RF-03). diagnostico/equipo/distribucion belong to aportes/diagnostico.ts.
-// Every app-side 8.7/8.9 write rule the DB cannot express lives here or in revision.ts, nowhere else.
-//
-// Each program runs inside the one transaction servidor/ejecutar.ts `accion` opens, so a failure after a
-// partial insert rolls back. Rule failures are data for the form: ReglaIncumplida or PerfilNoComparable.
 import { Array as Arr, Effect, Schema, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { discrepancias, type NuevaSolucion, type NuevoJuego, type NuevoReporte, PerfilObjetivo } from '../../dominio/aportes.ts'
@@ -15,7 +9,6 @@ import { exigirRevisor, exigirUsuario, type Visitante } from '../auth.ts'
 import { conReglasDeBd } from '../esquema/restricciones.ts'
 import { filas, type Infra, unaFila } from '../filas.ts'
 
-/** A writer program: run by `accion` in one transaction, for a signed-in visitor. */
 export type Escritura<A, E> = Effect.Effect<A, E | NoAutenticado | Infra, SqlClient.SqlClient | Visitante>
 
 const falla = (regla: Regla) => Effect.fail(new ReglaIncumplida({ regla }))
@@ -27,17 +20,6 @@ const DiagnosticoDeReporte = Schema.Struct({
 
 const ConIdReporte = Schema.Struct({ id: ReporteId })
 
-/**
- * RF-08. Rules, in order (the first failure is returned):
- *   the diagnosis exists and is on one of the viewer's equipos -> equipo_ajeno (also when missing: no existence leak)
- *   the diagnosis is Linux                                    -> diagnostico_no_linux
- *   fecha_prueba >= capturado_en                              -> fecha_antes_del_diagnostico
- *   version_capa resolved (upsert for `nueva`)                -> version_capa_no_exacta (DB CHECK, mapped)
- *   with perfil_id: the profile is pending or approved        -> perfil_no_disponible
- *                   discrepancias(...) is empty               -> PerfilNoComparable (8.7, checked again at approval)
- *   insert reporte (pending by default) + reporte_fallo rows  -> fallo_duplicado (DB PK, mapped)
- * The failing-result rule already held when `n` decoded (NuevoReporte's member per resultado).
- */
 export const registrarReporte = (n: NuevoReporte): Escritura<{ readonly id: ReporteId }, ReglaIncumplida | PerfilNoComparable> =>
   Effect.gen(function* () {
     const usuario = yield* exigirUsuario
@@ -95,7 +77,6 @@ export const registrarReporte = (n: NuevoReporte): Escritura<{ readonly id: Repo
 
 const ConIdCapa = Schema.Struct({ id: VersionCapaId })
 
-/** `existente` is taken as is (the FK backs it); `nueva` converges on one row per (familia, variante, version). */
 const resolverVersionCapa = (ref: NuevoReporte['version_capa']) =>
   Effect.gen(function* () {
     if (ref._tag === 'existente') return ref.id
@@ -115,12 +96,6 @@ const OrigenSolucion = Reporte.mapFields(Struct.pick(['edicion_id']))
 const PerfilRecomendado = PerfilConfiguracion.mapFields(Struct.pick(['edicion_id']))
 const ConIdSolucion = Schema.Struct({ id: SolucionId })
 
-/**
- * RF-08 solution, by any signed-in user (8.8: the author may differ from the report's). Rules:
- *   the report is public and has a fallo of that tipo -> solucion_sin_fallo (composite FK solucion_fallo_fk backs it)
- *   a recommended profile is pending or approved      -> perfil_no_disponible
- *   ...and belongs to the report's edition            -> solucion_perfil_otra_edicion
- */
 export const registrarSolucion = (s: NuevaSolucion): Escritura<{ readonly id: SolucionId }, ReglaIncumplida> =>
   Effect.gen(function* () {
     const usuario = yield* exigirUsuario
@@ -158,11 +133,6 @@ export const registrarSolucion = (s: NuevaSolucion): Escritura<{ readonly id: So
 
 const ConIdJuego = Schema.Struct({ id: JuegoId })
 
-/**
- * RF-03, reviewers and administrators only: a game and its editions, written together. Rules:
- *   one edition per launcher                    -> edicion_repetida (DB UQ edicion_juego_juego_lanzador_uq)
- *   a store id names one game on its launcher   -> identificador_en_uso (DB UQ edicion_juego_externo_uq)
- */
 export const crearJuego = (j: NuevoJuego): Escritura<{ readonly id: JuegoId }, ReglaIncumplida | SinPermiso> =>
   Effect.gen(function* () {
     yield* exigirRevisor

@@ -1,6 +1,3 @@
-// Diagnosis (wireframe 9.2): run the detector, paste its output, or describe the computer by hand.
-// Each path evaluates on the server first (errors stay on this page), then /diagnostico/importar shows
-// the result. Signed-in users also see their equipos and capture history.
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useState } from 'react'
@@ -69,7 +66,6 @@ function Diagnostico() {
   )
 }
 
-/** Evaluates `entrada` on the server; only an entry the server could read moves on to the result page. */
 const useEvaluar = () => {
   const navegar = useNavigate()
   return async (entrada: Entrada) => {
