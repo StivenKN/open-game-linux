@@ -10,12 +10,31 @@ export type Personal = {
   readonly perfil: PerfilEvaluado | null
 }
 
-/** The visitor's panel. `children` goes under the evaluation, e.g. which diagnosis it compared. */
-export function VeredictoParaMi({ personal, children }: { personal: Personal | null; children?: ReactNode }) {
-  const mia = personal?.en_mi_distribucion
+/** The dashed "Tu equipo" panel: everything in it is computed from the visitor's hardware. */
+export function PanelEquipo({ children }: { children: ReactNode }) {
   return (
     <section className="panel-equipo" aria-label="Tu equipo">
       <p className="panel-titulo">Tu equipo</p>
+      {children}
+      <ul className="clave-formas" aria-label="Cómo leer las etiquetas">
+        <li>
+          <i data-forma="relleno" />
+          Relleno: lo dicen los reportes aprobados
+        </li>
+        <li>
+          <i data-forma="punteado" />
+          Punteado: lo calcula tu equipo
+        </li>
+      </ul>
+    </section>
+  )
+}
+
+/** The game page's panel. `children` goes under the evaluation, e.g. which diagnosis it compared. */
+export function VeredictoParaMi({ personal, children }: { personal: Personal | null; children?: ReactNode }) {
+  const mia = personal?.en_mi_distribucion
+  return (
+    <PanelEquipo>
       {personal === null ? (
         <p className="pequeno tenue">
           Sin diagnóstico. Ejecuta el detector para ver la evidencia de tu distribución y comparar RAM, VRAM y Vulkan con
@@ -38,16 +57,6 @@ export function VeredictoParaMi({ personal, children }: { personal: Personal | n
         </>
       )}
       {children}
-      <ul className="clave-formas" aria-label="Cómo leer las etiquetas">
-        <li>
-          <i data-forma="relleno" />
-          Relleno: lo dicen los reportes aprobados
-        </li>
-        <li>
-          <i data-forma="punteado" />
-          Punteado: lo calcula tu equipo
-        </li>
-      </ul>
-    </section>
+    </PanelEquipo>
   )
 }

@@ -1543,7 +1543,8 @@ label.casilla {
   .ficha-banner + .ficha-cuerpo {
     margin-top: -24px;
   }
-  .veredicto {
+  .veredicto,
+  .panel-equipo {
     padding: 22px;
   }
   .veredicto-estado {
