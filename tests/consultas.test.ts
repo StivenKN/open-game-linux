@@ -227,6 +227,19 @@ layer(PgTest)('consultas', (it) => {
         }),
       ),
     )
+
+    it.effect('cuenta cada estado sobre los demás filtros, sin aplicar el de estado', () =>
+      enRollback(
+        Effect.gen(function* () {
+          yield* escenario
+          const porEstado = { sin_evidencia: 1, funciona: 1, funciona_con_ajustes: 0, no_inicia: 1, falla_en_ejecucion: 0, resultados_variables: 1 }
+          expect((yield* catalogo({})).por_estado).toEqual(porEstado)
+          expect((yield* catalogo({ estado: 'funciona' })).por_estado).toEqual(porEstado)
+          expect((yield* catalogo({ sin_anti_cheat: true })).por_estado).toEqual({ ...porEstado, no_inicia: 0 })
+          expect((yield* catalogo({ q: 'theft' })).por_estado).toEqual({ ...porEstado, sin_evidencia: 0, funciona: 0, no_inicia: 0 })
+        }),
+      ),
+    )
   })
 
   describe('perfil', () => {
