@@ -136,6 +136,13 @@ function Catalogo() {
                 )
               })}
             </ul>
+            {/* Narrow screens hide each option's meaning and show only the active one here; screen readers
+                still get it from the active link itself. */}
+            {filtro.estado !== undefined && (
+              <p className="estado-significado" aria-hidden="true">
+                {significadoEstado[filtro.estado]}
+              </p>
+            )}
           </section>
           <section aria-labelledby="filtro-lanzador">
             <h2 id="filtro-lanzador" className="lateral-titulo">

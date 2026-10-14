@@ -875,6 +875,11 @@ label.casilla {
   height: 14px;
   border-radius: 4px;
 }
+/* At this size the cover stripes read as a flat grey square, so the dot goes hollow like the band icon. */
+.punto[data-forma='relleno'][data-estado='sin_evidencia'] {
+  background: transparent;
+  border: 2px solid var(--tenue);
+}
 .opcion-nombre {
   grid-column: 2;
   font-size: 15px;
@@ -905,6 +910,9 @@ label.casilla {
   font-size: 12.5px;
   line-height: 1.4;
   color: var(--tenue);
+}
+.estado-significado {
+  display: none;
 }
 .interruptor {
   display: flex;
@@ -1412,6 +1420,49 @@ label.casilla {
   }
   .lateral {
     position: static;
+    gap: 16px;
+  }
+  .lateral-titulo {
+    margin-bottom: 8px;
+  }
+  .opciones {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .opcion {
+    display: flex;
+    gap: 8px;
+    padding: 5px 12px;
+    border-color: var(--linea);
+    border-radius: 999px;
+  }
+  .opcion-nombre {
+    font-size: 14px;
+  }
+  .opcion-cuenta {
+    min-width: 0;
+    padding: 0 7px;
+    font-size: 12px;
+  }
+  .opcion-que,
+  .interruptor small {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .estado-significado {
+    display: block;
+    margin: 10px 0 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--tenue);
+  }
+  .interruptor {
+    padding: 8px 12px;
   }
   .rejilla-juegos {
     grid-template-columns: repeat(2, minmax(0, 1fr));
