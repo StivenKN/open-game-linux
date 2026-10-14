@@ -55,7 +55,7 @@ function Catalogo() {
 
   return (
     <main className="envoltura">
-      <section className="portada">
+      <section className="presentacion">
         <h1>¿Tu juego de Windows corre en Linux?</h1>
         <p className="tenue">
           Cada estado se calcula al consultar, a partir de reportes que un revisor aprobó. Los pendientes se muestran
