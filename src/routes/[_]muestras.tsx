@@ -30,9 +30,7 @@ function Muestras() {
 
         <h2 className="titulo-seccion">Otros estados</h2>
         <div className="rejilla-2">
-          <div className="tarjeta">
-            <VeredictoParaMi personal={null} />
-          </div>
+          <VeredictoParaMi personal={null} />
           <div className="tarjeta">
             <CajaCopiar etiqueta={parametrosLanzamiento.etiqueta} texto={parametrosLanzamiento.texto} />
           </div>
@@ -48,29 +46,20 @@ function Ficha({ muestra, numero }: { muestra: Muestra; numero: number }) {
       <h2 className="titulo-seccion">
         ({numero}) {muestra.caso}
       </h2>
-      <div className="rejilla-2">
-        <div>
-          <div className="migas">Catálogo / {muestra.estudio}</div>
-          <h3 id={`ficha-${muestra.clave}`} className="titulo-juego">
-            {muestra.titulo}
-          </h3>
-          <div className="fila-chips">
-            {muestra.ediciones.map((e) => (
-              <span key={e} className="chip">
-                {e}
-              </span>
-            ))}
-          </div>
-          <p className="pequeno tenue">
-            El estado se calcula al consultar a partir de reportes aprobados. Un resultado favorable no garantiza que
-            funcione en cualquier equipo.
-          </p>
-        </div>
-        <div className="tarjeta pila">
-          <EstadoJuego resumen={muestra.resumen} pendientes={muestra.pendientes} />
-          <hr />
-          <VeredictoParaMi personal={muestra.personal} />
-        </div>
+      <div className="migas">Catálogo / {muestra.estudio}</div>
+      <h3 id={`ficha-${muestra.clave}`} className="titulo-juego">
+        {muestra.titulo}
+      </h3>
+      <div className="fila-chips">
+        {muestra.ediciones.map((e) => (
+          <span key={e} className="chip">
+            {e}
+          </span>
+        ))}
+      </div>
+      <div className="ficha-cuerpo">
+        <EstadoJuego resumen={muestra.resumen} pendientes={muestra.pendientes} />
+        <VeredictoParaMi personal={muestra.personal} />
       </div>
       <h4 className="titulo-seccion">Entornos probados</h4>
       <MatrizEntornos entornos={muestra.resumen.entornos} miDistribucion={diagnostico.distribucion_id} />

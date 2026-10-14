@@ -6,73 +6,77 @@ import { Chip, Insignia } from '../Insignia.tsx'
 import { estadoCompatibilidad, resultado } from '../vocabulario.ts'
 import { ChipsFallos } from './ChipsFallos.tsx'
 
+// The first word that names the distro itself: "Linux Mint 21.3" gives M, "Arch Linux rolling" gives A.
+const inicial = (distribucion: string) =>
+  (distribucion.split(' ').find((p) => /^\p{L}/u.test(p) && p !== 'Linux') ?? distribucion).charAt(0).toUpperCase()
+
 export function MatrizEntornos({ entornos, miDistribucion }: { entornos: ReadonlyArray<EntornoProbado>; miDistribucion: DistribucionId | null }) {
   if (entornos.length === 0) return <p className="tarjeta tenue">Sin entornos con evidencia aprobada.</p>
   return (
-    // A focusable region, so a keyboard user can scroll the table sideways on a narrow screen.
-    <div className="tarjeta tarjeta-tabla" role="region" aria-label="Entornos probados" tabIndex={0}>
-      <table className="matriz">
-        <caption className="solo-lector">Entornos probados con reportes aprobados</caption>
-        <thead>
-          <tr>
-            <th scope="col">Distribución</th>
-            <th scope="col">Capa</th>
-            <th scope="col">Edición · versión</th>
-            <th scope="col">Perfil</th>
-            <th scope="col">Resultado</th>
-            <th scope="col">Pruebas</th>
-            <th scope="col">FPS medido por la comunidad</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entornos.map((e) => {
-            const mia = e.distribucion_id === miDistribucion
-            return (
-              <tr key={e.clave} data-mia={mia || undefined}>
-                <th scope="row">
-                  {e.distribucion}
-                  {mia && (
-                    <>
-                      {' '}
-                      <Chip tono="azul" forma="punteado">tu distro</Chip>
-                    </>
-                  )}
-                </th>
-                <td className="dato">{e.capa}</td>
-                <td className="dato">{e.lanzador} · {e.version_juego}</td>
-                <td className="dato">{e.perfil ?? <span className="tenue">sin perfil</span>}</td>
-                <td>
-                  <Insignia etiqueta={estadoCompatibilidad[e.estado]} />
-                  {e.estado === 'resultados_variables' && (
-                    <div className="pequeno tenue">
-                      {Resultado.literals.flatMap((r) => {
-                        const n = e.por_resultado[r]
-                        return n ? [`${n} ${resultado[r].texto.toLowerCase()}`] : []
-                      }).join(' · ')}
-                    </div>
-                  )}
-                  {e.fallos.length > 0 && <div><ChipsFallos fallos={e.fallos} /></div>}
-                </td>
-                <td className="dato">{e.pruebas} · {fecha(e.ultima_prueba)}</td>
-                <td className="pequeno">
-                  {e.fps.length === 0 ? (
-                    <span className="dato tenue">no medido</span>
-                  ) : (
-                    e.fps.map((f) => (
-                      <div key={`${f.resolucion}|${f.calidad}`}>
-                        <b className="fps">{fps(f.promedio)} FPS</b>{' '}
-                        <span className="dato tenue">
-                          {f.resolucion} · {f.calidad} · {contar(f.mediciones, 'medición', 'mediciones')}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+    <ul className="entornos" aria-label="Entornos probados con reportes aprobados">
+      {entornos.map((e) => {
+        const mia = e.distribucion_id === miDistribucion
+        const estado = estadoCompatibilidad[e.estado]
+        return (
+          <li key={e.clave} className="entorno" data-mia={mia || undefined}>
+            <span className="entorno-franja" data-tono={estado.tono} data-forma="relleno" data-estado={e.estado} />
+            <span className="entorno-inicial" aria-hidden="true">
+              {inicial(e.distribucion)}
+            </span>
+            <div className="entorno-que">
+              <h3>
+                {e.distribucion}
+                {mia && (
+                  <Chip tono="azul" forma="punteado">
+                    tu distro
+                  </Chip>
+                )}
+              </h3>
+              <p>
+                {e.capa} · {e.lanzador} · versión {e.version_juego}
+              </p>
+            </div>
+            <dl className="entorno-datos">
+              <div>
+                <dt>Perfil</dt>
+                <dd>{e.perfil ?? <span className="tenue">sin perfil</span>}</dd>
+              </div>
+              <div>
+                <dt>FPS medido por la comunidad</dt>
+                {e.fps.length === 0 ? (
+                  <dd className="tenue">no medido</dd>
+                ) : (
+                  e.fps.map((f) => (
+                    <dd key={`${f.resolucion}|${f.calidad}`}>
+                      <b className="fps">{fps(f.promedio)}</b>{' '}
+                      <span className="pequeno tenue">
+                        FPS · {f.resolucion} · {f.calidad} · {contar(f.mediciones, 'medición', 'mediciones')}
+                      </span>
+                    </dd>
+                  ))
+                )}
+              </div>
+            </dl>
+            <div className="entorno-resultado">
+              <Insignia etiqueta={estado} />
+              {e.estado === 'resultados_variables' && (
+                <span className="pequeno tenue">
+                  {Resultado.literals
+                    .flatMap((r) => {
+                      const n = e.por_resultado[r]
+                      return n ? [`${n} ${resultado[r].texto.toLowerCase()}`] : []
+                    })
+                    .join(' · ')}
+                </span>
+              )}
+              {e.fallos.length > 0 && <ChipsFallos fallos={e.fallos} />}
+              <span className="pequeno tenue">
+                {contar(e.pruebas, 'prueba', 'pruebas')} · última {fecha(e.ultima_prueba)}
+              </span>
+            </div>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
