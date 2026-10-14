@@ -1475,7 +1475,16 @@ label.casilla {
   }
   .navegacion {
     order: 3;
-    width: 100%;
+    width: calc(100% + 32px);
+    flex-wrap: nowrap;
+    margin: 0 -16px;
+    padding: 0 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .navegacion a {
+    flex: none;
+    padding: 8px 12px;
   }
   .cuenta button,
   .cuenta .boton,

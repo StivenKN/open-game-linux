@@ -1,5 +1,5 @@
-import { HeadContent, Link, Outlet, Scripts, createRootRoute, useRouter } from '@tanstack/react-router'
-import { type ReactNode, useState } from 'react'
+import { HeadContent, Link, Outlet, Scripts, createRootRoute, useLocation, useRouter } from '@tanstack/react-router'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import bigShoulders from '@fontsource-variable/big-shoulders-display/files/big-shoulders-display-latin-wght-normal.woff2?url'
 import onest from '@fontsource-variable/onest/files/onest-latin-wght-normal.woff2?url'
 import unbounded from '@fontsource-variable/unbounded/files/unbounded-latin-wght-normal.woff2?url'
@@ -51,13 +51,22 @@ function Marco() {
 
 function Cabecera() {
   const { visitante } = Route.useRouteContext()
+  const nav = useRef<HTMLElement>(null)
+  const { pathname } = useLocation()
+  // On narrow screens the nav scrolls sideways; bring the current page's link into view. scrollIntoView
+  // would also scroll the page vertically.
+  useEffect(() => {
+    const n = nav.current
+    const actual = n?.querySelector<HTMLElement>('[data-status="active"]')
+    if (n && actual) n.scrollLeft = Math.max(0, actual.offsetLeft + actual.offsetWidth - n.offsetLeft - n.clientWidth + 16)
+  }, [pathname])
   return (
     <header className="cabecera">
       <Link to="/" className="marca">
         <Marca />
         OpenGame Linux
       </Link>
-      <nav aria-label="Principal" className="navegacion">
+      <nav ref={nav} aria-label="Principal" className="navegacion">
         <Link to="/" activeOptions={{ exact: true }}>
           Inicio
         </Link>
