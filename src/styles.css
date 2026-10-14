@@ -127,6 +127,9 @@ code {
   border-radius: 20px;
   padding: 22px 24px;
 }
+.envoltura > .tarjeta + .tarjeta {
+  margin-top: 16px;
+}
 hr {
   border: 0;
   border-top: 1px solid var(--linea);
@@ -271,7 +274,8 @@ td {
   color: color-mix(in srgb, var(--t) 80%, white);
 }
 
-.caja-copiar {
+/* Zero specificity, so a .pila stack's gap still reaches the figure. */
+:where(.caja-copiar) {
   margin: 0;
 }
 .caja-copiar-cuerpo {
@@ -403,7 +407,8 @@ input[type='radio'] {
 textarea {
   width: 100%;
   min-height: 110px;
-  font: 13px/1.5 var(--mono);
+  font: inherit;
+  font-weight: 400;
   color: var(--texto);
   background: var(--campo);
   border: 1.5px solid var(--linea);
@@ -466,6 +471,15 @@ button:hover,
   margin-top: 14px;
   justify-self: start;
 }
+.formulario > .titulo-seccion {
+  margin: 22px 0 0;
+}
+.formulario > .titulo-seccion:first-of-type {
+  margin-top: 0;
+}
+.campo-codigo {
+  font: 13px/1.5 var(--mono);
+}
 button:disabled {
   opacity: 0.6;
   cursor: progress;
@@ -485,7 +499,7 @@ button:disabled {
 .pasos {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 12px 0 0;
   display: grid;
   gap: 12px;
   counter-reset: paso;
@@ -564,7 +578,19 @@ button:disabled {
   padding: 12px 16px 16px;
   margin: 8px 0 0;
   display: grid;
-  gap: 6px;
+  gap: 10px;
+}
+.grupo > p,
+.grupo-opcional-campos > p {
+  margin: 0;
+}
+/* Unchecked, the group is only its checkbox: drop the empty box under the legend. */
+.grupo-opcional:has(> .grupo-opcional-campos[hidden]) {
+  padding: 0;
+  border-color: transparent;
+}
+.grupo-opcional:has(> .grupo-opcional-campos[hidden]) legend {
+  padding: 0;
 }
 .grupo legend,
 .grupo-opcional legend {
@@ -576,7 +602,7 @@ button:disabled {
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 6px;
+  gap: 10px;
 }
 .formulario label.casilla,
 label.casilla {
@@ -587,7 +613,8 @@ label.casilla {
   margin-top: 0;
 }
 .formulario .campos-en-linea > button {
-  margin-top: 28px;
+  align-self: flex-end;
+  margin-top: 0;
 }
 .pestanas {
   margin: 12px 0 4px;
@@ -611,6 +638,7 @@ label.casilla {
 .campos-2 > div {
   display: grid;
   gap: 6px;
+  align-content: end;
 }
 .grupo-opcional-campos[hidden] {
   display: none;
@@ -618,6 +646,9 @@ label.casilla {
 .decision label {
   display: grid;
   gap: 4px;
+}
+.decision textarea {
+  min-height: 72px;
 }
 
 .portada {
@@ -1485,6 +1516,13 @@ label.casilla {
   .navegacion a {
     flex: none;
     padding: 8px 12px;
+  }
+  .tarjeta {
+    padding: 18px 16px;
+  }
+  .grupo,
+  .grupo-opcional {
+    padding: 10px 12px 14px;
   }
   .cuenta button,
   .cuenta .boton,
