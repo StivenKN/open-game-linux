@@ -1,0 +1,35 @@
+{
+  "$schema": "https://t3.codes/schema/t3.json",
+  "iconPath": "assets/icon.svg",
+  "defaultThreadEnvMode": "worktree",
+  "scripts": [
+    {
+      "name": "Setup worktree",
+      "command": "pnpm install && { [ -f .env ] || cp \"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/.env\" .env; } && pnpm generate-routes",
+      "icon": "configure",
+      "runOnWorktreeCreate": true,
+      "async": false
+    },
+    {
+      "name": "Dev",
+      "command": "pnpm dev",
+      "icon": "play",
+      "previewUrl": "http://localhost:3000"
+    },
+    {
+      "name": "Test",
+      "command": "pnpm test",
+      "icon": "test"
+    },
+    {
+      "name": "Check",
+      "command": "pnpm check",
+      "icon": "lint"
+    },
+    {
+      "name": "DB up + migrate",
+      "command": "pnpm db:up && pnpm db:migrar",
+      "icon": "configure"
+    }
+  ]
+}
