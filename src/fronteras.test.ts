@@ -19,7 +19,7 @@ const capas = {
   },
   'src/fns/': { permitidos: ['@tanstack/react-start', 'effect', 'src/dominio/', 'src/servidor/'], arreglo: 'fns/ is the server-fn boundary only' },
   'src/routes/': {
-    permitidos: ['@tanstack/', 'react', 'effect', 'src/dominio/', 'src/fns/', 'src/ui/', 'src/routes/', 'src/detector/', 'src/styles.css', 'assets/', 'better-auth/react'],
+    permitidos: ['@tanstack/', 'react', 'effect', 'src/dominio/', 'src/fns/', 'src/ui/', 'src/routes/', 'src/detector/', 'src/styles.css', 'assets/', '@fontsource-variable/', 'better-auth/react'],
     arreglo: 'routes call server fns from src/fns/; never import src/servidor/ (it would ship pg to the browser)',
   },
   'src/ui/': { permitidos: ['react', 'effect', '@tanstack/react-router', 'src/dominio/', 'src/ui/'], arreglo: 'ui is plain React over dominio types' },

@@ -1,5 +1,8 @@
 import { HeadContent, Link, Outlet, Scripts, createRootRoute, useRouter } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
+import bigShoulders from '@fontsource-variable/big-shoulders-display/files/big-shoulders-display-latin-wght-normal.woff2?url'
+import onest from '@fontsource-variable/onest/files/onest-latin-wght-normal.woff2?url'
+import unbounded from '@fontsource-variable/unbounded/files/unbounded-latin-wght-normal.woff2?url'
 import icono from '../../assets/icon.svg?url'
 import { visitanteFn } from '../fns/sesion.ts'
 import appCss from '../styles.css?url'
@@ -11,6 +14,9 @@ export const Route = createRootRoute({
     meta: [{ charSet: 'utf-8' }, { name: 'viewport', content: 'width=device-width, initial-scale=1' }, { title: 'OpenGame Linux' }],
     links: [
       { rel: 'stylesheet', href: appCss },
+      // The stylesheet only discovers its fonts after it parses; preloading the Latin files lets SSR text
+      // paint in its real face instead of swapping.
+      ...[onest, unbounded, bigShoulders].map((href) => ({ rel: 'preload', as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' as const, href })),
       { rel: 'icon', type: 'image/svg+xml', href: icono },
     ],
   }),
@@ -46,43 +52,55 @@ function Marco() {
 function Cabecera() {
   const { visitante } = Route.useRouteContext()
   return (
-    <header className="barra">
-      <div className="envoltura fila cabecera">
-        <Link to="/" className="marca">
-          OpenGame Linux
+    <header className="cabecera">
+      <Link to="/" className="marca">
+        <Marca />
+        OpenGame Linux
+      </Link>
+      <nav aria-label="Principal" className="navegacion">
+        <Link to="/" activeOptions={{ exact: true }}>
+          Inicio
         </Link>
-        <nav aria-label="Principal" className="fila">
-          <Link to="/" activeOptions={{ exact: true }}>
-            Inicio
-          </Link>
-          <Link to="/diagnostico">Diagnóstico</Link>
-          <Link to="/guias">Guías</Link>
-          {visitante !== null && visitante.rol !== 'usuario' && (
-            <>
-              <Link to="/revision">Revisión</Link>
-              <Link to="/catalogo/nuevo">Nuevo juego</Link>
-            </>
-          )}
-        </nav>
-        <div className="fila cuenta">
-          {visitante === null ? (
-            <>
-              <Link to="/entrar">Entrar</Link>
-              <Link to="/registro" className="boton">
-                Crear cuenta
-              </Link>
-            </>
-          ) : (
-            <>
-              <span>
-                Hola, <strong>{visitante.alias}</strong>
-              </span>
-              <Salir />
-            </>
-          )}
-        </div>
+        <Link to="/diagnostico">Diagnóstico</Link>
+        <Link to="/guias">Guías</Link>
+        {visitante !== null && visitante.rol !== 'usuario' && (
+          <>
+            <Link to="/revision">Revisión</Link>
+            <Link to="/catalogo/nuevo">Nuevo juego</Link>
+          </>
+        )}
+      </nav>
+      <div className="cuenta">
+        {visitante === null ? (
+          <>
+            <Link to="/entrar" className="boton-secundario">
+              Entrar
+            </Link>
+            <Link to="/registro" className="boton">
+              Crear cuenta
+            </Link>
+          </>
+        ) : (
+          <>
+            <span>
+              Hola, <strong>{visitante.alias}</strong>
+            </span>
+            <Salir />
+          </>
+        )}
       </div>
     </header>
+  )
+}
+
+function Marca() {
+  return (
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+      <rect x="2" y="6" width="16" height="22" rx="4" fill="#5b4568" transform="rotate(-10 10 17)" />
+      <rect x="9" y="4" width="16" height="22" rx="4" fill="#8a6d99" />
+      <rect x="16" y="6" width="16" height="22" rx="4" fill="#fbf1e7" transform="rotate(10 24 17)" />
+      <rect x="16" y="22" width="16" height="6" fill="#43d98a" transform="rotate(10 24 17)" />
+    </svg>
   )
 }
 
