@@ -175,6 +175,15 @@ importers:
       '@effect/sql-pg':
         specifier: 4.0.2
         version: 4.0.2(effect@4.0.2)
+      '@fontsource-variable/big-shoulders-display':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource-variable/onest':
+        specifier: ^5.3.1
+        version: 5.3.1
+      '@fontsource-variable/unbounded':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@tanstack/react-router':
         specifier: 1.170.42
         version: 1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -405,6 +414,15 @@ packages:
     peerDependencies:
       effect: ^4.0.2
       vitest: '>=5.0.0 <6.0.0'
+
+  '@fontsource-variable/big-shoulders-display@5.3.0':
+    resolution: {integrity: sha512-7k1REXMZFEa7gSWOURbmCJW5Gv9D0EbEFQgosZidM8Ob/qpPlK96vqyIzCTnNZ/C0XFZWxeKU53D3QdeHctYCA==}
+
+  '@fontsource-variable/onest@5.3.1':
+    resolution: {integrity: sha512-xaaw6G4HDB2/RczsWLD/2bnib4ykmQlTlBUN3GOEOiyErilZukQWVJG95h9zwAy0i8KY+QzDa+COPfqhI72Acw==}
+
+  '@fontsource-variable/unbounded@5.3.0':
+    resolution: {integrity: sha512-ea565Ncn4r7gPdBEHcmaF31V11hDfkL7b/JCklLobQbMfbu2ZZQrVWNgdeEFWFLqNh36yhieZWOgxdAnMTzrLg==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2015,6 +2033,12 @@ snapshots:
     dependencies:
       effect: 4.0.2
       vitest: 5.0.3(@types/node@24.19.2)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0))
+
+  '@fontsource-variable/big-shoulders-display@5.3.0': {}
+
+  '@fontsource-variable/onest@5.3.1': {}
+
+  '@fontsource-variable/unbounded@5.3.0': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

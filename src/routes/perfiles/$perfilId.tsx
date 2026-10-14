@@ -3,6 +3,7 @@ import { PerfilId } from '../../dominio/ids.ts'
 import { perfilFn } from '../../fns/catalogo.ts'
 import { CajaCopiar } from '../../ui/compatibilidad/CajaCopiar.tsx'
 import { ChecklistEvaluacion } from '../../ui/compatibilidad/ChecklistEvaluacion.tsx'
+import { PanelEquipo } from '../../ui/compatibilidad/VeredictoParaMi.tsx'
 import { fecha, memoria } from '../../ui/formato.ts'
 import { Chip, Insignia } from '../../ui/Insignia.tsx'
 import { useProgreso } from '../../ui/progreso.ts'
@@ -137,13 +138,14 @@ function Perfil() {
               </tbody>
             </table>
           </div>
-          <h2 className="titulo-seccion">Tu equipo</h2>
-          <div className="tarjeta">
-            {typeof evaluacion === 'string' ? (
-              <p className="pequeno tenue">{sinEvaluacion[evaluacion]}</p>
-            ) : (
-              <ChecklistEvaluacion perfil={{ titulo: p.titulo, revision: p.revision, evaluacion }} />
-            )}
+          <div className="bloque">
+            <PanelEquipo>
+              {typeof evaluacion === 'string' ? (
+                <p className="pequeno tenue">{sinEvaluacion[evaluacion]}</p>
+              ) : (
+                <ChecklistEvaluacion perfil={{ titulo: p.titulo, revision: p.revision, evaluacion }} />
+              )}
+            </PanelEquipo>
           </div>
         </div>
       </div>

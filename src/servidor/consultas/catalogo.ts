@@ -1,7 +1,7 @@
 import { Effect, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
 import type { FiltroCatalogo } from '../../dominio/aportes.ts'
-import { resumir } from '../../dominio/compatibilidad.ts'
+import { type EstadoCompatibilidad, resumir } from '../../dominio/compatibilidad.ts'
 import { Juego, Lanzador } from '../../dominio/tablas.ts'
 import { unaFila } from '../filas.ts'
 import { pruebasAprobadas } from './ficha.ts'
@@ -47,17 +47,25 @@ export const catalogo = (filtro: FiltroCatalogo) =>
     })(undefined)
 
     const todas = yield* pruebasAprobadas(null)
-    const juegos = filas
+    const candidatos = filas
       .map((j) => {
         const pruebas = todas.filter((p) => p.juego_id === j.id)
         const { estado, pruebas: aprobados, ultima_prueba, fallos } = resumir(pruebas)
         return { ...j, resumen: { estado, pruebas: aprobados, ultima_prueba, fallos }, ejemplo: pruebas.some((p) => p.ejemplo) }
       })
-      .filter(
-        (j) =>
-          (filtro.estado === undefined || j.resumen.estado === filtro.estado) &&
-          (filtro.sin_anti_cheat !== true || !j.resumen.fallos.some((f) => f.codigo === 'anti_cheat')),
-      )
+      .filter((j) => filtro.sin_anti_cheat !== true || !j.resumen.fallos.some((f) => f.codigo === 'anti_cheat'))
+    const juegos = filtro.estado === undefined ? candidatos : candidatos.filter((j) => j.resumen.estado === filtro.estado)
+
+    // Counted before the estado filter, so each status filter shows how many games it would list.
+    const cuantos = (estado: EstadoCompatibilidad) => candidatos.filter((j) => j.resumen.estado === estado).length
+    const por_estado = {
+      sin_evidencia: cuantos('sin_evidencia'),
+      funciona: cuantos('funciona'),
+      funciona_con_ajustes: cuantos('funciona_con_ajustes'),
+      no_inicia: cuantos('no_inicia'),
+      falla_en_ejecucion: cuantos('falla_en_ejecucion'),
+      resultados_variables: cuantos('resultados_variables'),
+    } satisfies Record<EstadoCompatibilidad, number>
 
     const contadores = yield* unaFila(
       Contadores,
@@ -78,5 +86,5 @@ export const catalogo = (filtro: FiltroCatalogo) =>
       execute: () => sql`SELECT id, nombre FROM lanzador ORDER BY nombre`,
     })(undefined)
 
-    return { juegos, lanzadores, contadores }
+    return { juegos, por_estado, lanzadores, contadores }
   })

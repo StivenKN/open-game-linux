@@ -108,7 +108,7 @@ function Detector({ origen }: { origen: string }) {
       </p>
       <form className="formulario" {...r.formulario}>
         <label htmlFor="texto">¿Sin navegador en ese equipo? Pega aquí lo que imprimió el detector</label>
-        <textarea {...campo(r.errores, 'texto')} spellCheck={false} placeholder='{"version_esquema":1,…} o la dirección completa con #d=' />
+        <textarea {...campo(r.errores, 'texto')} className="campo-codigo" spellCheck={false} placeholder='{"version_esquema":1,…} o la dirección completa con #d=' />
         <ErrorCampo errores={r.errores} campo="texto" />
         <ErrorCampo errores={r.errores} campo="formulario" />
         <button type="submit" disabled={r.enviando}>
