@@ -1,6 +1,7 @@
 import { Schema } from 'effect'
 import { DistribucionId, EdicionId, PerfilId, ReporteId, VersionCapaId } from './ids.ts'
-import { Resultado } from './literales.ts'
+import { Resultado, ResultadoFallido, ResultadoFuncional } from './literales.ts'
+import { esVigente } from './vigencia.ts'
 
 export const EstadoCompatibilidad = Schema.Literals([
   'sin_evidencia',
@@ -63,33 +64,73 @@ export type EntornoProbado = Pick<
   readonly clave: string
   readonly estado: EstadoCompatibilidad
   readonly pruebas: number
+  readonly vigentes: number
   readonly por_resultado: Partial<Record<Resultado, number>>
   readonly ultima_prueba: Date
   readonly fallos: ReadonlyArray<FalloContado>
   readonly fps: ReadonlyArray<FpsMedido>
 }
 
+/** An edition whose newest approved test fails after an earlier one worked. */
+export type Regresion = Pick<PruebaAprobada, 'edicion_id' | 'lanzador' | 'fecha_prueba' | 'version_juego' | 'capa'> & {
+  readonly resultado: ResultadoFallido
+}
+
 export type ResumenCompatibilidad = {
   readonly estado: EstadoCompatibilidad
   readonly pruebas: number
+  readonly vigentes: number
+  /** Every approved test is older than a year, so `estado` comes from stale evidence. */
+  readonly sin_confirmacion_reciente: boolean
   readonly ultima_prueba: Date | null
   readonly entornos: ReadonlyArray<EntornoProbado>
   readonly fallos: ReadonlyArray<FalloContado>
+  readonly regresiones: ReadonlyArray<Regresion>
 }
 
-export const resumir = (pruebas: ReadonlyArray<PruebaAprobada>): ResumenCompatibilidad =>
-  combinar(agrupar(pruebas, claveDe).map(entorno))
+/**
+ * The one state function for the ficha and the catalog. State, result counts and causes come from the
+ * tests of the last year when there is any, else from all of them; totals, dates and FPS from all.
+ */
+export const resumir = (pruebas: ReadonlyArray<PruebaAprobada>, ahora: Date): ResumenCompatibilidad => {
+  const { vigentes, base } = baseDe(pruebas, ahora)
+  const entornos = agrupar(pruebas, claveDe)
+    .map((grupo) => entorno(grupo, ahora))
+    .sort((a, b) => b.ultima_prueba.getTime() - a.ultima_prueba.getTime() || a.clave.localeCompare(b.clave))
+  return {
+    estado: estadoDe(base.map((p) => p.resultado)),
+    pruebas: pruebas.length,
+    vigentes: vigentes.length,
+    sin_confirmacion_reciente: pruebas.length > 0 && vigentes.length === 0,
+    ultima_prueba: entornos[0]?.ultima_prueba ?? null,
+    entornos,
+    fallos: contarFallos(base),
+    regresiones: agrupar(pruebas, (p) => String(p.edicion_id))
+      .flatMap(regresionDe)
+      .sort((a, b) => b.fecha_prueba.getTime() - a.fecha_prueba.getTime()),
+  }
+}
 
-export const enDistribucion = (resumen: ResumenCompatibilidad, distribucion: DistribucionId): ResumenCompatibilidad =>
-  combinar(resumen.entornos.filter((e) => e.distribucion_id === distribucion))
+export const enDistribucion = (pruebas: ReadonlyArray<PruebaAprobada>, distribucion: DistribucionId, ahora: Date): ResumenCompatibilidad =>
+  resumir(pruebas.filter((p) => p.distribucion_id === distribucion), ahora)
+
+const baseDe = (pruebas: ReadonlyArray<PruebaAprobada>, ahora: Date) => {
+  const vigentes = pruebas.filter((p) => esVigente(p.fecha_prueba, ahora))
+  return { vigentes, base: vigentes.length > 0 ? vigentes : pruebas }
+}
+
+// Tests at the same instant are ordered by id, the order they were registered in.
+const masReciente = (pruebas: readonly [PruebaAprobada, ...PruebaAprobada[]]): PruebaAprobada =>
+  pruebas.reduce((a, b) => ((b.fecha_prueba.getTime() - a.fecha_prueba.getTime() || b.reporte_id - a.reporte_id) > 0 ? b : a))
 
 const claveDe = (p: PruebaAprobada): string =>
   JSON.stringify([p.edicion_id, p.version_juego, p.distribucion_id, p.version_capa_id, p.perfil_id])
 
-const entorno = (pruebas: readonly [PruebaAprobada, ...PruebaAprobada[]]): EntornoProbado => {
+const entorno = (pruebas: readonly [PruebaAprobada, ...PruebaAprobada[]], ahora: Date): EntornoProbado => {
   const [p] = pruebas
+  const { vigentes, base } = baseDe(pruebas, ahora)
   const por_resultado: Partial<Record<Resultado, number>> = {}
-  for (const { resultado } of pruebas) por_resultado[resultado] = (por_resultado[resultado] ?? 0) + 1
+  for (const { resultado } of base) por_resultado[resultado] = (por_resultado[resultado] ?? 0) + 1
   return {
     clave: claveDe(p),
     edicion_id: p.edicion_id,
@@ -101,29 +142,30 @@ const entorno = (pruebas: readonly [PruebaAprobada, ...PruebaAprobada[]]): Entor
     capa: p.capa,
     perfil_id: p.perfil_id,
     perfil: p.perfil,
-    estado: estadoDe(pruebas.map((x) => x.resultado)),
+    estado: estadoDe(base.map((x) => x.resultado)),
     pruebas: pruebas.length,
+    vigentes: vigentes.length,
     por_resultado,
-    ultima_prueba: new Date(Math.max(...pruebas.map((x) => x.fecha_prueba.getTime()))),
-    fallos: contarFallos(pruebas.flatMap((x) => x.fallos.map((codigo) => ({ codigo, reportes: 1 })))),
+    ultima_prueba: masReciente(pruebas).fecha_prueba,
+    fallos: contarFallos(base),
     fps: fpsPorContexto(pruebas),
   }
 }
 
-const combinar = (entornos: ReadonlyArray<EntornoProbado>): ResumenCompatibilidad => {
-  const fechas = entornos.map((e) => e.ultima_prueba.getTime())
-  return {
-    estado: estadoDe(entornos.flatMap((e) => Resultado.literals.filter((r) => (e.por_resultado[r] ?? 0) > 0))),
-    pruebas: entornos.reduce((n, e) => n + e.pruebas, 0),
-    ultima_prueba: fechas.length === 0 ? null : new Date(Math.max(...fechas)),
-    entornos: [...entornos].sort((a, b) => b.ultima_prueba.getTime() - a.ultima_prueba.getTime() || a.clave.localeCompare(b.clave)),
-    fallos: contarFallos(entornos.flatMap((e) => e.fallos)),
-  }
+const esFallido = Schema.is(ResultadoFallido)
+const esFuncional = Schema.is(ResultadoFuncional)
+
+const regresionDe = (pruebas: readonly [PruebaAprobada, ...PruebaAprobada[]]): ReadonlyArray<Regresion> => {
+  const ultima = masReciente(pruebas)
+  const { resultado } = ultima
+  if (!esFallido(resultado) || !pruebas.some((p) => p !== ultima && esFuncional(p.resultado))) return []
+  const { edicion_id, lanzador, fecha_prueba, version_juego, capa } = ultima
+  return [{ edicion_id, lanzador, fecha_prueba, version_juego, capa, resultado }]
 }
 
-const contarFallos = (conteos: ReadonlyArray<FalloContado>): ReadonlyArray<FalloContado> =>
-  agrupar(conteos, (f) => f.codigo)
-    .map(([f, ...resto]) => ({ codigo: f.codigo, reportes: resto.reduce((n, x) => n + x.reportes, f.reportes) }))
+const contarFallos = (pruebas: ReadonlyArray<PruebaAprobada>): ReadonlyArray<FalloContado> =>
+  agrupar(pruebas.flatMap((p) => p.fallos), (codigo) => codigo)
+    .map((grupo) => ({ codigo: grupo[0], reportes: grupo.length }))
     .sort((a, b) => b.reportes - a.reportes || a.codigo.localeCompare(b.codigo))
 
 const fpsPorContexto = (pruebas: ReadonlyArray<PruebaAprobada>): ReadonlyArray<FpsMedido> =>

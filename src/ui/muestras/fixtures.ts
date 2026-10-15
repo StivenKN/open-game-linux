@@ -34,10 +34,17 @@ const capa = {
 const sinPerfil = { perfil_id: null, perfil: null }
 const dia = (iso: string) => new Date(`${iso}T12:00:00Z`)
 
-const entorno = (e: Omit<EntornoProbado, 'clave'>): EntornoProbado => ({
+const entorno = (e: Omit<EntornoProbado, 'clave' | 'vigentes'>): EntornoProbado => ({
   ...e,
+  vigentes: e.pruebas,
   clave: [e.edicion_id, e.version_juego, e.distribucion_id, e.version_capa_id, e.perfil_id ?? '-'].join('|'),
 })
+
+type Reciente = Omit<ResumenCompatibilidad, 'vigentes' | 'sin_confirmacion_reciente' | 'regresiones'> &
+  Partial<Pick<ResumenCompatibilidad, 'regresiones'>>
+
+/** Every fixture test is from the last year. */
+const alDia = (r: Reciente): ResumenCompatibilidad => ({ vigentes: r.pruebas, sin_confirmacion_reciente: false, regresiones: [], ...r })
 
 const gtaFedora = entorno({
   edicion_id: EdicionId.make(1), lanzador: 'Steam', version_juego: '1.0.3258', ...distro.fedora, ...capa.proton9, ...sinPerfil,
@@ -65,16 +72,19 @@ const gta: Muestra = {
   titulo: 'Grand Theft Auto V',
   estudio: 'Rockstar Games',
   ediciones: ['Steam', 'Epic (Heroic)'],
-  resumen: {
+  resumen: alDia({
     estado: 'resultados_variables', pruebas: 4, ultima_prueba: dia('2026-10-02'),
     entornos: [gtaFedora, gtaMint, gtaArch], fallos: [{ codigo: 'lanzador', reportes: 1 }],
-  },
+    regresiones: [
+      { edicion_id: EdicionId.make(1), lanzador: 'Steam', fecha_prueba: dia('2026-10-02'), version_juego: '1.0.3258', capa: 'Proton 9.0-3', resultado: 'falla_en_ejecucion' },
+    ],
+  }),
   pendientes: 1,
   personal: {
     ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
-      resumen: { estado: 'funciona', pruebas: 2, ultima_prueba: dia('2026-09-28'), entornos: [gtaMint], fallos: [] },
+      resumen: alDia({ estado: 'funciona', pruebas: 2, ultima_prueba: dia('2026-09-28'), entornos: [gtaMint], fallos: [] }),
     },
     perfil: {
       titulo: 'GTAV-BAJO', revision: 2,
@@ -106,16 +116,16 @@ const valorant: Muestra = {
   titulo: 'Valorant',
   estudio: 'Riot Games',
   ediciones: ['Riot Client'],
-  resumen: {
+  resumen: alDia({
     estado: 'no_inicia', pruebas: 2, ultima_prueba: dia('2026-08-03'),
     entornos: [valArch, valMint], fallos: [{ codigo: 'anti_cheat', reportes: 2 }],
-  },
+  }),
   pendientes: 0,
   personal: {
     ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
-      resumen: { estado: 'no_inicia', pruebas: 1, ultima_prueba: dia('2026-07-11'), entornos: [valMint], fallos: [{ codigo: 'anti_cheat', reportes: 1 }] },
+      resumen: alDia({ estado: 'no_inicia', pruebas: 1, ultima_prueba: dia('2026-07-11'), entornos: [valMint], fallos: [{ codigo: 'anti_cheat', reportes: 1 }] }),
     },
     perfil: null,
   },
@@ -127,13 +137,13 @@ const ets2: Muestra = {
   titulo: 'Euro Truck Simulator 2',
   estudio: 'SCS Software',
   ediciones: ['Steam'],
-  resumen: { estado: 'sin_evidencia', pruebas: 0, ultima_prueba: null, entornos: [], fallos: [] },
+  resumen: alDia({ estado: 'sin_evidencia', pruebas: 0, ultima_prueba: null, entornos: [], fallos: [] }),
   pendientes: 2,
   personal: {
     ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
-      resumen: { estado: 'sin_evidencia', pruebas: 0, ultima_prueba: null, entornos: [], fallos: [] },
+      resumen: alDia({ estado: 'sin_evidencia', pruebas: 0, ultima_prueba: null, entornos: [], fallos: [] }),
     },
     perfil: null,
   },
@@ -158,13 +168,13 @@ const eldenRing: Muestra = {
   titulo: 'Elden Ring',
   estudio: 'FromSoftware',
   ediciones: ['Steam'],
-  resumen: { estado: 'funciona_con_ajustes', pruebas: 2, ultima_prueba: dia('2026-09-30'), entornos: [erUbuntu, erMint], fallos: [] },
+  resumen: alDia({ estado: 'funciona_con_ajustes', pruebas: 2, ultima_prueba: dia('2026-09-30'), entornos: [erUbuntu, erMint], fallos: [] }),
   pendientes: 0,
   personal: {
     ruta: { estado: 'con_ruta', camino: 'vkd3d_proton' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
-      resumen: { estado: 'funciona_con_ajustes', pruebas: 1, ultima_prueba: dia('2026-09-21'), entornos: [erMint], fallos: [] },
+      resumen: alDia({ estado: 'funciona_con_ajustes', pruebas: 1, ultima_prueba: dia('2026-09-21'), entornos: [erMint], fallos: [] }),
     },
     perfil: {
       titulo: 'ER-BASE', revision: 3,
@@ -197,13 +207,13 @@ const witcher: Muestra = {
   titulo: 'The Witcher 3: Wild Hunt',
   estudio: 'CD PROJEKT RED',
   ediciones: ['Steam', 'GOG (Heroic)'],
-  resumen: { estado: 'funciona', pruebas: 2, ultima_prueba: dia('2026-09-10'), entornos: [twPop, twMint], fallos: [] },
+  resumen: alDia({ estado: 'funciona', pruebas: 2, ultima_prueba: dia('2026-09-10'), entornos: [twPop, twMint], fallos: [] }),
   pendientes: 0,
   personal: {
     ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
-      resumen: { estado: 'funciona', pruebas: 1, ultima_prueba: dia('2026-08-20'), entornos: [twMint], fallos: [] },
+      resumen: alDia({ estado: 'funciona', pruebas: 1, ultima_prueba: dia('2026-08-20'), entornos: [twMint], fallos: [] }),
     },
     perfil: {
       titulo: 'TW3-IGPU', revision: 1,

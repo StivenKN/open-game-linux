@@ -73,6 +73,7 @@ export function MatrizEntornos({ entornos, miDistribucion }: { entornos: Readonl
               <span className="pequeno tenue">
                 {contar(e.pruebas, 'prueba', 'pruebas')} · última {fecha(e.ultima_prueba)}
               </span>
+              {e.vigentes === 0 && <span className="pequeno tenue">ninguna del último año</span>}
             </div>
           </li>
         )

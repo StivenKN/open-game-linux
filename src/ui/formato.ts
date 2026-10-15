@@ -1,8 +1,9 @@
 // Display formatting shared by every page. Every stored time is an instant (timestamptz), printed in
 // the app's audience zone, fixed so SSR and the browser agree (no hydration drift). Hours are 24-hour
-// digits only: ICU builds differ in how they space "p. m.", which would break hydration.
+// digits only: ICU builds differ in how they space "p. m.", which would break hydration. Dates always
+// carry the year, so a test from two years ago never reads as recent, with no clock needed to render.
 const zona = 'America/Bogota'
-const dia = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', timeZone: zona })
+const dia = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', year: 'numeric', timeZone: zona })
 const hora = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: zona })
 
 export const fecha = (d: Date) => dia.format(d)

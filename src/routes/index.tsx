@@ -7,6 +7,7 @@ import { catalogoFn } from '../fns/catalogo.ts'
 import { ChipsFallos } from '../ui/compatibilidad/ChipsFallos.tsx'
 import { contar, fecha } from '../ui/formato.ts'
 import { Portada } from '../ui/Portada.tsx'
+import { AtribucionProtonDb, LineaProtonDb } from '../ui/protondb/ProtonDb.tsx'
 import { estadoCompatibilidad, significadoEstado } from '../ui/vocabulario.ts'
 
 const opcional = <S extends Schema.Constraint>(campo: S) => Schema.catchDecoding<S>(() => Effect.succeedNone)(campo)
@@ -73,7 +74,7 @@ function Catalogo() {
           <h1>Lleva tu biblioteca de Windows a Linux.</h1>
           <p className="bajada">
             Busca un juego y mira cómo les fue a jugadores que ya lo probaron, en su distribución y con su configuración.
-            Solo cuenta lo que un revisor aprobó.
+            Solo cuenta lo que un revisor aprobó, y el estado usa los reportes del último año cuando los hay.
           </p>
           <form role="search" className="buscador" method="get" action="/" onSubmit={buscar}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
@@ -201,6 +202,12 @@ function Catalogo() {
                     {j.resumen.ultima_prueba
                       ? `${contar(j.resumen.pruebas, 'reporte aprobado', 'reportes aprobados')} · última prueba ${fecha(j.resumen.ultima_prueba)}`
                       : 'Nadie ha aprobado una prueba todavía'}
+                    {j.resumen.sin_confirmacion_reciente && (
+                      <>
+                        <br />
+                        Sin confirmación en el último año
+                      </>
+                    )}
                     {j.pendientes > 0 && (
                       <>
                         <br />
@@ -208,11 +215,13 @@ function Catalogo() {
                       </>
                     )}
                   </p>
+                  {j.protondb && <LineaProtonDb resumen={j.protondb} />}
                   {j.resumen.fallos.length > 0 && <ChipsFallos fallos={j.resumen.fallos} />}
                 </li>
               ))}
             </ul>
           )}
+          {juegos.some((j) => j.protondb) && <AtribucionProtonDb />}
         </section>
       </div>
     </main>

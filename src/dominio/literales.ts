@@ -22,3 +22,7 @@ export const exigeFallo = {
 /** Graphics APIs a game can render with. A game with none declared has unknown APIs. */
 export const ApiGrafica = Schema.Literals(['d3d9', 'd3d10', 'd3d11', 'd3d12', 'vulkan', 'opengl'])
 export type ApiGrafica = typeof ApiGrafica.Type
+
+// ProtonDB's `variant`. 'notListed' is left out: as a layer it says nothing, so it reads as no layer.
+export const VarianteProton = Schema.Literals(['official', 'experimental', 'ge', 'native', 'older'])
+export type VarianteProton = typeof VarianteProton.Type

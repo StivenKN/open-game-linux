@@ -6,8 +6,11 @@ import { ChipsFallos } from './ChipsFallos.tsx'
 
 export function EstadoJuego({ resumen, pendientes }: { resumen: ResumenCompatibilidad; pendientes: number }) {
   const etiqueta = estadoCompatibilidad[resumen.estado]
+  const base = resumen.sin_confirmacion_reciente ? resumen.pruebas : resumen.vigentes
+  // The environments the state counts, so the bar adds up to `base`.
+  const contados = resumen.entornos.filter((e) => e.vigentes > 0 || resumen.sin_confirmacion_reciente)
   const reparto = Resultado.literals.flatMap((r) => {
-    const n = resumen.entornos.reduce((total, e) => total + (e.por_resultado[r] ?? 0), 0)
+    const n = contados.reduce((total, e) => total + (e.por_resultado[r] ?? 0), 0)
     return n > 0 ? [{ resultado: r, n }] : []
   })
   return (
@@ -21,7 +24,8 @@ export function EstadoJuego({ resumen, pendientes }: { resumen: ResumenCompatibi
           <p className="veredicto-base">
             {resumen.ultima_prueba ? (
               <>
-                Según <b>{contar(resumen.pruebas, 'reporte aprobado', 'reportes aprobados')}</b>. Última prueba el{' '}
+                Según <b>{contar(base, 'reporte aprobado', 'reportes aprobados')}</b>
+                {base < resumen.pruebas && <> del último año ({resumen.pruebas} en total)</>}. Última prueba el{' '}
                 {fecha(resumen.ultima_prueba)}.
               </>
             ) : (
@@ -31,6 +35,17 @@ export function EstadoJuego({ resumen, pendientes }: { resumen: ResumenCompatibi
         </div>
       </div>
       <p className="veredicto-significa">{significadoEstado[resumen.estado]}</p>
+      {resumen.sin_confirmacion_reciente && (
+        <p className="nota pequeno" data-tono="amarillo">
+          Sin confirmación en el último año: todos los reportes aprobados tienen más de 12 meses.
+        </p>
+      )}
+      {resumen.regresiones.map((r) => (
+        <p key={r.edicion_id} className="nota pequeno" data-tono="rojo">
+          <b>Dejó de funcionar</b> en {r.lanzador}: la prueba más reciente ({fecha(r.fecha_prueba)}, versión {r.version_juego},{' '}
+          {r.capa}) dio «{resultado[r.resultado].texto}» después de reportes que funcionaban.
+        </p>
+      ))}
       {reparto.length > 0 && (
         <>
           <div className="reparto" aria-hidden="true">
@@ -61,8 +76,8 @@ export function EstadoJuego({ resumen, pendientes }: { resumen: ResumenCompatibi
         </p>
       )}
       <p className="pequeno tenue">
-        El estado se calcula al consultar a partir de reportes aprobados. Un resultado favorable no garantiza que funcione en
-        cualquier equipo.
+        El estado se calcula al consultar a partir de los reportes aprobados del último año, o de todos si ninguno es tan
+        reciente. Un resultado favorable no garantiza que funcione en cualquier equipo.
       </p>
     </section>
   )

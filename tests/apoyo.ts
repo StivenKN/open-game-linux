@@ -1,6 +1,7 @@
 import { Config, Effect, Option, Schema } from 'effect'
 import { PgClient } from '@effect/sql-pg'
 import { SqlClient, SqlError } from 'effect/sql'
+import { TestClock } from 'effect/testing'
 import { restriccionViolada } from '../src/servidor/esquema/restricciones.ts'
 
 export const PgTest = PgClient.layerConfig({ url: Config.Redacted('DATABASE_URL_TEST'), maxConnections: Config.succeed(4) })
@@ -32,3 +33,12 @@ export const idDe = <E, R>(consulta: Effect.Effect<ReadonlyArray<unknown>, E, R>
     Effect.flatMap(Schema.decodeUnknownEffect(ConId)),
     Effect.map(([fila]) => fila.id),
   )
+
+/**
+ * Runs `efecto` with its clock stopped at `dia`. The clock is a fresh one: moving the layer's shared
+ * TestClock decades forward would fire the connection pool's timers and hang the test.
+ */
+export const elDia =
+  (dia: Date) =>
+  <A, E, R>(efecto: Effect.Effect<A, E, R>) =>
+    Effect.andThen(TestClock.setTime(dia.getTime()), efecto).pipe(Effect.provide(TestClock.layer()))

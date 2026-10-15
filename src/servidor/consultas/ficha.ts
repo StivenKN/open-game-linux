@@ -1,4 +1,4 @@
-import { Effect, Option, Schema, Struct } from 'effect'
+import { Clock, Effect, Option, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
 import { enDistribucion, PruebaAprobada, resumir } from '../../dominio/compatibilidad.ts'
 import { condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
@@ -12,6 +12,7 @@ import { Visitante } from '../auth.ts'
 import { filas, unaFila } from '../filas.ts'
 import { equipoEnLinux } from '../gpu/capacidad.ts'
 import { esDemo, etiquetaCapa, etiquetaDistribucion, etiquetaPerfil } from './etiquetas.ts'
+import { resumenesProtonDb } from './protondb.ts'
 
 const PruebaDeJuego = Schema.Struct({ ...PruebaAprobada.fields, juego_id: JuegoId, ejemplo: Schema.Boolean })
 
@@ -135,8 +136,9 @@ export const fichaJuego = (juegoId: JuegoId) =>
         ORDER BY l.nombre`,
     })(juegoId)
 
+    const ahora = new Date(yield* Clock.currentTimeMillis)
     const pruebas = yield* pruebasAprobadas(juegoId)
-    const resumen = resumir(pruebas)
+    const resumen = resumir(pruebas, ahora)
 
     const pendientes = yield* unaFila(
       Conteo,
@@ -197,6 +199,7 @@ export const fichaJuego = (juegoId: JuegoId) =>
       }
     })
 
+    const [protondb = null] = yield* resumenesProtonDb(juegoId)
     const diagnostico = yield* diagnosticoDelVisitante
     const equipo = Option.map(diagnostico, equipoEnLinux)
 
@@ -217,7 +220,7 @@ export const fichaJuego = (juegoId: JuegoId) =>
         en_mi_distribucion:
           d.distribucion_id === null || d.distribucion === null
             ? null
-            : { nombre: d.distribucion, resumen: enDistribucion(resumen, d.distribucion_id) },
+            : { nombre: d.distribucion, resumen: enDistribucion(pruebas, d.distribucion_id, ahora) },
         perfil: sugerirPerfil(
           perfiles.flatMap((p) => (p.evaluacion === null ? [] : [{ ...p, evaluacion: p.evaluacion }])),
           d,
@@ -229,6 +232,7 @@ export const fichaJuego = (juegoId: JuegoId) =>
       juego: { ...juego.value, apis },
       ediciones,
       resumen,
+      protondb,
       ejemplo: pruebas.some((p) => p.ejemplo),
       pendientes: pendientes.n,
       perfiles,

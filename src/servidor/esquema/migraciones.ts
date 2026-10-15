@@ -5,7 +5,7 @@ import { Migrator, SqlClient } from 'effect/sql'
 import { PgMigrator } from '@effect/sql-pg'
 import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
 import { EstadoGuia, TipoGuia } from '../../dominio/guias.ts'
-import { ApiGrafica, FamiliaCapa, Resultado } from '../../dominio/literales.ts'
+import { ApiGrafica, FamiliaCapa, Resultado, VarianteProton } from '../../dominio/literales.ts'
 import { ArranqueSeguro, NivelX86, Tpm } from '../../dominio/plataforma.ts'
 import { type EstadoRevision, Rol } from '../../dominio/revision.ts'
 import { largo as L } from '../../dominio/largo.ts'
@@ -345,11 +345,40 @@ const hechosSistema = [
   dominio('juego_api', 'api', ApiGrafica.literals),
 ]
 
+const protondb = [
+  `CREATE TABLE protondb_resumen (
+     edicion_id integer PRIMARY KEY REFERENCES edicion_juego(id) ON DELETE RESTRICT,
+     exportado_en timestamptz NOT NULL,
+     reportes_total integer NOT NULL,
+     recientes integer NOT NULL,
+     recientes_funcionan integer NOT NULL,
+     modestos_recientes integer NOT NULL,
+     modestos_funcionan integer NOT NULL,
+     ultimo_reporte timestamptz NOT NULL,
+     capa_variante varchar(${L.protondb_resumen.capa_variante}),
+     capa_version varchar(${L.protondb_resumen.capa_version}),
+     capa_reportes integer NOT NULL)`,
+  dominio('protondb_resumen', 'capa_variante', VarianteProton.literals),
+  ...noVacio('protondb_resumen', 'capa_version'),
+  check(
+    'protondb_resumen',
+    'conteos_anidados',
+    `0 <= modestos_funcionan AND modestos_funcionan <= modestos_recientes AND modestos_recientes <= recientes
+     AND modestos_funcionan <= recientes_funcionan AND recientes_funcionan <= recientes AND recientes <= reportes_total
+     AND 0 <= capa_reportes AND capa_reportes <= recientes_funcionan AND reportes_total > 0`,
+  ),
+  check('protondb_resumen', 'capa_con_reportes', '(capa_variante IS NULL) = (capa_reportes = 0)'),
+  check('protondb_resumen', 'version_con_variante', 'capa_version IS NULL OR capa_variante IS NOT NULL'),
+  check('protondb_resumen', 'fechas_ordenadas', 'ultimo_reporte <= exportado_en'),
+  `COMMENT ON TABLE protondb_resumen IS 'Agregados por edición de Steam del export mensual de ProtonDB (ODbL 1.0), nunca reportes individuales (8.9). No alimenta el estado calculado. Escritor único: servidor/externo/protondb.ts'`,
+]
+
 export const migraciones = {
   '1_auth': ejecutar(auth),
   '2_opengame': ejecutar([...funciones, ...usuario, ...catalogo, ...diagnosticos, ...configuraciones, ...resultados, ...guias]),
   '3_gpu_biblioteca': ejecutar(gpuBiblioteca),
   '4_hechos_sistema': ejecutar(hechosSistema),
+  '5_protondb': ejecutar(protondb),
 }
 
 export const migrar = PgMigrator.run({ loader: Migrator.fromRecord(migraciones) })

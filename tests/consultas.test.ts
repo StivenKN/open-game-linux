@@ -9,12 +9,14 @@ import { catalogo } from '../src/servidor/consultas/catalogo.ts'
 import { fichaJuego } from '../src/servidor/consultas/ficha.ts'
 import { guia, guias } from '../src/servidor/consultas/guias.ts'
 import { perfil } from '../src/servidor/consultas/perfil.ts'
-import { enRollback, idDe, PgTest } from './apoyo.ts'
+import { elDia, enRollback, idDe, PgTest } from './apoyo.ts'
 
 type Valor = string | number | boolean | Date | null
 
 const invitado = Visitante.of(Option.none())
 const ana = Visitante.of(Option.some({ id: UsuarioId.make('ana'), alias: 'ana', rol: 'usuario' }))
+
+const hoy = new Date('2026-10-15T00:00:00Z')
 
 const escenario = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
@@ -153,12 +155,16 @@ const escenario = Effect.gen(function* () {
 const forma = (r: ResumenCompatibilidad) => ({
   estado: r.estado,
   pruebas: r.pruebas,
+  vigentes: r.vigentes,
+  sin_confirmacion_reciente: r.sin_confirmacion_reciente,
+  regresiones: r.regresiones.map((x) => [x.fecha_prueba, x.version_juego, x.resultado]),
   ultima_prueba: r.ultima_prueba,
   fallos: r.fallos,
   entornos: r.entornos.map((e) => ({
     version_juego: e.version_juego,
     estado: e.estado,
     pruebas: e.pruebas,
+    vigentes: e.vigentes,
     por_resultado: e.por_resultado,
     ultima_prueba: e.ultima_prueba,
     fallos: e.fallos,
@@ -175,7 +181,7 @@ layer(PgTest)('consultas', (it) => {
         Effect.gen(function* () {
           const e = yield* escenario
           const ficha = yield* Effect.provideService(fichaJuego(e.gta), Visitante, invitado)
-          expect(forma(ficha.resumen)).toEqual(forma(resumir(gtaV.pruebas)))
+          expect(forma(ficha.resumen)).toEqual(forma(resumir(gtaV.pruebas, hoy)))
           expect(ficha.resumen.estado).toBe('resultados_variables')
           expect(ficha.resumen.entornos).toHaveLength(3)
           expect(ficha.pendientes).toBe(1)
@@ -185,7 +191,7 @@ layer(PgTest)('consultas', (it) => {
             ['lanzador', 'El lanzador no abre.', ['Volver a Proton 8.0-5']],
           ])
         }),
-      ),
+      ).pipe(elDia(hoy)),
     )
 
     it.effect('compara con el diagnóstico más reciente del visitante y lista perfiles aprobados primero', () =>
@@ -202,7 +208,7 @@ layer(PgTest)('consultas', (it) => {
             [e.perfilEnPrueba, 'pendiente', null],
           ])
         }),
-      ),
+      ).pipe(elDia(hoy)),
     )
 
     it.effect('un diagnóstico de Windows con una Kepler proyecta Vulkan 1.2 y no cumple un mínimo de 1.3', () =>
@@ -259,7 +265,7 @@ layer(PgTest)('consultas', (it) => {
           expect(todo.juegos.find((j) => j.titulo === 'Euro Truck Simulator 2')).toMatchObject({ pendientes: 1, resumen: { pruebas: 0 } })
           expect(todo.contadores).toEqual({ juegos_verificados: 3, reportes_aprobados: 6, perfiles_aprobados: 1, distribuciones_probadas: 3 })
         }),
-      ),
+      ).pipe(elDia(hoy)),
     )
 
     it.effect('cuenta cada estado sobre los demás filtros, sin aplicar el de estado', () =>
@@ -272,7 +278,28 @@ layer(PgTest)('consultas', (it) => {
           expect((yield* catalogo({ sin_anti_cheat: true })).por_estado).toEqual({ ...porEstado, no_inicia: 0 })
           expect((yield* catalogo({ q: 'theft' })).por_estado).toEqual({ ...porEstado, sin_evidencia: 0, funciona: 0, no_inicia: 0 })
         }),
-      ),
+      ).pipe(elDia(hoy)),
+    )
+  })
+
+  describe('vigencia', () => {
+    it.effect('un año después, ficha y catálogo calculan el estado con lo reciente y marcan lo viejo', () =>
+      enRollback(
+        Effect.gen(function* () {
+          const e = yield* escenario
+          const todo = yield* catalogo({})
+          expect(todo.juegos.map((j) => [j.titulo, j.resumen.estado, j.resumen.sin_confirmacion_reciente])).toEqual([
+            ['Counter-Strike 2', 'funciona', true],
+            ['Euro Truck Simulator 2', 'sin_evidencia', false],
+            ['Grand Theft Auto V', 'falla_en_ejecucion', false],
+            ['Valorant', 'no_inicia', true],
+          ])
+          expect(titulos(yield* catalogo({ estado: 'falla_en_ejecucion' }))).toEqual(['Grand Theft Auto V'])
+          const ficha = yield* Effect.provideService(fichaJuego(e.gta), Visitante, invitado)
+          expect([ficha.resumen.estado, ficha.resumen.vigentes, ficha.resumen.pruebas]).toEqual(['falla_en_ejecucion', 1, 4])
+          expect(todo.contadores).toEqual({ juegos_verificados: 3, reportes_aprobados: 6, perfiles_aprobados: 1, distribuciones_probadas: 3 })
+        }),
+      ).pipe(elDia(new Date('2027-10-01T00:00:00Z'))),
     )
   })
 

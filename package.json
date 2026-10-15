@@ -18,6 +18,7 @@
     "db:migrar": "node --env-file-if-exists=.env scripts/migrar.ts",
     "db:reset": "node --env-file-if-exists=.env scripts/migrar.ts --reset",
     "db:sembrar": "node --env-file-if-exists=.env scripts/sembrar.ts",
+    "db:protondb": "node --env-file-if-exists=.env scripts/protondb.ts",
     "rol": "node --env-file-if-exists=.env scripts/rol.ts",
     "db:auth-sql": "node --env-file-if-exists=.env scripts/auth-sql.ts",
     "gpu:generar": "node scripts/generar-gpus.ts",
