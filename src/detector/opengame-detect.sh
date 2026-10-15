@@ -7,6 +7,7 @@
 #                                    which the browser never sends to the server
 #
 # OPENGAME_DRY=1 with --open prints the URL instead of opening a browser. OPENGAME_URL overrides the app address.
+# OPENGAME_STEAM_DIR adds a Steam folder to the ones searched for installed games.
 set -u
 
 APP_URL="${OPENGAME_URL:-__OPENGAME_URL__}"
@@ -75,7 +76,70 @@ if command -v vulkaninfo >/dev/null; then
   if [ -n "$version_vulkan" ]; then soporte_vulkan="si"; else soporte_vulkan="no"; fi
 fi
 
-payload="{\"version_esquema\":1,\"capturado_en\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"sistema\":\"Linux\",\"version_sistema\":$(json_str "$version_sistema"),\"distribucion\":{\"nombre\":$(json_str "$distro_nombre"),\"version\":$(json_str "$distro_version")},\"arquitectura\":$(json_str "$arquitectura"),\"cpu_modelo\":$(json_str "$cpu_modelo"),\"gpu_modelo\":$(json_str "$gpu_modelo"),\"gpu_pci_id\":$(json_str "$gpu_pci_id"),\"ram_mb\":$(json_num "$ram_mb"),\"vram_mb\":$(json_num "$vram_mb"),\"controlador\":$(json_str "$controlador"),\"version_controlador\":$(json_str "$version_controlador"),\"soporte_vulkan\":\"$soporte_vulkan\",\"version_vulkan\":$(json_str "$version_vulkan")}"
+# VDF files nest blocks (an appmanifest's UserConfig has its own "name"), so a flat grep reads the
+# wrong key. Prints file-number<TAB>depth<TAB>key<TAB>value per "key" "value" line, with the key
+# lowercased (old manifests write appID) and \" and \\ undone.
+# Same rules as Get-OgVdfPares in opengame-detect.ps1; a test checks both read the same library.
+vdf_pares() {
+  awk '
+    function cadena(s,   out, i, c) {
+      out = ""
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1)
+        if (c == "\\") { i++; out = out substr(s, i, 1) }
+        else if (c == "\"") { resto = substr(s, i + 1); return out }
+        else out = out c
+      }
+      resto = ""; return out
+    }
+    FNR == 1 { archivo++; d = 0 }
+    {
+      sub(/^[ \t]+/, ""); sub(/[ \t\r]+$/, "")
+      if ($0 == "{") { d++; next }
+      if ($0 == "}") { d--; next }
+      if (substr($0, 1, 1) != "\"") next
+      k = cadena(substr($0, 2)); r = resto; sub(/^[ \t]+/, "", r)
+      if (substr(r, 1, 1) != "\"") next
+      v = cadena(substr(r, 2)); gsub(/\t/, " ", v)
+      print archivo "\t" d "\t" tolower(k) "\t" v
+    }' "$@"
+}
+
+# Installed Steam games, most recently played first. Every Steam root (native, Flatpak, Snap) lists its
+# libraries in steamapps/libraryfolders.vdf: "path" two levels deep, or a numbered key one level deep
+# in the pre-2021 format. Tools such as Proton stay in the list; the server filters them.
+biblioteca_steam="null"; bibliotecas=()
+for raiz in "${OPENGAME_STEAM_DIR:-}" "${HOME:-}/.steam/steam" "${HOME:-}/.local/share/Steam" \
+  "${HOME:-}/.var/app/com.valvesoftware.Steam/.local/share/Steam" "${HOME:-}/snap/steam/common/.local/share/Steam"; do
+  [ -n "$raiz" ] && [ -d "$raiz/steamapps" ] || continue
+  bibliotecas+=("$raiz")
+  if [ -r "$raiz/steamapps/libraryfolders.vdf" ]; then
+    while IFS= read -r ruta; do bibliotecas+=("$ruta"); done < <(vdf_pares "$raiz/steamapps/libraryfolders.vdf" |
+      awk -F'\t' '($2 == 2 && $3 == "path") || ($2 == 1 && $3 ~ /^[0-9]+$/) { print $4 }')
+  fi
+done
+if [ "${#bibliotecas[@]}" -gt 0 ]; then
+  manifiestos=()
+  while IFS= read -r ruta; do
+    for m in "$ruta"/steamapps/appmanifest_*.acf; do [ -f "$m" ] && manifiestos+=("$m"); done
+  done < <(for b in "${bibliotecas[@]}"; do realpath -e "$b" 2>/dev/null; done | sort -u)
+  biblioteca_steam="[]"
+  if [ "${#manifiestos[@]}" -gt 0 ]; then
+    # StateFlags 4 is fully installed; 1024 marks an update in progress, which clears bit 4 meanwhile.
+    biblioteca_steam=$(vdf_pares "${manifiestos[@]}" | awk -F'\t' '
+        $2 == 1 { v[$1, $3] = $4; n = $1 }
+        END {
+          for (a = 1; a <= n; a++) {
+            e = v[a, "stateflags"] + 0
+            if (v[a, "appid"] ~ /^[0-9]+$/ && v[a, "name"] != "" && (int(e / 4) % 2 || int(e / 1024) % 2))
+              print (v[a, "lastplayed"] + 0) "\t" v[a, "appid"] "\t" v[a, "name"]
+          }
+        }' | sort -t "$(printf '\t')" -k1,1nr -k2,2n | tr -d '\000-\010\013-\037\177' | sed 's/\\/\\\\/g; s/"/\\"/g' |
+      awk -F'\t' 'BEGIN { printf "[" } { printf "%s{\"app_id\":%s,\"nombre\":\"%s\"}", (NR > 1 ? "," : ""), $2 + 0, $3 } END { printf "]" }')
+  fi
+fi
+
+payload="{\"version_esquema\":1,\"capturado_en\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"sistema\":\"Linux\",\"version_sistema\":$(json_str "$version_sistema"),\"distribucion\":{\"nombre\":$(json_str "$distro_nombre"),\"version\":$(json_str "$distro_version")},\"arquitectura\":$(json_str "$arquitectura"),\"cpu_modelo\":$(json_str "$cpu_modelo"),\"gpu_modelo\":$(json_str "$gpu_modelo"),\"gpu_pci_id\":$(json_str "$gpu_pci_id"),\"ram_mb\":$(json_num "$ram_mb"),\"vram_mb\":$(json_num "$vram_mb"),\"controlador\":$(json_str "$controlador"),\"version_controlador\":$(json_str "$version_controlador"),\"soporte_vulkan\":\"$soporte_vulkan\",\"version_vulkan\":$(json_str "$version_vulkan"),\"biblioteca_steam\":$biblioteca_steam}"
 
 if [ "${1:-}" != "--open" ]; then
   printf '%s\n' "$payload"
@@ -84,7 +148,10 @@ if [ "${1:-}" != "--open" ]; then
 fi
 
 url="$APP_URL/diagnostico/importar#d=$(printf '%s' "$payload" | base64 | tr -d '\n=' | tr '+/' '-_')"
-if [ "${OPENGAME_DRY:-}" = 1 ]; then
+if [ "${#url}" -gt 100000 ]; then # Linux caps one command-line argument at 128 KiB, so xdg-open could not take it
+  printf '%s\n' "$payload"
+  echo "Tu resultado no cabe en una dirección web. Copia el JSON de arriba y pégalo en $APP_URL/diagnostico" >&2
+elif [ "${OPENGAME_DRY:-}" = 1 ]; then
   printf '%s\n' "$url"
 elif command -v xdg-open >/dev/null && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
   # Some openers wait until the browser exits, so it runs in the background.

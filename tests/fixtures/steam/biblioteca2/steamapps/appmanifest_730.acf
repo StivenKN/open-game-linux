@@ -1,0 +1,23 @@
+"AppState"
+{
+	"appid"		"730"
+	"universe"		"1"
+	"LauncherPath"		"C:\\Program Files (x86)\\Steam\\steam.exe"
+	"name"		"Counter-Strike 2"
+	"StateFlags"		"0"
+	"installdir"		"app730"
+	"LastPlayed"		"1769999999"
+	"SizeOnDisk"		"1000"
+	"InstalledDepots"
+	{
+		"731"
+		{
+			"manifest"		"123"
+			"size"		"1000"
+		}
+	}
+	"MountedConfig"
+	{
+		"language"		"spanish"
+	}
+}
