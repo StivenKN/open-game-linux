@@ -3,7 +3,7 @@ import { Captura, type EntradaDiagnostico } from '../../dominio/aportes.ts'
 import { PayloadInvalido } from '../../dominio/fallos.ts'
 import { type BibliotecaSteam, esHerramientaSteam, MAX_JUEGOS_BIBLIOTECA } from '../../dominio/biblioteca.ts'
 import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
-import { PciId } from '../../dominio/gpu.ts'
+import { PciId, vendorDe, type VendorGpu } from '../../dominio/gpu.ts'
 import { largo } from '../../dominio/largo.ts'
 import { Diagnostico, Distribucion } from '../../dominio/tablas.ts'
 
@@ -117,11 +117,11 @@ const cabeEnColumnas = (captura: Captura): Result.Result<Captura, PayloadInvalid
 const pciId = (valor: unknown): PciId | null =>
   Option.getOrNull(Schema.decodeUnknownOption(PciId)(typeof valor === 'string' ? valor.trim().toLowerCase() : valor))
 
-const VENDORES: Readonly<Record<string, string>> = { '8086': 'Intel', '10de': 'NVIDIA', '1002': 'AMD' }
+const marca = { '8086': 'Intel', '1002': 'AMD', '10de': 'NVIDIA' } as const satisfies Record<VendorGpu, string>
 
 const etiquetaPci = (pci: PciId): string => {
-  const nombre = VENDORES[pci.slice(0, 4)]
-  return nombre === undefined ? `GPU [${pci}]` : `${nombre} GPU [${pci}]`
+  const vendor = vendorDe(pci)
+  return vendor === null ? `GPU [${pci}]` : `${marca[vendor]} GPU [${pci}]`
 }
 
 const ilegible = new PayloadInvalido({ motivo: 'ilegible', campo: null })

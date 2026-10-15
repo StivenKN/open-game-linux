@@ -5,6 +5,17 @@ import type { Capacidades } from './evaluacion.ts'
 export const PciId = Schema.String.pipe(Schema.check(Schema.isPattern(/^[0-9a-f]{4}:[0-9a-f]{4}$/)), Schema.brand('PciId'))
 export type PciId = typeof PciId.Type
 
+/** The vendors the id table covers: Intel, AMD and NVIDIA. */
+export const VendorGpu = Schema.Literals(['8086', '1002', '10de'])
+export type VendorGpu = typeof VendorGpu.Type
+
+const esVendorGpu = Schema.is(VendorGpu)
+
+export const vendorDe = (pci: PciId): VendorGpu | null => {
+  const vendor = pci.slice(0, 4)
+  return esVendorGpu(vendor) ? vendor : null
+}
+
 /** Generations that behave alike on Linux; generations with identical policy are merged. */
 export const FamiliaGpu = Schema.Literals([
   'intel_gen5_o_anterior',

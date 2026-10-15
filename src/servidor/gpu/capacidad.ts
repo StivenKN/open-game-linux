@@ -1,5 +1,5 @@
 import { alMenos, type Sistema, type SoporteVulkan, type VersionVulkan, versionVulkan, type VulkanEquipo } from '../../dominio/evaluacion.ts'
-import { type AvisoGpu, type ControladorLinux, type EquipoEnLinux, FamiliaGpu, type PciId, type RutaD3d, type RutaLinux } from '../../dominio/gpu.ts'
+import { type AvisoGpu, type ControladorLinux, type EquipoEnLinux, FamiliaGpu, type PciId, type RutaD3d, type RutaLinux, VendorGpu } from '../../dominio/gpu.ts'
 import { tablaGpu } from './familias.generado.ts'
 
 /** The diagnostico columns the projection reads. */
@@ -42,11 +42,10 @@ const POLITICA = {
   nvidia_turing_o_posterior: { controlador: 'nvidia', vulkan: rango(v(1, 4), v(1, 4)), avisos: [] },
 } as const satisfies Record<FamiliaGpu, Politica>
 
-const vendores = ['8086', '1002', '10de'] as const
-const ids: Record<(typeof vendores)[number], Partial<Record<FamiliaGpu, string>>> = tablaGpu.ids
+const ids: Record<VendorGpu, Partial<Record<FamiliaGpu, string>>> = tablaGpu.ids
 
 const familiaPorId: ReadonlyMap<string, FamiliaGpu> = new Map(
-  vendores.flatMap((vendor) =>
+  VendorGpu.literals.flatMap((vendor) =>
     FamiliaGpu.literals.flatMap((familia) =>
       (ids[vendor][familia]?.split(' ') ?? []).flatMap((tramo) => {
         const [desde = 0, hasta = desde] = tramo.split('-').map((h) => parseInt(h, 16))

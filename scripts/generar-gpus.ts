@@ -1,7 +1,7 @@
 // Regenerates src/servidor/gpu/familias.generado.ts from pinned upstream sources: `pnpm gpu:generar`.
 // To pick up new GPUs, bump the pins below, run it, and review the printed counts and the diff.
 import { writeFileSync } from 'node:fs'
-import { FamiliaGpu } from '../src/dominio/gpu.ts'
+import { FamiliaGpu, VendorGpu } from '../src/dominio/gpu.ts'
 import { chipsetsMesa, conPiso, type Dispositivo, familiaCrocus, familiaIris, idsAmdgpu, idsNvidia, tablaDe } from './gpu-fuentes.ts'
 
 const fuentes = {
@@ -42,8 +42,7 @@ const dispositivos: ReadonlyArray<Dispositivo> = [
 ]
 const tabla = tablaDe(dispositivos)
 
-const vendores = ['8086', '1002', '10de'] as const
-const bloque = vendores
+const bloque = VendorGpu.literals
   .map((v) => {
     const familias = FamiliaGpu.literals.flatMap((f) => {
       const ids = tabla[v][f]
@@ -59,7 +58,7 @@ writeFileSync(
 // Mesa ${fuentes.mesa}: include/pci_ids/{crocus,iris,i915,i830,r300,r600}_pci_ids.h
 // Linux ${fuentes.linux}: drivers/gpu/drm/amd/amdgpu/amdgpu_drv.c
 // pciutils/pciids ${fuentes.pciids}: pci.ids
-import type { FamiliaGpu } from '../../dominio/gpu.ts'
+import type { FamiliaGpu, VendorGpu } from '../../dominio/gpu.ts'
 
 /** \`marca\` lets scripts/sin-servidor-en-cliente.ts spot this table in a browser bundle. */
 export const tablaGpu = {
@@ -67,7 +66,7 @@ export const tablaGpu = {
   fuentes: { mesa: '${fuentes.mesa}', linux: '${fuentes.linux}', pciids: '${fuentes.pciids}' },
   ids: {
 ${bloque}
-  } satisfies Record<'8086' | '1002' | '10de', Partial<Record<FamiliaGpu, string>>>,
+  } satisfies Record<VendorGpu, Partial<Record<FamiliaGpu, string>>>,
 } as const
 `,
 )

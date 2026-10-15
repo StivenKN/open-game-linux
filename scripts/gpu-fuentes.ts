@@ -1,10 +1,9 @@
 // Pure parsers for scripts/generar-gpus.ts. Each one fails closed: a line it cannot read, a token it has no
 // rule for, or a source that yields fewer ids than its floor throws, so upstream drift stops the run instead
 // of shipping a wrong or empty table.
-import type { FamiliaGpu } from '../src/dominio/gpu.ts'
+import type { FamiliaGpu, VendorGpu } from '../src/dominio/gpu.ts'
 
-export type Vendor = '8086' | '1002' | '10de'
-export type Dispositivo = { readonly vendor: Vendor; readonly device: string; readonly familia: FamiliaGpu }
+export type Dispositivo = { readonly vendor: VendorGpu; readonly device: string; readonly familia: FamiliaGpu }
 
 const hex4 = (s: string) => s.toLowerCase().padStart(4, '0')
 
@@ -139,7 +138,7 @@ export const conPiso = <A>(fuente: string, piso: number, ids: ReadonlyArray<A>):
   return ids
 }
 
-export type Tabla = Record<Vendor, Partial<Record<FamiliaGpu, string>>>
+export type Tabla = Record<VendorGpu, Partial<Record<FamiliaGpu, string>>>
 
 /** Groups ids per vendor and family as sorted hex runs (`'0402-0406 040a'`); one id in two families fails. */
 export const tablaDe = (dispositivos: ReadonlyArray<Dispositivo>): Tabla => {
@@ -150,7 +149,7 @@ export const tablaDe = (dispositivos: ReadonlyArray<Dispositivo>): Tabla => {
     if (previa !== undefined && previa !== d.familia) throw new Error(`${clave} aparece como ${previa} y como ${d.familia}`)
     unicos.set(clave, d)
   }
-  const grupos = new Map<string, { readonly vendor: Vendor; readonly familia: FamiliaGpu; readonly numeros: Array<number> }>()
+  const grupos = new Map<string, { readonly vendor: VendorGpu; readonly familia: FamiliaGpu; readonly numeros: Array<number> }>()
   for (const d of unicos.values()) {
     const clave = `${d.vendor} ${d.familia}`
     const grupo = grupos.get(clave) ?? { vendor: d.vendor, familia: d.familia, numeros: [] }
