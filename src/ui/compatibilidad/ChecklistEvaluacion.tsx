@@ -12,16 +12,15 @@ const motivo = (e: Evaluacion): string => {
     case 'no_cumple': {
       const c = e.comprobaciones.find((x) => x.estado === 'no_cumple')
       if (!c) return 'Tu equipo no cumple una condición del perfil.'
-      if (c.origen === 'proyectado' && c.detectado !== null)
-        return `${requisito[c.requisito]}: en Linux tu tarjeta gráfica llegaría a ${valor(c, c.detectado)}, el perfil exige ${valor(c, c.exigido)}.`
-      return c.detectado === null
-        ? `${requisito[c.requisito]}: el perfil exige ${valor(c, c.exigido)} y tu equipo no lo ofrece.`
-        : `${requisito[c.requisito]}: tienes ${valor(c, c.detectado)}, el perfil exige ${valor(c, c.exigido)}.`
+      if (c.detectado === null) return `${requisito[c.requisito]}: el perfil exige ${valor(c, c.exigido)} y tu equipo no lo ofrece.`
+      return c.detectado.origen === 'proyectado'
+        ? `${requisito[c.requisito]}: en Linux tu tarjeta gráfica llegaría a ${valor(c, c.detectado.valor)}, el perfil exige ${valor(c, c.exigido)}.`
+        : `${requisito[c.requisito]}: tienes ${valor(c, c.detectado.valor)}, el perfil exige ${valor(c, c.exigido)}.`
     }
     case 'informacion_insuficiente': {
       const c = e.comprobaciones.find((x) => x.estado === 'desconocido')
-      if (c?.origen === 'proyectado' && c.detectado !== null)
-        return `${requisito[c.requisito]}: en Linux tu tarjeta gráfica llegaría a ${valor(c, c.detectado)}; no sabemos si alcanza ${valor(c, c.exigido)}.`
+      if (c?.detectado?.origen === 'proyectado')
+        return `${requisito[c.requisito]}: en Linux tu tarjeta gráfica llegaría a ${valor(c, c.detectado.valor)}; no sabemos si alcanza ${valor(c, c.exigido)}.`
       return c
         ? `No conocemos tu ${requisito[c.requisito]}; el perfil exige ${valor(c, c.exigido)}.`
         : 'El perfil no declara condiciones de RAM, VRAM ni Vulkan.'
@@ -57,8 +56,8 @@ export function ChecklistEvaluacion({ perfil }: { perfil: PerfilEvaluado | null 
                 <tr key={c.requisito}>
                   <th scope="row">{requisito[c.requisito]}</th>
                   <td>
-                    {c.detectado === null ? 'desconocido' : valor(c, c.detectado)}
-                    {c.requisito === 'vulkan' && c.detectado !== null && <span className="pequeno"> · {origenVulkan[c.origen]}</span>}
+                    {c.detectado === null ? 'desconocido' : valor(c, c.detectado.valor)}
+                    {c.requisito === 'vulkan' && c.detectado !== null && <span className="pequeno"> · {origenVulkan[c.detectado.origen]}</span>}
                   </td>
                   <td>{valor(c, c.exigido)}</td>
                   <td data-tono={estado.tono}>

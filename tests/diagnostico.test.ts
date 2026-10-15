@@ -139,7 +139,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
     Effect.gen(function* () {
       const { equipo } = yield* evaluarSinGuardar(payload({ gpu_pci_id: '8086:9a49', controlador: 'i915' }))
       expect(equipo).toMatchObject({
-        vulkan: { origen: 'proyectado', soporte: 'si', desde: { texto: '1.3' }, hasta: { texto: '1.4' } },
+        vulkan: { soporte: 'si', origen: 'proyectado', rango: { desde: { texto: '1.3' }, hasta: { texto: '1.4' } } },
         gpu: { familia: 'intel_gen9_o_posterior', controlador: 'i915', avisos: [] },
         ruta: { d3d9_11: 'dxvk_2', d3d12: true },
       })

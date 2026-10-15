@@ -227,8 +227,8 @@ layer(PgTest)('consultas', (it) => {
             veredicto: 'no_cumple',
             solo_orientativa: true,
             comprobaciones: [
-              { requisito: 'ram', estado: 'cumple', exigido: '8192', detectado: '16384', origen: 'medido' },
-              { requisito: 'vulkan', estado: 'no_cumple', exigido: '1.3', detectado: '1.2', origen: 'proyectado' },
+              { requisito: 'ram', estado: 'cumple', exigido: '8192', detectado: { valor: '16384', origen: 'medido' } },
+              { requisito: 'vulkan', estado: 'no_cumple', exigido: '1.3', detectado: { valor: '1.2', origen: 'proyectado' } },
             ],
           })
         }),

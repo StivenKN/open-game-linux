@@ -5,7 +5,7 @@ import { avisoGpu, controladorLinux, familiaGpu, origenVulkan, rutaD3d } from '.
 
 const vulkanTexto = (vulkan: VulkanEquipo): string => {
   if (vulkan.soporte === 'desconocido') return 'Desconocido'
-  const valor = vulkan.soporte === 'no' ? 'sin soporte' : vulkan.origen === 'medido' ? (vulkan.version?.texto ?? 'compatible') : rangoVulkan(vulkan)
+  const valor = vulkan.soporte === 'no' ? 'sin soporte' : vulkan.rango === null ? 'compatible' : rangoVulkan(vulkan.rango)
   return `${origenVulkan[vulkan.origen]}: ${valor}`
 }
 

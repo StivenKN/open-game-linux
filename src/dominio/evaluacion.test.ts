@@ -44,7 +44,7 @@ describe('alMenos', () => {
 })
 
 describe('evaluar (8.10, three outcomes)', () => {
-  const equipo: Capacidades = { sistema: 'Linux', ram_mb: 8192, vram_mb: 2048, vulkan: { origen: 'medido', soporte: 'si', version: v('1.3') } }
+  const equipo: Capacidades = { sistema: 'Linux', ram_mb: 8192, vram_mb: 2048, vulkan: { soporte: 'si', origen: 'medido', rango: { desde: v('1.3'), hasta: v('1.3') } } }
   const nada: CondicionesConocidas = { ram_min_mb: null, vram_min_mb: null, requiere_vulkan: null, version_vulkan_min: null }
 
   const casos: ReadonlyArray<readonly [string, VeredictoRequisitos, Capacidades, CondicionesConocidas]> = [
@@ -54,13 +54,13 @@ describe('evaluar (8.10, three outcomes)', () => {
     ['unknown VRAM', 'informacion_insuficiente', { ...equipo, vram_mb: null }, { ...nada, vram_min_mb: 1024 }],
     ['VRAM below', 'no_cumple', equipo, { ...nada, vram_min_mb: 4096 }],
     ['no_cumple wins over desconocido', 'no_cumple', { ...equipo, vram_mb: null, ram_mb: 4096 }, { ...nada, ram_min_mb: 8192, vram_min_mb: 1024 }],
-    ['Vulkan required, no support', 'no_cumple', { ...equipo, vulkan: { origen: 'medido', soporte: 'no' } }, { ...nada, requiere_vulkan: true }],
+    ['Vulkan required, no support', 'no_cumple', { ...equipo, vulkan: { soporte: 'no', origen: 'medido' } }, { ...nada, requiere_vulkan: true }],
     ['Vulkan required, support unknown', 'informacion_insuficiente', { ...equipo, vulkan: { soporte: 'desconocido' } }, { ...nada, requiere_vulkan: true }],
     ['Vulkan required, no minimum version', 'cumple', equipo, { ...nada, requiere_vulkan: true }],
-    ['Vulkan minimum, version unknown', 'informacion_insuficiente', { ...equipo, vulkan: { origen: 'medido', soporte: 'si', version: null } }, { ...nada, requiere_vulkan: true, version_vulkan_min: v('1.1') }],
-    ['Vulkan 1.10 meets 1.9', 'cumple', { ...equipo, vulkan: { origen: 'medido', soporte: 'si', version: v('1.10') } }, { ...nada, requiere_vulkan: true, version_vulkan_min: v('1.9') }],
-    ['Vulkan 1.2 misses 1.3', 'no_cumple', { ...equipo, vulkan: { origen: 'medido', soporte: 'si', version: v('1.2') } }, { ...nada, requiere_vulkan: true, version_vulkan_min: v('1.3') }],
-    ['requiere_vulkan false is not a condition', 'cumple', { ...equipo, vulkan: { origen: 'medido', soporte: 'no' } }, { ...nada, ram_min_mb: 4096, requiere_vulkan: false }],
+    ['Vulkan minimum, version unknown', 'informacion_insuficiente', { ...equipo, vulkan: { soporte: 'si', origen: 'medido', rango: null } }, { ...nada, requiere_vulkan: true, version_vulkan_min: v('1.1') }],
+    ['Vulkan 1.10 meets 1.9', 'cumple', { ...equipo, vulkan: { soporte: 'si', origen: 'medido', rango: { desde: v('1.10'), hasta: v('1.10') } } }, { ...nada, requiere_vulkan: true, version_vulkan_min: v('1.9') }],
+    ['Vulkan 1.2 misses 1.3', 'no_cumple', { ...equipo, vulkan: { soporte: 'si', origen: 'medido', rango: { desde: v('1.2'), hasta: v('1.2') } } }, { ...nada, requiere_vulkan: true, version_vulkan_min: v('1.3') }],
+    ['requiere_vulkan false is not a condition', 'cumple', { ...equipo, vulkan: { soporte: 'no', origen: 'medido' } }, { ...nada, ram_min_mb: 4096, requiere_vulkan: false }],
   ]
   it.each(casos)('%s -> %s', (_, veredicto, eq, cond) => {
     expect(evaluar(eq, cond).veredicto).toBe(veredicto)
@@ -69,9 +69,9 @@ describe('evaluar (8.10, three outcomes)', () => {
   it('lists one check per stated condition with what was required and detected', () => {
     const r = evaluar({ ...equipo, vram_mb: null }, { ram_min_mb: 8192, vram_min_mb: 1024, requiere_vulkan: true, version_vulkan_min: v('1.1') })
     expect(r.comprobaciones).toEqual([
-      { requisito: 'ram', estado: 'cumple', exigido: '8192', detectado: '8192', origen: 'medido' },
-      { requisito: 'vram', estado: 'desconocido', exigido: '1024', detectado: null, origen: 'medido' },
-      { requisito: 'vulkan', estado: 'cumple', exigido: '1.1', detectado: '1.3', origen: 'medido' },
+      { requisito: 'ram', estado: 'cumple', exigido: '8192', detectado: { valor: '8192', origen: 'medido' } },
+      { requisito: 'vram', estado: 'desconocido', exigido: '1024', detectado: null },
+      { requisito: 'vulkan', estado: 'cumple', exigido: '1.1', detectado: { valor: '1.3', origen: 'medido' } },
     ])
   })
 
@@ -79,26 +79,26 @@ describe('evaluar (8.10, three outcomes)', () => {
     const proyectado = (desde: string, hasta: string): Capacidades => ({
       ...equipo,
       sistema: 'Windows',
-      vulkan: { origen: 'proyectado', soporte: 'si', desde: v(desde), hasta: v(hasta) },
+      vulkan: { soporte: 'si', origen: 'proyectado', rango: { desde: v(desde), hasta: v(hasta) } },
     })
     const minimo = (version: string): CondicionesConocidas => ({ ...nada, requiere_vulkan: true, version_vulkan_min: v(version) })
     const vulkan = (eq: Capacidades, cond: CondicionesConocidas) => evaluar(eq, cond).comprobaciones.find((c) => c.requisito === 'vulkan')
 
     it('a range above the minimum meets it, labelled as projected', () => {
-      expect(vulkan(proyectado('1.3', '1.4'), minimo('1.3'))).toEqual({ requisito: 'vulkan', estado: 'cumple', exigido: '1.3', detectado: '1.3–1.4', origen: 'proyectado' })
+      expect(vulkan(proyectado('1.3', '1.4'), minimo('1.3'))).toEqual({ requisito: 'vulkan', estado: 'cumple', exigido: '1.3', detectado: { valor: '1.3–1.4', origen: 'proyectado' } })
     })
     it('a range below the minimum misses it', () => {
-      expect(vulkan(proyectado('1.2', '1.2'), minimo('1.3'))).toEqual({ requisito: 'vulkan', estado: 'no_cumple', exigido: '1.3', detectado: '1.2', origen: 'proyectado' })
+      expect(vulkan(proyectado('1.2', '1.2'), minimo('1.3'))).toEqual({ requisito: 'vulkan', estado: 'no_cumple', exigido: '1.3', detectado: { valor: '1.2', origen: 'proyectado' } })
     })
     it('a range that straddles the minimum is unknown, never a false cumple', () => {
-      expect(evaluar(proyectado('1.0', '1.1'), minimo('1.1'))).toMatchObject({ veredicto: 'informacion_insuficiente', comprobaciones: [{ estado: 'desconocido', detectado: '1.0–1.1' }] })
+      expect(evaluar(proyectado('1.0', '1.1'), minimo('1.1'))).toMatchObject({ veredicto: 'informacion_insuficiente', comprobaciones: [{ estado: 'desconocido', detectado: { valor: '1.0–1.1', origen: 'proyectado' } }] })
     })
     it('projected support with no minimum version meets requiere_vulkan', () => {
       expect(vulkan(proyectado('1.0', '1.1'), { ...nada, requiere_vulkan: true })?.estado).toBe('cumple')
     })
     it('a family without Vulkan misses requiere_vulkan', () => {
-      const sinVulkan: Capacidades = { ...equipo, vulkan: { origen: 'proyectado', soporte: 'no' } }
-      expect(vulkan(sinVulkan, { ...nada, requiere_vulkan: true })).toEqual({ requisito: 'vulkan', estado: 'no_cumple', exigido: 'si', detectado: 'no', origen: 'proyectado' })
+      const sinVulkan: Capacidades = { ...equipo, vulkan: { soporte: 'no', origen: 'proyectado' } }
+      expect(vulkan(sinVulkan, { ...nada, requiere_vulkan: true })).toEqual({ requisito: 'vulkan', estado: 'no_cumple', exigido: 'si', detectado: { valor: 'no', origen: 'proyectado' } })
     })
   })
 

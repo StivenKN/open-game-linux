@@ -1,4 +1,4 @@
-import { alMenos, type VersionVulkan, versionVulkan, type VulkanEquipo } from '../../dominio/evaluacion.ts'
+import { alMenos, type RangoVulkan, type VersionVulkan, versionVulkan, type VulkanEquipo } from '../../dominio/evaluacion.ts'
 import { type AvisoGpu, type ControladorLinux, type EquipoEnLinux, FamiliaGpu, type PciId, type RutaD3d, type RutaLinux, VendorGpu } from '../../dominio/gpu.ts'
 import type { Diagnostico } from '../../dominio/tablas.ts'
 import { tablaGpu } from './familias.generado.ts'
@@ -11,7 +11,7 @@ const v = (mayor: number, menor: number): VersionVulkan => ({ texto: `${mayor}.$
 
 type Politica = {
   readonly controlador: ControladorLinux
-  readonly vulkan: { readonly desde: VersionVulkan; readonly hasta: VersionVulkan } | null
+  readonly vulkan: RangoVulkan | null
   /** `salvo_con`: the warning is moot when the measured Linux kernel driver is already that one. */
   readonly avisos: ReadonlyArray<{ readonly aviso: AvisoGpu; readonly salvo_con: ControladorLinux | null }>
 }
@@ -52,10 +52,13 @@ const identificar = (pci: PciId | null): { readonly familia: FamiliaGpu; readonl
 
 /** Measured Linux Vulkan wins; otherwise the family projects it. A Windows row's stored Vulkan is never used. */
 const vulkanEnLinux = (c: ColumnasEquipo, politica: Politica | null): VulkanEquipo => {
-  if (c.sistema === 'Linux' && c.soporte_vulkan === 'si') return { origen: 'medido', soporte: 'si', version: versionVulkan(c.version_vulkan) }
-  if (c.sistema === 'Linux' && c.soporte_vulkan === 'no') return { origen: 'medido', soporte: 'no' }
+  if (c.sistema === 'Linux' && c.soporte_vulkan === 'si') {
+    const version = versionVulkan(c.version_vulkan)
+    return { soporte: 'si', origen: 'medido', rango: version === null ? null : { desde: version, hasta: version } }
+  }
+  if (c.sistema === 'Linux' && c.soporte_vulkan === 'no') return { soporte: 'no', origen: 'medido' }
   if (politica === null) return { soporte: 'desconocido' }
-  return politica.vulkan === null ? { origen: 'proyectado', soporte: 'no' } : { origen: 'proyectado', soporte: 'si', ...politica.vulkan }
+  return politica.vulkan === null ? { soporte: 'no', origen: 'proyectado' } : { soporte: 'si', origen: 'proyectado', rango: politica.vulkan }
 }
 
 const rutas: ReadonlyArray<readonly [VersionVulkan, RutaD3d]> = [
@@ -64,11 +67,11 @@ const rutas: ReadonlyArray<readonly [VersionVulkan, RutaD3d]> = [
   [v(1, 1), 'dxvk_sarek'],
 ]
 
+/** The path for the range's floor: a projected range is only sure to reach its lower end. */
 const rutaDe = (vulkan: VulkanEquipo): RutaLinux | null => {
-  if (vulkan.soporte === 'desconocido') return null
   if (vulkan.soporte === 'no') return { d3d9_11: 'wined3d', d3d12: false }
-  const piso = vulkan.origen === 'medido' ? vulkan.version : vulkan.desde
-  if (piso === null) return null
+  const piso = vulkan.soporte === 'si' ? vulkan.rango?.desde : undefined
+  if (piso === undefined) return null
   return { d3d9_11: rutas.find(([minimo]) => alMenos(piso, minimo))?.[1] ?? 'wined3d', d3d12: alMenos(piso, v(1, 3)) }
 }
 
