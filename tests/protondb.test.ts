@@ -1,8 +1,11 @@
 import { describe, expect, layer } from '@effect/vitest'
-import { Effect } from 'effect'
+import { Effect, Option } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { EdicionId } from '../src/dominio/ids.ts'
+import { EdicionId, JuegoId } from '../src/dominio/ids.ts'
 import { ProtonDbResumen } from '../src/dominio/tablas.ts'
+import { Visitante } from '../src/servidor/auth.ts'
+import { catalogo } from '../src/servidor/consultas/catalogo.ts'
+import { fichaJuego } from '../src/servidor/consultas/ficha.ts'
 import { importarProtonDb } from '../src/servidor/externo/protondb.ts'
 import { filas } from '../src/servidor/filas.ts'
 import { elDia, enRollback, idDe, PgTest } from './apoyo.ts'
@@ -50,7 +53,7 @@ const escenario = Effect.gen(function* () {
   yield* insertar('edicion_juego', { juego_id: uno, lanzador_id: epic, identificador_externo: '2000' })
   const dosSteam = yield* insertar('edicion_juego', { juego_id: dos, lanzador_id: steam, identificador_externo: '2000' })
   yield* insertar('edicion_juego', { juego_id: tres, lanzador_id: steam, identificador_externo: null })
-  return { unoSteam: EdicionId.make(unoSteam), dosSteam: EdicionId.make(dosSteam) }
+  return { uno: JuegoId.make(uno), tres: JuegoId.make(tres), unoSteam: EdicionId.make(unoSteam), dosSteam: EdicionId.make(dosSteam) }
 })
 
 const guardados = Effect.flatMap(SqlClient.SqlClient, (sql) => filas(ProtonDbResumen, sql`SELECT * FROM protondb_resumen ORDER BY edicion_id`))
@@ -149,6 +152,45 @@ layer(PgTest)('importarProtonDb', (it) => {
           const septiembre = exportacion(registro({ appId: '1000', fecha: '2026-09-01T00:00:00Z', funciona: false }))
           expect(yield* motivoDe(septiembre)).toBe('exportación más antigua que la importada')
           expect(yield* guardados).toEqual(antes)
+        }),
+      ).pipe(elDia(hoy)),
+    )
+  })
+
+  describe('lectura', () => {
+    const invitado = Visitante.of(Option.none())
+
+    it.effect('la ficha y el catálogo muestran el resumen sin tocar el estado calculado ni los contadores', () =>
+      enRollback(
+        Effect.gen(function* () {
+          const e = yield* escenario
+          const antes = yield* catalogo({})
+          yield* importar(octubre)
+          const despues = yield* catalogo({})
+          expect(despues.contadores).toEqual(antes.contadores)
+          expect(despues.juegos.map((j) => [j.titulo, j.resumen.estado, j.protondb])).toEqual([
+            ['Juego Dos', 'sin_evidencia', { recientes: 1, recientes_funcionan: 1, reportes_total: 1 }],
+            ['Juego Tres', 'sin_evidencia', null],
+            ['Juego Uno', 'sin_evidencia', { recientes: 3, recientes_funcionan: 2, reportes_total: 4 }],
+          ])
+          const uno = yield* Effect.provideService(fichaJuego(e.uno), Visitante, invitado)
+          expect(uno.resumen.estado).toBe('sin_evidencia')
+          expect(uno.protondb).toEqual({
+            juego_id: e.uno,
+            app_id: '1000',
+            edicion_id: e.unoSteam,
+            exportado_en: exportadoEn,
+            reportes_total: 4,
+            recientes: 3,
+            recientes_funcionan: 2,
+            modestos_recientes: 2,
+            modestos_funcionan: 1,
+            ultimo_reporte: new Date('2026-09-01T00:00:00Z'),
+            capa_variante: 'ge',
+            capa_version: 'GE-Proton10-34',
+            capa_reportes: 2,
+          })
+          expect((yield* Effect.provideService(fichaJuego(e.tres), Visitante, invitado)).protondb).toBeNull()
         }),
       ).pipe(elDia(hoy)),
     )

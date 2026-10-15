@@ -76,8 +76,8 @@ export function EstadoJuego({ resumen, pendientes }: { resumen: ResumenCompatibi
         </p>
       )}
       <p className="pequeno tenue">
-        El estado se calcula al consultar a partir de reportes aprobados. Un resultado favorable no garantiza que funcione en
-        cualquier equipo.
+        El estado se calcula al consultar a partir de los reportes aprobados del último año, o de todos si ninguno es tan
+        reciente. Un resultado favorable no garantiza que funcione en cualquier equipo.
       </p>
     </section>
   )

@@ -5,6 +5,7 @@ import { type EstadoCompatibilidad, resumir } from '../../dominio/compatibilidad
 import { Juego, Lanzador } from '../../dominio/tablas.ts'
 import { unaFila } from '../filas.ts'
 import { pruebasAprobadas } from './ficha.ts'
+import { resumenesProtonDb } from './protondb.ts'
 
 const FilaJuego = Juego.mapFields(Struct.pick(['id', 'titulo'])).mapFields(
   Struct.assign({ lanzadores: Schema.Array(Lanzador.fields.nombre), pendientes: Schema.Int }),
@@ -48,14 +49,17 @@ export const catalogo = (filtro: FiltroCatalogo) =>
 
     const ahora = new Date(yield* Clock.currentTimeMillis)
     const todas = yield* pruebasAprobadas(null)
+    const protondb = new Map((yield* resumenesProtonDb(null)).map((r) => [r.juego_id, r]))
     const candidatos = filas
       .map((j) => {
         const pruebas = todas.filter((p) => p.juego_id === j.id)
         const { estado, pruebas: aprobados, sin_confirmacion_reciente, ultima_prueba, fallos } = resumir(pruebas, ahora)
+        const externo = protondb.get(j.id)
         return {
           ...j,
           resumen: { estado, pruebas: aprobados, sin_confirmacion_reciente, ultima_prueba, fallos },
           ejemplo: pruebas.some((p) => p.ejemplo),
+          protondb: externo ? Struct.pick(externo, ['recientes', 'recientes_funcionan', 'reportes_total']) : null,
         }
       })
       .filter((j) => filtro.sin_anti_cheat !== true || !j.resumen.fallos.some((f) => f.codigo === 'anti_cheat'))

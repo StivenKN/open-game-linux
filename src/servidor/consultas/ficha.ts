@@ -12,6 +12,7 @@ import { Visitante } from '../auth.ts'
 import { filas, unaFila } from '../filas.ts'
 import { equipoEnLinux } from '../gpu/capacidad.ts'
 import { esDemo, etiquetaCapa, etiquetaDistribucion, etiquetaPerfil } from './etiquetas.ts'
+import { resumenesProtonDb } from './protondb.ts'
 
 const PruebaDeJuego = Schema.Struct({ ...PruebaAprobada.fields, juego_id: JuegoId, ejemplo: Schema.Boolean })
 
@@ -198,6 +199,7 @@ export const fichaJuego = (juegoId: JuegoId) =>
       }
     })
 
+    const [protondb = null] = yield* resumenesProtonDb(juegoId)
     const diagnostico = yield* diagnosticoDelVisitante
     const equipo = Option.map(diagnostico, equipoEnLinux)
 
@@ -230,6 +232,7 @@ export const fichaJuego = (juegoId: JuegoId) =>
       juego: { ...juego.value, apis },
       ediciones,
       resumen,
+      protondb,
       ejemplo: pruebas.some((p) => p.ejemplo),
       pendientes: pendientes.n,
       perfiles,

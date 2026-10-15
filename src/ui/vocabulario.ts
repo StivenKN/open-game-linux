@@ -1,5 +1,5 @@
 import type { EstadoCompatibilidad } from '../dominio/compatibilidad.ts'
-import type { ApiGrafica, Resultado } from '../dominio/literales.ts'
+import type { ApiGrafica, Resultado, VarianteProton } from '../dominio/literales.ts'
 import type { Comprobacion, OrigenDato, Sistema, SoporteVulkan, VeredictoRequisitos } from '../dominio/evaluacion.ts'
 import type { AvisoGpu, ControladorLinux, FamiliaGpu, RutaD3d } from '../dominio/gpu.ts'
 import type { PayloadInvalido } from '../dominio/fallos.ts'
@@ -263,3 +263,11 @@ const objeciones: { readonly [K in CodigoObjecion]: (o: Extract<Objecion, { read
 }
 
 export const objecion = <K extends CodigoObjecion>(o: Extract<Objecion, { readonly codigo: K }>): string => objeciones[o.codigo](o)
+
+export const varianteProton = {
+  official: 'Proton oficial',
+  experimental: 'Proton Experimental',
+  ge: 'GE-Proton',
+  native: 'Versión nativa de Linux',
+  older: 'Proton (versión antigua)',
+} as const satisfies Record<VarianteProton, string>

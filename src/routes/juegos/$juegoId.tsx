@@ -7,6 +7,7 @@ import { VeredictoParaMi } from '../../ui/compatibilidad/VeredictoParaMi.tsx'
 import { contar, fecha } from '../../ui/formato.ts'
 import { Chip, Insignia } from '../../ui/Insignia.tsx'
 import { Arte } from '../../ui/Portada.tsx'
+import { SeccionProtonDb } from '../../ui/protondb/ProtonDb.tsx'
 import { SelloEjemplo } from '../../ui/SelloEjemplo.tsx'
 import { apiGrafica, nivelX86, tipoFallo, veredictoRequisitos } from '../../ui/vocabulario.ts'
 import { idDeRuta } from '../-ids.ts'
@@ -21,7 +22,7 @@ export const Route = createFileRoute('/juegos/$juegoId')({
 })
 
 function Ficha() {
-  const { juego, ediciones, resumen, ejemplo, pendientes, perfiles, causas, diagnostico, personal } = Route.useLoaderData()
+  const { juego, ediciones, resumen, protondb, ejemplo, pendientes, perfiles, causas, diagnostico, personal } = Route.useLoaderData()
   const reportar = (
     <Link to="/juegos/$juegoId/reportar" params={{ juegoId: juego.id }} className="boton">
       Reportar un resultado
@@ -69,6 +70,11 @@ function Ficha() {
         <h2 id="entornos">Dónde lo probaron</h2>
         <p className="tenue">Cada fila es un entorno con reportes aprobados.</p>
         <MatrizEntornos entornos={resumen.entornos} miDistribucion={diagnostico?.distribucion_id ?? null} />
+      </section>
+
+      <section className="seccion" aria-labelledby="protondb">
+        <h2 id="protondb">Otras fuentes: ProtonDB</h2>
+        <SeccionProtonDb protondb={protondb} />
       </section>
 
       <div className="seccion dos">
