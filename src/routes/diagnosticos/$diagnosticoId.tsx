@@ -3,6 +3,7 @@ import { DiagnosticoId } from '../../dominio/ids.ts'
 import { miDiagnosticoFn } from '../../fns/diagnostico.ts'
 import { MatrizDiagnostico } from '../../ui/diagnostico/MatrizDiagnostico.tsx'
 import { ResumenCaptura } from '../../ui/diagnostico/ResumenCaptura.tsx'
+import { TarjetaGraficaEnLinux } from '../../ui/diagnostico/TarjetaGraficaEnLinux.tsx'
 import { idDeRuta } from '../-ids.ts'
 import { volverAqui } from '../-volver.ts'
 
@@ -28,6 +29,7 @@ function DiagnosticoGuardado() {
       <h1>Diagnóstico de «{d.alias}»</h1>
       <p className="tenue">Solo tú ves este diagnóstico. Los reportes que publiques mostrarán su contexto técnico, no tu correo.</p>
       <ResumenCaptura captura={d.captura} />
+      <TarjetaGraficaEnLinux equipo={d.equipo} pci={d.captura.gpu_pci_id} />
       <h2 className="titulo-seccion">Juegos</h2>
       <MatrizDiagnostico filas={d.matriz} />
     </main>

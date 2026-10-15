@@ -6,6 +6,7 @@ import type { DiagnosticoId } from '../../dominio/ids.ts'
 import { evaluarDiagnosticoFn, guardarDiagnosticoFn, misEquiposFn } from '../../fns/diagnostico.ts'
 import { MatrizDiagnostico } from '../../ui/diagnostico/MatrizDiagnostico.tsx'
 import { ResumenCaptura } from '../../ui/diagnostico/ResumenCaptura.tsx'
+import { TarjetaGraficaEnLinux } from '../../ui/diagnostico/TarjetaGraficaEnLinux.tsx'
 import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
 import { campo } from '../../ui/formulario.tsx'
 import { useAccion } from '../../ui/useAccion.ts'
@@ -75,6 +76,7 @@ function Importar() {
         predice FPS.
       </p>
       <ResumenCaptura captura={r.valor.captura} />
+      <TarjetaGraficaEnLinux equipo={r.valor.equipo} pci={r.valor.captura.gpu_pci_id} />
       <Guardar entrada={estado.entrada} />
       <h2 className="titulo-seccion">Juegos</h2>
       <MatrizDiagnostico filas={r.valor.matriz} />

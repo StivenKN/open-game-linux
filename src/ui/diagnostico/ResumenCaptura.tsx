@@ -13,7 +13,8 @@ export function ResumenCaptura({ captura }: { captura: Captura }) {
     ['Procesador', captura.cpu_modelo, null],
     ['Tarjeta gráfica', captura.gpu_modelo, captura.vram_mb === null ? 'VRAM desconocida' : `${memoria(captura.vram_mb)} de VRAM`],
     ['Memoria RAM', memoria(captura.ram_mb), null],
-    ['Vulkan', vulkan, null],
+    // Vulkan on Windows says nothing about Linux; the GPU card shows the projection instead.
+    ...(captura.sistema === 'Linux' ? ([['Vulkan', vulkan, null]] as const) : []),
     ['Controlador', captura.controlador ?? 'Desconocido', captura.version_controlador],
   ] as const
   return (

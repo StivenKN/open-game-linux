@@ -114,8 +114,12 @@ const vulkanDetectado = (vulkan: VulkanEquipo): string | null => {
   if (vulkan.soporte === 'desconocido') return null
   if (vulkan.soporte === 'no') return 'no'
   if (vulkan.origen === 'medido') return vulkan.version?.texto ?? 'si'
-  return vulkan.desde.texto === vulkan.hasta.texto ? vulkan.desde.texto : `${vulkan.desde.texto}–${vulkan.hasta.texto}`
+  return rangoVulkan(vulkan)
 }
+
+/** `"1.3–1.4"`, or `"1.2"` when the range is one version. */
+export const rangoVulkan = (r: { readonly desde: VersionVulkan; readonly hasta: VersionVulkan }): string =>
+  r.desde.texto === r.hasta.texto ? r.desde.texto : `${r.desde.texto}–${r.hasta.texto}`
 
 export type ColumnasCondicion = {
   readonly ram_min_mb: number | null
