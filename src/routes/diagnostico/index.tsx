@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Schema } from 'effect'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
 import type { PayloadInvalido } from '../../dominio/fallos.ts'
 import { evaluarDiagnosticoFn, misEquiposFn, origenFn } from '../../fns/diagnostico.ts'
@@ -13,6 +13,8 @@ import { motivoPayload, sistema as etiquetaSistema, soporteVulkan } from '../../
 import { type Entrada, entradaManual, FormularioManual, guardarPendiente, Pegado } from './-entrada.ts'
 
 export const Route = createFileRoute('/diagnostico/')({
+  // `?pegar=1` is where the Windows detector lands after copying a result too long for the address bar.
+  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ pegar: Schema.optionalKey(Schema.Literal(1)) })),
   head: () => ({ meta: [{ title: 'Diagnóstico · OpenGame Linux' }] }),
   loader: async () => {
     const [origen, equipos] = await Promise.all([origenFn(), misEquiposFn()])
@@ -85,6 +87,13 @@ const erroresDePayload =
   })
 
 function Detector({ origen }: { origen: string }) {
+  const { pegar } = Route.useSearch()
+  const pegado = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    if (pegar === undefined) return
+    pegado.current?.focus()
+    pegado.current?.scrollIntoView({ block: 'center' })
+  }, [pegar])
   const evaluar = useEvaluar()
   const r = useAccion(Pegado, ({ data }) => evaluar({ _tag: 'detector', texto: data.texto }), {
     alFallar: erroresDePayload('texto'),
@@ -96,8 +105,15 @@ function Detector({ origen }: { origen: string }) {
         Detector automático
       </h2>
       <p className="pequeno tenue">
-        Un script de Bash que lee tu hardware sin permisos de administrador. Al terminar abre esta página con el resultado
-        en la dirección (después de «#»), que tu navegador no envía a ningún servidor.
+        Un script que lee tu hardware y los juegos que tienes instalados en Steam, sin permisos de administrador. Al terminar
+        abre esta página con el resultado en la dirección (después de «#»), que tu navegador no envía a ningún servidor.
+      </p>
+      <CajaCopiar etiqueta="Ejecuta en PowerShell (Windows 10 u 11, sin administrador)" texto={`irm ${origen}/opengame-detect.ps1 | iex`} />
+      <p className="pequeno">
+        <a href="/opengame-detect.ps1" download="opengame-detect.ps1">
+          Descargar opengame-detect.ps1
+        </a>{' '}
+        <span className="tenue">para leerlo antes de ejecutarlo con</span> <code>powershell -ExecutionPolicy Bypass -File .\opengame-detect.ps1</code>
       </p>
       <CajaCopiar etiqueta="Ejecuta en una terminal de Linux" texto={`curl -fsSL ${origen}/opengame-detect.sh | bash -s -- --open`} />
       <p className="pequeno">
@@ -108,7 +124,12 @@ function Detector({ origen }: { origen: string }) {
       </p>
       <form className="formulario" {...r.formulario}>
         <label htmlFor="texto">¿Sin navegador en ese equipo? Pega aquí lo que imprimió el detector</label>
-        <textarea {...campo(r.errores, 'texto')} className="campo-codigo" spellCheck={false} placeholder='{"version_esquema":1,…} o la dirección completa con #d=' />
+        {pegar !== undefined && (
+          <p className="pequeno nota" data-tono="verde">
+            El detector copió el resultado al portapapeles: pégalo aquí (Ctrl+V)
+          </p>
+        )}
+        <textarea {...campo(r.errores, 'texto')} ref={pegado} className="campo-codigo" spellCheck={false} placeholder='{"version_esquema":1,…} o la dirección completa con #d=' />
         <ErrorCampo errores={r.errores} campo="texto" />
         <ErrorCampo errores={r.errores} campo="formulario" />
         <button type="submit" disabled={r.enviando}>
@@ -116,7 +137,7 @@ function Detector({ origen }: { origen: string }) {
         </button>
       </form>
       <p className="pequeno tenue">
-        ¿Vulkan aparece como «Desconocido»? Instala <code>vulkan-tools</code> y vuelve a ejecutar el detector, o compruébalo a
+        En Linux, ¿Vulkan aparece como «Desconocido»? Instala <code>vulkan-tools</code> y vuelve a ejecutar el detector, o compruébalo a
         mano:
       </p>
       <CajaCopiar etiqueta="Comprobación manual de Vulkan" texto={`vulkaninfo --summary | grep -E "driverName|apiVersion|deviceName"`} />
@@ -144,7 +165,7 @@ function Manual() {
       <h2 id="manual" className="sin-margen">
         Descripción manual
       </h2>
-      <p className="pequeno tenue">¿Sigues en Windows o no puedes ejecutar el script? Escribe lo que sabes de tu equipo.</p>
+      <p className="pequeno tenue">¿No puedes ejecutar el detector? Escribe lo que sabes de tu equipo.</p>
       <form className="formulario" {...r.formulario}>
         <ErrorCampo errores={r.errores} campo="formulario" />
         <div className="campos-2">
@@ -207,34 +228,36 @@ function Manual() {
             </select>
           </div>
         </div>
-        <div className="campos-2">
-          <div>
-            <label htmlFor="soporte_vulkan">Vulkan</label>
-            <select {...campo(r.errores, 'soporte_vulkan')} value={vulkan} onChange={(e) => esSoporte(e.currentTarget.value) && setVulkan(e.currentTarget.value)}>
-              <option value="desconocido">No sé</option>
-              <option value="si">{soporteVulkan.si}</option>
-              <option value="no">{soporteVulkan.no}</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="version_vulkan">Versión de Vulkan</label>
-            {vulkan === 'si' ? (
-              <select {...campo(r.errores, 'version_vulkan')} defaultValue="null">
-                <option value="null">No sé</option>
-                {versionesVulkan.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
+        {so === 'Linux' && (
+          <div className="campos-2">
+            <div>
+              <label htmlFor="soporte_vulkan">Vulkan</label>
+              <select {...campo(r.errores, 'soporte_vulkan')} value={vulkan} onChange={(e) => esSoporte(e.currentTarget.value) && setVulkan(e.currentTarget.value)}>
+                <option value="desconocido">No sé</option>
+                <option value="si">{soporteVulkan.si}</option>
+                <option value="no">{soporteVulkan.no}</option>
               </select>
-            ) : (
-              <>
-                <input id="version_vulkan" disabled value="Solo con soporte" />
-                <input type="hidden" name="version_vulkan" value="null" />
-              </>
-            )}
+            </div>
+            <div>
+              <label htmlFor="version_vulkan">Versión de Vulkan</label>
+              {vulkan === 'si' ? (
+                <select {...campo(r.errores, 'version_vulkan')} defaultValue="null">
+                  <option value="null">No sé</option>
+                  {versionesVulkan.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <>
+                  <input id="version_vulkan" disabled value="Solo con soporte" />
+                  <input type="hidden" name="version_vulkan" value="null" />
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
         <label htmlFor="arquitectura">Arquitectura</label>
         <select {...campo(r.errores, 'arquitectura')} defaultValue="x86_64">
           <option value="x86_64">x86_64 (Intel o AMD)</option>

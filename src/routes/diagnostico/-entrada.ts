@@ -23,28 +23,27 @@ const comunes = {
   gpu_modelo: Diagnostico.fields.gpu_modelo,
   ram_mb: Diagnostico.fields.ram_mb,
   vram_mb: Diagnostico.fields.vram_mb,
-  soporte_vulkan: SoporteVulkan,
-  version_vulkan: Diagnostico.fields.version_vulkan,
 }
 
+// Only Linux asks for Vulkan: on Windows it says nothing about Linux, which the GPU card projects instead.
 export const FormularioManual = Schema.Union([
   Schema.Struct({
     ...comunes,
     sistema: Schema.Literal('Linux'),
     distribucion: Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version }),
+    soporte_vulkan: SoporteVulkan,
+    version_vulkan: Diagnostico.fields.version_vulkan,
   }),
   Schema.Struct({ ...comunes, sistema: Schema.Literal('Windows') }),
 ])
 
-export const entradaManual = (f: typeof FormularioManual.Encoded): Entrada => ({
-  _tag: 'manual',
-  captura: {
-    ...f,
-    capturado_en: new Date().toISOString(),
-    controlador: null,
-    version_controlador: null,
-    gpu_pci_id: null,
-    biblioteca_steam: null,
-    version_vulkan: f.soporte_vulkan === 'si' ? f.version_vulkan : null,
-  },
-})
+export const entradaManual = (f: typeof FormularioManual.Encoded): Entrada => {
+  const captura =
+    f.sistema === 'Linux'
+      ? { ...f, version_vulkan: f.soporte_vulkan === 'si' ? f.version_vulkan : null }
+      : { ...f, soporte_vulkan: 'desconocido' as const, version_vulkan: null }
+  return {
+    _tag: 'manual',
+    captura: { ...captura, capturado_en: new Date().toISOString(), controlador: null, version_controlador: null, gpu_pci_id: null, biblioteca_steam: null },
+  }
+}

@@ -9,6 +9,7 @@ import { estadoCompatibilidad } from '../vocabulario.ts'
 export type FilaMatriz = {
   readonly juego_id: JuegoId
   readonly titulo: string
+  readonly en_biblioteca: boolean
   readonly estado: EstadoCompatibilidad
   readonly pruebas: number
   readonly perfil: (PerfilEvaluado & { readonly capa: string; readonly distribucion: string }) | null
