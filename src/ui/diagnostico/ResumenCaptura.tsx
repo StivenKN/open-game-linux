@@ -1,9 +1,9 @@
 import { Link } from '@tanstack/react-router'
 import type { Captura } from '../../dominio/aportes.ts'
-import { memoria, momento } from '../formato.ts'
+import { memoria, memoriaAproximada, momento } from '../formato.ts'
 import { arranqueSeguro, sistema, soporteVulkan, tpm } from '../vocabulario.ts'
 
-const intercambio = (nombre: string, mb: number | null) => (mb === null ? [] : [mb === 0 ? `sin ${nombre}` : `${nombre} ${memoria(mb)}`])
+const intercambio = (nombre: string, mb: number | null) => (mb === null ? [] : [mb === 0 ? `sin ${nombre}` : `${nombre} ${memoriaAproximada(mb)}`])
 
 export function ResumenCaptura({ captura }: { captura: Captura }) {
   const datos = [
