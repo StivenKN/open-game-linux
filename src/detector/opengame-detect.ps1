@@ -15,8 +15,8 @@
   $ErrorActionPreference = 'SilentlyContinue'
   $AppUrl = '__OPENGAME_URL__'
   if ($env:OPENGAME_URL) { $AppUrl = $env:OPENGAME_URL }
-  # Start-Process hands the URL to the browser on a command line, which Windows caps at 32767 chars.
-  $MaxUrl = 30000
+  # Start-Process opens the URL through ShellExecute, which cuts URLs at about 2048 chars.
+  $MaxUrl = 2000
 
   # JSON by hand, like json_str in opengame-detect.sh: ConvertTo-Json differs between 5.1 and 7.
   # Control chars are dropped and every char above 0x7E becomes \uXXXX, so the output is ASCII.

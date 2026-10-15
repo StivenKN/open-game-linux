@@ -45,13 +45,20 @@ beforeAll(() => {
   for (const vdf of [steam('nuevo'), steam('antiguo')].map((r) => join(r, 'steamapps/libraryfolders.vdf'))) {
     writeFileSync(vdf, readFileSync(vdf, 'utf8').replaceAll('__RAIZ__', join(tmp, 'steam')))
   }
-  const apps = join(tmp, 'grande/steamapps')
-  mkdirSync(apps, { recursive: true })
-  for (let i = 1; i <= 2000; i++) {
-    writeFileSync(join(apps, `appmanifest_${i}.acf`), `"AppState"\n{\n\t"appid"\t\t"${i}"\n\t"name"\t\t"${nombreGrande(i)}"\n\t"StateFlags"\t\t"4"\n\t"LastPlayed"\t\t"${i}"\n}\n`)
-  }
+  biblioteca('mediana', 30)
+  biblioteca('grande', 2000)
 })
 afterAll(() => rmSync(tmp, { recursive: true, force: true }))
+
+// A Steam folder with `cuantos` installed games; game i was played at time i, so the newest comes first.
+const biblioteca = (carpeta: string, cuantos: number) => {
+  const apps = join(tmp, carpeta, 'steamapps')
+  mkdirSync(apps, { recursive: true })
+  for (let i = 1; i <= cuantos; i++) {
+    writeFileSync(join(apps, `appmanifest_${i}.acf`), `"AppState"\n{\n\t"appid"\t\t"${i}"\n\t"name"\t\t"${nombreJuego(i)}"\n\t"StateFlags"\t\t"4"\n\t"LastPlayed"\t\t"${i}"\n}\n`)
+  }
+}
+const esperada = (cuantos: number) => Array.from({ length: cuantos }, (_, k) => ({ app_id: cuantos - k, nombre: nombreJuego(cuantos - k) }))
 
 // Runs the real script the way `irm | iex` does, after the stubs that fake the Windows PC.
 const powershell = (env: Record<string, string>): string => {
@@ -93,8 +100,7 @@ const bibliotecaAntiguo = [
   { app_id: 227300, nombre: 'Euro Truck Simulator 2' },
   { app_id: 292030, nombre: 'The Witcher 3: Wild Hunt' },
 ]
-const nombreGrande = (i: number) => `Juego de prueba con un nombre bastante largo ${String(i).padStart(4, '0')}`
-const bibliotecaGrande = Array.from({ length: 2000 }, (_, k) => ({ app_id: 2000 - k, nombre: nombreGrande(2000 - k) }))
+const nombreJuego = (i: number) => `Juego de prueba con un nombre bastante largo ${String(i).padStart(4, '0')}`
 
 describe.skipIf(motor === null)(`opengame-detect.ps1 under ${motor ?? `pwsh (skipped: no pwsh on PATH and no docker image ${IMAGEN})`}`, { timeout: 60_000 }, () => {
   it('reads a hybrid laptop: the GeForce, its VRAM from the registry, and the Steam games newest first', () => {
@@ -152,11 +158,11 @@ describe.skipIf(motor === null)(`opengame-detect.ps1 under ${motor ?? `pwsh (ski
     expect(leer(desdeUrl(abrir ?? ''))).toMatchObject({ gpu_pci_id: '10de:1380', biblioteca_steam: bibliotecaNuevo })
   })
 
-  it('copies a library too big for a URL to the clipboard and opens the paste box', () => {
-    powershell({ OPENGAME_STEAM_DIR: join(tmp, 'grande') })
+  it('copies a 30-game library, too big for a URL, to the clipboard and opens the paste box', () => {
+    powershell({ OPENGAME_STEAM_DIR: join(tmp, 'mediana') })
     const [copiar, abrir, ...resto] = leerRegistro()
     expect([abrir, resto]).toEqual(['Start-Process http://ejemplo.test/diagnostico?pegar=1', []])
-    expect(leer((copiar ?? '').replace(/^Set-Clipboard /, ''))).toMatchObject({ biblioteca_steam: bibliotecaGrande })
+    expect(leer((copiar ?? '').replace(/^Set-Clipboard /, ''))).toMatchObject({ biblioteca_steam: esperada(30) })
   })
 })
 
@@ -174,6 +180,6 @@ describe.skipIf(motor === null || process.platform !== 'linux')('Steam library: 
 describe.skipIf(process.platform !== 'linux')('opengame-detect.sh with a large Steam library', () => {
   it('prints the JSON instead of a --open URL longer than 100 000 chars', () => {
     const salida = bash({ OPENGAME_STEAM_DIR: join(tmp, 'grande'), OPENGAME_DRY: '1', OPENGAME_URL: 'http://ejemplo.test' }, '--open')
-    expect(leer(salida)).toMatchObject({ sistema: 'Linux', biblioteca_steam: bibliotecaGrande })
+    expect(leer(salida)).toMatchObject({ sistema: 'Linux', biblioteca_steam: esperada(2000) })
   })
 })
