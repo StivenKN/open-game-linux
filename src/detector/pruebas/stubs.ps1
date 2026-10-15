@@ -24,7 +24,8 @@ function Get-CimInstance([string]$ClassName) {
       }
       else {
         [pscustomobject]@{ Name = 'Intel(R) HD Graphics 4600'; PNPDeviceID = 'PCI\VEN_8086&DEV_0412&SUBSYS_05CA1028&REV_06\3&11583659&0&10'; AdapterRAM = [uint32]1073741824 }
-        [pscustomobject]@{ Name = 'NVIDIA GeForce GTX 750 Ti'; PNPDeviceID = 'PCI\VEN_10DE&DEV_1380&SUBSYS_362D1458&REV_A2\4&2B0A7B8C&0&0008'; AdapterRAM = [uint32]2147483648 }
+        # AdapterRAM saturates as a uint32, so the 2 GiB the script reports can only come from qwMemorySize.
+        [pscustomobject]@{ Name = 'NVIDIA GeForce GTX 750 Ti'; PNPDeviceID = 'PCI\VEN_10DE&DEV_1380&SUBSYS_362D1458&REV_A2\4&2B0A7B8C&0&0008'; AdapterRAM = [uint32]4293918720 }
       }
     }
   }

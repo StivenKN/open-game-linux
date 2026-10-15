@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from '@effect/vitest'
+import { Result } from 'effect'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parsearPayload } from './payload.ts'
 
 const raiz = fileURLToPath(new URL('../../../', import.meta.url))
 const ps1 = join(raiz, 'src/detector/opengame-detect.ps1')
@@ -72,7 +74,11 @@ const leerRegistro = (): Array<string> => {
 }
 const leer = (json: string): unknown => JSON.parse(json)
 const desdeUrl = (url: string): string => Buffer.from(url.slice(url.indexOf('#d=') + 3), 'base64url').toString('utf8')
-const sinHora = (json: string): unknown => JSON.parse(json, (clave, valor: unknown) => (clave === 'capturado_en' ? null : valor))
+const captura = (texto: string) => {
+  const r = parsearPayload(texto)
+  if (Result.isFailure(r)) throw new Error(`expected a capture, got ${JSON.stringify(r.failure)}`)
+  return r.success
+}
 
 const bibliotecaNuevo = [
   { app_id: 9999990, nombre: 'Café "Noir": Édition™' },
@@ -94,9 +100,9 @@ describe.skipIf(motor === null)(`opengame-detect.ps1 under ${motor ?? `pwsh (ski
   it('reads a hybrid laptop: the GeForce, its VRAM from the registry, and the Steam games newest first', () => {
     const salida = powershell({ OPENGAME_IMPRIMIR: '1' })
     expect(salida).toMatch(/^[\x20-\x7e]+$/)
-    expect(leer(salida)).toEqual({
-      version_esquema: 1,
-      capturado_en: expect.stringMatching(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/),
+    const leida = captura(salida)
+    expect(leida).toEqual({
+      capturado_en: expect.any(Date),
       sistema: 'Windows',
       version_sistema: 'Windows 10 Home 22H2 (19045)',
       arquitectura: 'x86_64',
@@ -105,24 +111,31 @@ describe.skipIf(motor === null)(`opengame-detect.ps1 under ${motor ?? `pwsh (ski
       gpu_pci_id: '10de:1380',
       ram_mb: 8192,
       vram_mb: 2048,
-      biblioteca_steam: bibliotecaNuevo,
+      controlador: null,
+      version_controlador: null,
+      soporte_vulkan: 'desconocido',
+      version_vulkan: null,
+      biblioteca_steam: bibliotecaNuevo.filter((j) => j.nombre !== 'Proton 9.0'),
     })
-    expect(sinHora(desdeUrl(powershell({ OPENGAME_DRY: '1' })))).toEqual(sinHora(salida))
+    expect({ ...captura(powershell({ OPENGAME_DRY: '1' })), capturado_en: leida.capturado_en }).toEqual(leida)
   })
 
   it('sends nulls for a GPU without driver and a PC without Steam', () => {
     const env = { OPENGAME_PRUEBA_EQUIPO: 'basico', PROCESSOR_ARCHITECTURE: 'x86', PROCESSOR_ARCHITEW6432: 'AMD64', OPENGAME_IMPRIMIR: '1' }
-    expect(leer(powershell(env))).toEqual({
-      version_esquema: 1,
-      capturado_en: expect.any(String),
+    expect(captura(powershell(env))).toEqual({
+      capturado_en: expect.any(Date),
       sistema: 'Windows',
       version_sistema: 'Windows 11 Pro 23H2 (22631)',
       arquitectura: 'x86_64',
       cpu_modelo: 'Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz',
-      gpu_modelo: null,
+      gpu_modelo: 'NVIDIA GPU [10de:1380]',
       gpu_pci_id: '10de:1380',
       ram_mb: 8078,
       vram_mb: null,
+      controlador: null,
+      version_controlador: null,
+      soporte_vulkan: 'desconocido',
+      version_vulkan: null,
       biblioteca_steam: null,
     })
   })
