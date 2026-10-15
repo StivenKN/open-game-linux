@@ -22,7 +22,7 @@ import {
   VersionCapaId,
 } from './ids.ts'
 import { largo } from './largo.ts'
-import { ApiGrafica, FamiliaCapa, Resultado } from './literales.ts'
+import { ApiGrafica, FamiliaCapa, Resultado, VarianteProton } from './literales.ts'
 import { ArranqueSeguro, NivelX86, Tpm } from './plataforma.ts'
 import { EstadoRevision, Rol } from './revision.ts'
 
@@ -243,3 +243,19 @@ export const GuiaAdopcion = Schema.Struct({
   actualizado_en: Schema.Date,
 })
 export type GuiaAdopcion = typeof GuiaAdopcion.Type
+
+/** One Steam edition's aggregate of a ProtonDB export. Never individual reports (8.9). */
+export const ProtonDbResumen = Schema.Struct({
+  edicion_id: EdicionId,
+  exportado_en: Schema.Date,
+  reportes_total: Positivo,
+  recientes: NoNegativo,
+  recientes_funcionan: NoNegativo,
+  modestos_recientes: NoNegativo,
+  modestos_funcionan: NoNegativo,
+  ultimo_reporte: Schema.Date,
+  capa_variante: Schema.NullOr(VarianteProton),
+  capa_version: Schema.NullOr(TextoHasta(largo.protondb_resumen.capa_version)),
+  capa_reportes: NoNegativo,
+})
+export type ProtonDbResumen = typeof ProtonDbResumen.Type

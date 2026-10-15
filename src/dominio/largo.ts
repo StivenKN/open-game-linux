@@ -32,4 +32,5 @@ export const largo = {
   reporte: { version_juego: 80, version_lanzador: 80, resultado: 35, resolucion: 30, calidad_grafica: 80 },
   solucion: { titulo: 180 },
   guia_adopcion: { tipo: 25, titulo: 180, estado: 15 },
+  protondb_resumen: { capa_variante: 15, capa_version: 60 },
 } as const
