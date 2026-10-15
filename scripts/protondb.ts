@@ -11,7 +11,12 @@ if (ruta === undefined) {
   process.exit(2)
 }
 
-const programa = importarProtonDb(ruta === '-' ? process.stdin.setEncoding('utf8') : createReadStream(ruta, { encoding: 'utf8' })).pipe(
+// Opened on first read, inside the import, so a missing file fails the import instead of crashing Node.
+async function* trozos(origen: string): AsyncGenerator<string> {
+  yield* origen === '-' ? process.stdin.setEncoding('utf8') : createReadStream(origen, { encoding: 'utf8' })
+}
+
+const programa = importarProtonDb(trozos(ruta)).pipe(
   Effect.catchTag('ExportacionInvalida', (e) => Effect.die(`ProtonDB: ${e.motivo}. No se cambió nada.`)),
   Effect.flatMap((r) => Effect.log(resumenImportacion(r))),
   Effect.provide(PgLive),

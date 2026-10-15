@@ -30,7 +30,7 @@ const ABRE_LLAVE = 0x7b
 const CIERRA_LLAVE = 0x7d
 const BOM = 0xfeff
 const esEspacio = (c: number) => c === 0x20 || c === 0x0a || c === 0x0d || c === 0x09
-// Most of the export is string content; skipping it with a regex is several times faster than char by char.
+// String content is most of the export; one regex call skips it faster than the char loop.
 const hastaComillaOBarra = /[^"\\]*/y
 
 /**

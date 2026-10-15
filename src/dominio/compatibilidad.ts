@@ -119,7 +119,7 @@ const baseDe = (pruebas: ReadonlyArray<PruebaAprobada>, ahora: Date) => {
   return { vigentes, base: vigentes.length > 0 ? vigentes : pruebas }
 }
 
-// Same-day tests are ordered by id, the order they were registered in.
+// Tests at the same instant are ordered by id, the order they were registered in.
 const masReciente = (pruebas: readonly [PruebaAprobada, ...PruebaAprobada[]]): PruebaAprobada =>
   pruebas.reduce((a, b) => ((b.fecha_prueba.getTime() - a.fecha_prueba.getTime() || b.reporte_id - a.reporte_id) > 0 ? b : a))
 

@@ -18,7 +18,6 @@ export function AtribucionProtonDb() {
 const funcionan = (n: number, de: number) =>
   de === 0 ? 'ningún reporte' : `${n} de ${contar(de, 'reporte', 'reportes')} ${n === 1 ? 'dice' : 'dicen'} que funciona`
 
-/** The catalog card's line. */
 export function LineaProtonDb({ resumen }: { resumen: Recientes }) {
   return (
     <p className="juego-meta">
@@ -33,9 +32,8 @@ const capa = (variante: VarianteProton, version: string | null) =>
   version === null ? varianteProton[variante] : `${varianteProton[variante]} (${version})`
 
 /** The ficha's section: aggregates only, never individual reports (8.9). */
-export function SeccionProtonDb({ protondb }: { protondb: (ProtonDbResumen & { readonly app_id: string }) | null }) {
-  if (protondb === null) return <p className="tarjeta tenue">Sin datos de ProtonDB para este juego todavía.</p>
-  const p = protondb
+export function SeccionProtonDb({ protondb: p }: { protondb: (ProtonDbResumen & { readonly app_id: string }) | null }) {
+  if (p === null) return <p className="tarjeta tenue">Sin datos de ProtonDB para este juego todavía.</p>
   return (
     <div className="tarjeta pila">
       <p className="pequeno tenue">
