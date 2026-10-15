@@ -33,6 +33,12 @@ const PayloadV1 = {
     version_controlador: Schema.NullOr(Schema.String),
     soporte_vulkan: SoporteVulkan,
     version_vulkan: Schema.NullOr(Schema.String),
+    // Added after version 1 shipped without a bump: older detectors omit them.
+    nivel_x86: Schema.optionalKey(Diagnostico.fields.nivel_x86),
+    arranque_seguro: Schema.optionalKey(Diagnostico.fields.arranque_seguro),
+    tpm: Schema.optionalKey(Diagnostico.fields.tpm),
+    zram_mb: Schema.optionalKey(Diagnostico.fields.zram_mb),
+    swap_mb: Schema.optionalKey(Diagnostico.fields.swap_mb),
   }),
   Windows: Schema.Struct({ ...comunes, sistema: Schema.Literal('Windows') }),
 } satisfies Record<Sistema, Schema.Top>
@@ -70,6 +76,11 @@ export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInv
             version_controlador: p.version_controlador,
             soporte_vulkan: p.soporte_vulkan,
             version_vulkan: p.soporte_vulkan === 'si' ? p.version_vulkan : null,
+            nivel_x86: p.nivel_x86 ?? null,
+            arranque_seguro: p.arranque_seguro ?? null,
+            tpm: p.tpm ?? null,
+            zram_mb: p.zram_mb ?? null,
+            swap_mb: p.swap_mb ?? null,
           }
         : { ...comun, sistema: 'Windows' }
     return yield* cabeEnColumnas(yield* Result.mapError(Schema.decodeResult(Captura)(candidato), campoInvalido))
@@ -90,7 +101,11 @@ const bibliotecaDe = (juegos: ReadonlyArray<typeof JuegoEnviado.Type>): typeof B
 }
 
 export const capturaDe = (entrada: EntradaDiagnostico): Effect.Effect<Captura, PayloadInvalido> =>
-  Effect.fromResult(entrada._tag === 'manual' ? cabeEnColumnas({ ...entrada.captura, gpu_pci_id: null, biblioteca_steam: null }) : parsearPayload(entrada.texto))
+  Effect.fromResult(
+    entrada._tag === 'manual'
+      ? cabeEnColumnas({ ...entrada.captura, gpu_pci_id: null, biblioteca_steam: null, nivel_x86: null, arranque_seguro: null, tpm: null, zram_mb: null, swap_mb: null })
+      : parsearPayload(entrada.texto),
+  )
 
 const Columnas = Schema.Struct({
   version_sistema: Diagnostico.fields.version_sistema,

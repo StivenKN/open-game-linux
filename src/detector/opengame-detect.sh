@@ -139,7 +139,38 @@ if [ "${#bibliotecas[@]}" -gt 0 ]; then
   fi
 fi
 
-payload="{\"version_esquema\":1,\"capturado_en\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"sistema\":\"Linux\",\"version_sistema\":$(json_str "$version_sistema"),\"distribucion\":{\"nombre\":$(json_str "$distro_nombre"),\"version\":$(json_str "$distro_version")},\"arquitectura\":$(json_str "$arquitectura"),\"cpu_modelo\":$(json_str "$cpu_modelo"),\"gpu_modelo\":$(json_str "$gpu_modelo"),\"gpu_pci_id\":$(json_str "$gpu_pci_id"),\"ram_mb\":$(json_num "$ram_mb"),\"vram_mb\":$(json_num "$vram_mb"),\"controlador\":$(json_str "$controlador"),\"version_controlador\":$(json_str "$version_controlador"),\"soporte_vulkan\":\"$soporte_vulkan\",\"version_vulkan\":$(json_str "$version_vulkan"),\"biblioteca_steam\":$biblioteca_steam}"
+# Machine facts. Empty means unknown and goes out as null; none of these needs root.
+# CPU level: glibc >= 2.33 lists its x86-64 hwcaps levels as "supported" or not. Older glibc lists
+# none, so the level stays unknown rather than v1.
+nivel_x86=""
+if [ "$arquitectura" = x86_64 ] && [ -x /lib64/ld-linux-x86-64.so.2 ]; then
+  ldso=$(/lib64/ld-linux-x86-64.so.2 --help 2>/dev/null)
+  if printf '%s\n' "$ldso" | grep -q 'x86-64-v2'; then
+    nivel_x86=$(printf '%s\n' "$ldso" | sed -n 's/^ *x86-64-\(v[234]\) (supported.*/\1/p' | sort | tail -1)
+    [ -n "$nivel_x86" ] || nivel_x86=v1
+  fi
+fi
+# No /sys/firmware/efi: legacy BIOS boot. EFI with an unreadable variable stays unknown. The 5th
+# byte of the efivar (after 4 attribute bytes) is the state.
+arranque_seguro=""
+if [ ! -d /sys/firmware/efi ]; then arranque_seguro=bios
+else
+  sb=$(od -An -t u1 -j4 -N1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c 2>/dev/null | tr -d ' ')
+  case "$sb" in 1) arranque_seguro=activo ;; 0) arranque_seguro=inactivo ;; esac
+fi
+# A kernel without the tpm class can't tell; a tpm0 without tpm_version_major (old kernels) neither.
+tpm=""
+if [ -d /sys/class/tpm/tpm0 ]; then
+  case "$(cat /sys/class/tpm/tpm0/tpm_version_major 2>/dev/null)" in 2) tpm="2.0" ;; 1) tpm="1.2" ;; esac
+elif [ -d /sys/class/tpm ]; then tpm=no_detectado
+fi
+# /proc/swaps sizes are KiB: zram devices apart from every other swap (files and partitions).
+zram_mb=""; swap_mb=""
+if [ -r /proc/swaps ]; then
+  read -r zram_mb swap_mb < <(awk 'NR > 1 { if ($1 ~ /^\/dev\/zram/) z += $3; else s += $3 } END { printf "%d %d\n", z / 1024, s / 1024 }' /proc/swaps)
+fi
+
+payload="{\"version_esquema\":1,\"capturado_en\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"sistema\":\"Linux\",\"version_sistema\":$(json_str "$version_sistema"),\"distribucion\":{\"nombre\":$(json_str "$distro_nombre"),\"version\":$(json_str "$distro_version")},\"arquitectura\":$(json_str "$arquitectura"),\"cpu_modelo\":$(json_str "$cpu_modelo"),\"gpu_modelo\":$(json_str "$gpu_modelo"),\"gpu_pci_id\":$(json_str "$gpu_pci_id"),\"ram_mb\":$(json_num "$ram_mb"),\"vram_mb\":$(json_num "$vram_mb"),\"controlador\":$(json_str "$controlador"),\"version_controlador\":$(json_str "$version_controlador"),\"soporte_vulkan\":\"$soporte_vulkan\",\"version_vulkan\":$(json_str "$version_vulkan"),\"biblioteca_steam\":$biblioteca_steam,\"nivel_x86\":$(json_str "$nivel_x86"),\"arranque_seguro\":$(json_str "$arranque_seguro"),\"tpm\":$(json_str "$tpm"),\"zram_mb\":$(json_num "$zram_mb"),\"swap_mb\":$(json_num "$swap_mb")}"
 
 if [ "${1:-}" != "--open" ]; then
   printf '%s\n' "$payload"

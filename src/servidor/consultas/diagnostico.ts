@@ -147,6 +147,11 @@ const capturaGuardada = (d: typeof DiagnosticoGuardado.Type): Effect.Effect<Capt
     gpu_modelo: d.gpu_modelo,
     ram_mb: d.ram_mb,
     vram_mb: d.vram_mb,
+    nivel_x86: d.nivel_x86,
+    arranque_seguro: d.arranque_seguro,
+    tpm: d.tpm,
+    zram_mb: d.zram_mb,
+    swap_mb: d.swap_mb,
     gpu_pci_id: d.gpu_pci_id,
     biblioteca_steam: d.biblioteca_steam,
   }

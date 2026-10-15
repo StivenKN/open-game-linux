@@ -117,6 +117,9 @@ const rechaza: ReadonlyArray<Caso> = [
   ['estado de guía fuera del dominio', 'guia_adopcion_estado_dominio', (f) => guia(f, { estado: 'oculta' })],
   ['RAM cero', 'diagnostico_ram_positiva', (f) => diagnostico(f, { ram_mb: 0 })],
   ['VRAM negativa', 'diagnostico_vram_no_negativa', (f) => diagnostico(f, { vram_mb: -1 })],
+  ['nivel x86-64 fuera del dominio', 'diagnostico_nivel_x86_dominio', (f) => diagnostico(f, { nivel_x86: 'v5' })],
+  ['TPM fuera del dominio', 'diagnostico_tpm_dominio', (f) => diagnostico(f, { tpm: '3.0' })],
+  ['zram negativa', 'diagnostico_zram_no_negativa', (f) => diagnostico(f, { zram_mb: -1 })],
   ['FPS negativo', 'reporte_fps_no_negativo', (f) =>
     reporte(f, { fps_promedio: -1, resolucion: '1920x1080', calidad_grafica: 'alta', metodo_medicion: 'MangoHud' })],
   ['revisión de perfil cero', 'perfil_configuracion_revision_positiva', (f) => perfil(f, { revision: 0 })],

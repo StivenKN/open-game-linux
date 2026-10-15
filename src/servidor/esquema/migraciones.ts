@@ -6,6 +6,7 @@ import { PgMigrator } from '@effect/sql-pg'
 import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
 import { EstadoGuia, TipoGuia } from '../../dominio/guias.ts'
 import { FamiliaCapa, Resultado } from '../../dominio/literales.ts'
+import { ArranqueSeguro, NivelX86, Tpm } from '../../dominio/plataforma.ts'
 import { type EstadoRevision, Rol } from '../../dominio/revision.ts'
 import { largo as L } from '../../dominio/largo.ts'
 import { BloqueRevision } from '../../dominio/tablas.ts'
@@ -321,10 +322,26 @@ const gpuBiblioteca = [
   ),
 ]
 
+// Adding columns fires no UPDATE trigger, so the immutable diagnostico rows keep NULL: not captured.
+const hechosSistema = [
+  `ALTER TABLE diagnostico
+     ADD COLUMN nivel_x86 varchar(${L.diagnostico.nivel_x86}),
+     ADD COLUMN arranque_seguro varchar(${L.diagnostico.arranque_seguro}),
+     ADD COLUMN tpm varchar(${L.diagnostico.tpm}),
+     ADD COLUMN zram_mb integer,
+     ADD COLUMN swap_mb integer`,
+  dominio('diagnostico', 'nivel_x86', NivelX86.literals),
+  dominio('diagnostico', 'arranque_seguro', ArranqueSeguro.literals),
+  dominio('diagnostico', 'tpm', Tpm.literals),
+  check('diagnostico', 'zram_no_negativa', 'zram_mb IS NULL OR zram_mb >= 0'),
+  check('diagnostico', 'swap_no_negativa', 'swap_mb IS NULL OR swap_mb >= 0'),
+]
+
 export const migraciones = {
   '1_auth': ejecutar(auth),
   '2_opengame': ejecutar([...funciones, ...usuario, ...catalogo, ...diagnosticos, ...configuraciones, ...resultados, ...guias]),
   '3_gpu_biblioteca': ejecutar(gpuBiblioteca),
+  '4_hechos_sistema': ejecutar(hechosSistema),
 }
 
 export const migrar = PgMigrator.run({ loader: Migrator.fromRecord(migraciones) })

@@ -16,7 +16,7 @@ const captura = (texto: string) => {
 }
 
 describe('parsearPayload', () => {
-  it('reads the prototype out.json and drops the Vulkan version an ICD reported', () => {
+  it('reads the prototype out.json, which predates the machine facts, with every fact null', () => {
     expect(captura(outJson)).toEqual({
       capturado_en: new Date('2026-10-10T18:43:52Z'),
       sistema: 'Linux',
@@ -31,9 +31,19 @@ describe('parsearPayload', () => {
       version_controlador: 'Mesa 25.2.8-0ubuntu0.24.04.2',
       soporte_vulkan: 'desconocido',
       version_vulkan: null,
+      nivel_x86: null,
+      arranque_seguro: null,
+      tpm: null,
+      zram_mb: null,
+      swap_mb: null,
       gpu_pci_id: null,
       biblioteca_steam: null,
     })
+  })
+
+  it('reads the machine facts a current detector sends', () => {
+    const hechos = { nivel_x86: 'v3', arranque_seguro: 'bios', tpm: 'no_detectado', zram_mb: 8192, swap_mb: 0 }
+    expect(captura(JSON.stringify({ ...prototipo, ...hechos }))).toMatchObject(hechos)
   })
 
   it('reads the PowerShell detector output: no distro, no Linux driver, Vulkan unknown, Steam tools dropped', () => {
@@ -47,6 +57,11 @@ describe('parsearPayload', () => {
       gpu_pci_id: '10de:1380',
       ram_mb: 8192,
       vram_mb: 2048,
+      nivel_x86: null,
+      arranque_seguro: null,
+      tpm: null,
+      zram_mb: null,
+      swap_mb: null,
       biblioteca_steam: [
         { app_id: 9999990, nombre: 'Café "Noir": Édition™' },
         { app_id: 271590, nombre: 'Grand Theft Auto V' },
@@ -148,6 +163,11 @@ describe('parsearPayload', () => {
     [{ biblioteca_steam: [{ app_id: '271590', nombre: 'GTA V' }] }, 'biblioteca_steam.0.app_id'],
     [{ gpu_modelo: 'G'.repeat(161) }, 'gpu_modelo'],
     [{ distribucion: { nombre: 'D'.repeat(81), version: '1' } }, 'distribucion.nombre'],
+    [{ nivel_x86: 'v5' }, 'nivel_x86'],
+    [{ arranque_seguro: 'on' }, 'arranque_seguro'],
+    [{ tpm: '2' }, 'tpm'],
+    [{ zram_mb: -1 }, 'zram_mb'],
+    [{ swap_mb: 1.5 }, 'swap_mb'],
   ])('a bad field %o is campo_invalido at %s', (cambio, campo) => {
     expect(parsearPayload(JSON.stringify({ ...prototipo, ...cambio }))).toEqual(
       Result.fail(new PayloadInvalido({ motivo: 'campo_invalido', campo })),

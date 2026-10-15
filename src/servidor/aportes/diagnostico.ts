@@ -52,6 +52,11 @@ export const registrarDiagnostico = (
       gpu_modelo: captura.gpu_modelo,
       ram_mb: captura.ram_mb,
       vram_mb: captura.vram_mb,
+      nivel_x86: captura.nivel_x86,
+      arranque_seguro: captura.arranque_seguro,
+      tpm: captura.tpm,
+      zram_mb: captura.zram_mb,
+      swap_mb: captura.swap_mb,
       ...soloLinux,
       gpu_pci_id: captura.gpu_pci_id,
       // Sent as JSON text: the untyped parameter takes the jsonb column's type.

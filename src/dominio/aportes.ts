@@ -107,7 +107,16 @@ const camposLinux = {
   version_vulkan: TextoOpcionalHasta(largo.diagnostico.version_vulkan),
 }
 
-const camposDetectados = { gpu_pci_id: Diagnostico.fields.gpu_pci_id, biblioteca_steam: Diagnostico.fields.biblioteca_steam }
+const camposDetectados = {
+  gpu_pci_id: Diagnostico.fields.gpu_pci_id,
+  biblioteca_steam: Diagnostico.fields.biblioteca_steam,
+  // Only the Linux detector reads these; the Windows detector and older payloads omit them.
+  nivel_x86: Diagnostico.fields.nivel_x86.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  arranque_seguro: Diagnostico.fields.arranque_seguro.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  tpm: Diagnostico.fields.tpm.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  zram_mb: Diagnostico.fields.zram_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  swap_mb: Diagnostico.fields.swap_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+}
 
 const vulkanConSoporte = Schema.makeFilter((c: { readonly soporte_vulkan: SoporteVulkan; readonly version_vulkan: string | null }) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
   message: 'Solo hay versión de Vulkan si hay soporte.',

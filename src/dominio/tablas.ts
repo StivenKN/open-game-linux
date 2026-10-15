@@ -23,6 +23,7 @@ import {
 } from './ids.ts'
 import { largo } from './largo.ts'
 import { FamiliaCapa, Resultado } from './literales.ts'
+import { ArranqueSeguro, NivelX86, Tpm } from './plataforma.ts'
 import { EstadoRevision, Rol } from './revision.ts'
 
 export const TextoHasta = (n: number) => Texto.pipe(Schema.check(Schema.isMaxLength(n)))
@@ -72,6 +73,12 @@ export const Diagnostico = Schema.Struct({
   version_vulkan: Schema.NullOr(TextoHasta(largo.diagnostico.version_vulkan)),
   gpu_pci_id: Schema.NullOr(PciId),
   biblioteca_steam: Schema.NullOr(BibliotecaSteam),
+  // NULL: not captured (old detectors, Windows, the manual form).
+  nivel_x86: Schema.NullOr(NivelX86),
+  arranque_seguro: Schema.NullOr(ArranqueSeguro),
+  tpm: Schema.NullOr(Tpm),
+  zram_mb: Schema.NullOr(NoNegativo),
+  swap_mb: Schema.NullOr(NoNegativo),
 })
 export type Diagnostico = typeof Diagnostico.Type
 

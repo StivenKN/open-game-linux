@@ -105,6 +105,16 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       expect(yield* f.sql`SELECT count(*)::int AS n FROM distribucion WHERE nombre = 'Arch Linux'`).toEqual([{ n: 1 }])
     })))
 
+  it.effect('guarda los hechos del sistema y miDiagnostico los devuelve; un payload sin ellos queda en null', conBase((f) =>
+    Effect.gen(function* () {
+      const hechos = { nivel_x86: 'v3', arranque_seguro: 'activo', tpm: '2.0', zram_mb: 8192, swap_mb: 0 }
+      const con = yield* guardar({ equipo: nuevo('Con hechos'), entrada: payload(hechos) }).pipe(como(f.autor))
+      const sin = yield* guardar({ equipo: nuevo('Sin hechos'), entrada: payload() }).pipe(como(f.autor))
+      const leer = (id: number) => Effect.map(miDiagnostico(Schema.decodeSync(DiagnosticoId)(id)).pipe(como(f.autor)), (d) => d.captura)
+      expect(yield* leer(con.id)).toMatchObject(hechos)
+      expect(yield* leer(sin.id)).toMatchObject({ nivel_x86: null, arranque_seguro: null, tpm: null, zram_mb: null, swap_mb: null })
+    })))
+
   it.effect('sin sesión o con un payload ilegible no guarda nada', conBase((f) =>
     Effect.gen(function* () {
       const antes = yield* contar(f, 'diagnostico')
