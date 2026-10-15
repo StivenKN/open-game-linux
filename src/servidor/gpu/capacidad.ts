@@ -4,8 +4,12 @@ import type { Diagnostico } from '../../dominio/tablas.ts'
 import { tablaGpu } from './familias.generado.ts'
 import { decodificarTramos } from './tramos.ts'
 
-/** The diagnostico columns the projection reads. */
-export type ColumnasEquipo = Pick<Diagnostico, 'sistema' | 'ram_mb' | 'vram_mb' | 'soporte_vulkan' | 'version_vulkan' | 'controlador' | 'gpu_pci_id'>
+/**
+ * The diagnostico columns the projection reads: a stored row or a capture. Only a Linux one has driver and
+ * Vulkan fields to read; a Windows row may still hold the Vulkan older versions stored, which is never read.
+ */
+export type ColumnasEquipo = Pick<Diagnostico, 'ram_mb' | 'vram_mb' | 'gpu_pci_id'> &
+  ({ readonly sistema: 'Linux' } & Pick<Diagnostico, 'soporte_vulkan' | 'version_vulkan' | 'controlador'> | { readonly sistema: 'Windows' })
 
 const v = (mayor: number, menor: number): VersionVulkan => ({ texto: `${mayor}.${menor}`, partes: [mayor, menor] })
 

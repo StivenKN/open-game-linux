@@ -47,10 +47,6 @@ describe('parsearPayload', () => {
       gpu_pci_id: '10de:1380',
       ram_mb: 8192,
       vram_mb: 2048,
-      controlador: null,
-      version_controlador: null,
-      soporte_vulkan: 'desconocido',
-      version_vulkan: null,
       biblioteca_steam: [
         { app_id: 9999990, nombre: 'Café "Noir": Édition™' },
         { app_id: 271590, nombre: 'Grand Theft Auto V' },
@@ -60,9 +56,9 @@ describe('parsearPayload', () => {
     })
   })
 
-  it('ignores Vulkan keys a Windows payload sends', () => {
+  it('drops the Vulkan and driver keys a Windows payload sends', () => {
     const conVulkan = { ...JSON.parse(windowsJson), soporte_vulkan: 'si', version_vulkan: '1.3.280', controlador: 'nvlddmkm' }
-    expect(captura(JSON.stringify(conVulkan))).toMatchObject({ soporte_vulkan: 'desconocido', version_vulkan: null, controlador: null })
+    expect(captura(JSON.stringify(conVulkan))).toEqual(captura(windowsJson))
   })
 
   it('normalizes the library: tools, bad ids and repeats out, order kept, names trimmed and cut', () => {

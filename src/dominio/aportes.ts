@@ -96,27 +96,35 @@ const camposCaptura = {
   gpu_modelo: Diagnostico.fields.gpu_modelo,
   ram_mb: Diagnostico.fields.ram_mb,
   vram_mb: Diagnostico.fields.vram_mb,
+}
+
+// The Linux kernel driver and Vulkan only exist on a Linux capture: on Windows they say nothing about Linux.
+const camposLinux = {
+  sistema: Schema.Literal('Linux'),
+  distribucion: Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version }),
   controlador: TextoOpcionalHasta(largo.diagnostico.controlador),
   version_controlador: TextoOpcionalHasta(largo.diagnostico.version_controlador),
   soporte_vulkan: SoporteVulkan,
   version_vulkan: TextoOpcionalHasta(largo.diagnostico.version_vulkan),
-  gpu_pci_id: Diagnostico.fields.gpu_pci_id,
-  biblioteca_steam: Diagnostico.fields.biblioteca_steam,
 }
 
+// Only a detector reads these, so a manual capture has neither.
+const camposDetectados = { gpu_pci_id: Diagnostico.fields.gpu_pci_id, biblioteca_steam: Diagnostico.fields.biblioteca_steam }
+
+const vulkanConSoporte = Schema.makeFilter((c: { readonly soporte_vulkan: SoporteVulkan; readonly version_vulkan: string | null }) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
+  message: 'Solo hay versión de Vulkan si hay soporte.',
+})
+
 export const Captura = Schema.Union([
-  Schema.Struct({
-    ...camposCaptura,
-    sistema: Schema.Literal('Linux'),
-    distribucion: Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version }),
-  }),
-  Schema.Struct({ ...camposCaptura, sistema: Schema.Literal('Windows') }),
-]).check(
-  Schema.makeFilter((c) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
-    message: 'Solo hay versión de Vulkan si hay soporte.',
-  }),
-)
+  Schema.Struct({ ...camposCaptura, ...camposDetectados, ...camposLinux }).check(vulkanConSoporte),
+  Schema.Struct({ ...camposCaptura, ...camposDetectados, sistema: Schema.Literal('Windows') }),
+])
 export type Captura = typeof Captura.Type
+
+export const CapturaManual = Schema.Union([
+  Schema.Struct({ ...camposCaptura, ...camposLinux }).check(vulkanConSoporte),
+  Schema.Struct({ ...camposCaptura, sistema: Schema.Literal('Windows') }),
+])
 
 // Bounds what the parser reads. A full library is about 30 characters of JSON per game around an ASCII name of at
 // most largo.biblioteca.nombre; base64url adds 4/3 and the rest of the payload fits in a further 1.5, so ×2 overall
@@ -125,7 +133,7 @@ const MAX_TEXTO_DETECTOR = MAX_JUEGOS_BIBLIOTECA * (30 + largo.biblioteca.nombre
 
 export const EntradaDiagnostico = Schema.Union([
   Schema.TaggedStruct('detector', { texto: Schema.String.pipe(Schema.check(Schema.isMaxLength(MAX_TEXTO_DETECTOR))) }),
-  Schema.TaggedStruct('manual', { captura: Captura }),
+  Schema.TaggedStruct('manual', { captura: CapturaManual }),
 ])
 export type EntradaDiagnostico = typeof EntradaDiagnostico.Type
 

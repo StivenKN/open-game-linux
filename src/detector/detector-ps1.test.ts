@@ -118,10 +118,6 @@ describe.skipIf(motor === null)(`opengame-detect.ps1 under ${motor ?? `pwsh (ski
       gpu_pci_id: '10de:1380',
       ram_mb: 8192,
       vram_mb: 2048,
-      controlador: null,
-      version_controlador: null,
-      soporte_vulkan: 'desconocido',
-      version_vulkan: null,
       biblioteca_steam: bibliotecaNuevo.filter((j) => j.nombre !== 'Proton 9.0'),
     })
     expect({ ...captura(powershell({ OPENGAME_DRY: '1' })), capturado_en: leida.capturado_en }).toEqual(leida)
@@ -151,10 +147,6 @@ describe.skipIf(motor === null)(`opengame-detect.ps1 under ${motor ?? `pwsh (ski
       gpu_pci_id: '10de:1380',
       ram_mb: 8078,
       vram_mb: null,
-      controlador: null,
-      version_controlador: null,
-      soporte_vulkan: 'desconocido',
-      version_vulkan: null,
       biblioteca_steam: null,
     })
   })

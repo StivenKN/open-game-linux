@@ -74,7 +74,7 @@ export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInv
             soporte_vulkan: p.soporte_vulkan,
             version_vulkan: p.soporte_vulkan === 'si' ? p.version_vulkan : null,
           }
-        : { ...comun, sistema: 'Windows', controlador: null, version_controlador: null, soporte_vulkan: 'desconocido', version_vulkan: null }
+        : { ...comun, sistema: 'Windows' }
     return yield* cabeEnColumnas(yield* Result.mapError(Schema.decodeResult(Captura)(candidato), campoInvalido))
   })
 
@@ -97,16 +97,16 @@ const bibliotecaDe = (juegos: ReadonlyArray<typeof JuegoEnviado.Type>): typeof B
 }
 
 export const capturaDe = (entrada: EntradaDiagnostico): Effect.Effect<Captura, PayloadInvalido> =>
-  Effect.fromResult(entrada._tag === 'manual' ? cabeEnColumnas(entrada.captura) : parsearPayload(entrada.texto))
+  Effect.fromResult(entrada._tag === 'manual' ? cabeEnColumnas({ ...entrada.captura, gpu_pci_id: null, biblioteca_steam: null }) : parsearPayload(entrada.texto))
 
 const Columnas = Schema.Struct({
   version_sistema: Diagnostico.fields.version_sistema,
   arquitectura: Diagnostico.fields.arquitectura,
   cpu_modelo: Diagnostico.fields.cpu_modelo,
   gpu_modelo: Diagnostico.fields.gpu_modelo,
-  controlador: Diagnostico.fields.controlador,
-  version_controlador: Diagnostico.fields.version_controlador,
-  version_vulkan: Diagnostico.fields.version_vulkan,
+  controlador: Schema.optionalKey(Diagnostico.fields.controlador),
+  version_controlador: Schema.optionalKey(Diagnostico.fields.version_controlador),
+  version_vulkan: Schema.optionalKey(Diagnostico.fields.version_vulkan),
   distribucion: Schema.optionalKey(Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version })),
 })
 

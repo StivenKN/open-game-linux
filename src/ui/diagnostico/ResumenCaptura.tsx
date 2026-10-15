@@ -4,18 +4,17 @@ import { memoria, momento } from '../formato.ts'
 import { sistema, soporteVulkan } from '../vocabulario.ts'
 
 export function ResumenCaptura({ captura }: { captura: Captura }) {
-  const vulkan =
-    captura.soporte_vulkan === 'si' && captura.version_vulkan !== null
-      ? `Vulkan ${captura.version_vulkan}`
-      : soporteVulkan[captura.soporte_vulkan]
   const datos = [
     ['Sistema', captura.sistema === 'Linux' ? `${captura.distribucion.nombre} ${captura.distribucion.version}` : sistema.Windows, `${captura.version_sistema} · ${captura.arquitectura}`],
     ['Procesador', captura.cpu_modelo, null],
     ['Tarjeta gráfica', captura.gpu_modelo, captura.vram_mb === null ? 'VRAM desconocida' : `${memoria(captura.vram_mb)} de VRAM`],
     ['Memoria RAM', memoria(captura.ram_mb), null],
-    // Vulkan on Windows says nothing about Linux; the GPU card shows the projection instead.
-    ...(captura.sistema === 'Linux' ? ([['Vulkan', vulkan, null]] as const) : []),
-    ['Controlador', captura.controlador ?? 'Desconocido', captura.version_controlador],
+    ...(captura.sistema === 'Linux'
+      ? ([
+          ['Vulkan', captura.soporte_vulkan === 'si' && captura.version_vulkan !== null ? `Vulkan ${captura.version_vulkan}` : soporteVulkan[captura.soporte_vulkan], null],
+          ['Controlador', captura.controlador ?? 'Desconocido', captura.version_controlador],
+        ] as const)
+      : []),
   ] as const
   return (
     <section className="pila" aria-label="Tu equipo">

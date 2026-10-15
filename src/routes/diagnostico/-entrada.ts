@@ -38,12 +38,12 @@ export const FormularioManual = Schema.Union([
 ])
 
 export const entradaManual = (f: typeof FormularioManual.Encoded): Entrada => {
-  const captura =
-    f.sistema === 'Linux'
-      ? { ...f, version_vulkan: f.soporte_vulkan === 'si' ? f.version_vulkan : null }
-      : { ...f, soporte_vulkan: 'desconocido' as const, version_vulkan: null }
+  const capturado_en = new Date().toISOString()
   return {
     _tag: 'manual',
-    captura: { ...captura, capturado_en: new Date().toISOString(), controlador: null, version_controlador: null, gpu_pci_id: null, biblioteca_steam: null },
+    captura:
+      f.sistema === 'Linux'
+        ? { ...f, capturado_en, version_vulkan: f.soporte_vulkan === 'si' ? f.version_vulkan : null, controlador: null, version_controlador: null }
+        : { ...f, capturado_en },
   }
 }

@@ -153,16 +153,20 @@ const capturaGuardada = (d: typeof DiagnosticoGuardado.Type): Effect.Effect<Capt
     gpu_modelo: d.gpu_modelo,
     ram_mb: d.ram_mb,
     vram_mb: d.vram_mb,
-    controlador: d.controlador,
-    version_controlador: d.version_controlador,
-    soporte_vulkan: d.soporte_vulkan,
-    version_vulkan: d.version_vulkan,
     gpu_pci_id: d.gpu_pci_id,
     biblioteca_steam: d.biblioteca_steam,
   }
   if (d.sistema === 'Windows') return Effect.succeed({ ...comunes, sistema: 'Windows' })
   if (d.distribucion === null) return Effect.die(`diagnostico ${d.id}: Linux sin distribucion`)
-  return Effect.succeed({ ...comunes, sistema: 'Linux', distribucion: d.distribucion })
+  return Effect.succeed({
+    ...comunes,
+    sistema: 'Linux',
+    distribucion: d.distribucion,
+    controlador: d.controlador,
+    version_controlador: d.version_controlador,
+    soporte_vulkan: d.soporte_vulkan,
+    version_vulkan: d.version_vulkan,
+  })
 }
 
 export const miDiagnostico = (id: DiagnosticoId) =>

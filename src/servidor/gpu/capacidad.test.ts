@@ -2,9 +2,13 @@ import { describe, expect, it } from '@effect/vitest'
 import { Schema } from 'effect'
 import { versionVulkan } from '../../dominio/evaluacion.ts'
 import { PciId } from '../../dominio/gpu.ts'
-import { type ColumnasEquipo, equipoEnLinux } from './capacidad.ts'
+import type { Diagnostico } from '../../dominio/tablas.ts'
+import { equipoEnLinux } from './capacidad.ts'
 
-const windows = (pci: string | null): ColumnasEquipo => ({
+// A stored row, which has every column whatever its sistema (older Windows rows stored their Vulkan).
+type Fila = Pick<Diagnostico, 'sistema' | 'ram_mb' | 'vram_mb' | 'soporte_vulkan' | 'version_vulkan' | 'controlador' | 'gpu_pci_id'>
+
+const windows = (pci: string | null): Fila => ({
   sistema: 'Windows',
   ram_mb: 8192,
   vram_mb: 2048,
@@ -13,7 +17,7 @@ const windows = (pci: string | null): ColumnasEquipo => ({
   controlador: null,
   gpu_pci_id: pci === null ? null : Schema.decodeSync(PciId)(pci),
 })
-const linux = (pci: string | null, cambios: Partial<ColumnasEquipo> = {}): ColumnasEquipo => ({ ...windows(pci), sistema: 'Linux', ...cambios })
+const linux = (pci: string | null, cambios: Partial<Fila> = {}): Fila => ({ ...windows(pci), sistema: 'Linux', ...cambios })
 
 const v = (texto: string) => {
   const version = versionVulkan(texto)
