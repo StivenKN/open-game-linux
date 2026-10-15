@@ -117,6 +117,7 @@ describe('Captura from the manual form', () => {
     soporte_vulkan: 'desconocido',
     version_vulkan: '',
     gpu_pci_id: 'null',
+    biblioteca_steam: 'null',
   }
 
   it('a Windows capture has no distribution', () => {

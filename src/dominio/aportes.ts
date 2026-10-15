@@ -98,6 +98,7 @@ const camposCaptura = {
   soporte_vulkan: SoporteVulkan,
   version_vulkan: TextoOpcionalHasta(largo.diagnostico.version_vulkan),
   gpu_pci_id: Diagnostico.fields.gpu_pci_id,
+  biblioteca_steam: Diagnostico.fields.biblioteca_steam,
 }
 
 export const Captura = Schema.Union([
@@ -115,7 +116,8 @@ export const Captura = Schema.Union([
 export type Captura = typeof Captura.Type
 
 export const EntradaDiagnostico = Schema.Union([
-  Schema.TaggedStruct('detector', { texto: Schema.String }),
+  // Bounds what the parser reads: a full library of 1000 games with 120-character names is ~200 000 in base64url.
+  Schema.TaggedStruct('detector', { texto: Schema.String.pipe(Schema.check(Schema.isMaxLength(300_000))) }),
   Schema.TaggedStruct('manual', { captura: Captura }),
 ])
 export type EntradaDiagnostico = typeof EntradaDiagnostico.Type

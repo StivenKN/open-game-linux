@@ -44,6 +44,7 @@ export const entradaManual = (f: typeof FormularioManual.Encoded): Entrada => ({
     controlador: null,
     version_controlador: null,
     gpu_pci_id: null,
+    biblioteca_steam: null,
     version_vulkan: f.soporte_vulkan === 'si' ? f.version_vulkan : null,
   },
 })

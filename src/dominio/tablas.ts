@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import { BibliotecaSteam } from './biblioteca.ts'
 import { Sistema, SoporteVulkan } from './evaluacion.ts'
 import { PciId } from './gpu.ts'
 import { EstadoGuia, TipoGuia } from './guias.ts'
@@ -100,6 +101,7 @@ export const Diagnostico = Schema.Struct({
   soporte_vulkan: SoporteVulkan,
   version_vulkan: Schema.NullOr(TextoHasta(largo.diagnostico.version_vulkan)),
   gpu_pci_id: Schema.NullOr(PciId),
+  biblioteca_steam: Schema.NullOr(BibliotecaSteam),
 })
 export type Diagnostico = typeof Diagnostico.Type
 

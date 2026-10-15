@@ -118,6 +118,7 @@ const capturaGuardada = (d: typeof DiagnosticoGuardado.Type): Effect.Effect<Capt
     soporte_vulkan: d.soporte_vulkan,
     version_vulkan: d.version_vulkan,
     gpu_pci_id: d.gpu_pci_id,
+    biblioteca_steam: d.biblioteca_steam,
   }
   if (d.sistema === 'Windows') return Effect.succeed({ ...comunes, sistema: 'Windows' })
   if (d.distribucion === null) return Effect.die(`diagnostico ${d.id}: Linux sin distribucion`)

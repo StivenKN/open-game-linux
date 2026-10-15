@@ -5,6 +5,7 @@ import { PayloadInvalido } from '../../dominio/fallos.ts'
 import { parsearPayload } from './payload.ts'
 
 const outJson = readFileSync(new URL('../../../prototypes/detector/out.json', import.meta.url), 'utf8')
+const windowsJson = readFileSync(new URL('../../../prototypes/detector/windows-out.json', import.meta.url), 'utf8')
 const prototipo = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown)))(outJson)
 const base64url = (valor: unknown) => Buffer.from(JSON.stringify(valor)).toString('base64url')
 
@@ -31,7 +32,65 @@ describe('parsearPayload', () => {
       soporte_vulkan: 'desconocido',
       version_vulkan: null,
       gpu_pci_id: null,
+      biblioteca_steam: null,
     })
+  })
+
+  it('reads the PowerShell detector output: no distro, no Linux driver, Vulkan unknown, Steam tools dropped', () => {
+    expect(captura(windowsJson)).toEqual({
+      capturado_en: new Date('2026-10-15T00:57:49Z'),
+      sistema: 'Windows',
+      version_sistema: 'Windows 10 Home 22H2 (19045)',
+      arquitectura: 'x86_64',
+      cpu_modelo: 'Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz',
+      gpu_modelo: 'NVIDIA GeForce GTX 750 Ti',
+      gpu_pci_id: '10de:1380',
+      ram_mb: 8192,
+      vram_mb: 2048,
+      controlador: null,
+      version_controlador: null,
+      soporte_vulkan: 'desconocido',
+      version_vulkan: null,
+      biblioteca_steam: [
+        { app_id: 9999990, nombre: 'Café "Noir": Édition™' },
+        { app_id: 271590, nombre: 'Grand Theft Auto V' },
+        { app_id: 227300, nombre: 'Euro Truck Simulator 2' },
+        { app_id: 292030, nombre: 'The Witcher 3: Wild Hunt' },
+      ],
+    })
+  })
+
+  it('ignores Vulkan keys a Windows payload sends', () => {
+    const conVulkan = { ...JSON.parse(windowsJson), soporte_vulkan: 'si', version_vulkan: '1.3.280', controlador: 'nvlddmkm' }
+    expect(captura(JSON.stringify(conVulkan))).toMatchObject({ soporte_vulkan: 'desconocido', version_vulkan: null, controlador: null })
+  })
+
+  it('normalizes the library: tools, bad ids and repeats out, order kept, names trimmed and cut', () => {
+    const biblioteca_steam = [
+      { app_id: 271590, nombre: '  Grand Theft Auto V ' },
+      { app_id: 1493710, nombre: 'Proton Experimental' },
+      { app_id: 1628350, nombre: 'Steam Linux Runtime 3.0 (sniper)' },
+      { app_id: 228980, nombre: 'Steamworks Common Redistributables' },
+      { app_id: 0, nombre: 'Cero' },
+      { app_id: -5, nombre: 'Negativo' },
+      { app_id: 1.5, nombre: 'Decimal' },
+      { app_id: 730, nombre: '   ' },
+      { app_id: 271590, nombre: 'GTA V repetido' },
+      { app_id: 227300, nombre: 'N'.repeat(130) },
+      { app_id: 1245620, nombre: 'ProtonDB Fan Game' },
+    ]
+    expect(captura(JSON.stringify({ ...prototipo, biblioteca_steam })).biblioteca_steam).toEqual([
+      { app_id: 271590, nombre: 'Grand Theft Auto V' },
+      { app_id: 227300, nombre: 'N'.repeat(120) },
+      { app_id: 1245620, nombre: 'ProtonDB Fan Game' },
+    ])
+  })
+
+  it('keeps the first 1000 games of a larger library and an empty library as empty', () => {
+    const biblioteca_steam = Array.from({ length: 1200 }, (_, i) => ({ app_id: i + 1, nombre: `Juego ${i + 1}` }))
+    const leida = captura(JSON.stringify({ ...prototipo, biblioteca_steam })).biblioteca_steam
+    expect([leida?.length, leida?.[0], leida?.[999]]).toEqual([1000, { app_id: 1, nombre: 'Juego 1' }, { app_id: 1000, nombre: 'Juego 1000' }])
+    expect(captura(JSON.stringify({ ...prototipo, biblioteca_steam: [] })).biblioteca_steam).toEqual([])
   })
 
   it('keeps the Vulkan version when support is si', () => {
@@ -84,7 +143,8 @@ describe('parsearPayload', () => {
     [{ ram_mb: 'mucha' }, 'ram_mb'],
     [{ cpu_modelo: '   ' }, 'cpu_modelo'],
     [{ distribucion: { nombre: '', version: '24.04' } }, 'distribucion.nombre'],
-    [{ sistema: 'Windows' }, 'sistema'],
+    [{ sistema: 'Mac' }, 'sistema'],
+    [{ biblioteca_steam: [{ app_id: '271590', nombre: 'GTA V' }] }, 'biblioteca_steam.0.app_id'],
     [{ gpu_modelo: 'G'.repeat(161) }, 'gpu_modelo'],
     [{ distribucion: { nombre: 'D'.repeat(81), version: '1' } }, 'distribucion.nombre'],
   ])('a bad field %o is campo_invalido at %s', (cambio, campo) => {

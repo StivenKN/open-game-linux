@@ -1,29 +1,45 @@
 import { Effect, Option, Result, Schema, SchemaIssue } from 'effect'
 import { Captura, type EntradaDiagnostico } from '../../dominio/aportes.ts'
 import { PayloadInvalido } from '../../dominio/fallos.ts'
-import { SoporteVulkan } from '../../dominio/evaluacion.ts'
+import { type BibliotecaSteam, esHerramientaSteam, MAX_JUEGOS_BIBLIOTECA } from '../../dominio/biblioteca.ts'
+import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
 import { PciId } from '../../dominio/gpu.ts'
 import { Diagnostico, Distribucion } from '../../dominio/tablas.ts'
 
 export const VERSION_ESQUEMA = 1
 
-const PayloadV1 = Schema.Struct({
+// Detectors send names and ids as found on disk; `bibliotecaDe` turns them into a BibliotecaSteam.
+const JuegoEnviado = Schema.Struct({ app_id: Schema.Number, nombre: Schema.String })
+
+const comunes = {
   version_esquema: Schema.Literal(VERSION_ESQUEMA),
   capturado_en: Schema.String,
-  sistema: Schema.Literal('Linux'),
   version_sistema: Schema.String,
-  distribucion: Schema.Struct({ nombre: Schema.String, version: Schema.NullOr(Schema.String) }),
   arquitectura: Schema.String,
   cpu_modelo: Schema.NullOr(Schema.String), // ARM kernels may not name the CPU
   gpu_modelo: Schema.NullOr(Schema.String),
   gpu_pci_id: Schema.optionalKey(Schema.Unknown),
   ram_mb: Schema.Int,
   vram_mb: Schema.NullOr(Schema.Int),
-  controlador: Schema.NullOr(Schema.String),
-  version_controlador: Schema.NullOr(Schema.String),
-  soporte_vulkan: SoporteVulkan,
-  version_vulkan: Schema.NullOr(Schema.String),
-})
+  biblioteca_steam: Schema.optionalKey(Schema.NullOr(Schema.Array(JuegoEnviado))),
+}
+
+/** One member per system, picked by a pre-check so a bad field reports that member's issue only. */
+const PayloadV1 = {
+  Linux: Schema.Struct({
+    ...comunes,
+    sistema: Schema.Literal('Linux'),
+    distribucion: Schema.Struct({ nombre: Schema.String, version: Schema.NullOr(Schema.String) }),
+    controlador: Schema.NullOr(Schema.String),
+    version_controlador: Schema.NullOr(Schema.String),
+    soporte_vulkan: SoporteVulkan,
+    version_vulkan: Schema.NullOr(Schema.String),
+  }),
+  // Vulkan on Windows says nothing about Linux, and the Windows kernel driver is not the Linux one.
+  Windows: Schema.Struct({ ...comunes, sistema: Schema.Literal('Windows') }),
+} satisfies Record<Sistema, Schema.Top>
+
+const esSistema = Schema.is(Sistema)
 
 export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInvalido> =>
   Result.gen(function* () {
@@ -32,26 +48,50 @@ export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInv
     if (typeof valor !== 'object' || valor === null || Array.isArray(valor)) return yield* Result.fail(ilegible)
     if (!('version_esquema' in valor) || valor.version_esquema !== VERSION_ESQUEMA)
       return yield* Result.fail(new PayloadInvalido({ motivo: 'version_esquema', campo: 'version_esquema' }))
-    const p = yield* Result.mapError(Schema.decodeUnknownResult(PayloadV1)(valor), campoInvalido)
+    if (!('sistema' in valor) || !esSistema(valor.sistema)) return yield* Result.fail(new PayloadInvalido({ motivo: 'campo_invalido', campo: 'sistema' }))
+    const p = yield* Result.mapError(Schema.decodeUnknownResult(PayloadV1[valor.sistema])(valor), campoInvalido)
     const pci = pciId(p.gpu_pci_id)
-    const candidato: typeof Captura.Encoded = {
+    const comun = {
       capturado_en: p.capturado_en,
-      sistema: p.sistema,
       version_sistema: p.version_sistema,
-      distribucion: { nombre: p.distribucion.nombre, version: versionDistribucion(p.distribucion.version) },
       arquitectura: p.arquitectura,
       cpu_modelo: p.cpu_modelo ?? 'CPU no detectada',
       gpu_modelo: p.gpu_modelo ?? (pci === null ? 'GPU no detectada' : etiquetaPci(pci)),
       gpu_pci_id: pci,
       ram_mb: p.ram_mb,
       vram_mb: p.vram_mb,
-      controlador: p.controlador,
-      version_controlador: p.version_controlador,
-      soporte_vulkan: p.soporte_vulkan,
-      version_vulkan: p.soporte_vulkan === 'si' ? p.version_vulkan : null,
+      biblioteca_steam: p.biblioteca_steam === undefined || p.biblioteca_steam === null ? null : bibliotecaDe(p.biblioteca_steam),
     }
+    const candidato: typeof Captura.Encoded =
+      p.sistema === 'Linux'
+        ? {
+            ...comun,
+            sistema: 'Linux',
+            distribucion: { nombre: p.distribucion.nombre, version: versionDistribucion(p.distribucion.version) },
+            controlador: p.controlador,
+            version_controlador: p.version_controlador,
+            soporte_vulkan: p.soporte_vulkan,
+            version_vulkan: p.soporte_vulkan === 'si' ? p.version_vulkan : null,
+          }
+        : { ...comun, sistema: 'Windows', controlador: null, version_controlador: null, soporte_vulkan: 'desconocido', version_vulkan: null }
     return yield* cabeEnColumnas(yield* Result.mapError(Schema.decodeResult(Captura)(candidato), campoInvalido))
   })
+
+/**
+ * Steam tools out, then games with a usable app id, the first of each id, in the detector's order
+ * (most recently played first), cut to MAX_JUEGOS_BIBLIOTECA. A malformed entry is dropped, never a failure.
+ */
+const bibliotecaDe = (juegos: ReadonlyArray<typeof JuegoEnviado.Type>): typeof BibliotecaSteam.Encoded => {
+  const vistos = new Set<number>()
+  return juegos
+    .flatMap(({ app_id, nombre }) => {
+      const limpio = nombre.trim().slice(0, 120).replace(/[\uD800-\uDBFF]$/, '').trim()
+      if (limpio === '' || esHerramientaSteam(limpio) || !Number.isSafeInteger(app_id) || app_id <= 0 || vistos.has(app_id)) return []
+      vistos.add(app_id)
+      return [{ app_id, nombre: limpio }]
+    })
+    .slice(0, MAX_JUEGOS_BIBLIOTECA)
+}
 
 export const capturaDe = (entrada: EntradaDiagnostico): Effect.Effect<Captura, PayloadInvalido> =>
   Effect.fromResult(entrada._tag === 'manual' ? cabeEnColumnas(entrada.captura) : parsearPayload(entrada.texto))

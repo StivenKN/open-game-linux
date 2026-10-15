@@ -1,6 +1,7 @@
 import { Effect, Option, Record, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { GuardarDiagnostico, NuevaSolucion, NuevoReporte } from '../src/dominio/aportes.ts'
+import { LANZADOR_STEAM } from '../src/dominio/biblioteca.ts'
 import type { TipoGuia } from '../src/dominio/guias.ts'
 import { UsuarioId } from '../src/dominio/ids.ts'
 import { exigeFallo, type FamiliaCapa, type Resultado } from '../src/dominio/literales.ts'
@@ -24,7 +25,7 @@ type Cuenta = keyof typeof cuentas
 const correoDe = (alias: Cuenta) => `${alias}@${dominioDemo}`
 
 const lanzadores = {
-  steam: { nombre: 'Steam', url_oficial: 'https://store.steampowered.com' },
+  steam: { nombre: LANZADOR_STEAM, url_oficial: 'https://store.steampowered.com' },
   epic: { nombre: 'Epic Games Store', url_oficial: 'https://store.epicgames.com' },
   gog: { nombre: 'GOG', url_oficial: 'https://www.gog.com' },
   riot: { nombre: 'Riot Client', url_oficial: 'https://www.riotgames.com' },
@@ -522,7 +523,7 @@ const programa = Effect.gen(function* () {
           equipo: { _tag: 'nuevo', alias: eq.alias },
           entrada: {
             _tag: 'manual',
-            captura: { ...eq.diagnostico, sistema: 'Linux', distribucion: { nombre, version }, arquitectura: 'x86_64', soporte_vulkan: 'si' },
+            captura: { ...eq.diagnostico, sistema: 'Linux', distribucion: { nombre, version }, arquitectura: 'x86_64', soporte_vulkan: 'si', biblioteca_steam: null },
           },
         })
         const { id, nuevo } = yield* como(eq.dueno, registrarDiagnostico(guardar))
