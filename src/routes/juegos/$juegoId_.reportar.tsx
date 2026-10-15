@@ -6,6 +6,7 @@ import { discrepancias, NuevoReporte } from '../../dominio/aportes.ts'
 import { type Codificado, discrepanciasPerfil, type PerfilNoComparable, type ReglaIncumplida } from '../../dominio/fallos.ts'
 import { FamiliaCapa, exigeFallo, Resultado } from '../../dominio/literales.ts'
 import { JuegoId, PerfilId, type ReporteId } from '../../dominio/ids.ts'
+import { informeProtonPosible } from '../../dominio/upstream.ts'
 import { opcionesReporteFn, registrarReporteFn } from '../../fns/aportes.ts'
 import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
 import { momento } from '../../ui/formato.ts'
@@ -31,10 +32,11 @@ export const Route = createFileRoute('/juegos/$juegoId_/reportar')({
 })
 
 type Opciones = Awaited<ReturnType<typeof opcionesReporteFn>>
+type Enviado = { readonly id: ReporteId; readonly conFallos: boolean; readonly proton: boolean }
 
 function Reportar() {
   const opciones = Route.useLoaderData()
-  const [enviado, setEnviado] = useState<{ readonly id: ReporteId; readonly conFallos: boolean } | null>(null)
+  const [enviado, setEnviado] = useState<Enviado | null>(null)
   const { juego } = opciones
 
   return (
@@ -54,6 +56,11 @@ function Reportar() {
             {enviado.conFallos && (
               <Link to="/reportes/$reporteId/solucion" params={{ reporteId: enviado.id }}>
                 ¿Conoces una solución? Propónla
+              </Link>
+            )}
+            {enviado.proton && (
+              <Link to="/reportes/$reporteId/proton" params={{ reporteId: enviado.id }}>
+                Prepara el informe para Valve
               </Link>
             )}
             <button type="button" className="boton-secundario" onClick={() => setEnviado(null)}>
@@ -101,7 +108,7 @@ const nombres = (o: Opciones) => {
   }
 }
 
-function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (enviado: { readonly id: ReporteId; readonly conFallos: boolean }) => void }) {
+function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (enviado: Enviado) => void }) {
   const { diagnosticos, ediciones, capas, perfiles, tiposFallo, perfilElegido } = opciones
   const elegido = perfiles.find((p) => p.id === perfilElegido)
 
@@ -109,6 +116,7 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
   const [edicionId, setEdicionId] = useState(elegido?.edicion_id ?? ediciones.at(0)?.id)
   const [tipoCapa, setTipoCapa] = useState<'existente' | 'nueva'>('existente')
   const [capaId, setCapaId] = useState(elegido?.version_capa_id ?? capas.at(0)?.id)
+  const [capaNueva, setCapaNueva] = useState<{ readonly familia: FamiliaCapa; readonly variante: string }>({ familia: 'Wine', variante: '' })
   const [versionJuego, setVersionJuego] = useState(elegido?.version_juego_objetivo ?? '')
   const [perfilId, setPerfilId] = useState(elegido === undefined ? nulo : String(elegido.id))
   const [resultado, setResultado] = useState<Resultado>('funciona')
@@ -139,7 +147,12 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
         }
       }
     },
-    alCompletar: (v) => alEnviar({ id: v.id, conFallos: fallos.length > 0 }),
+    alCompletar: (v) => {
+      const capa = tipoCapa === 'existente' ? capas.find((c) => c.id === capaId) : capaNueva
+      const lanzador = ediciones.find((e) => e.id === edicionId)?.lanzador
+      const proton = capa !== undefined && lanzador !== undefined && informeProtonPosible({ lanzador, familia: capa.familia, variante: capa.variante.trim(), resultado })
+      alEnviar({ id: v.id, conFallos: fallos.length > 0, proton })
+    },
   })
 
   const agregarFallo = () => {
@@ -196,14 +209,23 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
         ) : (
           <div className="fila campos-en-linea">
             <Campo errores={r.errores} nombre="version_capa[familia]" etiqueta="Familia">
-              <select {...campo(r.errores, 'version_capa[familia]')}>
+              <select
+                {...campo(r.errores, 'version_capa[familia]')}
+                value={capaNueva.familia}
+                onChange={(e) => setCapaNueva({ ...capaNueva, familia: FamiliaCapa.literals.find((f) => f === e.currentTarget.value) ?? capaNueva.familia })}
+              >
                 {FamiliaCapa.literals.map((f) => (
                   <option key={f}>{f}</option>
                 ))}
               </select>
             </Campo>
             <Campo errores={r.errores} nombre="version_capa[variante]" etiqueta="Variante">
-              <input {...campo(r.errores, 'version_capa[variante]')} placeholder="GE" />
+              <input
+                {...campo(r.errores, 'version_capa[variante]')}
+                value={capaNueva.variante}
+                onChange={(e) => setCapaNueva({ ...capaNueva, variante: e.currentTarget.value })}
+                placeholder="GE"
+              />
             </Campo>
             <Campo errores={r.errores} nombre="version_capa[version]" etiqueta="Versión exacta">
               <input {...campo(r.errores, 'version_capa[version]')} placeholder="9-20" />

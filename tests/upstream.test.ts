@@ -1,14 +1,15 @@
 import { expect, layer } from '@effect/vitest'
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { NoAutenticado, ReglaIncumplida, SinPermiso } from '../src/dominio/fallos.ts'
-import { PerfilId, UsuarioId } from '../src/dominio/ids.ts'
+import { NoAutenticado, NoEncontrado, ReglaIncumplida, SinPermiso } from '../src/dominio/fallos.ts'
+import { PerfilId, ReporteId, UsuarioId } from '../src/dominio/ids.ts'
 import type { Rol } from '../src/dominio/revision.ts'
 import { NotaArreglo } from '../src/dominio/upstream.ts'
 import { anotarArreglo } from '../src/servidor/aportes/upstream.ts'
 import { type Usuario, Visitante } from '../src/servidor/auth.ts'
 import { catalogo } from '../src/servidor/consultas/catalogo.ts'
 import { perfil } from '../src/servidor/consultas/perfil.ts'
+import { informeProtonDe } from '../src/servidor/consultas/upstream.ts'
 import { enRollback, idDe, PgTest, restriccionDe } from './apoyo.ts'
 
 type Valor = string | number | boolean | Date | null
@@ -24,6 +25,7 @@ const escenario = Effect.gen(function* () {
   // Ids no other test file uses: bd files run in parallel, and two transactions inserting the same ids deadlock.
   const rita = yield* cuenta('up_rita', 'up_rita@opengame.test', 'revisor')
   const ana = yield* cuenta('up_ana', 'up_ana@opengame.test', 'usuario')
+  const bruno = yield* cuenta('up_bruno', 'up_bruno@opengame.test', 'usuario')
   yield* cuenta('up_demo', 'up_demo@demo.opengame.test', 'usuario')
 
   const steam = yield* insertar('lanzador', { nombre: 'Steam' })
@@ -57,10 +59,39 @@ const escenario = Effect.gen(function* () {
       }),
       PerfilId.make,
     )
+  const equipo = yield* insertar('equipo', { usuario_id: ana.id, alias: 'torre' })
+  const diagnostico = yield* insertar('diagnostico', {
+    equipo_id: equipo,
+    capturado_en: new Date('2026-09-20T18:00:00Z'),
+    sistema: 'Linux',
+    version_sistema: '6.10.6-200.fc40.x86_64',
+    distribucion_id: fedora,
+    arquitectura: 'x86_64',
+    cpu_modelo: 'AMD Ryzen 7 5700X',
+    gpu_modelo: 'AMD Radeon RX 6600',
+    ram_mb: 32768,
+    controlador: 'amdgpu',
+    version_controlador: 'Mesa 24.1.7',
+    soporte_vulkan: 'si',
+  })
+  const fallido = yield* insertar('reporte', {
+    edicion_id: edicion,
+    diagnostico_id: diagnostico,
+    version_capa_id: proton,
+    version_juego: '4.04',
+    fecha_prueba: new Date('2026-10-02T19:00:00Z'),
+    resultado: 'no_inicia',
+    observaciones: 'Pantalla negra al iniciar.',
+  })
+  const lanzadorFallo = yield* insertar('tipo_fallo', { codigo: 'lanzador', descripcion: 'El lanzador no abre.' })
+  yield* sql`INSERT INTO reporte_fallo (reporte_id, tipo_fallo_id, detalle) VALUES (${fallido}, ${lanzadorFallo}, 'El lanzador se cierra.')`
+
   return {
     sql,
     rita,
     ana,
+    bruno,
+    fallido: ReporteId.make(fallido),
     exportable: yield* nuevoPerfil(1),
     otroExportable: yield* nuevoPerfil(2),
     pendiente: yield* nuevoPerfil(3, { estado_revision: 'pendiente', revisor_id: null, revisado_en: null, motivo_revision: null, evidencia_revision: null }),
@@ -134,5 +165,21 @@ layer(PgTest)('arreglo_upstream', (it) => {
     Effect.gen(function* () {
       yield* como(e.rita)(anotarArreglo(aceptado(e.exportable)))
       expect(yield* restriccionDe(e.sql`UPDATE arreglo_upstream SET pr = 513`)).toEqual(Option.some('og_inmutable'))
+    })))
+})
+
+layer(PgTest)('informeProtonDe', (it) => {
+  it.effect('su autora recibe el informe; nadie más sabe que existe', enEscenario((e) =>
+    Effect.gen(function* () {
+      const suyo = yield* Effect.provideService(informeProtonDe(e.fallido), Visitante, Option.some(e.ana))
+      expect(suyo.informe).toMatchObject({ _tag: 'informe', titulo: 'The Witcher 3: Wild Hunt (292030)', cuerpo_en_enlace: true })
+      expect(suyo.informe._tag === 'informe' && suyo.informe.cuerpo.split('\n').slice(5, 9)).toEqual([
+        '- GPU: AMD Radeon RX 6600',
+        '- Video driver version: Mesa 24.1.7 (amdgpu)',
+        '- Kernel version: 6.10.6-200.fc40.x86_64',
+        '- Distribution: Fedora 40',
+      ])
+      expect(yield* Effect.flip(Effect.provideService(informeProtonDe(e.fallido), Visitante, Option.some(e.bruno)))).toEqual(new NoEncontrado())
+      expect(yield* Effect.flip(Effect.provideService(informeProtonDe(e.fallido), Visitante, Option.none()))).toEqual(new NoAutenticado())
     })))
 })
