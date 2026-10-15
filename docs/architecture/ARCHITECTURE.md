@@ -13,7 +13,7 @@ Section 8 of the project document is the spec. Where a wireframe contradicts it,
 
 ## Stack
 
-TanStack Start 1.168 on Vite 8 serves React 19 with SSR. Effect 4.0.2 runs the server side, and `@effect/sql-pg` talks to PostgreSQL 18. better-auth 1.7 owns sign-up, sign-in and sessions. TypeScript 7.0.2 strict, Vitest 5 with `@effect/vitest`, oxlint for `no-explicit-any` and no type assertions. The whole Effect family is pinned to 4.0.2 (spike gotcha 1).
+TanStack Start 1.169 on Vite 8 serves React 19 with SSR. Effect 4.0.2 runs the server side, and `@effect/sql-pg` talks to PostgreSQL 18. better-auth 1.7 owns sign-up, sign-in and sessions. TypeScript 7.0.2 strict, Vitest 5 with `@effect/vitest`, oxlint for `no-explicit-any` and no type assertions. The whole Effect family is pinned to 4.0.2 (spike gotcha 1).
 
 ## The core in five sentences
 

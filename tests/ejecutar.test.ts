@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
 import { isNotFound, isRedirect } from '@tanstack/react-router'
-import { requestHandler } from '@tanstack/react-start/server'
+import { createServerEntry } from '@tanstack/react-start/server'
 import { Effect, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { AprobacionBloqueada, ReglaIncumplida } from '../src/dominio/fallos.ts'
@@ -14,13 +14,15 @@ type Desenlace<A> = { readonly ok: true; readonly valor: A } | { readonly ok: fa
 const enPeticion = <A>(cookie: string | null, fn: () => Promise<A>) =>
   new Promise<Desenlace<A>>((resolver) => {
     const peticion = new Request('http://localhost:3000/_serverFn/prueba', { headers: cookie === null ? {} : { cookie } })
-    void requestHandler(async () => {
-      await fn().then(
-        (valor) => resolver({ ok: true, valor }),
-        (lanzado: unknown) => resolver({ ok: false, lanzado }),
-      )
-      return new Response(null)
-    })(peticion, {})
+    void createServerEntry({
+      fetch: async () => {
+        await fn().then(
+          (valor) => resolver({ ok: true, valor }),
+          (lanzado: unknown) => resolver({ ok: false, lanzado }),
+        )
+        return new Response(null)
+      },
+    }).fetch(peticion, {})
   })
 
 const lanzado = <A>(d: Desenlace<A>): unknown => (d.ok ? undefined : d.lanzado)
