@@ -1,6 +1,7 @@
 import { alMenos, type Sistema, type SoporteVulkan, type VersionVulkan, versionVulkan, type VulkanEquipo } from '../../dominio/evaluacion.ts'
 import { type AvisoGpu, type ControladorLinux, type EquipoEnLinux, FamiliaGpu, type PciId, type RutaD3d, type RutaLinux, VendorGpu } from '../../dominio/gpu.ts'
 import { tablaGpu } from './familias.generado.ts'
+import { decodificarTramos } from './tramos.ts'
 
 /** The diagnostico columns the projection reads. */
 export type ColumnasEquipo = {
@@ -47,10 +48,7 @@ const ids: Record<VendorGpu, Partial<Record<FamiliaGpu, string>>> = tablaGpu.ids
 const familiaPorId: ReadonlyMap<string, FamiliaGpu> = new Map(
   VendorGpu.literals.flatMap((vendor) =>
     FamiliaGpu.literals.flatMap((familia) =>
-      (ids[vendor][familia]?.split(' ') ?? []).flatMap((tramo) => {
-        const [desde = 0, hasta = desde] = tramo.split('-').map((h) => parseInt(h, 16))
-        return Array.from({ length: hasta - desde + 1 }, (_, i): [string, FamiliaGpu] => [`${vendor}:${(desde + i).toString(16).padStart(4, '0')}`, familia])
-      }),
+      decodificarTramos(ids[vendor][familia] ?? '').map((device): [string, FamiliaGpu] => [`${vendor}:${device.toString(16).padStart(4, '0')}`, familia]),
     ),
   ),
 )

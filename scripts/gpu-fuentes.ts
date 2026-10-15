@@ -2,6 +2,7 @@
 // rule for, or a source that yields fewer ids than its floor throws, so upstream drift stops the run instead
 // of shipping a wrong or empty table.
 import type { FamiliaGpu, VendorGpu } from '../src/dominio/gpu.ts'
+import { codificarTramos } from '../src/servidor/gpu/tramos.ts'
 
 export type Dispositivo = { readonly vendor: VendorGpu; readonly device: string; readonly familia: FamiliaGpu }
 
@@ -157,23 +158,6 @@ export const tablaDe = (dispositivos: ReadonlyArray<Dispositivo>): Tabla => {
     grupos.set(clave, grupo)
   }
   const tabla: Tabla = { '8086': {}, '1002': {}, '10de': {} }
-  for (const g of grupos.values()) tabla[g.vendor][g.familia] = tramos(g.numeros)
+  for (const g of grupos.values()) tabla[g.vendor][g.familia] = codificarTramos(g.numeros)
   return tabla
-}
-
-const tramos = (numeros: ReadonlyArray<number>): string => {
-  const orden = [...numeros].sort((a, b) => a - b)
-  const salida: Array<string> = []
-  let desde = orden[0] ?? 0
-  let hasta = desde
-  for (const n of [...orden.slice(1), Number.POSITIVE_INFINITY]) {
-    if (n === hasta + 1) {
-      hasta = n
-      continue
-    }
-    salida.push(desde === hasta ? hex4(desde.toString(16)) : `${hex4(desde.toString(16))}-${hex4(hasta.toString(16))}`)
-    desde = n
-    hasta = n
-  }
-  return salida.join(' ')
 }

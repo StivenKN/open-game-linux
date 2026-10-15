@@ -7,7 +7,6 @@ import type { FamiliaGpu, VendorGpu } from '../../dominio/gpu.ts'
 /** `marca` lets scripts/sin-servidor-en-cliente.ts spot this table in a browser bundle. */
 export const tablaGpu = {
   marca: 'OPENGAME_TABLA_GPU',
-  fuentes: { mesa: '2d0ec19dc8874e98860c1b1e506e18b1942e623f', linux: 'v7.2', pciids: '6b9987960d8d7e8cb87d2fcea0984e82b7e505f8' },
   ids: {
     '8086': {
       intel_gen5_o_anterior: '0042 0046 2562 2572 2582 258a 2592 2772 27a2 27ae 2972 2982 2992 29a2 29b2 29c2 29d2 2a02 2a12 2a42 2e02 2e12 2e22 2e32 2e42 2e92 3577 3582 a001 a011',

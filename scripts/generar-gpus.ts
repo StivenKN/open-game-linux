@@ -63,7 +63,6 @@ import type { FamiliaGpu, VendorGpu } from '../../dominio/gpu.ts'
 /** \`marca\` lets scripts/sin-servidor-en-cliente.ts spot this table in a browser bundle. */
 export const tablaGpu = {
   marca: 'OPENGAME_TABLA_GPU',
-  fuentes: { mesa: '${fuentes.mesa}', linux: '${fuentes.linux}', pciids: '${fuentes.pciids}' },
   ids: {
 ${bloque}
   } satisfies Record<VendorGpu, Partial<Record<FamiliaGpu, string>>>,
