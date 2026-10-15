@@ -23,9 +23,9 @@ function DiagnosticoGuardado() {
   return (
     <main className="envoltura pila">
       <p className="migas">
-        <Link to="/diagnostico">Diagnóstico</Link> / {d.equipo}
+        <Link to="/diagnostico">Diagnóstico</Link> / {d.alias}
       </p>
-      <h1>Diagnóstico de «{d.equipo}»</h1>
+      <h1>Diagnóstico de «{d.alias}»</h1>
       <p className="tenue">Solo tú ves este diagnóstico. Los reportes que publiques mostrarán su contexto técnico, no tu correo.</p>
       <ResumenCaptura captura={d.captura} />
       <h2 className="titulo-seccion">Juegos</h2>

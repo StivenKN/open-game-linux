@@ -80,8 +80,8 @@ const gta: Muestra = {
       evaluacion: {
         veredicto: 'cumple', solo_orientativa: false,
         comprobaciones: [
-          { requisito: 'ram', estado: 'cumple', exigido: '8192', detectado: '8192' },
-          { requisito: 'vulkan', estado: 'cumple', exigido: '1.1', detectado: '1.3' },
+          { requisito: 'ram', estado: 'cumple', exigido: '8192', detectado: '8192', origen: 'medido' },
+          { requisito: 'vulkan', estado: 'cumple', exigido: '1.1', detectado: '1.3', origen: 'medido' },
         ],
       },
     },
@@ -167,9 +167,9 @@ const eldenRing: Muestra = {
       evaluacion: {
         veredicto: 'no_cumple', solo_orientativa: false,
         comprobaciones: [
-          { requisito: 'ram', estado: 'no_cumple', exigido: '12288', detectado: '8192' },
-          { requisito: 'vram', estado: 'desconocido', exigido: '4096', detectado: null },
-          { requisito: 'vulkan', estado: 'cumple', exigido: '1.3', detectado: '1.3' },
+          { requisito: 'ram', estado: 'no_cumple', exigido: '12288', detectado: '8192', origen: 'medido' },
+          { requisito: 'vram', estado: 'desconocido', exigido: '4096', detectado: null, origen: 'medido' },
+          { requisito: 'vulkan', estado: 'cumple', exigido: '1.3', detectado: '1.3', origen: 'medido' },
         ],
       },
     },
@@ -205,9 +205,9 @@ const witcher: Muestra = {
       evaluacion: {
         veredicto: 'informacion_insuficiente', solo_orientativa: false,
         comprobaciones: [
-          { requisito: 'ram', estado: 'cumple', exigido: '6144', detectado: '8192' },
-          { requisito: 'vram', estado: 'desconocido', exigido: '2048', detectado: null },
-          { requisito: 'vulkan', estado: 'cumple', exigido: '1.1', detectado: '1.3' },
+          { requisito: 'ram', estado: 'cumple', exigido: '6144', detectado: '8192', origen: 'medido' },
+          { requisito: 'vram', estado: 'desconocido', exigido: '2048', detectado: null, origen: 'medido' },
+          { requisito: 'vulkan', estado: 'cumple', exigido: '1.1', detectado: '1.3', origen: 'medido' },
         ],
       },
     },

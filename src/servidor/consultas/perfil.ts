@@ -1,10 +1,11 @@
 import { Effect, Option, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
-import { capacidades, condiciones, evaluar } from '../../dominio/evaluacion.ts'
+import { condiciones, evaluar } from '../../dominio/evaluacion.ts'
 import { NoEncontrado } from '../../dominio/fallos.ts'
 import { PerfilId } from '../../dominio/ids.ts'
 import { EstadoRevision, estadosVigentes } from '../../dominio/revision.ts'
 import { Dependencia, Juego, PasoConfiguracion, PerfilConfiguracion, PerfilDependencia } from '../../dominio/tablas.ts'
+import { equipoEnLinux } from '../gpu/capacidad.ts'
 import { esDemo, etiquetaCapa, etiquetaDistribucion } from './etiquetas.ts'
 import { diagnosticoDelVisitante } from './ficha.ts'
 
@@ -88,7 +89,7 @@ export const perfil = (id: PerfilId) =>
         ? ('perfil_en_prueba' as const)
         : Option.match(yield* diagnosticoDelVisitante, {
             onNone: () => 'sin_diagnostico' as const,
-            onSome: (d) => evaluar(capacidades(d), condiciones(p)),
+            onSome: (d) => evaluar(equipoEnLinux(d), condiciones(p)),
           })
 
     return { perfil: p, pasos, dependencias, evaluacion }

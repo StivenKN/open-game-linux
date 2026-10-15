@@ -135,7 +135,12 @@ const escenario = Effect.gen(function* () {
   const guiaBorrador = yield* guia('Borrador sin publicar', 'borrador')
 
   return {
+    insertar,
+    aprobado,
     gta: JuegoId.make(gta),
+    gtaSteam,
+    fedora,
+    proton9,
     epic: LanzadorId.make(epic),
     perfilAprobado: PerfilId.make(perfilAprobado),
     perfilEnPrueba: PerfilId.make(perfilEnPrueba),
@@ -196,6 +201,36 @@ layer(PgTest)('consultas', (it) => {
             [e.perfilAprobado, 'aprobado', 'cumple'],
             [e.perfilEnPrueba, 'pendiente', null],
           ])
+        }),
+      ),
+    )
+
+    it.effect('un diagnóstico de Windows con una Kepler proyecta Vulkan 1.2 y no cumple un mínimo de 1.3', () =>
+      enRollback(
+        Effect.gen(function* () {
+          const e = yield* escenario
+          const sql = yield* SqlClient.SqlClient
+          const pc = yield* e.insertar('equipo', { usuario_id: 'ana', alias: 'pc con Windows' })
+          // The Vulkan the Windows driver reported (1.4) must not count: it says nothing about Linux.
+          yield* e.insertar('diagnostico', {
+            equipo_id: pc, capturado_en: new Date('2026-10-10T00:00:00Z'), sistema: 'Windows', version_sistema: 'Windows 10 Home 22H2 (19045)',
+            distribucion_id: null, arquitectura: 'x86_64', cpu_modelo: 'cpu', gpu_modelo: 'NVIDIA GeForce GT 710', gpu_pci_id: '10de:128b',
+            ram_mb: 16384, vram_mb: 2048, soporte_vulkan: 'si', version_vulkan: '1.4',
+          })
+          const exigente = yield* e.insertar('perfil_configuracion', {
+            edicion_id: e.gtaSteam, distribucion_id: e.fedora, version_capa_id: e.proton9, autor_id: 'autor', revision: 1, titulo: 'GTAV-VULKAN',
+            arquitectura: 'x86_64', ram_min_mb: 8192, requiere_vulkan: true, version_vulkan_min: '1.3', creado_en: e.aprobado.creado_en,
+          })
+          yield* sql`UPDATE perfil_configuracion SET ${sql.update(Struct.omit(e.aprobado, ['creado_en']))} WHERE id = ${exigente}`
+          const ficha = yield* Effect.provideService(fichaJuego(e.gta), Visitante, ana)
+          expect(ficha.perfiles.find((p) => p.id === exigente)?.evaluacion).toEqual({
+            veredicto: 'no_cumple',
+            solo_orientativa: true,
+            comprobaciones: [
+              { requisito: 'ram', estado: 'cumple', exigido: '8192', detectado: '16384', origen: 'medido' },
+              { requisito: 'vulkan', estado: 'no_cumple', exigido: '1.3', detectado: '1.2', origen: 'proyectado' },
+            ],
+          })
         }),
       ),
     )

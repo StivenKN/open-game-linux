@@ -107,12 +107,22 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       expect(fila('Otro juego')?.perfil).toBeNull()
     })))
 
+  it.effect('evaluarSinGuardar proyecta la GPU a Linux desde el PCI id cuando no hay vulkaninfo', conBase(() =>
+    Effect.gen(function* () {
+      const { equipo } = yield* evaluarSinGuardar(payload({ gpu_pci_id: '8086:9a49', controlador: 'i915' }))
+      expect(equipo).toMatchObject({
+        vulkan: { origen: 'proyectado', soporte: 'si', desde: { texto: '1.3' }, hasta: { texto: '1.4' } },
+        gpu: { familia: 'intel_gen9_o_posterior', supuesta: false, controlador: 'i915', avisos: [] },
+        ruta: { d3d9_11: 'dxvk_2', d3d12: true },
+      })
+    })))
+
   it.effect('miDiagnostico es solo del dueño; misEquipos de un invitado está vacío', conBase((f) =>
     Effect.gen(function* () {
       yield* perfiles(f)
       const id = Schema.decodeSync(DiagnosticoId)(f.diag)
       const propio = yield* miDiagnostico(id).pipe(como(f.autor))
-      expect(propio).toMatchObject({ equipo: 'portátil', captura: { sistema: 'Linux', distribucion: { nombre: 'Linux Mint', version: '22' }, ram_mb: 8192 } })
+      expect(propio).toMatchObject({ alias: 'portátil', captura: { sistema: 'Linux', distribucion: { nombre: 'Linux Mint', version: '22' }, ram_mb: 8192 } })
       expect(propio.matriz.find((m) => m.titulo === 'Juego')?.perfil?.evaluacion.veredicto).toBe('no_cumple')
       expect(yield* Effect.flip(miDiagnostico(id).pipe(como(f.revisor)))).toMatchObject({ _tag: 'NoEncontrado' })
       expect(yield* misEquipos().pipe(comoInvitado)).toEqual([])

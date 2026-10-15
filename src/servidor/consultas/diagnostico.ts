@@ -2,13 +2,15 @@ import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import type { Captura, EntradaDiagnostico } from '../../dominio/aportes.ts'
 import { estadoDe } from '../../dominio/compatibilidad.ts'
-import { capacidades, condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
+import { condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
+import type { EquipoEnLinux } from '../../dominio/gpu.ts'
 import { NoEncontrado, type PayloadInvalido } from '../../dominio/fallos.ts'
 import type { DiagnosticoId } from '../../dominio/ids.ts'
 import { Resultado } from '../../dominio/literales.ts'
 import { Diagnostico, Distribucion, Equipo, Juego, PerfilConfiguracion } from '../../dominio/tablas.ts'
 import { exigirUsuario, Visitante } from '../auth.ts'
 import { capturaDe } from '../diagnostico/payload.ts'
+import { equipoEnLinux } from '../gpu/capacidad.ts'
 import { filas, type Infra } from '../filas.ts'
 import { etiquetaCapa, etiquetaDistribucion } from './etiquetas.ts'
 
@@ -30,11 +32,10 @@ const PerfilAprobado = Schema.Struct({
   distribucion: Schema.String,
 })
 
-type EquipoEvaluado = Pick<Captura, 'sistema' | 'arquitectura' | 'ram_mb' | 'vram_mb' | 'soporte_vulkan' | 'version_vulkan'> & {
-  readonly distribucion_id: typeof Distribucion.Type.id | null
-}
+/** Where the capture was taken, which `sugerirPerfil` matches against each profile's environment. */
+type Entorno = { readonly distribucion_id: typeof Distribucion.Type.id | null; readonly arquitectura: string }
 
-const matriz = (equipo: EquipoEvaluado) =>
+const matriz = (equipo: EquipoEnLinux, entorno: Entorno) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     const juegos = yield* filas(JuegoFila, sql`SELECT id, titulo FROM juego ORDER BY titulo, id`)
@@ -57,11 +58,10 @@ const matriz = (equipo: EquipoEvaluado) =>
         WHERE p.estado_revision = 'aprobado'
         ORDER BY p.id`,
     )
-    const suyas = capacidades(equipo)
     return juegos.map((juego) => {
       const aprobados = resultados.filter((r) => r.juego_id === juego.id).map((r) => r.resultado)
-      const evaluados = perfiles.filter((p) => p.juego_id === juego.id).map((p) => ({ ...p, evaluacion: evaluar(suyas, condiciones(p)) }))
-      const perfil = sugerirPerfil(evaluados, equipo)
+      const evaluados = perfiles.filter((p) => p.juego_id === juego.id).map((p) => ({ ...p, evaluacion: evaluar(equipo, condiciones(p)) }))
+      const perfil = sugerirPerfil(evaluados, entorno)
       return {
         juego_id: juego.id,
         titulo: juego.titulo,
@@ -79,7 +79,11 @@ export type FilaMatriz = Effect.Success<ReturnType<typeof matriz>>[number]
 
 export const evaluarSinGuardar = (
   entrada: EntradaDiagnostico,
-): Effect.Effect<{ readonly captura: Captura; readonly matriz: ReadonlyArray<FilaMatriz> }, PayloadInvalido | Infra, SqlClient.SqlClient> =>
+): Effect.Effect<
+  { readonly captura: Captura; readonly equipo: EquipoEnLinux; readonly matriz: ReadonlyArray<FilaMatriz> },
+  PayloadInvalido | Infra,
+  SqlClient.SqlClient
+> =>
   Effect.gen(function* () {
     const captura = yield* capturaDe(entrada)
     const sql = yield* SqlClient.SqlClient
@@ -90,12 +94,13 @@ export const evaluarSinGuardar = (
             sql`SELECT id FROM distribucion WHERE nombre = ${captura.distribucion.nombre} AND version = ${captura.distribucion.version}`,
           )
         : []
-    return { captura, matriz: yield* matriz({ ...captura, distribucion_id: distribucion?.id ?? null }) }
+    const equipo = equipoEnLinux(captura)
+    return { captura, equipo, matriz: yield* matriz(equipo, { distribucion_id: distribucion?.id ?? null, arquitectura: captura.arquitectura }) }
   })
 
 const DiagnosticoGuardado = Schema.Struct({
   ...Diagnostico.fields,
-  equipo: Equipo.fields.alias,
+  alias: Equipo.fields.alias,
   distribucion: Schema.NullOr(Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version })),
 })
 
@@ -126,7 +131,7 @@ export const miDiagnostico = (id: DiagnosticoId) =>
     const [d] = yield* filas(
       DiagnosticoGuardado,
       sql`
-        SELECT d.*, e.alias AS equipo,
+        SELECT d.*, e.alias,
                CASE WHEN dist.id IS NULL THEN NULL ELSE json_build_object('nombre', dist.nombre, 'version', dist.version) END AS distribucion
         FROM diagnostico d
         JOIN equipo e ON e.id = d.equipo_id
@@ -134,7 +139,8 @@ export const miDiagnostico = (id: DiagnosticoId) =>
         WHERE d.id = ${id} AND e.usuario_id = ${usuario.id}`,
     )
     if (d === undefined) return yield* Effect.fail(new NoEncontrado())
-    return { id: d.id, equipo: d.equipo, captura: yield* capturaGuardada(d), matriz: yield* matriz(d) }
+    const equipo = equipoEnLinux(d)
+    return { id: d.id, alias: d.alias, captura: yield* capturaGuardada(d), equipo, matriz: yield* matriz(equipo, d) }
   })
 
 const EquipoFila = Schema.Struct({ id: Equipo.fields.id, alias: Equipo.fields.alias })

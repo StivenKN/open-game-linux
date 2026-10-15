@@ -22,16 +22,24 @@ export const alMenos = (v: VersionVulkan, minimo: VersionVulkan): boolean => {
   return true
 }
 
-export type Vulkan =
-  | { readonly soporte: 'si'; readonly version: VersionVulkan | null }
-  | { readonly soporte: 'no' }
+export type OrigenDato = 'medido' | 'proyectado'
+
+/**
+ * `medido` is vulkaninfo on this Linux machine. `proyectado` is what the GPU's family reaches on Linux,
+ * as a range when the level is not verified. A projection is never presented as a measurement.
+ */
+export type VulkanEquipo =
+  | { readonly origen: 'medido'; readonly soporte: 'si'; readonly version: VersionVulkan | null }
+  | { readonly origen: 'medido'; readonly soporte: 'no' }
+  | { readonly origen: 'proyectado'; readonly soporte: 'si'; readonly desde: VersionVulkan; readonly hasta: VersionVulkan }
+  | { readonly origen: 'proyectado'; readonly soporte: 'no' }
   | { readonly soporte: 'desconocido' }
 
 export type Capacidades = {
   readonly sistema: Sistema
   readonly ram_mb: number
   readonly vram_mb: number | null
-  readonly vulkan: Vulkan
+  readonly vulkan: VulkanEquipo
 }
 
 export type CondicionesConocidas = {
@@ -49,6 +57,7 @@ export type Comprobacion = {
   readonly estado: 'cumple' | 'no_cumple' | 'desconocido'
   readonly exigido: string
   readonly detectado: string | null
+  readonly origen: OrigenDato
 }
 
 export type Evaluacion = {
@@ -65,6 +74,7 @@ export const evaluar = (equipo: Capacidades, perfil: CondicionesConocidas): Eval
       estado: equipo.ram_mb >= perfil.ram_min_mb ? 'cumple' : 'no_cumple',
       exigido: String(perfil.ram_min_mb),
       detectado: String(equipo.ram_mb),
+      origen: 'medido',
     })
   if (perfil.vram_min_mb !== null)
     comprobaciones.push({
@@ -72,13 +82,15 @@ export const evaluar = (equipo: Capacidades, perfil: CondicionesConocidas): Eval
       estado: equipo.vram_mb === null ? 'desconocido' : equipo.vram_mb >= perfil.vram_min_mb ? 'cumple' : 'no_cumple',
       exigido: String(perfil.vram_min_mb),
       detectado: equipo.vram_mb === null ? null : String(equipo.vram_mb),
+      origen: 'medido',
     })
   if (perfil.requiere_vulkan === true)
     comprobaciones.push({
       requisito: 'vulkan',
       estado: estadoVulkan(equipo.vulkan, perfil.version_vulkan_min),
       exigido: perfil.version_vulkan_min?.texto ?? 'si',
-      detectado: equipo.vulkan.soporte === 'si' ? (equipo.vulkan.version?.texto ?? 'si') : equipo.vulkan.soporte === 'no' ? 'no' : null,
+      detectado: vulkanDetectado(equipo.vulkan),
+      origen: equipo.vulkan.soporte === 'desconocido' ? 'medido' : equipo.vulkan.origen,
     })
   const veredicto: VeredictoRequisitos = comprobaciones.some((c) => c.estado === 'no_cumple')
     ? 'no_cumple'
@@ -88,31 +100,22 @@ export const evaluar = (equipo: Capacidades, perfil: CondicionesConocidas): Eval
   return { veredicto, comprobaciones, solo_orientativa: equipo.sistema === 'Windows' }
 }
 
-const estadoVulkan = (vulkan: Vulkan, minimo: VersionVulkan | null): Comprobacion['estado'] => {
-  if (vulkan.soporte === 'no') return 'no_cumple'
+/** A projected range that straddles the minimum is `desconocido`: an unverified level never yields a false `cumple`. */
+const estadoVulkan = (vulkan: VulkanEquipo, minimo: VersionVulkan | null): Comprobacion['estado'] => {
   if (vulkan.soporte === 'desconocido') return 'desconocido'
+  if (vulkan.soporte === 'no') return 'no_cumple'
   if (minimo === null) return 'cumple'
-  if (vulkan.version === null) return 'desconocido'
-  return alMenos(vulkan.version, minimo) ? 'cumple' : 'no_cumple'
+  if (vulkan.origen === 'medido') return vulkan.version === null ? 'desconocido' : alMenos(vulkan.version, minimo) ? 'cumple' : 'no_cumple'
+  if (alMenos(vulkan.desde, minimo)) return 'cumple'
+  return alMenos(vulkan.hasta, minimo) ? 'desconocido' : 'no_cumple'
 }
 
-export type ColumnasCapacidad = {
-  readonly sistema: Sistema
-  readonly ram_mb: number
-  readonly vram_mb: number | null
-  readonly soporte_vulkan: SoporteVulkan
-  readonly version_vulkan: string | null
+const vulkanDetectado = (vulkan: VulkanEquipo): string | null => {
+  if (vulkan.soporte === 'desconocido') return null
+  if (vulkan.soporte === 'no') return 'no'
+  if (vulkan.origen === 'medido') return vulkan.version?.texto ?? 'si'
+  return vulkan.desde.texto === vulkan.hasta.texto ? vulkan.desde.texto : `${vulkan.desde.texto}–${vulkan.hasta.texto}`
 }
-
-export const capacidades = (c: ColumnasCapacidad): Capacidades => ({
-  sistema: c.sistema,
-  ram_mb: c.ram_mb,
-  vram_mb: c.vram_mb,
-  vulkan:
-    c.soporte_vulkan === 'si'
-      ? { soporte: 'si', version: versionVulkan(c.version_vulkan) }
-      : { soporte: c.soporte_vulkan },
-})
 
 export type ColumnasCondicion = {
   readonly ram_min_mb: number | null

@@ -1,13 +1,14 @@
 import { Effect, Option, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
 import { enDistribucion, PruebaAprobada, resumir } from '../../dominio/compatibilidad.ts'
-import { capacidades, condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
+import { condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
 import { NoEncontrado } from '../../dominio/fallos.ts'
 import { JuegoId, UsuarioId } from '../../dominio/ids.ts'
 import { EstadoRevision, estadosVigentes } from '../../dominio/revision.ts'
 import { Diagnostico, EdicionJuego, Equipo, Juego, Lanzador, PerfilConfiguracion, Solucion, TipoFallo } from '../../dominio/tablas.ts'
 import { Visitante } from '../auth.ts'
 import { filas, unaFila } from '../filas.ts'
+import { equipoEnLinux } from '../gpu/capacidad.ts'
 import { esDemo, etiquetaCapa, etiquetaDistribucion, etiquetaPerfil } from './etiquetas.ts'
 
 const PruebaDeJuego = Schema.Struct({ ...PruebaAprobada.fields, juego_id: JuegoId, ejemplo: Schema.Boolean })
@@ -43,7 +44,19 @@ export const pruebasAprobadas = (juego: JuegoId | null) =>
   })
 
 const MiDiagnostico = Diagnostico.mapFields(
-  Struct.pick(['id', 'capturado_en', 'sistema', 'distribucion_id', 'arquitectura', 'ram_mb', 'vram_mb', 'soporte_vulkan', 'version_vulkan']),
+  Struct.pick([
+    'id',
+    'capturado_en',
+    'sistema',
+    'distribucion_id',
+    'arquitectura',
+    'ram_mb',
+    'vram_mb',
+    'soporte_vulkan',
+    'version_vulkan',
+    'controlador',
+    'gpu_pci_id',
+  ]),
 ).mapFields(Struct.assign({ equipo: Equipo.fields.alias, distribucion: Schema.NullOr(Schema.String) }))
 
 export const ultimoDiagnostico = (usuario: UsuarioId) =>
@@ -53,7 +66,7 @@ export const ultimoDiagnostico = (usuario: UsuarioId) =>
       Result: MiDiagnostico,
       execute: (id) => sql`
         SELECT d.id, d.capturado_en, d.sistema, d.distribucion_id, d.arquitectura, d.ram_mb, d.vram_mb, d.soporte_vulkan,
-               d.version_vulkan, eq.alias AS equipo, ${sql.literal(etiquetaDistribucion('dist'))} AS distribucion
+               d.version_vulkan, d.controlador, d.gpu_pci_id, eq.alias AS equipo, ${sql.literal(etiquetaDistribucion('dist'))} AS distribucion
         FROM diagnostico d
         JOIN equipo eq ON eq.id = d.equipo_id
         LEFT JOIN distribucion dist ON dist.id = d.distribucion_id
@@ -175,12 +188,13 @@ export const fichaJuego = (juegoId: JuegoId) =>
     })
 
     const diagnostico = yield* diagnosticoDelVisitante
+    const equipo = Option.map(diagnostico, equipoEnLinux)
 
     const perfiles = filasPerfil.map(({ ram_min_mb, vram_min_mb, requiere_vulkan, version_vulkan_min, ...p }) => ({
       ...p,
       evaluacion:
-        Option.isSome(diagnostico) && p.estado_revision === 'aprobado'
-          ? evaluar(capacidades(diagnostico.value), condiciones({ ram_min_mb, vram_min_mb, requiere_vulkan, version_vulkan_min }))
+        Option.isSome(equipo) && p.estado_revision === 'aprobado'
+          ? evaluar(equipo.value, condiciones({ ram_min_mb, vram_min_mb, requiere_vulkan, version_vulkan_min }))
           : null,
     }))
 
