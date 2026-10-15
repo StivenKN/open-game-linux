@@ -120,6 +120,10 @@ describe.skipIf(motor === null)(`opengame-detect.ps1 under ${motor ?? `pwsh (ski
     expect({ ...captura(powershell({ OPENGAME_DRY: '1' })), capturado_en: leida.capturado_en }).toEqual(leida)
   })
 
+  it('names the architecture from the OS bitness when the shell has no PROCESSOR_ARCHITECTURE', () => {
+    expect(captura(powershell({ OPENGAME_IMPRIMIR: '1', PROCESSOR_ARCHITECTURE: '' })).arquitectura).toBe('x86_64')
+  })
+
   it('sends nulls for a GPU without driver and a PC without Steam', () => {
     const env = { OPENGAME_PRUEBA_EQUIPO: 'basico', PROCESSOR_ARCHITECTURE: 'x86', PROCESSOR_ARCHITEW6432: 'AMD64', OPENGAME_IMPRIMIR: '1' }
     expect(captura(powershell(env))).toEqual({

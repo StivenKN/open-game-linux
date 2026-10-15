@@ -55,10 +55,12 @@
     $texto
   }
 
-  # Same names as `uname -m`, which profiles compare against.
+  # Same names as `uname -m`, which profiles compare against. The server rejects a capture without
+  # one, so a shell missing both variables still answers from the OS bitness.
   function Get-OgArquitectura {
     $a = $env:PROCESSOR_ARCHITEW6432
     if (-not $a) { $a = $env:PROCESSOR_ARCHITECTURE }
+    if (-not $a) { if ([Environment]::Is64BitOperatingSystem) { $a = 'AMD64' } else { $a = 'x86' } }
     switch ($a) {
       'AMD64' { 'x86_64' }
       'ARM64' { 'aarch64' }
