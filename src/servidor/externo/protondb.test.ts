@@ -26,7 +26,7 @@ describe('elementosDeArreglo', () => {
     expect(await elementos('﻿[{"a":1}]')).toEqual(['{"a":1}'])
   })
 
-  it('a missing element between commas comes out empty, so the caller counts it as discarded', async () => {
+  it('a missing element between commas comes out empty', async () => {
     expect(await elementos('[1,,2]')).toEqual(['1', '', '2'])
     expect(await elementos('[1,]')).toEqual(['1', ''])
   })
@@ -41,10 +41,10 @@ describe('elementosDeArreglo', () => {
     await expect(elementos('[1] 2')).rejects.toEqual(falla('hay datos después del arreglo'))
   })
 
-  it('refuses an element over 1 MB, in one chunk or many', async () => {
-    const enorme = `[{"a":"${'x'.repeat(1024 * 1024)}"}]`
-    await expect(elementos(enorme)).rejects.toEqual(falla('elemento demasiado grande'))
-    await expect(elementos(enorme, 65536)).rejects.toEqual(falla('elemento demasiado grande'))
+  it('an element over 4 MiB comes out empty, in one chunk or many, and the next one still arrives', async () => {
+    const enorme = `[{"a":"${'x'.repeat(4 * 1024 * 1024)}"},1]`
+    expect(await elementos(enorme)).toEqual(['', '1'])
+    expect(await elementos(enorme, 65536)).toEqual(['', '1'])
   })
 })
 

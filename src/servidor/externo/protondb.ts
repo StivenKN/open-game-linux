@@ -1,4 +1,11 @@
-import { Schema } from 'effect'
+// Single writer of protondb_resumen. The export is read whole before the database is touched, then every
+// row is replaced in one transaction: a rerun converges, and a failed read leaves the last import intact.
+import { Array as Arr, Clock, Effect, Option, Schema, Struct } from 'effect'
+import { SqlClient } from 'effect/sql'
+import type { EdicionId } from '../../dominio/ids.ts'
+import { interpretarReporte, type ReporteProtonDb, resumirProtonDb } from '../../dominio/protondb.ts'
+import { EdicionJuego } from '../../dominio/tablas.ts'
+import { filas, unaFila } from '../filas.ts'
 
 export class ExportacionInvalida extends Schema.TaggedError<ExportacionInvalida>()('ExportacionInvalida', { motivo: Schema.String }) {}
 
@@ -10,8 +17,9 @@ export type ResultadoImportacion = {
   readonly exportado_en: Date
 }
 
-// A record is about 1.3 kB; a bigger element means a broken file, not a report.
-const LIMITE_ELEMENTO = 1024 * 1024
+// A record is about 1.3 kB, but one in the October 2026 export carries 1 MB of notes. Past this limit an
+// element is scanned without being kept, so a broken file cannot grow the buffer without bound.
+const LIMITE_ELEMENTO = 4 * 1024 * 1024
 
 const COMILLA = 0x22
 const BARRA = 0x5c
@@ -22,10 +30,13 @@ const ABRE_LLAVE = 0x7b
 const CIERRA_LLAVE = 0x7d
 const BOM = 0xfeff
 const esEspacio = (c: number) => c === 0x20 || c === 0x0a || c === 0x0d || c === 0x09
+// Most of the export is string content; skipping it with a regex is several times faster than char by char.
+const hastaComillaOBarra = /[^"\\]*/y
 
 /**
  * Yields the text of each element of a top-level JSON array, read from text chunks. JSON.parse of the
- * whole export would pass V8's string limit. Fails on anything but one complete array.
+ * whole export would pass V8's string limit. Fails on anything but one complete array. An element that is
+ * missing or over the size limit comes out as '', which no reader accepts, so it is counted, not hidden.
  */
 export async function* elementosDeArreglo(trozos: AsyncIterable<string>): AsyncGenerator<string> {
   let profundidad = 0
@@ -33,15 +44,13 @@ export async function* elementosDeArreglo(trozos: AsyncIterable<string>): AsyncG
   let escapado = false
   let empezado = false
   let terminado = false
-  // An element is expected after a comma, so `[1,]` and `[1,,2]` yield an empty element instead of hiding one.
   let esperaElemento = false
   let enElemento = false
   let partes: Array<string> = []
   let acumulado = 0
 
   const elemento = (trozo: string, inicio: number, fin: number) => {
-    const texto = (partes.join('') + trozo.slice(inicio, fin)).trimEnd()
-    if (texto.length > LIMITE_ELEMENTO) throw new ExportacionInvalida({ motivo: 'elemento demasiado grande' })
+    const texto = acumulado + fin - inicio > LIMITE_ELEMENTO ? '' : (partes.join('') + trozo.slice(inicio, fin)).trimEnd()
     partes = []
     acumulado = 0
     enElemento = false
@@ -49,15 +58,22 @@ export async function* elementosDeArreglo(trozos: AsyncIterable<string>): AsyncG
   }
 
   for await (const trozo of trozos) {
+    const listos: Array<string> = []
     let inicio = 0
     for (let i = 0; i < trozo.length; i++) {
-      const c = trozo.charCodeAt(i)
       if (enCadena) {
-        if (escapado) escapado = false
-        else if (c === BARRA) escapado = true
-        else if (c === COMILLA) enCadena = false
+        if (escapado) {
+          escapado = false
+          continue
+        }
+        hastaComillaOBarra.lastIndex = i
+        hastaComillaOBarra.test(trozo)
+        i = hastaComillaOBarra.lastIndex
+        if (trozo.charCodeAt(i) === BARRA) escapado = true
+        else if (i < trozo.length) enCadena = false
         continue
       }
+      const c = trozo.charCodeAt(i)
       if (terminado) {
         if (!esEspacio(c)) throw new ExportacionInvalida({ motivo: 'hay datos después del arreglo' })
         continue
@@ -72,7 +88,7 @@ export async function* elementosDeArreglo(trozos: AsyncIterable<string>): AsyncG
       if (profundidad === 1 && !enElemento) {
         if (esEspacio(c)) continue
         if (c === COMA || c === CIERRA_CORCHETE) {
-          if (c === COMA || esperaElemento) yield ''
+          if (c === COMA || esperaElemento) listos.push('')
           esperaElemento = c === COMA
           terminado = c === CIERRA_CORCHETE
           continue
@@ -83,20 +99,100 @@ export async function* elementosDeArreglo(trozos: AsyncIterable<string>): AsyncG
       if (c === COMILLA) enCadena = true
       else if (c === ABRE_CORCHETE || c === ABRE_LLAVE) profundidad++
       else if ((c === COMA || c === CIERRA_CORCHETE) && profundidad === 1) {
-        yield elemento(trozo, inicio, i)
+        listos.push(elemento(trozo, inicio, i))
         esperaElemento = c === COMA
         terminado = c === CIERRA_CORCHETE
       } else if (c === CIERRA_CORCHETE || c === CIERRA_LLAVE) profundidad--
     }
     if (enElemento) {
-      partes.push(trozo.slice(inicio))
       acumulado += trozo.length - inicio
-      if (acumulado > LIMITE_ELEMENTO) throw new ExportacionInvalida({ motivo: 'elemento demasiado grande' })
+      if (acumulado > LIMITE_ELEMENTO) partes = []
+      else partes.push(trozo.slice(inicio))
     }
+    yield* listos
   }
   if (!empezado) throw new ExportacionInvalida({ motivo: 'la entrada está vacía' })
   if (!terminado) throw new ExportacionInvalida({ motivo: 'el archivo está truncado' })
 }
+
+const EdicionSteam = EdicionJuego.mapFields(Struct.pick(['id'])).mapFields(Struct.assign({ app_id: Schema.String }))
+
+const edicionesSteam = Effect.flatMap(SqlClient.SqlClient, (sql) =>
+  filas(
+    EdicionSteam,
+    sql`
+      SELECT e.id, e.identificador_externo AS app_id
+      FROM edicion_juego e JOIN lanzador l ON l.id = e.lanzador_id
+      WHERE l.nombre = 'Steam' AND e.identificador_externo IS NOT NULL`,
+  ),
+)
+
+const leer = async (trozos: AsyncIterable<string>, ediciones: ReadonlyMap<string, EdicionId>, hasta: number) => {
+  let leidos = 0
+  let descartados = 0
+  let coincidentes = 0
+  let exportado = 0
+  const porEdicion = new Map<EdicionId, [ReporteProtonDb, ...ReporteProtonDb[]]>()
+  for await (const texto of elementosDeArreglo(trozos)) {
+    leidos++
+    const reporte = Option.getOrNull(interpretarReporte(texto))
+    // A report dated after the import would move the export date forward and lock out every real export.
+    if (reporte === null || reporte.reportado_en.getTime() > hasta) {
+      descartados++
+      continue
+    }
+    exportado = Math.max(exportado, reporte.reportado_en.getTime())
+    const edicion = ediciones.get(reporte.app_id)
+    if (edicion === undefined) continue
+    coincidentes++
+    const grupo = porEdicion.get(edicion)
+    if (grupo === undefined) porEdicion.set(edicion, [reporte])
+    else grupo.push(reporte)
+  }
+  return { leidos, descartados, coincidentes, exportado, porEdicion }
+}
+
+const Anterior = Schema.Struct({ exportado_en: Schema.NullOr(Schema.Date) })
+
+/**
+ * Stores one aggregate per catalog Steam edition from a ProtonDB export, replacing the last import.
+ * Refuses an export older than the stored one; the same export again converges to the same rows.
+ */
+export const importarProtonDb = (trozos: AsyncIterable<string>) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    const ediciones = new Map((yield* edicionesSteam).map((e) => [e.app_id, e.id]))
+    const hasta = yield* Clock.currentTimeMillis
+    const lectura = yield* Effect.tryPromise({
+      try: () => leer(trozos, ediciones, hasta),
+      catch: (e) =>
+        e instanceof ExportacionInvalida
+          ? e
+          : new ExportacionInvalida({ motivo: `no se pudo leer la entrada (${e instanceof Error ? e.message : String(e)})` }),
+    })
+    if (lectura.exportado === 0) return yield* new ExportacionInvalida({ motivo: 'ningún reporte válido' })
+    const exportado_en = new Date(lectura.exportado)
+    const resumenes = [...lectura.porEdicion].map(([edicion, reportes]) => resumirProtonDb(edicion, reportes, exportado_en))
+
+    yield* sql.withTransaction(
+      Effect.gen(function* () {
+        yield* sql`LOCK TABLE protondb_resumen IN EXCLUSIVE MODE`
+        const anterior = yield* unaFila(Anterior, sql`SELECT max(exportado_en) AS exportado_en FROM protondb_resumen`)
+        if (anterior.exportado_en !== null && anterior.exportado_en > exportado_en)
+          return yield* new ExportacionInvalida({ motivo: 'exportación más antigua que la importada' })
+        yield* sql`DELETE FROM protondb_resumen`
+        for (const lote of Arr.chunksOf(resumenes, 500)) yield* sql`INSERT INTO protondb_resumen ${sql.insert(lote)}`
+      }),
+    )
+
+    return {
+      leidos: lectura.leidos,
+      descartados: lectura.descartados,
+      coincidentes: lectura.coincidentes,
+      guardados: resumenes.length,
+      exportado_en,
+    } satisfies ResultadoImportacion
+  })
 
 const numero = new Intl.NumberFormat('es-CO')
 

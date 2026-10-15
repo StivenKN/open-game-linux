@@ -69,4 +69,12 @@ describe('fronteras', () => {
       .map((f) => `${f} writes equipo or diagnostico; call registrarDiagnostico() from servidor/aportes/diagnostico.ts instead`)
     expect(violaciones).toEqual([])
   })
+
+  it('only servidor/externo/protondb.ts writes protondb_resumen (external evidence single writer)', () => {
+    const escritura = /\b(INSERT INTO|UPDATE|DELETE FROM|TRUNCATE)\s+(TABLE\s+)?protondb_resumen\b/
+    const violaciones = [...archivos('src'), ...archivos('scripts')]
+      .filter((f) => f !== 'src/servidor/externo/protondb.ts' && !f.startsWith('src/servidor/esquema/') && escritura.test(leer(f)))
+      .map((f) => `${f} writes protondb_resumen; call importarProtonDb() from servidor/externo/protondb.ts instead`)
+    expect(violaciones).toEqual([])
+  })
 })
