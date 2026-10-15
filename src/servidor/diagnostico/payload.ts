@@ -4,6 +4,7 @@ import { PayloadInvalido } from '../../dominio/fallos.ts'
 import { type BibliotecaSteam, esHerramientaSteam, MAX_JUEGOS_BIBLIOTECA } from '../../dominio/biblioteca.ts'
 import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
 import { PciId } from '../../dominio/gpu.ts'
+import { largo } from '../../dominio/largo.ts'
 import { Diagnostico, Distribucion } from '../../dominio/tablas.ts'
 
 export const VERSION_ESQUEMA = 1
@@ -85,7 +86,7 @@ const bibliotecaDe = (juegos: ReadonlyArray<typeof JuegoEnviado.Type>): typeof B
   const vistos = new Set<number>()
   return juegos
     .flatMap(({ app_id, nombre }) => {
-      const limpio = nombre.trim().slice(0, 120).replace(/[\uD800-\uDBFF]$/, '').trim()
+      const limpio = nombre.trim().slice(0, largo.biblioteca.nombre).replace(/[\uD800-\uDBFF]$/, '').trim()
       if (limpio === '' || esHerramientaSteam(limpio) || !Number.isSafeInteger(app_id) || app_id <= 0 || vistos.has(app_id)) return []
       vistos.add(app_id)
       return [{ app_id, nombre: limpio }]

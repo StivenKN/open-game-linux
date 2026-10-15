@@ -303,7 +303,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 3. No run on a real Windows PowerShell 5.1 was possible. A static test rejects PowerShell 7-only syntax and non-ASCII source, and the behavior tests run pwsh 7 against stubbed cmdlets.
 4. The library match joins on `lanzador.nombre = 'Steam'` (`LANZADOR_STEAM`), a string key older than U10. Renaming that launcher row would turn every library game into an unknown game.
 5. An id the table does not list projects nothing; the card says the GPU is not recognized. The table has no ids for AMD's IP-discovery parts (Radeon RX 7000 and newer), which `amdgpu_drv.c` matches by class, so those cards get no projection yet. A guessed "newest family" was tried and removed: it projected Vulkan 1.3 to 1.4 for PowerVR and pre-GCN parts that are also missing from the sources.
-6. A pasted payload over 300 000 characters fails the server fn validator and shows a generic error, not a field message. A full library of 1000 games with 120-character names is about 200 000 characters in base64url, so a real detector stays under the limit.
+6. A pasted payload over 300 000 characters fails the server fn validator and shows a generic error, not a field message. A full library of 1000 games with 120-character names is about 200 000 characters in base64url, so a real detector stays under the limit with ASCII names. PowerShell writes a non-ASCII character as `\uXXXX`, so a full library of long non-ASCII names can exceed it.
 
 ## Open questions and risks
 

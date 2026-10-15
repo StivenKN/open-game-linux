@@ -16,7 +16,9 @@ import {
   VersionCapaId,
 } from './ids.ts'
 import { FamiliaCapa, ResultadoFallido, ResultadoFuncional } from './literales.ts'
-import { Diagnostico, Distribucion, Equipo, Juego, largo, PerfilConfiguracion, Reporte, Solucion, TextoHasta, TextoOpcionalHasta, VersionCapa } from './tablas.ts'
+import { MAX_JUEGOS_BIBLIOTECA } from './biblioteca.ts'
+import { largo } from './largo.ts'
+import { Diagnostico, Distribucion, Equipo, Juego, PerfilConfiguracion, Reporte, Solucion, TextoHasta, TextoOpcionalHasta, VersionCapa } from './tablas.ts'
 
 export const VersionCapaRef = Schema.Union([
   Schema.TaggedStruct('existente', { id: VersionCapaId }),
@@ -116,9 +118,13 @@ export const Captura = Schema.Union([
 )
 export type Captura = typeof Captura.Type
 
+// Bounds what the parser reads. A full library is about 30 characters of JSON per game around an ASCII name of at
+// most largo.biblioteca.nombre; base64url adds 4/3 and the rest of the payload fits in a further 1.5, so ×2 overall
+// (300 000). PowerShell writes a non-ASCII character as \uXXXX, so a full library of long non-ASCII names can exceed it.
+const MAX_TEXTO_DETECTOR = MAX_JUEGOS_BIBLIOTECA * (30 + largo.biblioteca.nombre) * 2
+
 export const EntradaDiagnostico = Schema.Union([
-  // Bounds what the parser reads: a full library of 1000 games with 120-character names is ~200 000 in base64url.
-  Schema.TaggedStruct('detector', { texto: Schema.String.pipe(Schema.check(Schema.isMaxLength(300_000))) }),
+  Schema.TaggedStruct('detector', { texto: Schema.String.pipe(Schema.check(Schema.isMaxLength(MAX_TEXTO_DETECTOR))) }),
   Schema.TaggedStruct('manual', { captura: Captura }),
 ])
 export type EntradaDiagnostico = typeof EntradaDiagnostico.Type

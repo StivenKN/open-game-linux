@@ -21,39 +21,9 @@ import {
   UsuarioId,
   VersionCapaId,
 } from './ids.ts'
+import { largo } from './largo.ts'
 import { FamiliaCapa, Resultado } from './literales.ts'
 import { EstadoRevision, Rol } from './revision.ts'
-
-export const largo = {
-  usuario: { alias: 60, correo: 254 },
-  equipo: { alias: 80 },
-  diagnostico: {
-    sistema: 20,
-    version_sistema: 80,
-    arquitectura: 20,
-    cpu_modelo: 160,
-    gpu_modelo: 160,
-    controlador: 120,
-    version_controlador: 80,
-    soporte_vulkan: 15,
-    version_vulkan: 30,
-    gpu_pci_id: 9,
-  },
-  juego: { titulo: 180 },
-  lanzador: { nombre: 80, url_oficial: 500 },
-  edicion_juego: { identificador_externo: 120 },
-  distribucion: { nombre: 80, version: 40, url_oficial: 500 },
-  version_capa: { familia: 10, variante: 60, version: 60 },
-  bloque_revision: { estado_revision: 15 },
-  perfil_configuracion: { arquitectura: 20, titulo: 180, version_juego_objetivo: 80, version_vulkan_min: 30 },
-  paso_configuracion: { titulo: 160 },
-  dependencia: { nombre: 120, gestor: 60 },
-  perfil_dependencia: { version_requerida: 80 },
-  tipo_fallo: { codigo: 40 },
-  reporte: { version_juego: 80, version_lanzador: 80, resultado: 35, resolucion: 30, calidad_grafica: 80 },
-  solucion: { titulo: 180 },
-  guia_adopcion: { tipo: 25, titulo: 180, estado: 15 },
-} as const
 
 export const TextoHasta = (n: number) => Texto.pipe(Schema.check(Schema.isMaxLength(n)))
 

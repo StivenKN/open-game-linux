@@ -7,7 +7,8 @@ import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
 import { EstadoGuia, TipoGuia } from '../../dominio/guias.ts'
 import { FamiliaCapa, Resultado } from '../../dominio/literales.ts'
 import { type EstadoRevision, Rol } from '../../dominio/revision.ts'
-import { BloqueRevision, largo as L } from '../../dominio/tablas.ts'
+import { largo as L } from '../../dominio/largo.ts'
+import { BloqueRevision } from '../../dominio/tablas.ts'
 import { unaFila } from '../filas.ts'
 
 const ejecutar = (sentencias: ReadonlyArray<string>) =>
