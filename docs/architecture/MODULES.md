@@ -17,6 +17,7 @@ ui/ ─────┴───────────────────�
 | review block writes | only `servidor/aportes/revision.ts` (and DDL in `servidor/esquema/`) | same test: an SQL template with `SET`/`INSERT INTO` that touches `estado_revision`, `revisor_id` or `evidencia_revision` anywhere else, `scripts/` included, fails |
 | equipo/diagnostico writes | only `servidor/aportes/diagnostico.ts` | `src/fronteras.test.ts`, same scan of `src/` and `scripts/` |
 | protondb_resumen writes | only `servidor/externo/protondb.ts` | `src/fronteras.test.ts`, same scan of `src/` and `scripts/` |
+| arreglo_upstream writes | only `servidor/aportes/upstream.ts` | `src/fronteras.test.ts`, same scan of `src/` and `scripts/` |
 | browser bundle | no server code, no GPU table, no detector script | `scripts/sin-servidor-en-cliente.ts` after `vite build`, inside `pnpm check` (markers include `OPENGAME_TABLA_GPU` and `Win32_VideoController`) |
 | `styles.css` | every rule closed (no accidental nesting), one rule per selector | `src/styles.test.ts` |
 
@@ -41,6 +42,7 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `dominio/aportes.ts` | Every input schema (`NuevoReporte` with the failing-result filter, `NuevaSolucion`, `NuevoJuego`, `Captura` with `gpu_pci_id` and `biblioteca_steam` and the Linux driver and Vulkan only on its Linux member, `CapturaManual` without the PCI id or library, `EntradaDiagnostico` with detector text capped at 300 000 characters (derived from `MAX_JUEGOS_BIBLIOTECA` and `largo.biblioteca.nombre`), `GuardarDiagnostico` with `con_biblioteca`, `VersionCapaRef`, `EquipoDestino`, `FiltroCatalogo`), **`discrepancias`** (8.7 comparability) | Persisting |
 | `dominio/fallos.ts` | `Regla` + `reglas` (field + Spanish message per rule), failure classes, `FalloDominio`, `Respuesta`, control errors | |
 | `dominio/guias.ts` | `TipoGuia`, `EstadoGuia` | |
+| `dominio/upstream.ts` | `AppIdSteam`, `PrProtonfixes`, `NotaArreglo`, **`exportarFix`** (profile → umu-protonfixes file, every untranslated token listed) and **`informeProton`** (report → Valve's compatibility-report). The tokenizer, the brand-gated Python renderer and the GitHub URL builders are private | Sending anything: users open the prefilled links themselves |
 | `servidor/runtime.ts` | `PgLive` (config `DATABASE_URL`), the one `ManagedRuntime`, HMR dispose | |
 | `servidor/auth.ts` | better-auth instance (usuario mapping, `rol`/`activo` additionalFields, public sign-up refuses `dominioDemo`), `Visitante` service, `visitanteDe`, `exigirUsuario`, `exigirRevisor` → `Revisor` brand | Data rules |
 | `servidor/ejecutar.ts` | `leer`, `accion`: session → `Visitante`, transaction per action, control errors → `notFound`/`redirect`, domain failures → `Respuesta` | Business rules |
@@ -49,8 +51,9 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `servidor/aportes/aportes.ts` | **Single writer** of reporte/reporte_fallo/version_capa upsert, solucion, and juego/edicion_juego (`crearJuego`, reviewers only). App-side 8.7/8.9 write rules | The review block, equipo/diagnostico |
 | `servidor/aportes/diagnostico.ts` | **Single writer** of equipo and diagnostico, and the distribucion a capture names (`registrarDiagnostico`, converging on one equipo per alias and one capture per time). Stores `biblioteca_steam` only when `con_biblioteca` is true | |
 | `servidor/aportes/revision.ts` | **Single writer** of the review block. `decidir`, `bloqueosAprobacion`, the reviewable-table registry | |
+| `servidor/aportes/upstream.ts` | **Single writer** of arreglo_upstream (`anotarArreglo`, reviewers only): merged umu-protonfixes PRs of approved, exportable, non-demo profiles | |
 | `servidor/externo/protondb.ts` | **Single writer** of `protondb_resumen`. `elementosDeArreglo` (streams the export's top-level array), `importarProtonDb` (read all, then replace in one transaction; refuses an older export), `resumenImportacion` | Catalog rows: it only matches existing Steam editions |
-| `servidor/consultas/*.ts` | Read models: `catalogo`, `perfil`, `guias`, `guia`, `opcionesReporte`, `opcionesSolucion`, `opcionesJuego`, `fichaJuego`, `cola`, `evaluarSinGuardar`, `miDiagnostico`, `misEquipos`, `resumenesProtonDb` (ficha and catalog). Their success types are the page types. `fichaJuego` and `catalogo` read `ahora` once from the `Clock` | Writes |
+| `servidor/consultas/*.ts` | Read models: `catalogo`, `perfil`, `guias`, `guia`, `opcionesReporte`, `opcionesSolucion`, `opcionesJuego`, `fichaJuego`, `cola`, `evaluarSinGuardar`, `miDiagnostico`, `misEquipos`, `resumenesProtonDb` (ficha and catalog), `informeProtonDe`. Their success types are the page types. `fichaJuego` and `catalogo` read `ahora` once from the `Clock` | Writes |
 | `servidor/diagnostico/payload.ts` | **The only detector parser**: `parsearPayload` over payload v1, a union on `sistema` (the Windows member has no Vulkan and no kernel driver). It normalizes `gpu_pci_id` (a malformed id becomes null), the library (drops Steam tools and bad app ids, keeps the first of each id in the detector's order, cuts at 1000) and `rolling`. The private `etiquetaPci` names a GPU the detector could not name | |
 | `servidor/gpu/capacidad.ts` | **`equipoEnLinux`**, the only builder of what `evaluar` consumes: PCI id to family, the policy per family (Linux driver, Vulkan range, warnings), the Direct3D path. Measured Linux Vulkan wins over the projection, and a Windows row's stored Vulkan is never read | Storing anything |
 | `servidor/gpu/familias.generado.ts` | The PCI id to `FamiliaGpu` table, generated by `pnpm gpu:generar` with its source pins in the header. Never edited by hand | |
@@ -78,12 +81,13 @@ Each failure message names the fix, for example: "routes call server fns from sr
 |---|---|---|---|
 | 9.1 Inicio + buscador (RF-01, 02) | `/` `?q&estado&lanzador&sin_anti_cheat` | `catalogoFn` | public |
 | 9.3 Ficha (RF-02, 03, 06, 08, 10) | `/juegos/$juegoId` | `fichaJuegoFn` | public; personal verdict when logged in with a diagnosis |
-| 9.4 Asistente → profile page (RF-06, 07) | `/perfiles/$perfilId` | `perfilFn` | public (pending shows "en prueba") |
+| 9.4 Asistente → profile page (RF-06, 07) | `/perfiles/$perfilId` | `perfilFn`; reviewers record merged PRs with `anotarArregloFn` | public (pending shows "en prueba") |
 | RF-08 report | `/juegos/$juegoId/reportar?perfil=` | `opcionesReporteFn` / `registrarReporteFn` | login |
 | RF-08 solution | `/reportes/$reporteId/solucion?tipoFallo=` | `registrarSolucionFn` | login |
 | 9.2 Diagnóstico (RF-04, 05, 09) | `/diagnostico` `?pegar=1` | `misEquiposFn` / `evaluarDiagnosticoFn`, `guardarDiagnosticoFn` | public evaluation; saving needs login |
 | detector landing | `/diagnostico/importar#d=…` (`ssr: false`) | `evaluarDiagnosticoFn` | public |
 | saved diagnosis | `/diagnosticos/$diagnosticoId` | `miDiagnosticoFn` | owner only (others get notFound) |
+| Proton report for Valve | `/reportes/$reporteId/proton` | `informeProtonFn` | report owner only (others get notFound) |
 | RF-09 guides | `/guias`, `/guias/$guiaId` | `guiasFn`, `guiaFn` | public |
 | RF-10 review | `/revision?tipo=perfil\|reporte\|solucion` | `colaFn` / `decidirFn` | revisor, administrador |
 | RF-03 new game | `/catalogo/nuevo` | `crearJuegoFn` | revisor, administrador |
@@ -118,12 +122,14 @@ Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names 
 | reviewer role + activo (also: only reviewers register games) | app: servidor/auth.ts exigirRevisor |
 | author != reviewer (all three tables), transitions, approval preconditions | app: servidor/aportes/revision.ts decidir |
 | only reviewers publish guides | no write path this delivery (seeded) |
+| one profile per merged PR; only approved, exportable, non-demo profiles | DB UQ arreglo_upstream_pr_uq + app: servidor/aportes/upstream.ts |
+| arreglo_upstream rows never rewritten (Anular deletes) | DB trigger og_inmutable |
 | public view hides retired rows | app: servidor/consultas (WHERE aprobado) |
 | state from the approved reports of the last 365 days, else all of them flagged | app: dominio/compatibilidad.ts resumir + dominio/vigencia.ts |
 | ProtonDB never feeds the computed state; aggregates only (8.9) | app: no path from dominio/protondb.ts to resumir; DB: protondb_resumen has no report rows |
 | ProtonDB row counts nest, a layer only with its count | DB CHECK protondb_resumen_conteos_anidados, _capa_con_reportes, _version_con_variante |
 
-Single writers. `src/fronteras.test.ts` checks the SQL in `src/` and `scripts/` for the first two and the last.
+Single writers. `src/fronteras.test.ts` checks the SQL in `src/` and `scripts/` for the first two and the last two.
 
 | Tables | Writer |
 |---|---|
@@ -131,3 +137,4 @@ Single writers. `src/fronteras.test.ts` checks the SQL in `src/` and `scripts/` 
 | review block of `perfil_configuracion`, `reporte`, `solucion` | `servidor/aportes/revision.ts` `decidir` |
 | `reporte` (with `reporte_fallo` and the `version_capa` upsert), `solucion`, `juego` (with `edicion_juego`) | `servidor/aportes/aportes.ts` |
 | `protondb_resumen` | `servidor/externo/protondb.ts` `importarProtonDb` |
+| `arreglo_upstream` | `servidor/aportes/upstream.ts` `anotarArreglo` |
