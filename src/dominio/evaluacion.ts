@@ -92,7 +92,7 @@ export const evaluar = (equipo: Capacidades, perfil: CondicionesConocidas): Eval
   return { veredicto, comprobaciones, solo_orientativa: equipo.sistema === 'Windows' }
 }
 
-const estadoVulkan = (vulkan: VulkanEquipo, minimo: VersionVulkan | null): Comprobacion['estado'] => {
+export const estadoVulkan = (vulkan: VulkanEquipo, minimo: VersionVulkan | null): Comprobacion['estado'] => {
   if (vulkan.soporte !== 'si') return vulkan.soporte === 'no' ? 'no_cumple' : 'desconocido'
   if (minimo === null) return 'cumple'
   if (vulkan.rango === null) return 'desconocido'
