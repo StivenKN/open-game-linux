@@ -77,4 +77,12 @@ describe('fronteras', () => {
       .map((f) => `${f} writes protondb_resumen; call importarProtonDb() from servidor/externo/protondb.ts instead`)
     expect(violaciones).toEqual([])
   })
+
+  it('only servidor/aportes/upstream.ts writes arreglo_upstream (single writer)', () => {
+    const escritura = /\b(INSERT INTO|UPDATE|DELETE FROM)\s+arreglo_upstream\b/
+    const violaciones = [...archivos('src'), ...archivos('scripts')]
+      .filter((f) => f !== 'src/servidor/aportes/upstream.ts' && !f.startsWith('src/servidor/esquema/') && escritura.test(leer(f)))
+      .map((f) => `${f} writes arreglo_upstream; call anotarArreglo() from servidor/aportes/upstream.ts instead`)
+    expect(violaciones).toEqual([])
+  })
 })

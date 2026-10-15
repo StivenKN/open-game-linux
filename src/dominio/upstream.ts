@@ -21,6 +21,9 @@ export type NumeroPr = typeof NumeroPr.Type
 
 export const urlPr = (pr: number) => `https://github.com/${PROTONFIXES}/pull/${pr}`
 
+/** Merged PRs that carry the generated docstring's marker: how a reviewer notices a fix that came from OpenGame. */
+export const prsDeOpenGame = `https://github.com/${PROTONFIXES}/pulls?q=${encodeURIComponent('is:pr is:merged OpenGame')}`
+
 const rePr = /^https:\/\/github\.com\/Open-Wine-Components\/umu-protonfixes\/pull\/([1-9][0-9]*)(?:[/?#].*)?$/
 
 /** What a reviewer pastes: a umu-protonfixes PR URL on any of its tabs. Decodes to the PR number. */

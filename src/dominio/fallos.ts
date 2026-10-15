@@ -16,6 +16,9 @@ export const Regla = Schema.Literals([
   'contenido_inmutable',
   'edicion_repetida',
   'identificador_en_uso',
+  'arreglo_no_exportable',
+  'arreglo_datos_de_ejemplo',
+  'arreglo_pr_de_otro_perfil',
 ])
 export type Regla = typeof Regla.Type
 
@@ -30,6 +33,7 @@ export type Campo =
   | 'decision'
   | 'ediciones'
   | 'formulario'
+  | 'pr'
 
 export const reglas: Record<Regla, { readonly campo: Campo; readonly mensaje: string }> = {
   equipo_ajeno: { campo: 'diagnostico_id', mensaje: 'Ese diagnóstico no pertenece a uno de tus equipos.' },
@@ -44,6 +48,9 @@ export const reglas: Record<Regla, { readonly campo: Campo; readonly mensaje: st
   contenido_inmutable: { campo: 'formulario', mensaje: 'El contenido revisado no se reescribe; registra un aporte nuevo.' },
   edicion_repetida: { campo: 'ediciones', mensaje: 'Un juego tiene una sola edición por lanzador.' },
   identificador_en_uso: { campo: 'ediciones', mensaje: 'Ese identificador ya pertenece a otro juego en ese lanzador.' },
+  arreglo_no_exportable: { campo: 'pr', mensaje: 'Solo un perfil aprobado de un juego de Steam con AppID y Proton cuenta como arreglo upstream.' },
+  arreglo_datos_de_ejemplo: { campo: 'pr', mensaje: 'Los datos de ejemplo no se registran como aportes upstream.' },
+  arreglo_pr_de_otro_perfil: { campo: 'pr', mensaje: 'Ese PR ya está registrado para otro perfil.' },
 }
 
 export const Discrepancia = Schema.Union([

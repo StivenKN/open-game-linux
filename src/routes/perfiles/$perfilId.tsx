@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { PerfilId } from '../../dominio/ids.ts'
+import { puedeRevisar } from '../../dominio/revision.ts'
 import { perfilFn } from '../../fns/catalogo.ts'
 import { CajaCopiar } from '../../ui/compatibilidad/CajaCopiar.tsx'
 import { ChecklistEvaluacion } from '../../ui/compatibilidad/ChecklistEvaluacion.tsx'
@@ -10,6 +11,7 @@ import { useProgreso } from '../../ui/progreso.ts'
 import { SelloEjemplo } from '../../ui/SelloEjemplo.tsx'
 import { estadoRevision } from '../../ui/vocabulario.ts'
 import { idDeRuta } from '../-ids.ts'
+import { CompartirUpstream } from './-upstream.tsx'
 
 const perfilId = idDeRuta(PerfilId)
 
@@ -28,7 +30,8 @@ const sinEvaluacion = {
 } as const
 
 function Perfil() {
-  const { perfil: p, pasos, dependencias, evaluacion } = Route.useLoaderData()
+  const { perfil: p, pasos, dependencias, evaluacion, exportacion, arreglos } = Route.useLoaderData()
+  const { visitante } = Route.useRouteContext()
   const aprobado = p.estado_revision === 'aprobado'
   return (
     <main className="envoltura">
@@ -149,6 +152,15 @@ function Perfil() {
           </div>
         </div>
       </div>
+
+      {exportacion !== null && (
+        <CompartirUpstream
+          perfilId={p.id}
+          exportacion={exportacion}
+          arreglos={arreglos}
+          revisor={visitante !== null && puedeRevisar[visitante.rol]}
+        />
+      )}
     </main>
   )
 }

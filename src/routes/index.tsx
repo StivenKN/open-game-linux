@@ -104,8 +104,9 @@ function Catalogo() {
           <p className="cifras">
             Hasta hoy hay <b>{contar(contadores.reportes_aprobados, 'reporte aprobado', 'reportes aprobados')}</b> sobre{' '}
             <b>{contar(contadores.juegos_verificados, 'juego verificado', 'juegos verificados')}</b>, en{' '}
-            <b>{contar(contadores.distribuciones_probadas, 'distribución', 'distribuciones')}</b>, y{' '}
-            <b>{contar(contadores.perfiles_aprobados, 'perfil de configuración', 'perfiles de configuración')}</b> para copiar.
+            <b>{contar(contadores.distribuciones_probadas, 'distribución', 'distribuciones')}</b>,{' '}
+            <b>{contar(contadores.perfiles_aprobados, 'perfil de configuración', 'perfiles de configuración')}</b> para copiar y{' '}
+            <b>{contar(contadores.arreglos_upstream, 'arreglo aceptado', 'arreglos aceptados')}</b> en umu-protonfixes.
           </p>
         </div>
         <div className="abanico" aria-hidden="true">
