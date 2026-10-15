@@ -124,6 +124,8 @@ export const CapturaManual = Schema.Union([
   Schema.Struct({ ...camposCaptura, sistema: Schema.Literal('Windows') }),
 ])
 
+// About 30 characters of JSON around each name, then ×2 for base64url (4/3) and the hardware fields.
+// PowerShell writes non-ASCII as \uXXXX, so a full library of long non-ASCII names can still exceed it.
 const MAX_TEXTO_DETECTOR = MAX_JUEGOS_BIBLIOTECA * (30 + largo.biblioteca.nombre) * 2
 
 export const EntradaDiagnostico = Schema.Union([
