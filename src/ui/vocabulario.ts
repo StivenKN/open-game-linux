@@ -5,7 +5,7 @@ import type { AvisoGpu, ControladorLinux, FamiliaGpu, RutaD3d } from '../dominio
 import type { PayloadInvalido } from '../dominio/fallos.ts'
 import type { Bloqueo, EstadoRevision } from '../dominio/revision.ts'
 import type { TipoGuia } from '../dominio/guias.ts'
-import type { NivelX86 } from '../dominio/plataforma.ts'
+import type { ArranqueSeguro, NivelX86, Tpm } from '../dominio/plataforma.ts'
 
 export type Tono = 'verde' | 'amarillo' | 'rojo' | 'gris' | 'morado' | 'azul'
 export type Etiqueta = { readonly texto: string; readonly tono: Tono; readonly icono: string }
@@ -56,6 +56,14 @@ export const apiGrafica = {
   vulkan: 'Vulkan',
   opengl: 'OpenGL',
 } as const satisfies Record<ApiGrafica, string>
+
+export const arranqueSeguro = {
+  activo: 'Activado',
+  inactivo: 'Desactivado',
+  bios: 'Sin UEFI (BIOS)',
+} as const satisfies Record<ArranqueSeguro, string>
+
+export const tpm = { '2.0': 'TPM 2.0', '1.2': 'TPM 1.2', no_detectado: 'Sin TPM' } as const satisfies Record<Tpm, string>
 
 /** A level as a requirement, named by the instruction set games actually ask for. */
 export const nivelX86 = {

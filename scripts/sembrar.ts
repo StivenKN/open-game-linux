@@ -4,7 +4,8 @@ import { GuardarDiagnostico, NuevaSolucion, NuevoReporte } from '../src/dominio/
 import { LANZADOR_STEAM } from '../src/dominio/biblioteca.ts'
 import type { TipoGuia } from '../src/dominio/guias.ts'
 import { UsuarioId } from '../src/dominio/ids.ts'
-import { exigeFallo, type FamiliaCapa, type Resultado } from '../src/dominio/literales.ts'
+import { type ApiGrafica, exigeFallo, type FamiliaCapa, type Resultado } from '../src/dominio/literales.ts'
+import type { NivelX86 } from '../src/dominio/plataforma.ts'
 import { AporteRef, Decision, type Rol } from '../src/dominio/revision.ts'
 import { registrarReporte, registrarSolucion } from '../src/servidor/aportes/aportes.ts'
 import { registrarDiagnostico } from '../src/servidor/aportes/diagnostico.ts'
@@ -69,33 +70,54 @@ const juegos = {
     titulo: 'Grand Theft Auto V',
     descripcion: 'Mundo abierto de acción en Los Santos, con historia para un jugador y GTA Online.',
     ediciones: { steam: '271590', epic: null },
+    apis: ['d3d10', 'd3d11', 'd3d12'],
+    nivel_x86_min: null,
   },
   valorant: {
     titulo: 'Valorant',
     descripcion: 'Shooter táctico competitivo de Riot Games, cinco contra cinco.',
     ediciones: { riot: null },
+    apis: ['d3d11'],
+    nivel_x86_min: null,
   },
   ets2: {
     titulo: 'Euro Truck Simulator 2',
     descripcion: 'Simulador de camiones por las carreteras de Europa. Tiene versión nativa para Linux.',
     ediciones: { steam: '227300' },
+    apis: ['d3d11', 'opengl'],
+    nivel_x86_min: null,
   },
   eldenRing: {
     titulo: 'Elden Ring',
     descripcion: 'Rol de acción en mundo abierto de FromSoftware.',
     ediciones: { steam: '1245620' },
+    apis: ['d3d12'],
+    nivel_x86_min: null,
   },
   witcher3: {
     titulo: 'The Witcher 3: Wild Hunt',
     descripcion: 'Rol de mundo abierto de CD Projekt RED protagonizado por Geralt de Rivia.',
     ediciones: { steam: '292030', gog: null },
+    apis: ['d3d11', 'd3d12'],
+    nivel_x86_min: null,
   },
   cs2: {
     titulo: 'Counter-Strike 2',
     descripcion: 'Shooter táctico competitivo de Valve. Tiene versión nativa para Linux.',
     ediciones: { steam: '730' },
+    apis: ['vulkan', 'd3d11'],
+    nivel_x86_min: 'v2', // Source 2 needs SSE4.2
   },
-} as const satisfies Record<string, { titulo: string; descripcion: string; ediciones: Partial<Record<keyof typeof lanzadores, string | null>> }>
+} as const satisfies Record<
+  string,
+  {
+    titulo: string
+    descripcion: string
+    ediciones: Partial<Record<keyof typeof lanzadores, string | null>>
+    apis: ReadonlyArray<ApiGrafica>
+    nivel_x86_min: NivelX86 | null
+  }
+>
 
 type Edicion = { [J in keyof typeof juegos]: readonly [J, keyof (typeof juegos)[J]['ediciones']] }[keyof typeof juegos]
 
@@ -288,6 +310,12 @@ const equipos = {
       version_controlador: 'Mesa 24.1.7',
       gpu_pci_id: '1002:73ff',
       version_vulkan: '1.3.278',
+      // Fedora sets up zram (capped at 8 GB) and no disk swap; Zen 3 is x86-64-v3.
+      nivel_x86: 'v3',
+      arranque_seguro: 'activo',
+      tpm: '2.0',
+      zram_mb: 8192,
+      swap_mb: 0,
     },
   },
   brunoPc: {
@@ -454,6 +482,11 @@ const programa = Effect.gen(function* () {
       const edicion = new Map<string, number>()
       for (const [k, j] of Record.toEntries(juegos)) {
         const juego_id = yield* idDe('juego', { titulo: j.titulo }, { descripcion: j.descripcion })
+        // Converges on reruns: fills the level on a database seeded before the column existed.
+        const nivel = yield* sql`UPDATE juego SET nivel_x86_min = ${j.nivel_x86_min} WHERE id = ${juego_id} AND nivel_x86_min IS DISTINCT FROM ${j.nivel_x86_min} RETURNING id`
+        if (nivel.length > 0) contar('juego.nivel_x86_min')
+        const apis = yield* sql`INSERT INTO juego_api ${sql.insert(j.apis.map((api) => ({ juego_id, api })))} ON CONFLICT DO NOTHING RETURNING api`
+        for (const _ of apis) contar('juego_api')
         const ediciones: Partial<Record<keyof typeof lanzadores, string | null>> = j.ediciones
         for (const l of Record.keys(lanzadores)) {
           const identificador_externo = ediciones[l]
