@@ -6,6 +6,7 @@ import { NoEncontrado } from '../../dominio/fallos.ts'
 import { JuegoId, UsuarioId } from '../../dominio/ids.ts'
 import { ApiGrafica } from '../../dominio/literales.ts'
 import { EstadoRevision, estadosVigentes } from '../../dominio/revision.ts'
+import { rutaJuego } from '../../dominio/ruta.ts'
 import { Diagnostico, EdicionJuego, Equipo, Juego, JuegoApi, Lanzador, PerfilConfiguracion, Solucion, TipoFallo } from '../../dominio/tablas.ts'
 import { Visitante } from '../auth.ts'
 import { filas, unaFila } from '../filas.ts'
@@ -57,6 +58,7 @@ const MiDiagnostico = Diagnostico.mapFields(
     'version_vulkan',
     'controlador',
     'gpu_pci_id',
+    'nivel_x86',
   ]),
 ).mapFields(Struct.assign({ equipo: Equipo.fields.alias, distribucion: Schema.NullOr(Schema.String) }))
 
@@ -67,7 +69,7 @@ export const ultimoDiagnostico = (usuario: UsuarioId) =>
       Result: MiDiagnostico,
       execute: (id) => sql`
         SELECT d.id, d.capturado_en, d.sistema, d.distribucion_id, d.arquitectura, d.ram_mb, d.vram_mb, d.soporte_vulkan,
-               d.version_vulkan, d.controlador, d.gpu_pci_id, eq.alias AS equipo, ${sql.literal(etiquetaDistribucion('dist'))} AS distribucion
+               d.version_vulkan, d.controlador, d.gpu_pci_id, d.nivel_x86, eq.alias AS equipo, ${sql.literal(etiquetaDistribucion('dist'))} AS distribucion
         FROM diagnostico d
         JOIN equipo eq ON eq.id = d.equipo_id
         LEFT JOIN distribucion dist ON dist.id = d.distribucion_id
@@ -206,9 +208,12 @@ export const fichaJuego = (juegoId: JuegoId) =>
           : null,
     }))
 
-    const personal = Option.match(diagnostico, {
+    const personal = Option.match(Option.all({ d: diagnostico, equipo }), {
       onNone: () => null,
-      onSome: (d) => ({
+      onSome: ({ d, equipo }) => ({
+        ruta: rutaJuego(equipo, d.nivel_x86, { apis, nivel_x86_min: juego.value.nivel_x86_min }),
+        nivel_x86_min: juego.value.nivel_x86_min,
+        orientativa: d.sistema === 'Windows',
         en_mi_distribucion:
           d.distribucion_id === null || d.distribucion === null
             ? null

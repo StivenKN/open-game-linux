@@ -78,7 +78,7 @@ function Importar() {
       <ResumenCaptura captura={r.valor.captura} />
       <TarjetaGraficaEnLinux equipo={r.valor.equipo} pci={r.valor.captura.gpu_pci_id} />
       <Guardar entrada={estado.entrada} juegosEnBiblioteca={r.valor.biblioteca?.total ?? 0} />
-      <JuegosDelEquipo filas={r.valor.matriz} biblioteca={r.valor.biblioteca} />
+      <JuegosDelEquipo filas={r.valor.matriz} biblioteca={r.valor.biblioteca} orientativa={r.valor.captura.sistema === 'Windows'} />
     </main>
   )
 }

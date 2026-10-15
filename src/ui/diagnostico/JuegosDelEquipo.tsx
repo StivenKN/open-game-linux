@@ -4,12 +4,20 @@ import { type FilaMatriz, MatrizDiagnostico } from './MatrizDiagnostico.tsx'
 
 const ABIERTA_HASTA = 20
 
-export function JuegosDelEquipo({ filas, biblioteca }: { filas: ReadonlyArray<FilaMatriz>; biblioteca: BibliotecaEvaluada | null }) {
+export function JuegosDelEquipo({
+  filas,
+  biblioteca,
+  orientativa,
+}: {
+  filas: ReadonlyArray<FilaMatriz>
+  biblioteca: BibliotecaEvaluada | null
+  orientativa: boolean
+}) {
   if (biblioteca === null)
     return (
       <>
         <h2 className="titulo-seccion">Juegos</h2>
-        <MatrizDiagnostico filas={filas} />
+        <MatrizDiagnostico filas={filas} orientativa={orientativa} />
       </>
     )
   const propias = filas.filter((f) => f.en_biblioteca)
@@ -25,7 +33,7 @@ export function JuegosDelEquipo({ filas, biblioteca }: { filas: ReadonlyArray<Fi
           {contar(biblioteca.total, 'juego instalado', 'juegos instalados')}, {propias.length} en el catálogo.
         </p>
         {propias.length > 0 ? (
-          <MatrizDiagnostico filas={propias} />
+          <MatrizDiagnostico filas={propias} orientativa={orientativa} />
         ) : (
           <p className="pequeno nota">Ninguno de tus juegos instalados está todavía en el catálogo.</p>
         )}
@@ -46,7 +54,7 @@ export function JuegosDelEquipo({ filas, biblioteca }: { filas: ReadonlyArray<Fi
         )}
       </section>
       <h2 className="titulo-seccion">Resto del catálogo</h2>
-      <MatrizDiagnostico filas={resto} />
+      <MatrizDiagnostico filas={resto} orientativa={orientativa} />
     </>
   )
 }

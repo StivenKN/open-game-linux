@@ -71,6 +71,7 @@ const gta: Muestra = {
   },
   pendientes: 1,
   personal: {
+    ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
       resumen: { estado: 'funciona', pruebas: 2, ultima_prueba: dia('2026-09-28'), entornos: [gtaMint], fallos: [] },
@@ -111,6 +112,7 @@ const valorant: Muestra = {
   },
   pendientes: 0,
   personal: {
+    ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
       resumen: { estado: 'no_inicia', pruebas: 1, ultima_prueba: dia('2026-07-11'), entornos: [valMint], fallos: [{ codigo: 'anti_cheat', reportes: 1 }] },
@@ -128,6 +130,7 @@ const ets2: Muestra = {
   resumen: { estado: 'sin_evidencia', pruebas: 0, ultima_prueba: null, entornos: [], fallos: [] },
   pendientes: 2,
   personal: {
+    ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
       resumen: { estado: 'sin_evidencia', pruebas: 0, ultima_prueba: null, entornos: [], fallos: [] },
@@ -158,6 +161,7 @@ const eldenRing: Muestra = {
   resumen: { estado: 'funciona_con_ajustes', pruebas: 2, ultima_prueba: dia('2026-09-30'), entornos: [erUbuntu, erMint], fallos: [] },
   pendientes: 0,
   personal: {
+    ruta: { estado: 'con_ruta', camino: 'vkd3d_proton' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
       resumen: { estado: 'funciona_con_ajustes', pruebas: 1, ultima_prueba: dia('2026-09-21'), entornos: [erMint], fallos: [] },
@@ -196,6 +200,7 @@ const witcher: Muestra = {
   resumen: { estado: 'funciona', pruebas: 2, ultima_prueba: dia('2026-09-10'), entornos: [twPop, twMint], fallos: [] },
   pendientes: 0,
   personal: {
+    ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
       resumen: { estado: 'funciona', pruebas: 1, ultima_prueba: dia('2026-08-20'), entornos: [twMint], fallos: [] },

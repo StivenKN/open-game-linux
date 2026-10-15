@@ -6,6 +6,7 @@ import type { PayloadInvalido } from '../dominio/fallos.ts'
 import type { Bloqueo, EstadoRevision } from '../dominio/revision.ts'
 import type { TipoGuia } from '../dominio/guias.ts'
 import type { ArranqueSeguro, NivelX86, Tpm } from '../dominio/plataforma.ts'
+import type { Camino, CaminoSinAntiTrampas, Requisito, RutaJuego } from '../dominio/ruta.ts'
 
 export type Tono = 'verde' | 'amarillo' | 'rojo' | 'gris' | 'morado' | 'azul'
 export type Etiqueta = { readonly texto: string; readonly tono: Tono; readonly icono: string }
@@ -172,3 +173,64 @@ export const avisoGpu = {
   vulkan_no_detectado:
     'Tu equipo no detectó Vulkan, pero tu GPU lo tiene: instala los controladores Vulkan de tu distribución (por ejemplo, mesa-vulkan-drivers).',
 } as const satisfies Record<AvisoGpu, string>
+
+export type EtiquetaCamino = {
+  readonly nombre: string
+  readonly frase: string
+  readonly tono: Tono
+  readonly nota: string | null
+  readonly opcion: string | null
+}
+
+/** The type demands a warning on every path that is unsafe with online anti-cheat. */
+export const camino = {
+  dxvk: { nombre: 'DXVK', frase: 'Puede correr con DXVK.', tono: 'verde', nota: null, opcion: null },
+  dxvk_2: { nombre: 'DXVK 2.x', frase: 'Puede correr con DXVK 2.x.', tono: 'verde', nota: rutaD3d.dxvk_2.detalle, opcion: null },
+  vkd3d_proton: { nombre: 'VKD3D-Proton', frase: 'Puede correr con VKD3D-Proton, que traduce DirectX 12 a Vulkan.', tono: 'verde', nota: null, opcion: null },
+  vulkan: { nombre: 'Vulkan', frase: 'Puede correr con Vulkan, sin traducir DirectX.', tono: 'verde', nota: null, opcion: null },
+  opengl: { nombre: 'OpenGL', frase: 'Puede correr con OpenGL, sin traducir DirectX.', tono: 'verde', nota: null, opcion: null },
+  dxvk_sarek: {
+    nombre: 'DXVK-Sarek',
+    frase: 'Puede correr con DXVK-Sarek en Proton-CachyOS.',
+    tono: 'amarillo',
+    nota: 'No lo uses en juegos en línea con anti-trampas: compila los sombreadores de una forma que el anti-trampas puede marcar.',
+    opcion: rutaD3d.dxvk_sarek.opcion,
+  },
+  wined3d: { nombre: 'WineD3D', frase: 'Solo con WineD3D: funciona, pero lento.', tono: 'amarillo', nota: null, opcion: rutaD3d.wined3d.opcion },
+} as const satisfies Record<Camino, EtiquetaCamino> & Record<CaminoSinAntiTrampas, { readonly nota: string }>
+
+export const etiquetaRuta = (r: RutaJuego): Etiqueta => {
+  switch (r.estado) {
+    case 'con_ruta':
+      return { texto: camino[r.camino].nombre, tono: camino[r.camino].tono, icono: '✓' }
+    case 'sin_ruta':
+      return { texto: 'No puede correr', tono: 'rojo', icono: '✕' }
+    case 'sin_datos':
+      return { texto: 'Faltan datos', tono: 'gris', icono: '?' }
+    case 'sin_apis':
+      return { texto: 'APIs sin declarar', tono: 'gris', icono: '?' }
+  }
+}
+
+const falta = {
+  grafica: 'Falta saber hasta qué versión de Vulkan llega tu tarjeta gráfica: en Linux, instala vulkan-tools y vuelve a ejecutar el detector.',
+  cpu: 'Falta el nivel x86-64 de tu procesador: lo mide el detector de Linux, vuelve a ejecutarlo.',
+} as const satisfies Record<Requisito, string>
+
+/** The verdict as sentences. `minimo` is the game's minimum x86-64 level, named when the CPU decides. */
+export const fraseRuta = (r: RutaJuego, minimo: NivelX86 | null): ReadonlyArray<string> => {
+  switch (r.estado) {
+    case 'con_ruta':
+      return [camino[r.camino].frase]
+    case 'sin_ruta':
+      return [
+        r.motivo === 'grafica'
+          ? 'Tu tarjeta gráfica no tiene una ruta para las APIs de este juego.'
+          : `Tu procesador no llega al nivel ${minimo === null ? 'x86-64' : nivelX86[minimo]} que pide.`,
+      ]
+    case 'sin_datos':
+      return [r.al_menos === null ? 'Todavía no sabemos si puede correr.' : `Al menos con ${camino[r.al_menos].nombre}.`, ...r.faltan.map((f) => falta[f])]
+    case 'sin_apis':
+      return ['APIs gráficas sin declarar: no podemos calcular una ruta.']
+  }
+}

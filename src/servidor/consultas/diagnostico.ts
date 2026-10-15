@@ -7,7 +7,9 @@ import { condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts
 import type { EquipoEnLinux } from '../../dominio/gpu.ts'
 import { NoEncontrado, type PayloadInvalido } from '../../dominio/fallos.ts'
 import type { DiagnosticoId, JuegoId } from '../../dominio/ids.ts'
-import { Resultado } from '../../dominio/literales.ts'
+import { ApiGrafica, Resultado } from '../../dominio/literales.ts'
+import type { NivelX86 } from '../../dominio/plataforma.ts'
+import { rutaJuego } from '../../dominio/ruta.ts'
 import { Diagnostico, Distribucion, Equipo, Juego, PerfilConfiguracion } from '../../dominio/tablas.ts'
 import { exigirUsuario, Visitante } from '../auth.ts'
 import { capturaDe } from '../diagnostico/payload.ts'
@@ -15,7 +17,7 @@ import { equipoEnLinux } from '../gpu/capacidad.ts'
 import { filas, type Infra } from '../filas.ts'
 import { etiquetaCapa, etiquetaDistribucion } from './etiquetas.ts'
 
-const JuegoFila = Schema.Struct({ id: Juego.fields.id, titulo: Juego.fields.titulo })
+const JuegoFila = Schema.Struct({ id: Juego.fields.id, titulo: Juego.fields.titulo, nivel_x86_min: Juego.fields.nivel_x86_min, apis: Schema.Array(ApiGrafica) })
 const ResultadoAprobado = Schema.Struct({ juego_id: Juego.fields.id, resultado: Resultado })
 
 const PerfilAprobado = Schema.Struct({
@@ -33,12 +35,20 @@ const PerfilAprobado = Schema.Struct({
   distribucion: Schema.String,
 })
 
-type Entorno = { readonly distribucion_id: typeof Distribucion.Type.id | null; readonly arquitectura: string }
+/** The capture facts beyond the GPU that the verdicts read. */
+type Entorno = { readonly distribucion_id: typeof Distribucion.Type.id | null; readonly arquitectura: string; readonly nivel_x86: NivelX86 | null }
 
 const matriz = (equipo: EquipoEnLinux, entorno: Entorno, enBiblioteca: ReadonlySet<JuegoId>) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const juegos = yield* filas(JuegoFila, sql`SELECT id, titulo FROM juego ORDER BY titulo, id`)
+    const juegos = yield* filas(
+      JuegoFila,
+      sql`
+        SELECT j.id, j.titulo, j.nivel_x86_min, COALESCE(array_agg(ja.api) FILTER (WHERE ja.api IS NOT NULL), '{}') AS apis
+        FROM juego j LEFT JOIN juego_api ja ON ja.juego_id = j.id
+        GROUP BY j.id
+        ORDER BY j.titulo, j.id`,
+    )
     const resultados = yield* filas(
       ResultadoAprobado,
       sql`
@@ -68,6 +78,8 @@ const matriz = (equipo: EquipoEnLinux, entorno: Entorno, enBiblioteca: ReadonlyS
         en_biblioteca: enBiblioteca.has(juego.id),
         estado: estadoDe(aprobados),
         pruebas: aprobados.length,
+        nivel_x86_min: juego.nivel_x86_min,
+        ruta: rutaJuego(equipo, entorno.nivel_x86, juego),
         perfil:
           perfil === null
             ? null
@@ -128,7 +140,7 @@ export const evaluarSinGuardar = (
           )
         : []
     const equipo = equipoEnLinux(captura)
-    const entorno = { distribucion_id: distribucion?.id ?? null, arquitectura: captura.arquitectura }
+    const entorno = { distribucion_id: distribucion?.id ?? null, arquitectura: captura.arquitectura, nivel_x86: captura.nivel_x86 }
     return { captura, equipo, ...(yield* evaluarEquipo(equipo, entorno, captura.biblioteca_steam)) }
   })
 

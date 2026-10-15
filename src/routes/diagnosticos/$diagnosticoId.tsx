@@ -30,7 +30,7 @@ function DiagnosticoGuardado() {
       <p className="tenue">Solo tú ves este diagnóstico. Los reportes que publiques mostrarán su contexto técnico, no tu correo.</p>
       <ResumenCaptura captura={d.captura} />
       <TarjetaGraficaEnLinux equipo={d.equipo} pci={d.captura.gpu_pci_id} />
-      <JuegosDelEquipo filas={d.matriz} biblioteca={d.biblioteca} />
+      <JuegosDelEquipo filas={d.matriz} biblioteca={d.biblioteca} orientativa={d.captura.sistema === 'Windows'} />
     </main>
   )
 }
