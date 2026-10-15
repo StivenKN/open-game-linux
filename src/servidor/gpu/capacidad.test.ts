@@ -5,7 +5,6 @@ import { PciId } from '../../dominio/gpu.ts'
 import type { Diagnostico } from '../../dominio/tablas.ts'
 import { equipoEnLinux } from './capacidad.ts'
 
-// A stored row, which has every column whatever its sistema (older Windows rows stored their Vulkan).
 type Fila = Pick<Diagnostico, 'sistema' | 'ram_mb' | 'vram_mb' | 'soporte_vulkan' | 'version_vulkan' | 'controlador' | 'gpu_pci_id'>
 
 const windows = (pci: string | null): Fila => ({
@@ -26,7 +25,6 @@ const v = (texto: string) => {
 }
 const proyectado = (desde: string, hasta: string) => ({ soporte: 'si', origen: 'proyectado', rango: { desde: v(desde), hasta: v(hasta) } }) as const
 
-// Every id checked against pci.ids at the generator's pinned commit.
 describe('equipoEnLinux: golden GPUs (Windows capture, nothing measured)', () => {
   it.each([
     ['GT 710', '10de:128b', 'nvidia_kepler', 'nouveau', proyectado('1.2', '1.2'), { d3d9_11: 'dxvk_sarek', d3d12: false }, ['kepler_470_fin']],

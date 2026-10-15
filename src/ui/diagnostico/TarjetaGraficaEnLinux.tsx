@@ -9,7 +9,6 @@ const vulkanTexto = (vulkan: VulkanEquipo): string => {
   return `${origenVulkan[vulkan.origen]}: ${valor}`
 }
 
-/** What the server projected for this GPU on Linux (servidor/gpu/capacidad.ts), dashed like every hardware-derived panel. */
 export function TarjetaGraficaEnLinux({ equipo, pci }: { equipo: EquipoEnLinux; pci: PciId | null }) {
   const { gpu, ruta, vulkan } = equipo
   const opcion = ruta === null ? null : rutaD3d[ruta.d3d9_11].opcion

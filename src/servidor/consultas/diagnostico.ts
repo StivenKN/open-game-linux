@@ -33,10 +33,8 @@ const PerfilAprobado = Schema.Struct({
   distribucion: Schema.String,
 })
 
-/** Where the capture was taken, which `sugerirPerfil` matches against each profile's environment. */
 type Entorno = { readonly distribucion_id: typeof Distribucion.Type.id | null; readonly arquitectura: string }
 
-/** `en_biblioteca` marks the rows of games the user has installed on Steam. */
 const matriz = (equipo: EquipoEnLinux, entorno: Entorno, enBiblioteca: ReadonlySet<JuegoId>) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
@@ -82,7 +80,6 @@ export type FilaMatriz = Effect.Success<ReturnType<typeof matriz>>[number]
 
 const EdicionSteam = Schema.Struct({ app_id: Schema.String, juego_id: Juego.fields.id })
 
-/** Splits a Steam library into the catalog games it holds and the games the catalog does not know yet. */
 const separarBiblioteca = (juegos: BibliotecaSteam) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
@@ -102,7 +99,6 @@ const separarBiblioteca = (juegos: BibliotecaSteam) =>
     }
   })
 
-/** The matrix for one machine, plus its library split when the capture brings one. */
 const evaluarEquipo = (equipo: EquipoEnLinux, entorno: Entorno, juegos: BibliotecaSteam | null) =>
   Effect.gen(function* () {
     const separada = juegos === null ? null : yield* separarBiblioteca(juegos)

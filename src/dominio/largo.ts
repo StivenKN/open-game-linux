@@ -1,4 +1,3 @@
-/** Column length limits, by table. The migrations freeze them in DDL and the schemas check them on input. `biblioteca` is the jsonb library's game names. */
 export const largo = {
   usuario: { alias: 60, correo: 254 },
   equipo: { alias: 80 },

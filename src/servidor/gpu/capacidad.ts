@@ -4,10 +4,6 @@ import type { Diagnostico } from '../../dominio/tablas.ts'
 import { tablaGpu } from './familias.generado.ts'
 import { decodificarTramos } from './tramos.ts'
 
-/**
- * The diagnostico columns the projection reads: a stored row or a capture. Only a Linux one has driver and
- * Vulkan fields to read; a Windows row may still hold the Vulkan older versions stored, which is never read.
- */
 export type ColumnasEquipo = Pick<Diagnostico, 'ram_mb' | 'vram_mb' | 'gpu_pci_id'> &
   ({ readonly sistema: 'Linux' } & Pick<Diagnostico, 'soporte_vulkan' | 'version_vulkan' | 'controlador'> | { readonly sistema: 'Windows' })
 
@@ -16,11 +12,9 @@ const v = (mayor: number, menor: number): VersionVulkan => ({ texto: `${mayor}.$
 type Politica = {
   readonly controlador: ControladorLinux
   readonly vulkan: RangoVulkan | null
-  /** `salvo_con`: the warning is moot when the measured Linux kernel driver is already that one. */
   readonly avisos: ReadonlyArray<{ readonly aviso: AvisoGpu; readonly salvo_con: ControladorLinux | null }>
 }
 
-// Research of Oct 2026. A range marks a level nobody has read with vulkaninfo on real hardware yet.
 const POLITICA = {
   intel_gen5_o_anterior: { controlador: 'i915', vulkan: null, avisos: [] },
   intel_gen6: { controlador: 'i915', vulkan: null, avisos: [] },
@@ -54,7 +48,6 @@ const identificar = (pci: PciId | null): { readonly familia: FamiliaGpu; readonl
   return familia === undefined ? null : { familia, politica: POLITICA[familia] }
 }
 
-/** Measured Linux Vulkan wins; otherwise the family projects it. A Windows row's stored Vulkan is never used. */
 const vulkanEnLinux = (c: ColumnasEquipo, politica: Politica | null): VulkanEquipo => {
   if (c.sistema === 'Linux' && c.soporte_vulkan === 'si') {
     const version = versionVulkan(c.version_vulkan)
@@ -71,7 +64,6 @@ const rutas: ReadonlyArray<readonly [VersionVulkan, RutaD3d]> = [
   [v(1, 1), 'dxvk_sarek'],
 ]
 
-/** The path for the range's floor: a projected range is only sure to reach its lower end. */
 const rutaDe = (vulkan: VulkanEquipo): RutaLinux | null => {
   if (vulkan.soporte === 'no') return { d3d9_11: 'wined3d', d3d12: false }
   const piso = vulkan.soporte === 'si' ? vulkan.rango?.desde : undefined
@@ -88,7 +80,6 @@ const avisosDe = (c: ColumnasEquipo, politica: Politica, vulkan: VulkanEquipo): 
   ]
 }
 
-/** The one way to build what `evaluar` consumes from a stored or unsaved capture. */
 export const equipoEnLinux = (c: ColumnasEquipo): EquipoEnLinux => {
   const gpu = identificar(c.gpu_pci_id)
   const vulkan = vulkanEnLinux(c, gpu?.politica ?? null)

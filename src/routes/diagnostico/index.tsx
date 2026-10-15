@@ -13,7 +13,6 @@ import { motivoPayload, sistema as etiquetaSistema, soporteVulkan } from '../../
 import { type Entrada, entradaManual, FormularioManual, guardarPendiente, Pegado } from './-entrada.ts'
 
 export const Route = createFileRoute('/diagnostico/')({
-  // `?pegar=1` is where the Windows detector lands after copying a result too long for the address bar.
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ pegar: Schema.optionalKey(Schema.Literal(1)) })),
   head: () => ({ meta: [{ title: 'Diagnóstico · OpenGame Linux' }] }),
   loader: async () => {

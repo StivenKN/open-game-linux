@@ -310,8 +310,6 @@ const guias = [
   check('guia_adopcion', 'fechas_ordenadas', 'actualizado_en >= creado_en'),
 ]
 
-// No backfill: captures are immutable, and an old row without a PCI id reads as "sin identificador PCI".
-// The 1000 is frozen here on purpose; a later limit belongs in a later migration.
 const gpuBiblioteca = [
   `ALTER TABLE diagnostico ADD COLUMN gpu_pci_id varchar(${L.diagnostico.gpu_pci_id})`,
   check('diagnostico', 'gpu_pci_id_formato', "gpu_pci_id IS NULL OR gpu_pci_id ~ '^[0-9a-f]{4}:[0-9a-f]{4}$'"),

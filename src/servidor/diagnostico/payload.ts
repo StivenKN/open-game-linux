@@ -9,7 +9,6 @@ import { Diagnostico, Distribucion } from '../../dominio/tablas.ts'
 
 export const VERSION_ESQUEMA = 1
 
-// Detectors send names and ids as found on disk; `bibliotecaDe` turns them into a BibliotecaSteam.
 const JuegoEnviado = Schema.Struct({ app_id: Schema.Number, nombre: Schema.String })
 
 const comunes = {
@@ -25,7 +24,6 @@ const comunes = {
   biblioteca_steam: Schema.optionalKey(Schema.NullOr(Schema.Array(JuegoEnviado))),
 }
 
-/** One member per system, picked by a pre-check so a bad field reports that member's issue only. */
 const PayloadV1 = {
   Linux: Schema.Struct({
     ...comunes,
@@ -36,7 +34,6 @@ const PayloadV1 = {
     soporte_vulkan: SoporteVulkan,
     version_vulkan: Schema.NullOr(Schema.String),
   }),
-  // Vulkan on Windows says nothing about Linux, and the Windows kernel driver is not the Linux one.
   Windows: Schema.Struct({ ...comunes, sistema: Schema.Literal('Windows') }),
 } satisfies Record<Sistema, Schema.Top>
 
@@ -78,11 +75,7 @@ export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInv
     return yield* cabeEnColumnas(yield* Result.mapError(Schema.decodeResult(Captura)(candidato), campoInvalido))
   })
 
-/**
- * Steam tools out, then games with a usable app id, the first of each id, in the detector's order
- * (most recently played first), cut to MAX_JUEGOS_BIBLIOTECA. A malformed entry is dropped, never a failure.
- * Control characters and lone surrogates go before the cut: jsonb rejects \u0000 and unpaired surrogates.
- */
+/** jsonb rejects \u0000 and unpaired surrogates. */
 const bibliotecaDe = (juegos: ReadonlyArray<typeof JuegoEnviado.Type>): typeof BibliotecaSteam.Encoded => {
   const vistos = new Set<number>()
   return juegos
@@ -113,7 +106,6 @@ const Columnas = Schema.Struct({
 const cabeEnColumnas = (captura: Captura): Result.Result<Captura, PayloadInvalido> =>
   Result.map(Result.mapError(Schema.decodeUnknownResult(Columnas)(captura), campoInvalido), () => captura)
 
-/** A malformed PCI id is dropped, never a failure: the capture is still useful without the projection. */
 const pciId = (valor: unknown): PciId | null =>
   Option.getOrNull(Schema.decodeUnknownOption(PciId)(typeof valor === 'string' ? valor.trim().toLowerCase() : valor))
 

@@ -25,7 +25,6 @@ const comunes = {
   vram_mb: Diagnostico.fields.vram_mb,
 }
 
-// Only Linux asks for Vulkan: on Windows it says nothing about Linux, which the GPU card projects instead.
 export const FormularioManual = Schema.Union([
   Schema.Struct({
     ...comunes,

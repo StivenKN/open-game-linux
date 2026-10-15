@@ -19,13 +19,11 @@
   $MaxJuegos = 0
   $tope = '__OPENGAME_MAX_JUEGOS__'
   if ($env:OPENGAME_MAX_JUEGOS) { $tope = $env:OPENGAME_MAX_JUEGOS }
-  # Unfilled: send every game, the server cuts.
   if (-not [int]::TryParse($tope, [ref]$MaxJuegos) -or $MaxJuegos -le 0) { $MaxJuegos = [int]::MaxValue }
   # Start-Process opens the URL through ShellExecute, which cuts URLs at about 2048 chars.
   $MaxUrl = 2000
 
-  # JSON by hand, like json_str in opengame-detect.sh: ConvertTo-Json differs between 5.1 and 7.
-  # Control chars are dropped and every char above 0x7E becomes \uXXXX, so the output is ASCII.
+  # JSON by hand: ConvertTo-Json differs between 5.1 and 7.
   function Json-Str($s) {
     if ([string]::IsNullOrEmpty($s)) { return 'null' }
     $sb = New-Object System.Text.StringBuilder
@@ -45,7 +43,6 @@
     if ($null -eq $n) { return 'null' }
     [string][int64]$n
   }
-  # One unreadable source must not lose the rest of the payload.
   function Leer([scriptblock]$lector) {
     try { & $lector } catch { $null }
   }
@@ -61,8 +58,6 @@
     $texto
   }
 
-  # Same names as `uname -m`, which profiles compare against. The server rejects a capture without
-  # one, so a shell missing both variables still answers from the OS bitness.
   function Get-OgArquitectura {
     $a = $env:PROCESSOR_ARCHITEW6432
     if (-not $a) { $a = $env:PROCESSOR_ARCHITECTURE }
@@ -79,7 +74,6 @@
     ([string](Get-CimInstance Win32_Processor | Select-Object -First 1).Name).Trim()
   }
 
-  # Installed RAM (sum of the modules), like the memory blocks in the bash detector.
   # TotalPhysicalMemory is lower and would fail an exact "8 GB" minimum on an 8 GB PC.
   function Get-OgRamMb {
     $total = 0
@@ -88,9 +82,7 @@
     if ($total -gt 0) { [math]::Floor($total / 1MB) }
   }
 
-  # PCI adapters only (remote and indirect display adapters have none). Games run on the adapter with the
-  # most VRAM: on a Ryzen + GeForce laptop the first non-Intel adapter is the AMD iGPU. Ties go to NVIDIA,
-  # then AMD, then Intel, then CIM order.
+  # Remote and indirect display adapters have no PCI id.
   function Get-OgGpu {
     $registro = @(Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*')
     $marcas = @{ '10de' = 0; '1002' = 1; '8086' = 2 }
@@ -109,7 +101,7 @@
     $criterio = @{ Expression = { if ($null -eq $_.Vram) { -1 } else { $_.Vram } }; Descending = $true }, 'Marca', 'Orden'
     $g = @($pci | Sort-Object $criterio)[0]
 
-    # Without a driver Windows names it "Microsoft Basic Display Adapter"; the server labels the PCI id.
+    # Without a driver Windows names it "Microsoft Basic Display Adapter".
     $modelo = ([string]$g.Cim.Name).Trim()
     if ($modelo -match 'Basic Display') { $modelo = $null }
 
@@ -131,8 +123,7 @@
   }
 
   # VDF files nest blocks (an appmanifest's UserConfig has its own "name"), so a flat regex reads the
-  # wrong key. Emits D (depth), K (key, lowercased: old manifests write appID) and V for every
-  # "key" "value" line, with \" and \\ undone. Same rules as vdf_pares in opengame-detect.sh.
+  # wrong key. Keys are lowercased because old manifests write appID.
   function Get-OgVdfPares([string]$ruta) {
     $d = 0
     foreach ($l in [IO.File]::ReadAllLines($ruta, [Text.Encoding]::UTF8)) {
@@ -149,9 +140,8 @@
     }
   }
 
-  # Installed Steam games as a JSON array, most recently played first and at most $MaxJuegos, or 'null' without Steam.
   # libraryfolders.vdf lists the libraries: "path" two levels deep, or a numbered key one level deep in
-  # the pre-2021 format. Tools such as Proton stay in the list; the server filters them.
+  # the pre-2021 format.
   function Get-OgBibliotecaJson {
     $steam = $env:OPENGAME_STEAM_DIR
     if (-not $steam) { $steam = (Get-ItemProperty -Path 'HKCU:\Software\Valve\Steam').SteamPath }

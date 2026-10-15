@@ -211,7 +211,6 @@ layer(PgTest)('consultas', (it) => {
           const e = yield* escenario
           const sql = yield* SqlClient.SqlClient
           const pc = yield* e.insertar('equipo', { usuario_id: 'ana', alias: 'pc con Windows' })
-          // The Vulkan the Windows driver reported (1.4) must not count: it says nothing about Linux.
           yield* e.insertar('diagnostico', {
             equipo_id: pc, capturado_en: new Date('2026-10-10T00:00:00Z'), sistema: 'Windows', version_sistema: 'Windows 10 Home 22H2 (19045)',
             distribucion_id: null, arquitectura: 'x86_64', cpu_modelo: 'cpu', gpu_modelo: 'NVIDIA GeForce GT 710', gpu_pci_id: '10de:128b',

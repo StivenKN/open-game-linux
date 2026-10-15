@@ -13,7 +13,7 @@ set -u
 
 APP_URL="${OPENGAME_URL:-__OPENGAME_URL__}"
 MAX_JUEGOS="${OPENGAME_MAX_JUEGOS:-__OPENGAME_MAX_JUEGOS__}"
-case "$MAX_JUEGOS" in ''|*[!0-9]*) MAX_JUEGOS=0 ;; esac # unfilled: send all, the server cuts
+case "$MAX_JUEGOS" in ''|*[!0-9]*) MAX_JUEGOS=0 ;; esac
 
 json_str() {
   if [ -z "${1:-}" ]; then printf 'null'; else
@@ -80,9 +80,7 @@ if command -v vulkaninfo >/dev/null; then
 fi
 
 # VDF files nest blocks (an appmanifest's UserConfig has its own "name"), so a flat grep reads the
-# wrong key. Prints file-number<TAB>depth<TAB>key<TAB>value per "key" "value" line, with the key
-# lowercased (old manifests write appID) and \" and \\ undone.
-# Same rules as Get-OgVdfPares in opengame-detect.ps1; a test checks both read the same library.
+# wrong key. Keys are lowercased because old manifests write appID.
 vdf_pares() {
   awk '
     function cadena(s,   out, i, c) {
@@ -108,9 +106,8 @@ vdf_pares() {
     }' "$@"
 }
 
-# Installed Steam games, most recently played first, at most MAX_JUEGOS. Every Steam root (native, Flatpak, Snap) lists its
-# libraries in steamapps/libraryfolders.vdf: "path" two levels deep, or a numbered key one level deep
-# in the pre-2021 format. Tools such as Proton stay in the list; the server filters them.
+# Every Steam root (native, Flatpak, Snap) lists its libraries in steamapps/libraryfolders.vdf: "path"
+# two levels deep, or a numbered key one level deep in the pre-2021 format.
 biblioteca_steam="null"; bibliotecas=()
 for raiz in "${OPENGAME_STEAM_DIR:-}" "${HOME:-}/.steam/steam" "${HOME:-}/.local/share/Steam" \
   "${HOME:-}/.var/app/com.valvesoftware.Steam/.local/share/Steam" "${HOME:-}/snap/steam/common/.local/share/Steam"; do
@@ -129,8 +126,6 @@ if [ "${#bibliotecas[@]}" -gt 0 ]; then
   biblioteca_steam="[]"
   if [ "${#manifiestos[@]}" -gt 0 ]; then
     # StateFlags 4 is fully installed; 1024 marks an update in progress, which clears bit 4 meanwhile.
-    # Names are escaped like json_str but in one stream, not a json_str subshell per game; tr keeps the
-    # tab and newline that separate fields and games (vdf_pares already turned tabs in names into spaces).
     biblioteca_steam=$(vdf_pares "${manifiestos[@]}" | awk -F'\t' '
         $2 == 1 { v[$1, $3] = $4; n = $1 }
         END {

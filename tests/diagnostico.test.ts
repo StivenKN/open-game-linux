@@ -24,7 +24,6 @@ const bibliotecaWindows = [
 const como = (id: string) => Effect.provideService(Visitante, Option.some({ id: Schema.decodeSync(UsuarioId)(id), alias: id, rol: 'usuario' as const }))
 const comoInvitado = Effect.provideService(Visitante, Option.none())
 
-// Most tests store no library; the ones about it pass con_biblioteca: true.
 const guardar = (g: Omit<Parameters<typeof registrarDiagnostico>[0], 'con_biblioteca'> & { readonly con_biblioteca?: boolean }) =>
   registrarDiagnostico({ con_biblioteca: false, ...g })
 
@@ -149,7 +148,6 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       })
     })))
 
-  // GTA V is a Steam edition in the catalog; ETS2's app id exists only under another launcher, so it stays unknown.
   const catalogoConSteam = (f: Base) =>
     Effect.gen(function* () {
       const gta = yield* idDe(f.sql`INSERT INTO juego (titulo, descripcion) VALUES ('Grand Theft Auto V', 'd') RETURNING id`)

@@ -14,7 +14,6 @@ const sh = join(raiz, 'src/detector/opengame-detect.sh')
 const stubs = join(raiz, 'src/detector/pruebas/stubs.ps1')
 const fuente = readFileSync(ps1, 'utf8')
 
-// Windows PowerShell 5.1 cannot be run here, so its compatibility rests on this guard plus the pwsh 7 runs below.
 describe('opengame-detect.ps1 source', () => {
   it('is ASCII only, so Windows PowerShell 5.1 reads it the same without a BOM', () => {
     expect([...fuente].filter((c) => c > '\x7e' || (c < ' ' && c !== '\n' && c !== '\r'))).toEqual([])
@@ -38,8 +37,6 @@ let tmp = ''
 const steam = (raizSteam: string) => join(tmp, 'steam', raizSteam)
 const registro = () => join(tmp, 'registro.txt')
 
-// The fixture's libraryfolders.vdf files hold absolute paths, so each run gets a copy with them filled in.
-// Docker mounts it (and the repo) at the same path, so bash and pwsh read the very same tree.
 beforeAll(() => {
   tmp = mkdtempSync(join(tmpdir(), 'opengame-detector-'))
   cpSync(join(raiz, 'tests/fixtures/steam'), join(tmp, 'steam'), { recursive: true })
@@ -51,7 +48,6 @@ beforeAll(() => {
 })
 afterAll(() => rmSync(tmp, { recursive: true, force: true }))
 
-// A Steam folder with `cuantos` installed games; game i was played at time i, so the newest comes first.
 const biblioteca = (carpeta: string, cuantos: number) => {
   const apps = join(tmp, carpeta, 'steamapps')
   mkdirSync(apps, { recursive: true })
@@ -61,7 +57,6 @@ const biblioteca = (carpeta: string, cuantos: number) => {
 }
 const esperada = (cuantos: number) => Array.from({ length: cuantos }, (_, k) => ({ app_id: cuantos - k, nombre: nombreJuego(cuantos - k) }))
 
-// Runs the real script the way `irm | iex` does, after the stubs that fake the Windows PC.
 const powershell = (env: Record<string, string>): string => {
   const variables = { OPENGAME_URL: 'http://ejemplo.test', OPENGAME_MAX_JUEGOS: String(MAX_JUEGOS_BIBLIOTECA), PROCESSOR_ARCHITECTURE: 'AMD64', OPENGAME_PRUEBA_STEAM: steam('nuevo'), OPENGAME_PRUEBA_REGISTRO: registro(), ...env }
   const args = ['-NoProfile', '-NonInteractive', '-Command', `. '${stubs}'; Invoke-Expression (Get-Content -Raw -LiteralPath '${ps1}')`]

@@ -32,7 +32,6 @@ export const registrarDiagnostico = (
           )
     if (equipo === undefined) return yield* Effect.fail(new ReglaIncumplida({ regla: 'equipo_ajeno' }))
 
-    // A Windows capture has no Linux driver or Vulkan; its row fills those columns as unknown.
     const soloLinux =
       captura.sistema === 'Linux'
         ? {

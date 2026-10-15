@@ -1,6 +1,3 @@
-// Pure parsers for scripts/generar-gpus.ts. Each one fails closed: a line it cannot read, a token it has no
-// rule for, or a source that yields fewer ids than its floor throws, so upstream drift stops the run instead
-// of shipping a wrong or empty table.
 import type { FamiliaGpu, VendorGpu } from '../src/dominio/gpu.ts'
 import { codificarTramos } from '../src/servidor/gpu/tramos.ts'
 
@@ -8,7 +5,6 @@ export type Dispositivo = { readonly vendor: VendorGpu; readonly device: string;
 
 const hex4 = (s: string) => s.toLowerCase().padStart(4, '0')
 
-/** Mesa `include/pci_ids/*_pci_ids.h`: one `CHIPSET(0xdddd, token, ...)` per non-blank line. */
 export const chipsetsMesa = (texto: string, fuente: string): ReadonlyArray<{ readonly device: string; readonly token: string }> =>
   texto.split('\n').flatMap((linea, i) => {
     if (linea.trim() === '') return []
@@ -23,7 +19,6 @@ const reglas = (fuente: string, token: string, tabla: ReadonlyArray<readonly [Re
   return familia
 }
 
-/** crocus covers gen4 to gen8 and is closed history, so an unknown token is a parser bug. */
 export const familiaCrocus = (token: string): FamiliaGpu =>
   reglas('crocus', token, [
     [/^(i965|g4x|ilk)$/, 'intel_gen5_o_anterior'],
@@ -37,7 +32,6 @@ export const familiaCrocus = (token: string): FamiliaGpu =>
 export const familiaIris = (token: string): FamiliaGpu =>
   reglas('iris', token, [[/^(bdw_|chv$)/, 'intel_gen8']], 'intel_gen9_o_posterior')
 
-/** Linux `amdgpu_drv.c` chips. SI is GCN 1, CIK is GCN 2; an unknown chip fails until someone classifies it. */
 const chipsAmdgpu = {
   TAHITI: 'amd_gcn1',
   PITCAIRN: 'amd_gcn1',
@@ -114,7 +108,6 @@ const codenamesNvidia: ReadonlyArray<readonly [RegExp, FamiliaGpu]> = [
 // pci.ids names chipset and GPU functions with the same codename ("TU116 USB 3.1 Host Controller").
 const noEsGpu = /\b(Audio|Bridge|bridge|Controller|PCIe host|USB|UCSI|SMBus|Ethernet|SATA|IDE)\b/
 
-/** NVIDIA GPUs from `pci.ids`, classified by the codename that opens each device name. */
 export const idsNvidia = (texto: string): ReadonlyArray<Dispositivo> => {
   const lineas = texto.split('\n')
   const inicio = lineas.findIndex((l) => l.startsWith('10de  '))
@@ -133,7 +126,6 @@ export const idsNvidia = (texto: string): ReadonlyArray<Dispositivo> => {
   return salida
 }
 
-/** Fails when a source yields fewer ids than its floor: a format change that silently matches nothing. */
 export const conPiso = <A>(fuente: string, piso: number, ids: ReadonlyArray<A>): ReadonlyArray<A> => {
   if (ids.length < piso) throw new Error(`${fuente}: ${ids.length} ids, menos que el piso ${piso}; ¿cambió el formato?`)
   return ids
@@ -141,7 +133,6 @@ export const conPiso = <A>(fuente: string, piso: number, ids: ReadonlyArray<A>):
 
 export type Tabla = Record<VendorGpu, Partial<Record<FamiliaGpu, string>>>
 
-/** Groups ids per vendor and family as sorted hex runs (`'0402-0406 040a'`); one id in two families fails. */
 export const tablaDe = (dispositivos: ReadonlyArray<Dispositivo>): Tabla => {
   const unicos = new Map<string, Dispositivo>()
   for (const d of dispositivos) {

@@ -26,11 +26,6 @@ export type OrigenDato = 'medido' | 'proyectado'
 
 export type RangoVulkan = { readonly desde: VersionVulkan; readonly hasta: VersionVulkan }
 
-/**
- * `medido` is vulkaninfo on this Linux machine: its version is a one-point range, and support it reported
- * without a version has `rango: null`. `proyectado` is what the GPU's family reaches on Linux, a wider range
- * when the level is not verified. A projection is never presented as a measurement.
- */
 export type VulkanEquipo =
   | { readonly soporte: 'si'; readonly origen: OrigenDato; readonly rango: RangoVulkan | null }
   | { readonly soporte: 'no'; readonly origen: OrigenDato }
@@ -57,7 +52,6 @@ export type Comprobacion = {
   readonly requisito: 'ram' | 'vram' | 'vulkan'
   readonly estado: 'cumple' | 'no_cumple' | 'desconocido'
   readonly exigido: string
-  /** Null when the machine's value is unknown, so an unknown value carries no origin. */
   readonly detectado: { readonly valor: string; readonly origen: OrigenDato } | null
 }
 
@@ -98,7 +92,6 @@ export const evaluar = (equipo: Capacidades, perfil: CondicionesConocidas): Eval
   return { veredicto, comprobaciones, solo_orientativa: equipo.sistema === 'Windows' }
 }
 
-/** A range that straddles the minimum is `desconocido`: an unverified level never yields a false `cumple`. */
 const estadoVulkan = (vulkan: VulkanEquipo, minimo: VersionVulkan | null): Comprobacion['estado'] => {
   if (vulkan.soporte !== 'si') return vulkan.soporte === 'no' ? 'no_cumple' : 'desconocido'
   if (minimo === null) return 'cumple'
@@ -110,7 +103,6 @@ const estadoVulkan = (vulkan: VulkanEquipo, minimo: VersionVulkan | null): Compr
 const valorVulkan = (vulkan: Exclude<VulkanEquipo, { readonly soporte: 'desconocido' }>): string =>
   vulkan.soporte === 'no' ? 'no' : vulkan.rango === null ? 'si' : rangoVulkan(vulkan.rango)
 
-/** `"1.3–1.4"`, or `"1.2"` when the range is one version. */
 export const rangoVulkan = (r: RangoVulkan): string =>
   r.desde.texto === r.hasta.texto ? r.desde.texto : `${r.desde.texto}–${r.hasta.texto}`
 

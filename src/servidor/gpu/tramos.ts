@@ -1,4 +1,3 @@
-/** Device ids as sorted runs of 4-digit hex (`'0402-0406 040a'`), the form familias.generado.ts stores them in. */
 export const codificarTramos = (numeros: ReadonlyArray<number>): string => {
   const orden = [...new Set(numeros)].sort((a, b) => a - b)
   const salida: Array<string> = []

@@ -98,7 +98,6 @@ const camposCaptura = {
   vram_mb: Diagnostico.fields.vram_mb,
 }
 
-// The Linux kernel driver and Vulkan only exist on a Linux capture: on Windows they say nothing about Linux.
 const camposLinux = {
   sistema: Schema.Literal('Linux'),
   distribucion: Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version }),
@@ -108,7 +107,6 @@ const camposLinux = {
   version_vulkan: TextoOpcionalHasta(largo.diagnostico.version_vulkan),
 }
 
-// Only a detector reads these, so a manual capture has neither.
 const camposDetectados = { gpu_pci_id: Diagnostico.fields.gpu_pci_id, biblioteca_steam: Diagnostico.fields.biblioteca_steam }
 
 const vulkanConSoporte = Schema.makeFilter((c: { readonly soporte_vulkan: SoporteVulkan; readonly version_vulkan: string | null }) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
@@ -126,9 +124,6 @@ export const CapturaManual = Schema.Union([
   Schema.Struct({ ...camposCaptura, sistema: Schema.Literal('Windows') }),
 ])
 
-// Bounds what the parser reads. A full library is about 30 characters of JSON per game around an ASCII name of at
-// most largo.biblioteca.nombre; base64url adds 4/3 and the rest of the payload fits in a further 1.5, so ×2 overall
-// (300 000). PowerShell writes a non-ASCII character as \uXXXX, so a full library of long non-ASCII names can exceed it.
 const MAX_TEXTO_DETECTOR = MAX_JUEGOS_BIBLIOTECA * (30 + largo.biblioteca.nombre) * 2
 
 export const EntradaDiagnostico = Schema.Union([
@@ -137,7 +132,6 @@ export const EntradaDiagnostico = Schema.Union([
 ])
 export type EntradaDiagnostico = typeof EntradaDiagnostico.Type
 
-/** With `con_biblioteca` false the capture is stored without its Steam library. */
 export const GuardarDiagnostico = Schema.Struct({ equipo: EquipoDestino, entrada: EntradaDiagnostico, con_biblioteca: Casilla })
 
 export const FiltroCatalogo = Schema.Struct({

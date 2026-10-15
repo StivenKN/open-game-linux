@@ -1,10 +1,3 @@
-# Test doubles for opengame-detect.ps1 (never served). Dot-source this file before running the script:
-# a function shadows the cmdlet of the same name, so the real script reads this fake Windows PC.
-#   default                         laptop with Intel HD 4600 + GeForce GTX 750 Ti (2 GiB), 2 x 4 GiB RAM,
-#                                   Windows 10 22H2, Steam at $env:OPENGAME_PRUEBA_STEAM
-#   OPENGAME_PRUEBA_EQUIPO=basico   Windows 11 23H2 without a GPU driver, no RAM modules listed, no Steam
-#   OPENGAME_PRUEBA_EQUIPO=ryzen    the default PC with a Ryzen iGPU (512 MiB) listed before a GTX 1650 (4 GiB)
-# Start-Process and Set-Clipboard append "<cmdlet> <argument>" lines to $env:OPENGAME_PRUEBA_REGISTRO.
 $basico = $env:OPENGAME_PRUEBA_EQUIPO -eq 'basico'
 $ryzen = $env:OPENGAME_PRUEBA_EQUIPO -eq 'ryzen'
 
@@ -30,7 +23,6 @@ function Get-CimInstance([string]$ClassName) {
       }
       else {
         [pscustomobject]@{ Name = 'Intel(R) HD Graphics 4600'; PNPDeviceID = 'PCI\VEN_8086&DEV_0412&SUBSYS_05CA1028&REV_06\3&11583659&0&10'; AdapterRAM = [uint32]1073741824 }
-        # AdapterRAM saturates as a uint32, so the 2 GiB the script reports can only come from qwMemorySize.
         [pscustomobject]@{ Name = 'NVIDIA GeForce GTX 750 Ti'; PNPDeviceID = 'PCI\VEN_10DE&DEV_1380&SUBSYS_362D1458&REV_A2\4&2B0A7B8C&0&0008'; AdapterRAM = [uint32]4293918720 }
       }
     }

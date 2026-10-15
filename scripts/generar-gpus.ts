@@ -1,5 +1,3 @@
-// Regenerates src/servidor/gpu/familias.generado.ts from pinned upstream sources: `pnpm gpu:generar`.
-// To pick up new GPUs, bump the pins below, run it, and review the printed counts and the diff.
 import { writeFileSync } from 'node:fs'
 import { FamiliaGpu, VendorGpu } from '../src/dominio/gpu.ts'
 import { chipsetsMesa, conPiso, type Dispositivo, familiaCrocus, familiaIris, idsAmdgpu, idsNvidia, tablaDe } from './gpu-fuentes.ts'
@@ -31,7 +29,6 @@ const [crocus, iris, i915, i830, r300, r600, amdgpu, pciids] = await Promise.all
   bajar(`https://raw.githubusercontent.com/pciutils/pciids/${fuentes.pciids}/pci.ids`),
 ])
 
-// Floors sit a little under the counts at the pinned sources.
 const dispositivos: ReadonlyArray<Dispositivo> = [
   ...conPiso('crocus', 90, crocus).map((c) => ({ vendor: '8086', device: c.device, familia: familiaCrocus(c.token) }) as const),
   ...conPiso('iris', 280, iris).map((c) => ({ vendor: '8086', device: c.device, familia: familiaIris(c.token) }) as const),

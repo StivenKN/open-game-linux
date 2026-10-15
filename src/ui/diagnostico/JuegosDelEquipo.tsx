@@ -2,10 +2,8 @@ import type { BibliotecaEvaluada } from '../../dominio/biblioteca.ts'
 import { contar } from '../formato.ts'
 import { type FilaMatriz, MatrizDiagnostico } from './MatrizDiagnostico.tsx'
 
-// A short unknown list stays open; a long one would push the rest of the catalog off the page.
 const ABIERTA_HASTA = 20
 
-/** The matrix, split into the user's Steam library and the rest of the catalog when the capture has one. */
 export function JuegosDelEquipo({ filas, biblioteca }: { filas: ReadonlyArray<FilaMatriz>; biblioteca: BibliotecaEvaluada | null }) {
   if (biblioteca === null)
     return (
