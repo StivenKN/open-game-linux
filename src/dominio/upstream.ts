@@ -169,7 +169,6 @@ export type ExportacionFix =
       readonly appid: AppIdSteam
       readonly ruta: string
       readonly operaciones: readonly [Operacion, ...Array<Operacion>]
-      /** The Python module, exact bytes. */
       readonly contenido: string
       readonly omitidos: ReadonlyArray<Omitido>
       /** Writes ~/.config/protonfixes/localfixes/<appid>.py, which GE-Proton and umu read today. OpenGame never runs it. */

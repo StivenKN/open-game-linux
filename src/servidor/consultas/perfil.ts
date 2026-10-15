@@ -98,7 +98,6 @@ export const perfil = (id: PerfilId) =>
             onSome: (d) => evaluar(equipoEnLinux(d), condiciones(p)),
           })
 
-    // Only reviewed content goes upstream.
     const exportacion = p.estado_revision === 'aprobado' ? exportarFix({ ...p, perfil: { id: p.id, revision: p.revision }, dependencias }) : null
     const arreglos = yield* SqlSchema.findAll({
       Request: PerfilId,
