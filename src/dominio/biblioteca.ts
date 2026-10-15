@@ -18,6 +18,9 @@ export type JuegoBiblioteca = typeof JuegoBiblioteca.Type
 export const BibliotecaSteam = Schema.Array(JuegoBiblioteca).pipe(Schema.check(Schema.isMaxLength(MAX_JUEGOS_BIBLIOTECA)))
 export type BibliotecaSteam = typeof BibliotecaSteam.Type
 
+/** A library against the catalog: how many games it holds, and those the catalog does not know yet. */
+export type BibliotecaEvaluada = { readonly total: number; readonly desconocidos: ReadonlyArray<JuegoBiblioteca> }
+
 /** Proton and the runtimes install like games but are Steam's own tools. */
 export const esHerramientaSteam = (nombre: string): boolean =>
   /^(Proton\b|Steam Linux Runtime|Steamworks Common Redistributables)/i.test(nombre)

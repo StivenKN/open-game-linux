@@ -1,7 +1,7 @@
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import type { Captura, EntradaDiagnostico } from '../../dominio/aportes.ts'
-import { type BibliotecaSteam, LANZADOR_STEAM } from '../../dominio/biblioteca.ts'
+import { type BibliotecaEvaluada, type BibliotecaSteam, LANZADOR_STEAM } from '../../dominio/biblioteca.ts'
 import { estadoDe } from '../../dominio/compatibilidad.ts'
 import { condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
 import type { EquipoEnLinux } from '../../dominio/gpu.ts'
@@ -95,14 +95,12 @@ const separarBiblioteca = (juegos: BibliotecaSteam) =>
               SELECT ej.identificador_externo AS app_id, ej.juego_id FROM edicion_juego ej JOIN lanzador l ON l.id = ej.lanzador_id
               WHERE l.nombre = ${LANZADOR_STEAM} AND ej.identificador_externo IN ${sql.in(juegos.map((j) => String(j.app_id)))}`,
           )
-    const juegoDe = new Map(ediciones.map((e) => [e.app_id, e.juego_id]))
+    const conocidos = new Set(ediciones.map((e) => e.app_id))
     return {
       enCatalogo: new Set(ediciones.map((e) => e.juego_id)),
-      biblioteca: { total: juegos.length, desconocidos: juegos.filter((j) => !juegoDe.has(String(j.app_id))) },
+      biblioteca: { total: juegos.length, desconocidos: juegos.filter((j) => !conocidos.has(String(j.app_id))) },
     }
   })
-
-export type BibliotecaEvaluada = Effect.Success<ReturnType<typeof separarBiblioteca>>['biblioteca']
 
 /** The matrix for one machine, plus its library split when the capture brings one. */
 const evaluarEquipo = (equipo: EquipoEnLinux, entorno: Entorno, juegos: BibliotecaSteam | null) =>
