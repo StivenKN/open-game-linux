@@ -7,7 +7,7 @@ import { DiagnosticoId, EquipoId, UsuarioId } from '../src/dominio/ids.ts'
 import { registrarDiagnostico } from '../src/servidor/aportes/diagnostico.ts'
 import { Visitante } from '../src/servidor/auth.ts'
 import { evaluarSinGuardar, miDiagnostico, misEquipos } from '../src/servidor/consultas/diagnostico.ts'
-import { enRollback, PgTest } from './apoyo.ts'
+import { enRollback, idDe, PgTest } from './apoyo.ts'
 import { base, type Base } from './fixtures.ts'
 
 const prototipo: object = JSON.parse(readFileSync(new URL('../prototypes/detector/out.json', import.meta.url), 'utf8'))
@@ -143,6 +143,53 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
         gpu: { familia: 'intel_gen9_o_posterior', supuesta: false, controlador: 'i915', avisos: [] },
         ruta: { d3d9_11: 'dxvk_2', d3d12: true },
       })
+    })))
+
+  // GTA V is a Steam edition in the catalog; ETS2's app id exists only under another launcher, so it stays unknown.
+  const catalogoConSteam = (f: Base) =>
+    Effect.gen(function* () {
+      const gta = yield* idDe(f.sql`INSERT INTO juego (titulo, descripcion) VALUES ('Grand Theft Auto V', 'd') RETURNING id`)
+      yield* f.sql`INSERT INTO edicion_juego (juego_id, lanzador_id, identificador_externo) VALUES (${gta}, ${f.lanzador}, '271590')`
+      const epic = yield* idDe(f.sql`INSERT INTO lanzador (nombre) VALUES ('Epic Games Store') RETURNING id`)
+      yield* f.sql`INSERT INTO edicion_juego (juego_id, lanzador_id, identificador_externo) SELECT juego_id, ${epic}, '227300' FROM edicion_juego WHERE id = ${f.ed2}`
+    })
+  const enBiblioteca = (matriz: ReadonlyArray<{ readonly titulo: string; readonly en_biblioteca: boolean }>) =>
+    matriz.filter((m) => m.en_biblioteca).map((m) => m.titulo)
+
+  it.effect('miDiagnostico separa la biblioteca guardada en juegos del catálogo y juegos desconocidos', conBase((f) =>
+    Effect.gen(function* () {
+      yield* catalogoConSteam(f)
+      const { id } = yield* registrarDiagnostico({ con_biblioteca: true, equipo: existente(f.equipo), entrada: payloadWindows() }).pipe(como(f.autor))
+      const guardado = yield* miDiagnostico(id).pipe(como(f.autor))
+      expect(enBiblioteca(guardado.matriz)).toEqual(['Grand Theft Auto V'])
+      expect(guardado.matriz.map((m) => m.titulo)).toEqual(['Grand Theft Auto V', 'Juego', 'Otro juego'])
+      expect(guardado.biblioteca).toEqual({
+        total: 4,
+        desconocidos: [
+          { app_id: 9999990, nombre: 'Café "Noir": Édition™' },
+          { app_id: 227300, nombre: 'Euro Truck Simulator 2' },
+          { app_id: 292030, nombre: 'The Witcher 3: Wild Hunt' },
+        ],
+      })
+      expect(yield* Effect.flip(miDiagnostico(id).pipe(como(f.revisor)))).toMatchObject({ _tag: 'NoEncontrado' })
+    })))
+
+  it.effect('sin guardar la biblioteca, el diagnóstico guardado no la muestra', conBase((f) =>
+    Effect.gen(function* () {
+      yield* catalogoConSteam(f)
+      const { id } = yield* registrarDiagnostico({ con_biblioteca: false, equipo: existente(f.equipo), entrada: payloadWindows() }).pipe(como(f.autor))
+      const guardado = yield* miDiagnostico(id).pipe(como(f.autor))
+      expect([guardado.biblioteca, guardado.captura.biblioteca_steam, enBiblioteca(guardado.matriz)]).toEqual([null, null, []])
+    })))
+
+  it.effect('un invitado ve su biblioteca evaluada sin que se guarde nada', conBase((f) =>
+    Effect.gen(function* () {
+      yield* catalogoConSteam(f)
+      const antes = yield* Effect.all([contar(f, 'diagnostico'), contar(f, 'equipo')])
+      const evaluado = yield* evaluarSinGuardar(payloadWindows()).pipe(comoInvitado)
+      expect(yield* Effect.all([contar(f, 'diagnostico'), contar(f, 'equipo')])).toEqual(antes)
+      expect(enBiblioteca(evaluado.matriz)).toEqual(['Grand Theft Auto V'])
+      expect(evaluado.biblioteca?.desconocidos.map((j) => j.app_id)).toEqual([9999990, 227300, 292030])
     })))
 
   it.effect('miDiagnostico es solo del dueño; misEquipos de un invitado está vacío', conBase((f) =>

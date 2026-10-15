@@ -1,11 +1,12 @@
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import type { Captura, EntradaDiagnostico } from '../../dominio/aportes.ts'
+import { type BibliotecaSteam, LANZADOR_STEAM } from '../../dominio/biblioteca.ts'
 import { estadoDe } from '../../dominio/compatibilidad.ts'
 import { condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
 import type { EquipoEnLinux } from '../../dominio/gpu.ts'
 import { NoEncontrado, type PayloadInvalido } from '../../dominio/fallos.ts'
-import type { DiagnosticoId } from '../../dominio/ids.ts'
+import type { DiagnosticoId, JuegoId } from '../../dominio/ids.ts'
 import { Resultado } from '../../dominio/literales.ts'
 import { Diagnostico, Distribucion, Equipo, Juego, PerfilConfiguracion } from '../../dominio/tablas.ts'
 import { exigirUsuario, Visitante } from '../auth.ts'
@@ -35,7 +36,8 @@ const PerfilAprobado = Schema.Struct({
 /** Where the capture was taken, which `sugerirPerfil` matches against each profile's environment. */
 type Entorno = { readonly distribucion_id: typeof Distribucion.Type.id | null; readonly arquitectura: string }
 
-const matriz = (equipo: EquipoEnLinux, entorno: Entorno) =>
+/** `en_biblioteca` marks the rows of games the user has installed on Steam. */
+const matriz = (equipo: EquipoEnLinux, entorno: Entorno, enBiblioteca: ReadonlySet<JuegoId>) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     const juegos = yield* filas(JuegoFila, sql`SELECT id, titulo FROM juego ORDER BY titulo, id`)
@@ -65,6 +67,7 @@ const matriz = (equipo: EquipoEnLinux, entorno: Entorno) =>
       return {
         juego_id: juego.id,
         titulo: juego.titulo,
+        en_biblioteca: enBiblioteca.has(juego.id),
         estado: estadoDe(aprobados),
         pruebas: aprobados.length,
         perfil:
@@ -77,10 +80,46 @@ const matriz = (equipo: EquipoEnLinux, entorno: Entorno) =>
 
 export type FilaMatriz = Effect.Success<ReturnType<typeof matriz>>[number]
 
+const EdicionSteam = Schema.Struct({ app_id: Schema.String, juego_id: Juego.fields.id })
+
+/** Splits a Steam library into the catalog games it holds and the games the catalog does not know yet. */
+const separarBiblioteca = (juegos: BibliotecaSteam) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    const ediciones =
+      juegos.length === 0
+        ? []
+        : yield* filas(
+            EdicionSteam,
+            sql`
+              SELECT ej.identificador_externo AS app_id, ej.juego_id FROM edicion_juego ej JOIN lanzador l ON l.id = ej.lanzador_id
+              WHERE l.nombre = ${LANZADOR_STEAM} AND ej.identificador_externo IN ${sql.in(juegos.map((j) => String(j.app_id)))}`,
+          )
+    const juegoDe = new Map(ediciones.map((e) => [e.app_id, e.juego_id]))
+    return {
+      enCatalogo: new Set(ediciones.map((e) => e.juego_id)),
+      biblioteca: { total: juegos.length, desconocidos: juegos.filter((j) => !juegoDe.has(String(j.app_id))) },
+    }
+  })
+
+export type BibliotecaEvaluada = Effect.Success<ReturnType<typeof separarBiblioteca>>['biblioteca']
+
+/** The matrix for one machine, plus its library split when the capture brings one. */
+const evaluarEquipo = (equipo: EquipoEnLinux, entorno: Entorno, juegos: BibliotecaSteam | null) =>
+  Effect.gen(function* () {
+    const separada = juegos === null ? null : yield* separarBiblioteca(juegos)
+    return { matriz: yield* matriz(equipo, entorno, separada?.enCatalogo ?? new Set()), biblioteca: separada?.biblioteca ?? null }
+  })
+
 export const evaluarSinGuardar = (
   entrada: EntradaDiagnostico,
 ): Effect.Effect<
-  { readonly captura: Captura; readonly equipo: EquipoEnLinux; readonly matriz: ReadonlyArray<FilaMatriz> },
+  {
+    readonly captura: Captura
+    readonly equipo: EquipoEnLinux
+    readonly matriz: ReadonlyArray<FilaMatriz>
+    readonly biblioteca: BibliotecaEvaluada | null
+  },
   PayloadInvalido | Infra,
   SqlClient.SqlClient
 > =>
@@ -95,7 +134,8 @@ export const evaluarSinGuardar = (
           )
         : []
     const equipo = equipoEnLinux(captura)
-    return { captura, equipo, matriz: yield* matriz(equipo, { distribucion_id: distribucion?.id ?? null, arquitectura: captura.arquitectura }) }
+    const entorno = { distribucion_id: distribucion?.id ?? null, arquitectura: captura.arquitectura }
+    return { captura, equipo, ...(yield* evaluarEquipo(equipo, entorno, captura.biblioteca_steam)) }
   })
 
 const DiagnosticoGuardado = Schema.Struct({
@@ -141,7 +181,7 @@ export const miDiagnostico = (id: DiagnosticoId) =>
     )
     if (d === undefined) return yield* Effect.fail(new NoEncontrado())
     const equipo = equipoEnLinux(d)
-    return { id: d.id, alias: d.alias, captura: yield* capturaGuardada(d), equipo, matriz: yield* matriz(equipo, d) }
+    return { id: d.id, alias: d.alias, captura: yield* capturaGuardada(d), equipo, ...(yield* evaluarEquipo(equipo, d, d.biblioteca_steam)) }
   })
 
 const EquipoFila = Schema.Struct({ id: Equipo.fields.id, alias: Equipo.fields.alias })
