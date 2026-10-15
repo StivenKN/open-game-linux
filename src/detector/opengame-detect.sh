@@ -8,7 +8,8 @@
 #
 # OPENGAME_DRY=1 with --open prints the URL instead of opening a browser. OPENGAME_URL overrides the app address.
 # OPENGAME_STEAM_DIR adds a Steam folder to the ones searched for installed games. OPENGAME_MAX_JUEGOS
-# overrides how many games are sent, which the server fills in like the URL.
+# overrides how many games are sent, which the server fills in like the URL. OPENGAME_DRM replaces
+# /sys/class/drm, so tests can describe a machine's GPUs.
 set -u
 
 APP_URL="${OPENGAME_URL:-__OPENGAME_URL__}"
@@ -41,41 +42,65 @@ if [ -r /sys/devices/system/memory/block_size_bytes ]; then
 fi
 [ -z "$ram_mb" ] && ram_mb=$(awk '/MemTotal/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null)
 
-# GPU: the first DRM card with a PCI device (card1-HDMI-A-1 and the like are connectors, not cards).
-# The kernel driver and PCI id come from sysfs, which every distro has; the name needs lspci, so the
-# server labels the PCI id when the name is missing.
-gpu_modelo=""; gpu_pci_id=""; controlador=""; version_controlador=""; vram_mb=""; pci_slot=""
-for card in /sys/class/drm/card*; do
-  case "$card" in *-*) continue ;; esac
+# GPU: the DRM card games run on, picked as the Windows detector does: most VRAM, then NVIDIA, AMD,
+# Intel, then the first card. A hybrid laptop lists its iGPU first, an iGPU counts as 0 VRAM, and
+# nouveau reports none, so the brand decides there.
+# card1-HDMI-A-1 and the like are connectors, not cards. The kernel driver and PCI id come from sysfs, which every distro
+# has; the name needs lspci, so the server labels the PCI id when the name is missing.
+nvidia_smi=""
+command -v nvidia-smi >/dev/null && nvidia_smi=$(nvidia-smi --query-gpu=pci.bus_id,memory.total,name --format=csv,noheader,nounits 2>/dev/null)
+gpu_modelo=""; gpu_pci_id=""; controlador=""; version_controlador=""; vram_mb=""; pci_slot=""; mayor_vram=-1
+for card in "${OPENGAME_DRM:-/sys/class/drm}"/card*; do
+  case "${card##*/}" in *-*) continue ;; esac
   [ -r "$card/device/uevent" ] || continue
-  pci_slot=$(sed -n 's/^PCI_SLOT_NAME=//p' "$card/device/uevent")
-  [ -n "$pci_slot" ] || continue
-  controlador=$(sed -n 's/^DRIVER=//p' "$card/device/uevent")
-  gpu_pci_id=$(sed -n 's/^PCI_ID=//p' "$card/device/uevent" | tr 'A-F' 'a-f')
+  slot=$(sed -n 's/^PCI_SLOT_NAME=//p' "$card/device/uevent")
+  [ -n "$slot" ] || continue
+  driver=$(sed -n 's/^DRIVER=//p' "$card/device/uevent")
+  pci_id=$(sed -n 's/^PCI_ID=//p' "$card/device/uevent" | tr 'A-F' 'a-f')
+  vram=""; nombre=""
   if [ -r "$card/device/mem_info_vram_total" ]; then # amdgpu
-    vram_mb=$(( $(cat "$card/device/mem_info_vram_total") / 1048576 ))
+    vram=$(( $(cat "$card/device/mem_info_vram_total") / 1048576 ))
+  elif [ "$driver" = nvidia ]; then # nvidia-smi writes the bus as 00000000:01:00.0, sysfs as 0000:01:00.0
+    fila=$(printf '%s\n' "$nvidia_smi" | awk -F', ' -v bus="${slot#*:}" 'tolower(substr($1, index($1, ":") + 1)) == bus { print; exit }')
+    vram=$(printf '%s' "$fila" | cut -d, -f2 | tr -d ' ')
+    nombre=$(printf '%s' "$fila" | cut -d, -f3- | sed 's/^ *//')
   fi
-  break
+  orden=$vram; case "$orden" in ''|*[!0-9]*) orden=0 ;; esac # nvidia-smi prints "[N/A]" on some cards
+  case "$pci_id" in 10de:*) marca=3 ;; 1002:*) marca=2 ;; 8086:*) marca=1 ;; *) marca=0 ;; esac
+  orden=$(( orden * 4 + marca ))
+  [ "$orden" -gt "$mayor_vram" ] || continue
+  mayor_vram=$orden; pci_slot=$slot; controlador=$driver; vram_mb=$vram; gpu_modelo=$nombre; gpu_pci_id=$pci_id
 done
-if command -v lspci >/dev/null && [ -n "$pci_slot" ]; then
+if [ -z "$gpu_modelo" ] && command -v lspci >/dev/null && [ -n "$pci_slot" ]; then
   gpu_modelo=$(lspci -mm -s "$pci_slot" 2>/dev/null | awk -F'"' '{print $4" "$6}')
 fi
 if [ "$controlador" = "nvidia" ]; then
   version_controlador=$(sed -n 's/.*Kernel Module *\([0-9.]*\).*/\1/p' /proc/driver/nvidia/version 2>/dev/null | head -1)
-  if command -v nvidia-smi >/dev/null; then
-    vram_mb=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ' ')
-    gpu_modelo=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)
-  fi
 else
   version_controlador=$( (dpkg-query -W -f='${Version}' libgl1-mesa-dri 2>/dev/null || rpm -q --qf '%{VERSION}' mesa-dri-drivers 2>/dev/null || pacman -Q mesa 2>/dev/null | awk '{print $2}') | head -1)
   [ -n "$version_controlador" ] && version_controlador="Mesa $version_controlador"
 fi
 
 # Vulkan: only vulkaninfo proves support. Mesa installs ICD manifests for GPU families the machine
-# may not have, so without vulkaninfo support stays `desconocido` with no version.
+# may not have, so without a working vulkaninfo support stays `desconocido` with no version. The
+# version is the chosen card's, matched by vendor:device: the list can lead with another GPU or with
+# llvmpipe, a CPU renderer that is no GPU support. With no PCI card (Arm boards) the first GPU device
+# counts. Older vulkaninfo writes apiVersion as "4206847 (1.3.255)".
 soporte_vulkan="desconocido"; version_vulkan=""
-if command -v vulkaninfo >/dev/null; then
-  version_vulkan=$(vulkaninfo --summary 2>/dev/null | sed -n 's/.*apiVersion *= *\([0-9.]*\).*/\1/p' | head -1)
+if vulkan=$(vulkaninfo --summary 2>/dev/null); then
+  version_vulkan=$(printf '%s\n' "$vulkan" | awk -F' *= *' -v id="$gpu_pci_id" '
+    function hex4(x) { sub(/^0x/, "", x); sub(/[ \t\r].*/, "", x); x = tolower(x); while (length(x) < 4) x = "0" x; return x }
+    function fin() {
+      if (!hallada && ven != "" && tipo !~ /CPU/ && (id == "" || ven ":" dev == id)) { print api; hallada = 1 }
+      ven = dev = api = tipo = ""
+    }
+    /^GPU[0-9]+:/ { fin() }
+    { clave = $1; gsub(/[ \t]/, "", clave) }
+    clave == "apiVersion" { api = $2; sub(/^[0-9]+ *\(/, "", api); sub(/[^0-9.].*/, "", api) }
+    clave == "vendorID" { ven = hex4($2) }
+    clave == "deviceID" { dev = hex4($2) }
+    clave == "deviceType" { tipo = $2 }
+    END { fin() }')
   if [ -n "$version_vulkan" ]; then soporte_vulkan="si"; else soporte_vulkan="no"; fi
 fi
 
