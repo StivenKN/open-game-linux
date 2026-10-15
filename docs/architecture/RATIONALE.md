@@ -91,7 +91,7 @@ export const decidirFn = createServerFn({ method: 'POST' })
 estadoDe(['funciona', 'no_inicia'])                    // 'resultados_variables'
 estadoDe([])                                           // 'sin_evidencia'
 evaluar(equipoEnLinux(diag), condiciones(perfil))      // { veredicto: 'informacion_insuficiente', comprobaciones, solo_orientativa }
-evaluar(proyectado('1.0', '1.1'), minimo('1.1'))       // a straddling range: comprobaciones [{ estado: 'desconocido', detectado: '1.0–1.1' }]
+evaluar(proyectado('1.0', '1.1'), minimo('1.1'))       // a straddling range: comprobaciones [{ estado: 'desconocido', detectado: { valor: '1.0–1.1', origen: 'proyectado' } }]
 planificar('aprobado', { _tag: 'Aprobar', ... })       // 'sin_cambios'
 discrepancias(prueba, perfil)                          // ['perfil_otra_distribucion']
 ```
