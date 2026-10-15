@@ -373,12 +373,26 @@ const protondb = [
   `COMMENT ON TABLE protondb_resumen IS 'Agregados por edición de Steam del export mensual de ProtonDB (ODbL 1.0), nunca reportes individuales (8.9). No alimenta el estado calculado. Escritor único: servidor/externo/protondb.ts'`,
 ]
 
+// Only merged PRs are recorded, so the table has no status to sync. og_inmutable blocks UPDATE; DELETE stays for Anular.
+const upstream = [
+  `CREATE TABLE arreglo_upstream (${id},
+     pr integer NOT NULL,
+     perfil_id integer NOT NULL REFERENCES perfil_configuracion(id) ON DELETE RESTRICT,
+     registrado_por text NOT NULL REFERENCES usuario(id) ON DELETE RESTRICT,
+     registrado_en timestamptz NOT NULL DEFAULT now(),
+     CONSTRAINT arreglo_upstream_pr_uq UNIQUE (pr))`,
+  check('arreglo_upstream', 'pr_positivo', 'pr > 0'),
+  `CREATE INDEX arreglo_upstream_perfil_idx ON arreglo_upstream (perfil_id)`,
+  `CREATE TRIGGER arreglo_upstream_inmutable BEFORE UPDATE ON arreglo_upstream FOR EACH ROW EXECUTE FUNCTION og_inmutable()`,
+]
+
 export const migraciones = {
   '1_auth': ejecutar(auth),
   '2_opengame': ejecutar([...funciones, ...usuario, ...catalogo, ...diagnosticos, ...configuraciones, ...resultados, ...guias]),
   '3_gpu_biblioteca': ejecutar(gpuBiblioteca),
   '4_hechos_sistema': ejecutar(hechosSistema),
   '5_protondb': ejecutar(protondb),
+  '6_upstream': ejecutar(upstream),
 }
 
 export const migrar = PgMigrator.run({ loader: Migrator.fromRecord(migraciones) })

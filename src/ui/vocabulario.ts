@@ -8,6 +8,7 @@ import type { TipoGuia } from '../dominio/guias.ts'
 import type { ArranqueSeguro, NivelX86, Tpm } from '../dominio/plataforma.ts'
 import type { Camino, CaminoSinAntiTrampas, Requisito, RutaJuego } from '../dominio/ruta.ts'
 import type { CodigoObjecion, Objecion, VeredictoDistro } from '../dominio/distros.ts'
+import type { MotivoNoExportable, MotivoOmision, MotivoSinInforme } from '../dominio/upstream.ts'
 
 export type Tono = 'verde' | 'amarillo' | 'rojo' | 'gris' | 'morado' | 'azul'
 export type Etiqueta = { readonly texto: string; readonly tono: Tono; readonly icono: string }
@@ -271,3 +272,26 @@ export const varianteProton = {
   native: 'Versión nativa de Linux',
   older: 'Proton (versión antigua)',
 } as const satisfies Record<VarianteProton, string>
+
+export const motivoOmision = {
+  programa_envoltorio: 'es un programa que envuelve el juego, no un arreglo',
+  sintaxis_shell: 'usa sintaxis de la terminal (comillas, $, ; …) que un archivo de arreglo no repite',
+  opcion_protonfixes: 'ya es una opción de protonfixes; se queda en las opciones de lanzamiento',
+  ajuste_personal: 'es un ajuste de depuración o de gusto personal, no un arreglo',
+  forma_invalida: 'tiene una forma que el archivo de arreglo no admite',
+  paquete_del_sistema: 'es un paquete del sistema; se instala fuera del juego',
+  dependencia_opcional: 'es opcional en el perfil; el archivo la volvería obligatoria',
+} as const satisfies Record<MotivoOmision, string>
+
+export const motivoNoExportable = {
+  no_es_steam: 'Solo los perfiles de juegos de Steam se convierten en un arreglo de umu-protonfixes.',
+  sin_appid: 'Esta edición de Steam no tiene AppID registrado, así que no hay archivo de arreglo.',
+  capa_sin_protonfixes: 'Wine y los juegos nativos no usan umu-protonfixes.',
+} as const satisfies Record<MotivoNoExportable, string>
+
+export const motivoSinInforme = {
+  no_es_steam: 'Valve solo atiende informes de juegos de Steam.',
+  sin_appid: 'La edición de Steam de este juego no tiene AppID registrado.',
+  capa_no_valve: 'Valve solo atiende informes de su propio Proton; GE-Proton y Wine tienen sus propios canales.',
+  funciona: 'El juego funcionó sin ajustes: no hay nada que informar a Valve.',
+} as const satisfies Record<MotivoSinInforme, string>

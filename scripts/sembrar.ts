@@ -237,6 +237,24 @@ const perfiles: ReadonlyArray<Perfil> = [
     ],
     dependencias: [{ dependencia: 'mangohud', obligatoria: false, instruccion_instalacion: 'Instala mangohud con el gestor de tu distribución (en Arch: sudo pacman -S mangohud).' }],
   },
+  // The one demo profile with something to translate into a umu-protonfixes file (and two things that do not).
+  {
+    edicion: ['witcher3', 'steam'],
+    distribucion: 'fedora',
+    capa: 'proton9',
+    autor: 'demo_bruno',
+    titulo: 'The Witcher 3 de Steam sin lanzador con Proton 9',
+    ram_min_mb: 8192,
+    vram_min_mb: 2048,
+    requiere_vulkan: true,
+    version_vulkan_min: '1.1',
+    parametros_lanzamiento: 'DXVK_FRAME_RATE=60 gamemoderun %command% --launcher-skip',
+    pasos: [steamPlay, elegirCapa('Proton 9.0-3'), parametros],
+    dependencias: [
+      { dependencia: 'd3dcompiler_47', obligatoria: true, instruccion_instalacion: 'protontricks 292030 d3dcompiler_47' },
+      { dependencia: 'gamemode', obligatoria: false, instruccion_instalacion: 'sudo dnf install gamemode' },
+    ],
+  },
 ]
 
 const guias: ReadonlyArray<{ tipo: TipoGuia; distribucion: keyof typeof distribuciones | null; titulo: string; contenido: string }> = [
@@ -443,6 +461,11 @@ const reportes: ReadonlyArray<ReporteDemo> = [
     equipo: 'brunoPc', edicion: ['ets2', 'steam'], capa: 'nativo', conPerfil: false, version_juego: '1.50.1.2s',
     fecha_prueba: '2026-09-12T21:00:00Z', resultado: 'funciona_con_ajustes', medicion: null,
     fallos: [], observaciones: 'Funciona nativo; el volante necesitó configurar los ejes a mano.', aprobar: false,
+  },
+  {
+    equipo: 'anaTorre', edicion: ['witcher3', 'steam'], capa: 'proton9', conPerfil: true, version_juego: '4.04',
+    fecha_prueba: '2026-10-06T19:00:00Z', resultado: 'funciona', medicion: null,
+    fallos: [], observaciones: 'Con el perfil el juego abre directo, sin el lanzador de CD Projekt, y se mantiene a 60 FPS en Novigrado.', aprobar: true,
   },
 ]
 

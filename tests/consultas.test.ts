@@ -263,7 +263,7 @@ layer(PgTest)('consultas', (it) => {
           expect(titulos(yield* catalogo({ lanzador: e.epic }))).toEqual(['Grand Theft Auto V'])
           const todo = yield* catalogo({})
           expect(todo.juegos.find((j) => j.titulo === 'Euro Truck Simulator 2')).toMatchObject({ pendientes: 1, resumen: { pruebas: 0 } })
-          expect(todo.contadores).toEqual({ juegos_verificados: 3, reportes_aprobados: 6, perfiles_aprobados: 1, distribuciones_probadas: 3 })
+          expect(todo.contadores).toEqual({ juegos_verificados: 3, reportes_aprobados: 6, perfiles_aprobados: 1, distribuciones_probadas: 3, arreglos_upstream: 0 })
         }),
       ).pipe(elDia(hoy)),
     )
@@ -297,7 +297,7 @@ layer(PgTest)('consultas', (it) => {
           expect(titulos(yield* catalogo({ estado: 'falla_en_ejecucion' }))).toEqual(['Grand Theft Auto V'])
           const ficha = yield* Effect.provideService(fichaJuego(e.gta), Visitante, invitado)
           expect([ficha.resumen.estado, ficha.resumen.vigentes, ficha.resumen.pruebas]).toEqual(['falla_en_ejecucion', 1, 4])
-          expect(todo.contadores).toEqual({ juegos_verificados: 3, reportes_aprobados: 6, perfiles_aprobados: 1, distribuciones_probadas: 3 })
+          expect(todo.contadores).toEqual({ juegos_verificados: 3, reportes_aprobados: 6, perfiles_aprobados: 1, distribuciones_probadas: 3, arreglos_upstream: 0 })
         }),
       ).pipe(elDia(new Date('2027-10-01T00:00:00Z'))),
     )

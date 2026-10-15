@@ -16,6 +16,7 @@ const Contadores = Schema.Struct({
   reportes_aprobados: Schema.Int,
   perfiles_aprobados: Schema.Int,
   distribuciones_probadas: Schema.Int,
+  arreglos_upstream: Schema.Int,
 })
 
 /** ILIKE treats % and _ as wildcards; a title search means them literally. */
@@ -76,13 +77,15 @@ export const catalogo = (filtro: FiltroCatalogo) =>
       resultados_variables: cuantos('resultados_variables'),
     } satisfies Record<EstadoCompatibilidad, number>
 
+    // arreglos_upstream needs no demo filter: its writer refuses demo profiles.
     const contadores = yield* unaFila(
       Contadores,
       sql`
         SELECT count(DISTINCT e.juego_id)::int AS juegos_verificados,
                count(*)::int AS reportes_aprobados,
                (SELECT count(*)::int FROM perfil_configuracion WHERE estado_revision = 'aprobado') AS perfiles_aprobados,
-               count(DISTINCT d.distribucion_id)::int AS distribuciones_probadas
+               count(DISTINCT d.distribucion_id)::int AS distribuciones_probadas,
+               (SELECT count(*)::int FROM arreglo_upstream) AS arreglos_upstream
         FROM reporte r
         JOIN edicion_juego e ON e.id = r.edicion_id
         JOIN diagnostico d ON d.id = r.diagnostico_id
