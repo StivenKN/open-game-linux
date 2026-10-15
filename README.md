@@ -66,6 +66,31 @@ To change an account's role, run `pnpm rol <email> <usuario|revisor|administrado
 pnpm rol demo_ana@demo.opengame.test revisor
 ```
 
+## Import ProtonDB data
+
+A game's page can also show aggregate numbers from [ProtonDB](https://www.protondb.com), in their own section. They never change the state that OpenGame computes from approved reports. ProtonDB publishes a monthly export at [github.com/bdefore/protondb-data](https://github.com/bdefore/protondb-data): one `reports/reports_<month><day>_<year>.tar.gz` file holding a single `reports_piiremoved.json`.
+
+1. Download the newest export from the `reports/` folder of that repository.
+2. Import it. The command reads the JSON from standard input when the argument is `-`, so the archive never needs to be extracted to disk.
+
+   ```sh
+   tar -xzOf reports_oct1_2026.tar.gz | pnpm db:protondb -
+   ```
+
+   You can also pass the path of an extracted `reports_piiremoved.json`.
+
+The import keeps one row of counts per catalog game with a Steam edition, matched by the edition's store identifier (the Steam appId). It stores no individual report. It reads the whole file before it changes the database, then replaces the previous import in one transaction. Importing the same export again leaves the same rows. An empty or truncated file, or an export older than the one already imported, fails and changes nothing. "Last year" on the page means the 12 months before the export's newest report.
+
+Run the import again after a reviewer adds a game with a Steam edition, so that the new game gets its row.
+
+The data is licensed under the [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/). Every page that shows it carries the attribution "Datos de ProtonDB, licencia ODbL" with links to ProtonDB and the license. The license's share-alike terms apply if you publish a database derived from it.
+
+With the plain Docker deployment below, pipe the archive into the running `app` container. The `-T` flag lets standard input through.
+
+```sh
+tar -xzOf reports_oct1_2026.tar.gz | docker compose -p opengame-prod --env-file .env.prod -f compose.prod.yaml -f compose.local.yaml exec -T app pnpm db:protondb -
+```
+
 ## Run the detector
 
 The detector reads the hardware and the installed Steam games, without root or admin rights. It opens the app's import page with the result in the URL fragment. Nothing is saved until you choose to save it, and the Steam game list is saved only if you check its box.
