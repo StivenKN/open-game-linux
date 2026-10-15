@@ -129,6 +129,8 @@ if [ "${#bibliotecas[@]}" -gt 0 ]; then
   biblioteca_steam="[]"
   if [ "${#manifiestos[@]}" -gt 0 ]; then
     # StateFlags 4 is fully installed; 1024 marks an update in progress, which clears bit 4 meanwhile.
+    # Names are escaped like json_str but in one stream, not a json_str subshell per game; tr keeps the
+    # tab and newline that separate fields and games (vdf_pares already turned tabs in names into spaces).
     biblioteca_steam=$(vdf_pares "${manifiestos[@]}" | awk -F'\t' '
         $2 == 1 { v[$1, $3] = $4; n = $1 }
         END {
