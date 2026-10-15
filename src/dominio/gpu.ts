@@ -40,15 +40,12 @@ export const AvisoGpu = Schema.Literals([
   'nvidia_sin_controlador',
   'hasvk_incompleto',
   'vulkan_sin_verificar',
-  'gpu_supuesta',
   'vulkan_no_detectado',
 ])
 export type AvisoGpu = typeof AvisoGpu.Type
 
-/** `supuesta`: the exact id is not in the table, so the family is the vendor's newest. */
 export type GpuEnLinux = {
   readonly familia: FamiliaGpu
-  readonly supuesta: boolean
   readonly controlador: ControladorLinux
   readonly avisos: ReadonlyArray<AvisoGpu>
 }

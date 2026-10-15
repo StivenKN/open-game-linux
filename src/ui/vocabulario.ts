@@ -143,7 +143,6 @@ export const avisoGpu = {
   nvidia_sin_controlador: 'NVIDIA ya no tiene controlador para esta GPU en kernels actuales. nouveau la hace funcionar, pero sin Vulkan.',
   hasvk_incompleto: 'El Vulkan de Intel para esta generación (hasvk) está incompleto; los juegos DirectX irán por WineD3D.',
   vulkan_sin_verificar: 'Nadie ha medido todavía el Vulkan de esta generación en hardware real; por eso mostramos un rango.',
-  gpu_supuesta: 'No encontramos este modelo exacto en nuestra tabla; suponemos que es de la generación más reciente de su marca.',
   vulkan_no_detectado:
     'Tu equipo no detectó Vulkan, pero tu GPU lo tiene: instala los controladores Vulkan de tu distribución (por ejemplo, mesa-vulkan-drivers).',
 } as const satisfies Record<AvisoGpu, string>

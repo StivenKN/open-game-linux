@@ -81,7 +81,7 @@ const esChip = (chip: string): chip is keyof typeof chipsAmdgpu => Object.hasOwn
 /**
  * The explicit ids of `pciidlist[]`. Accepts both entry styles the kernel has used (`{0x1002, 0x6780, ...,
  * CHIP_X}` and `{ PCI_DEVICE(0x1002, 0x6780), .driver_data = CHIP_X }`). Class wildcards (`PCI_ANY_ID`,
- * the IP-discovery parts) carry no id and are skipped: the vendor fallback covers them.
+ * the IP-discovery parts) carry no id and are skipped, so those GPUs get no projection.
  */
 export const idsAmdgpu = (texto: string): ReadonlyArray<Dispositivo> => {
   const inicio = texto.search(/^static const struct pci_device_id pciidlist\[\] = \{$/m)

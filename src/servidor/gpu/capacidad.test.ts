@@ -42,19 +42,16 @@ describe('equipoEnLinux: golden GPUs (Windows capture, nothing measured)', () =>
       ram_mb: 8192,
       vram_mb: 2048,
       vulkan,
-      gpu: { familia, supuesta: false, controlador, avisos },
+      gpu: { familia, controlador, avisos },
       ruta,
     })
   })
 
-  it('an unlisted AMD id is assumed to be the newest family, and says so', () => {
-    expect(equipoEnLinux(windows('1002:7480'))).toMatchObject({
-      vulkan: proyectado('1.3', '1.4'),
-      gpu: { familia: 'amd_gcn3_o_posterior', supuesta: true, controlador: 'amdgpu', avisos: ['gpu_supuesta'] },
-    })
-  })
-
   it.each([
+    ['PowerVR GMA 500', '8086:8108'],
+    ['PowerVR GMA 3600', '8086:0be1'],
+    ['Intel i810', '8086:7121'],
+    ['Radeon 7000', '1002:5159'],
     ['virtio', '1af4:1050'],
     ['an NVIDIA id pci.ids does not list', '10de:fff0'],
     ['no PCI id', null],

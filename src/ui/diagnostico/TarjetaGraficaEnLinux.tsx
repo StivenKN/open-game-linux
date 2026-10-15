@@ -30,7 +30,6 @@ export function TarjetaGraficaEnLinux({ equipo, pci }: { equipo: EquipoEnLinux; 
               <dt className="rotulo">Generación</dt>
               <dd>
                 <strong>{familiaGpu[gpu.familia]}</strong>
-                {gpu.supuesta && <span className="pequeno tenue">Supuesta: modelo fuera de nuestra tabla</span>}
               </dd>
             </div>
             <div>

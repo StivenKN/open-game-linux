@@ -56,16 +56,7 @@ const familiaPorId: ReadonlyMap<string, FamiliaGpu> = new Map(
   ),
 )
 
-// The sources list every Intel and AMD id up to the IP-discovery era, so an unknown id from these vendors
-// is a newer part. NVIDIA has no fallback: pci.ids is complete for it, and an unknown id is not a GPU.
-const familiaSupuesta: Readonly<Record<string, FamiliaGpu>> = { '8086': 'intel_gen9_o_posterior', '1002': 'amd_gcn3_o_posterior' }
-
-const identificar = (pci: PciId): { readonly familia: FamiliaGpu; readonly supuesta: boolean } | null => {
-  const exacta = familiaPorId.get(pci)
-  if (exacta !== undefined) return { familia: exacta, supuesta: false }
-  const supuesta = familiaSupuesta[pci.slice(0, 4)]
-  return supuesta === undefined ? null : { familia: supuesta, supuesta: true }
-}
+const identificar = (pci: PciId): FamiliaGpu | null => familiaPorId.get(pci) ?? null
 
 /** Measured Linux Vulkan wins; otherwise the family projects it. A Windows row's stored Vulkan is never used. */
 const vulkanEnLinux = (c: ColumnasEquipo, politica: Politica | null): VulkanEquipo => {
@@ -89,20 +80,19 @@ const rutaDe = (vulkan: VulkanEquipo): RutaLinux | null => {
   return { d3d9_11: rutas.find(([minimo]) => alMenos(piso, minimo))?.[1] ?? 'wined3d', d3d12: alMenos(piso, v(1, 3)) }
 }
 
-const avisosDe = (c: ColumnasEquipo, politica: Politica, supuesta: boolean, vulkan: VulkanEquipo): ReadonlyArray<AvisoGpu> => {
+const avisosDe = (c: ColumnasEquipo, politica: Politica, vulkan: VulkanEquipo): ReadonlyArray<AvisoGpu> => {
   const medidoEnLinux = c.sistema === 'Linux' ? c.controlador : null
   const faltaVulkan = vulkan.soporte === 'no' && vulkan.origen === 'medido' && politica.vulkan !== null
   return [
     ...politica.avisos.filter((a) => a.salvo_con === null || a.salvo_con !== medidoEnLinux).map((a) => a.aviso),
     ...(faltaVulkan ? (['vulkan_no_detectado'] as const) : []),
-    ...(supuesta ? (['gpu_supuesta'] as const) : []),
   ]
 }
 
 /** The one way to build what `evaluar` consumes from a stored or unsaved capture. */
 export const equipoEnLinux = (c: ColumnasEquipo): EquipoEnLinux => {
-  const identificada = c.gpu_pci_id === null ? null : identificar(c.gpu_pci_id)
-  const politica: Politica | null = identificada === null ? null : POLITICA[identificada.familia]
+  const familia = c.gpu_pci_id === null ? null : identificar(c.gpu_pci_id)
+  const politica: Politica | null = familia === null ? null : POLITICA[familia]
   const vulkan = vulkanEnLinux(c, politica)
   return {
     sistema: c.sistema,
@@ -110,14 +100,7 @@ export const equipoEnLinux = (c: ColumnasEquipo): EquipoEnLinux => {
     vram_mb: c.vram_mb,
     vulkan,
     gpu:
-      identificada === null || politica === null
-        ? null
-        : {
-            familia: identificada.familia,
-            supuesta: identificada.supuesta,
-            controlador: politica.controlador,
-            avisos: avisosDe(c, politica, identificada.supuesta, vulkan),
-          },
+      familia === null || politica === null ? null : { familia, controlador: politica.controlador, avisos: avisosDe(c, politica, vulkan) },
     ruta: rutaDe(vulkan),
   }
 }
