@@ -6,7 +6,7 @@ import { NoAutenticado } from '../src/dominio/fallos.ts'
 import { DiagnosticoId, EquipoId, UsuarioId } from '../src/dominio/ids.ts'
 import { registrarDiagnostico } from '../src/servidor/aportes/diagnostico.ts'
 import { Visitante } from '../src/servidor/auth.ts'
-import { evaluarSinGuardar, miDiagnostico, misEquipos } from '../src/servidor/consultas/diagnostico.ts'
+import { evaluarSinGuardar, type FilaMatriz, miDiagnostico, misEquipos } from '../src/servidor/consultas/diagnostico.ts'
 import { enRollback, idDe, PgTest } from './apoyo.ts'
 import { base, type Base } from './fixtures.ts'
 
@@ -156,6 +156,33 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
         gpu: { familia: 'intel_gen9_o_posterior', controlador: 'i915', avisos: [] },
         ruta: { d3d9_11: 'dxvk_2', d3d12: true },
       })
+    })))
+
+  it.effect('sin reportes, cada juego recibe su ruta gráfica, igual al evaluar y al releer lo guardado', conBase((f) =>
+    Effect.gen(function* () {
+      yield* f.sql`INSERT INTO juego_api (juego_id, api) SELECT juego_id, api FROM edicion_juego, unnest(ARRAY['d3d11', 'd3d12']) AS api WHERE id = ${f.ed}`
+      yield* f.sql`INSERT INTO juego_api (juego_id, api) SELECT juego_id, 'vulkan' FROM edicion_juego WHERE id = ${f.ed2}`
+      yield* f.sql`UPDATE juego SET nivel_x86_min = 'v2' WHERE id = (SELECT juego_id FROM edicion_juego WHERE id = ${f.ed2})`
+      // A Kepler without vulkaninfo on an x86-64-v1 CPU.
+      const entrada = payload({ gpu_pci_id: '10de:1187', controlador: 'nouveau', nivel_x86: 'v1' })
+      const rutas = (matriz: ReadonlyArray<FilaMatriz>) => matriz.map((m) => [m.titulo, m.ruta])
+      const esperado = [
+        ['Juego', { estado: 'con_ruta', camino: 'dxvk_sarek' }],
+        ['Otro juego', { estado: 'sin_ruta', motivo: 'cpu' }],
+      ]
+      const evaluado = yield* evaluarSinGuardar(entrada)
+      expect(rutas(evaluado.matriz)).toEqual(esperado)
+      const { id } = yield* guardar({ equipo: existente(f.equipo), entrada }).pipe(como(f.autor))
+      const guardado = yield* miDiagnostico(id).pipe(como(f.autor))
+      expect(rutas(guardado.matriz)).toEqual(esperado)
+      expect(guardado.distribuciones.evaluadas.map((d) => [d.clave, d.veredicto])).toEqual([
+        ['mint_22', 'con_ajustes'],
+        ['ubuntu_2404', 'con_ajustes'],
+        ['fedora', 'con_ajustes'],
+        ['bazzite', 'descartada'],
+        ['cachyos', 'con_ajustes'],
+        ['arch', 'con_ajustes'],
+      ])
     })))
 
   const catalogoConSteam = (f: Base) =>

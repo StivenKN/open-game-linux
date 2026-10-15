@@ -7,6 +7,7 @@ import type { Bloqueo, EstadoRevision } from '../dominio/revision.ts'
 import type { TipoGuia } from '../dominio/guias.ts'
 import type { ArranqueSeguro, NivelX86, Tpm } from '../dominio/plataforma.ts'
 import type { Camino, CaminoSinAntiTrampas, Requisito, RutaJuego } from '../dominio/ruta.ts'
+import type { CodigoObjecion, Objecion, VeredictoDistro } from '../dominio/distros.ts'
 
 export type Tono = 'verde' | 'amarillo' | 'rojo' | 'gris' | 'morado' | 'azul'
 export type Etiqueta = { readonly texto: string; readonly tono: Tono; readonly icono: string }
@@ -234,3 +235,31 @@ export const fraseRuta = (r: RutaJuego, minimo: NivelX86 | null): ReadonlyArray<
       return ['APIs gráficas sin declarar: no podemos calcular una ruta.']
   }
 }
+
+export const veredictoDistro = {
+  sin_objeciones: { texto: 'Sin objeciones', tono: 'verde', icono: '✓' },
+  con_ajustes: { texto: 'Con ajustes', tono: 'amarillo', icono: '⚙' },
+  descartada: { texto: 'Descartadas', tono: 'rojo', icono: '✕' },
+} as const satisfies Record<VeredictoDistro, Etiqueta>
+
+const objeciones: { readonly [K in CodigoObjecion]: (o: Extract<Objecion, { readonly codigo: K }>) => string } = {
+  arquitectura: (o) => `Steam y Proton necesitan un procesador x86_64; el tuyo es ${o.tiene}.`,
+  kepler_sin_soporte: () => 'No da soporte a las NVIDIA Kepler (GeForce 600/700).',
+  kepler_470: (o) =>
+    o.salida === 'kernel_6_8'
+      ? 'Tu NVIDIA Kepler: quédate en su kernel 6.8 para seguir con el controlador 470, o usa NVK (Mesa 25.2 o más reciente).'
+      : 'Tu NVIDIA Kepler: el controlador 470 no compila en kernels posteriores a 6.8. Usa NVK y comprueba que traiga Mesa 25.2 o más reciente.',
+  rama_580: (o) =>
+    ({
+      paquete_580xx: 'Tu NVIDIA necesita la rama 580 y Arch ya va en la 590: instala nvidia-580xx-dkms.',
+      imagen_nvidia: 'Tu NVIDIA necesita la rama 580: instala la imagen bazzite-nvidia.',
+      desconocido: 'Tu NVIDIA necesita la rama 580, la última para su generación. Comprueba que esta distribución la ofrezca y fíjala.',
+    })[o.como],
+  gcn_amdgpu: (o) =>
+    o.como === 'kernel_hwe'
+      ? 'Tu AMD GCN 1/2 tiene Vulkan solo con amdgpu. Usa el kernel HWE (7.0), donde ya es el predeterminado; con el kernel 6.8 agrega radeon.si_support=0 radeon.cik_support=0 amdgpu.si_support=1 amdgpu.cik_support=1.'
+      : 'Tu AMD GCN 1/2 tiene Vulkan solo con amdgpu, predeterminado desde Linux 6.19. Comprueba el kernel; si es anterior, agrega radeon.si_support=0 radeon.cik_support=0 amdgpu.si_support=1 amdgpu.cik_support=1.',
+  gpu_desconocida: () => 'No reconocemos tu tarjeta gráfica, así que no pudimos revisar sus controladores aquí.',
+}
+
+export const objecion = <K extends CodigoObjecion>(o: Extract<Objecion, { readonly codigo: K }>): string => objeciones[o.codigo](o)

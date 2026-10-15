@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { EquipoDestino } from '../../dominio/aportes.ts'
 import { Casilla, type DiagnosticoId } from '../../dominio/ids.ts'
 import { evaluarDiagnosticoFn, guardarDiagnosticoFn, misEquiposFn } from '../../fns/diagnostico.ts'
+import { Distribuciones } from '../../ui/diagnostico/Distribuciones.tsx'
 import { JuegosDelEquipo } from '../../ui/diagnostico/JuegosDelEquipo.tsx'
 import { ResumenCaptura } from '../../ui/diagnostico/ResumenCaptura.tsx'
 import { TarjetaGraficaEnLinux } from '../../ui/diagnostico/TarjetaGraficaEnLinux.tsx'
@@ -79,6 +80,7 @@ function Importar() {
       <TarjetaGraficaEnLinux equipo={r.valor.equipo} pci={r.valor.captura.gpu_pci_id} />
       <Guardar entrada={estado.entrada} juegosEnBiblioteca={r.valor.biblioteca?.total ?? 0} />
       <JuegosDelEquipo filas={r.valor.matriz} biblioteca={r.valor.biblioteca} orientativa={r.valor.captura.sistema === 'Windows'} />
+      <Distribuciones {...r.valor.distribuciones} />
     </main>
   )
 }

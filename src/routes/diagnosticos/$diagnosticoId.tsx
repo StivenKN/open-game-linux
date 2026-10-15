@@ -1,6 +1,7 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { DiagnosticoId } from '../../dominio/ids.ts'
 import { miDiagnosticoFn } from '../../fns/diagnostico.ts'
+import { Distribuciones } from '../../ui/diagnostico/Distribuciones.tsx'
 import { JuegosDelEquipo } from '../../ui/diagnostico/JuegosDelEquipo.tsx'
 import { ResumenCaptura } from '../../ui/diagnostico/ResumenCaptura.tsx'
 import { TarjetaGraficaEnLinux } from '../../ui/diagnostico/TarjetaGraficaEnLinux.tsx'
@@ -31,6 +32,7 @@ function DiagnosticoGuardado() {
       <ResumenCaptura captura={d.captura} />
       <TarjetaGraficaEnLinux equipo={d.equipo} pci={d.captura.gpu_pci_id} />
       <JuegosDelEquipo filas={d.matriz} biblioteca={d.biblioteca} orientativa={d.captura.sistema === 'Windows'} />
+      <Distribuciones {...d.distribuciones} />
     </main>
   )
 }

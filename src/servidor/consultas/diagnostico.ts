@@ -3,14 +3,15 @@ import { SqlClient } from 'effect/sql'
 import type { Captura, EntradaDiagnostico } from '../../dominio/aportes.ts'
 import { type BibliotecaEvaluada, type BibliotecaSteam, LANZADOR_STEAM } from '../../dominio/biblioteca.ts'
 import { estadoDe } from '../../dominio/compatibilidad.ts'
+import { descartarDistros, type DistroEvaluada } from '../../dominio/distros.ts'
 import { condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
 import type { EquipoEnLinux } from '../../dominio/gpu.ts'
 import { NoEncontrado, type PayloadInvalido } from '../../dominio/fallos.ts'
-import type { DiagnosticoId, JuegoId } from '../../dominio/ids.ts'
+import type { DiagnosticoId, GuiaId, JuegoId } from '../../dominio/ids.ts'
 import { ApiGrafica, Resultado } from '../../dominio/literales.ts'
 import type { NivelX86 } from '../../dominio/plataforma.ts'
 import { rutaJuego } from '../../dominio/ruta.ts'
-import { Diagnostico, Distribucion, Equipo, Juego, PerfilConfiguracion } from '../../dominio/tablas.ts'
+import { Diagnostico, Distribucion, Equipo, GuiaAdopcion, Juego, PerfilConfiguracion } from '../../dominio/tablas.ts'
 import { exigirUsuario, Visitante } from '../auth.ts'
 import { capturaDe } from '../diagnostico/payload.ts'
 import { equipoEnLinux } from '../gpu/capacidad.ts'
@@ -111,10 +112,21 @@ const separarBiblioteca = (juegos: BibliotecaSteam) =>
     }
   })
 
+const GuiaDistribucion = Schema.Struct({ id: GuiaAdopcion.fields.id })
+
 const evaluarEquipo = (equipo: EquipoEnLinux, entorno: Entorno, juegos: BibliotecaSteam | null) =>
   Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
     const separada = juegos === null ? null : yield* separarBiblioteca(juegos)
-    return { matriz: yield* matriz(equipo, entorno, separada?.enCatalogo ?? new Set()), biblioteca: separada?.biblioteca ?? null }
+    const [guia] = yield* filas(
+      GuiaDistribucion,
+      sql`SELECT id FROM guia_adopcion WHERE tipo = 'eleccion_distribucion' AND estado = 'publicada' ORDER BY id LIMIT 1`,
+    )
+    return {
+      matriz: yield* matriz(equipo, entorno, separada?.enCatalogo ?? new Set()),
+      biblioteca: separada?.biblioteca ?? null,
+      distribuciones: { guia: guia?.id ?? null, evaluadas: descartarDistros(equipo, entorno.arquitectura) },
+    }
   })
 
 export const evaluarSinGuardar = (
@@ -125,6 +137,7 @@ export const evaluarSinGuardar = (
     readonly equipo: EquipoEnLinux
     readonly matriz: ReadonlyArray<FilaMatriz>
     readonly biblioteca: BibliotecaEvaluada | null
+    readonly distribuciones: { readonly guia: GuiaId | null; readonly evaluadas: ReadonlyArray<DistroEvaluada> }
   },
   PayloadInvalido | Infra,
   SqlClient.SqlClient
