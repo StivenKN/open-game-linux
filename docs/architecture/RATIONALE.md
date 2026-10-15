@@ -298,7 +298,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 
 **Open questions and risks.**
 
-1. On a hybrid laptop, bash projects the first DRM card, which can be the integrated GPU. The PowerShell script prefers the first adapter that is not Intel.
+1. On a hybrid laptop, bash projects the first DRM card, which can be the integrated GPU. The PowerShell script picks the adapter with the most VRAM (ties go to NVIDIA, then AMD, then Intel), so a Ryzen iGPU listed before a GeForce does not win.
 2. The Haswell (Vulkan 1.0 to 1.1) and Broadwell (1.1 to 1.2) ranges are unverified. Both show the warning `vulkan_sin_verificar` until someone reads `vulkaninfo` on that hardware.
 3. No run on a real Windows PowerShell 5.1 was possible. A static test rejects PowerShell 7-only syntax and non-ASCII source, and the behavior tests run pwsh 7 against stubbed cmdlets.
 4. The library match joins on `lanzador.nombre = 'Steam'` (`LANZADOR_STEAM`), a string key older than U10. Renaming that launcher row would turn every library game into an unknown game.

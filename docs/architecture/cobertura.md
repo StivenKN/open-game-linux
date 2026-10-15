@@ -25,7 +25,7 @@ Gaps by requirement:
 
 - **RF-03.** A reviewer can create a game but cannot edit one after creation. The requirement asks to register and consult, so this is not a gap against its text.
 - **RF-04.** On Linux without `vulkaninfo`, and on Windows always, the Vulkan level is projected from the GPU's PCI id and labelled "Proyectado" (ARCHITECTURE Q1). It stays "desconocido" when the GPU is not in the table or the capture predates U10. The diagnosis page shows the manual `vulkaninfo` command.
-- **RF-04. Gap.** On a hybrid laptop the bash detector reads the first DRM card, which can be the integrated GPU, so the card projects that one. The PowerShell detector prefers the dedicated GPU.
+- **RF-04. Gap.** On a hybrid laptop the bash detector reads the first DRM card, which can be the integrated GPU, so the card projects that one. The PowerShell detector picks the adapter with the most VRAM.
 - **RF-05.** Only installed Steam games are read. Other launchers and owned games that are not installed do not appear in "Tu biblioteca de Steam".
 - **RF-07. Gap.** Performance settings exist only as profile steps and launch parameters. Wireframe 9.4's FSR, 60 FPS cap and memory compression toggles are not built (Cuts: one-click apply, the 5-step wizard).
 - **RF-07.** The progress checklist has no automated test. Its behavior lives in `ui/progreso.ts` and was checked in a browser in U7.

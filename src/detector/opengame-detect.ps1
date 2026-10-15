@@ -82,37 +82,46 @@
     if ($total -gt 0) { [math]::Floor($total / 1MB) }
   }
 
-  # PCI adapters only (remote and indirect display adapters have none). The first non-Intel adapter
-  # wins: hybrid laptops run games on the discrete GPU.
+  # PCI adapters only (remote and indirect display adapters have none). Games run on the adapter with the
+  # most VRAM: on a Ryzen + GeForce laptop the first non-Intel adapter is the AMD iGPU. Ties go to NVIDIA,
+  # then AMD, then Intel, then CIM order.
   function Get-OgGpu {
+    $registro = @(Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*')
+    $marcas = @{ '10de' = 0; '1002' = 1; '8086' = 2 }
+    $orden = 0
     $pci = @(foreach ($v in @(Get-CimInstance Win32_VideoController)) {
       if ([string]$v.PNPDeviceID -match '^PCI\\VEN_([0-9A-F]{4})&DEV_([0-9A-F]{4})') {
-        New-Object PSObject -Property @{ Ven = $Matches[1].ToLower(); Dev = $Matches[2].ToLower(); Cim = $v }
+        $ven = $Matches[1].ToLower()
+        $dev = $Matches[2].ToLower()
+        $marca = $marcas[$ven]
+        if ($null -eq $marca) { $marca = 3 }
+        New-Object PSObject -Property @{ Ven = $ven; Dev = $dev; Cim = $v; Vram = (Get-OgVram $ven $dev $v $registro); Marca = $marca; Orden = $orden }
+        $orden++
       }
     })
     if ($pci.Count -eq 0) { return $null }
-    $g = $pci[0]
-    foreach ($p in $pci) { if ($p.Ven -ne '8086') { $g = $p; break } }
+    $criterio = @{ Expression = { if ($null -eq $_.Vram) { -1 } else { $_.Vram } }; Descending = $true }, 'Marca', 'Orden'
+    $g = @($pci | Sort-Object $criterio)[0]
 
     # Without a driver Windows names it "Microsoft Basic Display Adapter"; the server labels the PCI id.
     $modelo = ([string]$g.Cim.Name).Trim()
     if ($modelo -match 'Basic Display') { $modelo = $null }
 
-    # The display class key holds the real size as a qword and needs no admin. AdapterRAM is a uint32
-    # that saturates just under 4 GiB, so it only stands in below that.
-    $vram = $null
-    $clase = 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*'
-    foreach ($k in @(Get-ItemProperty -Path $clase)) {
-      if ([string]$k.MatchingDeviceId -match ('^pci\\ven_' + $g.Ven + '&dev_' + $g.Dev)) {
+    @{ Modelo = $modelo; Pci = $g.Ven + ':' + $g.Dev; Vram = $g.Vram }
+  }
+
+  # The display class key holds the real size as a qword and needs no admin. AdapterRAM is a uint32
+  # that saturates just under 4 GiB, so it only stands in below that.
+  function Get-OgVram($ven, $dev, $cim, $registro) {
+    foreach ($k in $registro) {
+      if ([string]$k.MatchingDeviceId -match ('^pci\\ven_' + $ven + '&dev_' + $dev)) {
         $qw = $k.'HardwareInformation.qwMemorySize'
-        if ($qw -is [ValueType] -and $qw -gt 0) { $vram = [math]::Floor([double]$qw / 1MB) }
+        if ($qw -is [ValueType] -and $qw -gt 0) { return [math]::Floor([double]$qw / 1MB) }
         break
       }
     }
-    $ar = [double]$g.Cim.AdapterRAM
-    if ($null -eq $vram -and $ar -gt 0 -and $ar -lt (4GB - 1MB)) { $vram = [math]::Floor($ar / 1MB) }
-
-    @{ Modelo = $modelo; Pci = $g.Ven + ':' + $g.Dev; Vram = $vram }
+    $ar = [double]$cim.AdapterRAM
+    if ($ar -gt 0 -and $ar -lt (4GB - 1MB)) { [math]::Floor($ar / 1MB) }
   }
 
   # VDF files nest blocks (an appmanifest's UserConfig has its own "name"), so a flat regex reads the

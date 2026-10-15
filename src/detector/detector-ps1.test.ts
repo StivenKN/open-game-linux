@@ -126,6 +126,14 @@ describe.skipIf(motor === null)(`opengame-detect.ps1 under ${motor ?? `pwsh (ski
     expect({ ...captura(powershell({ OPENGAME_DRY: '1' })), capturado_en: leida.capturado_en }).toEqual(leida)
   })
 
+  it('picks the GeForce over a Ryzen iGPU listed first: the adapter with the most VRAM runs the games', () => {
+    expect(captura(powershell({ OPENGAME_PRUEBA_EQUIPO: 'ryzen', OPENGAME_IMPRIMIR: '1' }))).toMatchObject({
+      gpu_modelo: 'NVIDIA GeForce GTX 1650',
+      gpu_pci_id: '10de:1f91',
+      vram_mb: 4096,
+    })
+  })
+
   it('names the architecture from the OS bitness when the shell has no PROCESSOR_ARCHITECTURE', () => {
     expect(captura(powershell({ OPENGAME_IMPRIMIR: '1', PROCESSOR_ARCHITECTURE: '' })).arquitectura).toBe('x86_64')
   })
