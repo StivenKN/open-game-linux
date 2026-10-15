@@ -68,7 +68,7 @@ pnpm rol demo_ana@demo.opengame.test revisor
 
 ## Run the detector
 
-The detector reads the hardware and the installed Steam games, without root or admin rights. It opens the app's import page with the result in the URL fragment. Nothing is saved until you choose to save it, and the Steam game list is saved only if you leave its box checked.
+The detector reads the hardware and the installed Steam games, without root or admin rights. It opens the app's import page with the result in the URL fragment. Nothing is saved until you choose to save it, and the Steam game list is saved only if you check its box.
 
 On Linux, run the Bash script with `--open`.
 

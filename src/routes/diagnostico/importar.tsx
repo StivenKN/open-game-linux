@@ -143,7 +143,7 @@ function Guardar({ entrada, juegosEnBiblioteca }: { entrada: Entrada; juegosEnBi
         </div>
         {juegosEnBiblioteca > 0 && (
           <label className="casilla">
-            <input type="checkbox" name="con_biblioteca" value="true" defaultChecked />
+            <input type="checkbox" name="con_biblioteca" value="true" />
             Guardar también mi lista de juegos de Steam ({juegosEnBiblioteca}). Solo tú la ves.
           </label>
         )}
