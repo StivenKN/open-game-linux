@@ -24,6 +24,10 @@ const bibliotecaWindows = [
 const como = (id: string) => Effect.provideService(Visitante, Option.some({ id: Schema.decodeSync(UsuarioId)(id), alias: id, rol: 'usuario' as const }))
 const comoInvitado = Effect.provideService(Visitante, Option.none())
 
+// Most tests store no library; the ones about it pass con_biblioteca: true.
+const guardar = (g: Omit<Parameters<typeof registrarDiagnostico>[0], 'con_biblioteca'> & { readonly con_biblioteca?: boolean }) =>
+  registrarDiagnostico({ con_biblioteca: false, ...g })
+
 const nuevo = (alias: string) => ({ _tag: 'nuevo' as const, alias })
 const existente = (id: number) => ({ _tag: 'existente' as const, id: Schema.decodeSync(EquipoId)(id) })
 
@@ -36,8 +40,8 @@ const conBase = (prueba: (f: Base) => Effect.Effect<void, unknown, SqlClient.Sql
 layer(PgTest)('registrarDiagnostico', (it) => {
   it.effect('el mismo payload dos veces converge en un equipo y un diagnóstico', conBase((f) =>
     Effect.gen(function* () {
-      const primero = yield* registrarDiagnostico({ con_biblioteca: false, equipo: nuevo('Torre de casa'), entrada: payload() }).pipe(como(f.autor))
-      const segundo = yield* registrarDiagnostico({ con_biblioteca: false, equipo: nuevo('torre de CASA'), entrada: payload() }).pipe(como(f.autor))
+      const primero = yield* guardar({ equipo: nuevo('Torre de casa'), entrada: payload() }).pipe(como(f.autor))
+      const segundo = yield* guardar({ equipo: nuevo('torre de CASA'), entrada: payload() }).pipe(como(f.autor))
       expect([primero.nuevo, segundo.nuevo]).toEqual([true, false])
       expect(segundo.id).toBe(primero.id)
       const equipos = yield* f.sql`SELECT count(*)::int AS n FROM equipo WHERE usuario_id = ${f.autor} AND lower(alias) = 'torre de casa'`
@@ -47,8 +51,8 @@ layer(PgTest)('registrarDiagnostico', (it) => {
   it.effect('varios diagnósticos históricos del mismo equipo', conBase((f) =>
     Effect.gen(function* () {
       const antes = yield* contar(f, 'diagnostico')
-      const a = yield* registrarDiagnostico({ con_biblioteca: false, equipo: existente(f.equipo), entrada: payload({ capturado_en: '2026-10-08T10:00:00Z' }) }).pipe(como(f.autor))
-      const b = yield* registrarDiagnostico({ con_biblioteca: false, equipo: existente(f.equipo), entrada: payload({ capturado_en: '2026-10-09T10:00:00Z', ram_mb: 32768 }) }).pipe(como(f.autor))
+      const a = yield* guardar({ equipo: existente(f.equipo), entrada: payload({ capturado_en: '2026-10-08T10:00:00Z' }) }).pipe(como(f.autor))
+      const b = yield* guardar({ equipo: existente(f.equipo), entrada: payload({ capturado_en: '2026-10-09T10:00:00Z', ram_mb: 32768 }) }).pipe(como(f.autor))
       expect(a.id).not.toBe(b.id)
       expect(yield* contar(f, 'diagnostico')).toBe(antes + 2)
       const [equipo] = yield* misEquipos().pipe(como(f.autor))
@@ -57,15 +61,15 @@ layer(PgTest)('registrarDiagnostico', (it) => {
 
   it.effect('guarda el PCI id normalizado y miDiagnostico lo devuelve en la captura', conBase((f) =>
     Effect.gen(function* () {
-      const { id } = yield* registrarDiagnostico({ con_biblioteca: false, equipo: existente(f.equipo), entrada: payload({ gpu_pci_id: ' 10DE:128B ' }) }).pipe(como(f.autor))
+      const { id } = yield* guardar({ equipo: existente(f.equipo), entrada: payload({ gpu_pci_id: ' 10DE:128B ' }) }).pipe(como(f.autor))
       expect(yield* f.sql`SELECT gpu_pci_id FROM diagnostico WHERE id = ${id}`).toEqual([{ gpu_pci_id: '10de:128b' }])
       expect((yield* miDiagnostico(id).pipe(como(f.autor))).captura.gpu_pci_id).toBe('10de:128b')
     })))
 
   it.effect('guarda un payload de Windows con su biblioteca de Steam solo si se pide', conBase((f) =>
     Effect.gen(function* () {
-      const con = yield* registrarDiagnostico({ con_biblioteca: true, equipo: nuevo('PC con Windows'), entrada: payloadWindows() }).pipe(como(f.autor))
-      const sin = yield* registrarDiagnostico({ con_biblioteca: false, equipo: nuevo('PC con Windows'), entrada: payloadWindows({ capturado_en: '2026-10-16T10:00:00Z' }) }).pipe(como(f.autor))
+      const con = yield* guardar({ con_biblioteca: true, equipo: nuevo('PC con Windows'), entrada: payloadWindows() }).pipe(como(f.autor))
+      const sin = yield* guardar({ equipo: nuevo('PC con Windows'), entrada: payloadWindows({ capturado_en: '2026-10-16T10:00:00Z' }) }).pipe(como(f.autor))
       const fila = (id: number) =>
         f.sql`SELECT sistema, distribucion_id, controlador, soporte_vulkan, gpu_pci_id, biblioteca_steam FROM diagnostico WHERE id = ${id}`
       expect(yield* fila(con.id)).toEqual([
@@ -76,8 +80,8 @@ layer(PgTest)('registrarDiagnostico', (it) => {
 
   it.effect('guardar otra vez la misma captura conserva la elección de la primera vez', conBase((f) =>
     Effect.gen(function* () {
-      const primero = yield* registrarDiagnostico({ con_biblioteca: false, equipo: existente(f.equipo), entrada: payloadWindows() }).pipe(como(f.autor))
-      const segundo = yield* registrarDiagnostico({ con_biblioteca: true, equipo: existente(f.equipo), entrada: payloadWindows() }).pipe(como(f.autor))
+      const primero = yield* guardar({ equipo: existente(f.equipo), entrada: payloadWindows() }).pipe(como(f.autor))
+      const segundo = yield* guardar({ con_biblioteca: true, equipo: existente(f.equipo), entrada: payloadWindows() }).pipe(como(f.autor))
       expect(segundo).toEqual({ id: primero.id, nuevo: false })
       expect(yield* f.sql`SELECT biblioteca_steam FROM diagnostico WHERE id = ${primero.id}`).toEqual([{ biblioteca_steam: null }])
     })))
@@ -86,7 +90,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
     Effect.gen(function* () {
       const antes = yield* contar(f, 'diagnostico')
       for (const equipo of [existente(f.equipo), existente(999999)]) {
-        const fallo = yield* Effect.flip(registrarDiagnostico({ con_biblioteca: false, equipo, entrada: payload() }).pipe(como(f.revisor)))
+        const fallo = yield* Effect.flip(guardar({ equipo, entrada: payload() }).pipe(como(f.revisor)))
         expect(fallo).toMatchObject({ _tag: 'ReglaIncumplida', regla: 'equipo_ajeno' })
       }
       expect(yield* contar(f, 'diagnostico')).toBe(antes)
@@ -95,8 +99,8 @@ layer(PgTest)('registrarDiagnostico', (it) => {
   it.effect('un payload de Arch guarda la versión rolling y reutiliza su distribución', conBase((f) =>
     Effect.gen(function* () {
       const arch = (capturado_en: string) => payload({ capturado_en, distribucion: { nombre: 'Arch Linux', version: '20261004.0.606936' } })
-      const { id } = yield* registrarDiagnostico({ con_biblioteca: false, equipo: nuevo('Arch'), entrada: arch('2026-10-08T10:00:00Z') }).pipe(como(f.autor))
-      yield* registrarDiagnostico({ con_biblioteca: false, equipo: nuevo('Arch'), entrada: arch('2026-10-09T10:00:00Z') }).pipe(como(f.autor))
+      const { id } = yield* guardar({ equipo: nuevo('Arch'), entrada: arch('2026-10-08T10:00:00Z') }).pipe(como(f.autor))
+      yield* guardar({ equipo: nuevo('Arch'), entrada: arch('2026-10-09T10:00:00Z') }).pipe(como(f.autor))
       const filas = yield* f.sql`SELECT dist.version FROM diagnostico d JOIN distribucion dist ON dist.id = d.distribucion_id WHERE d.id = ${id}`
       expect(filas).toEqual([{ version: 'rolling' }])
       expect(yield* f.sql`SELECT count(*)::int AS n FROM distribucion WHERE nombre = 'Arch Linux'`).toEqual([{ n: 1 }])
@@ -105,8 +109,8 @@ layer(PgTest)('registrarDiagnostico', (it) => {
   it.effect('sin sesión o con un payload ilegible no guarda nada', conBase((f) =>
     Effect.gen(function* () {
       const antes = yield* contar(f, 'diagnostico')
-      expect(yield* Effect.flip(registrarDiagnostico({ con_biblioteca: false, equipo: nuevo('x'), entrada: payload() }).pipe(comoInvitado))).toBeInstanceOf(NoAutenticado)
-      const ilegible = yield* Effect.flip(registrarDiagnostico({ con_biblioteca: false, equipo: nuevo('x'), entrada: { _tag: 'detector', texto: 'no es un payload' } }).pipe(como(f.autor)))
+      expect(yield* Effect.flip(guardar({ equipo: nuevo('x'), entrada: payload() }).pipe(comoInvitado))).toBeInstanceOf(NoAutenticado)
+      const ilegible = yield* Effect.flip(guardar({ equipo: nuevo('x'), entrada: { _tag: 'detector', texto: 'no es un payload' } }).pipe(como(f.autor)))
       expect(ilegible).toMatchObject({ _tag: 'PayloadInvalido', motivo: 'ilegible' })
       expect(yield* contar(f, 'diagnostico')).toBe(antes)
       expect(yield* f.sql`SELECT count(*)::int AS n FROM equipo WHERE alias = 'x'`).toEqual([{ n: 0 }])
@@ -159,7 +163,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
   it.effect('miDiagnostico separa la biblioteca guardada en juegos del catálogo y juegos desconocidos', conBase((f) =>
     Effect.gen(function* () {
       yield* catalogoConSteam(f)
-      const { id } = yield* registrarDiagnostico({ con_biblioteca: true, equipo: existente(f.equipo), entrada: payloadWindows() }).pipe(como(f.autor))
+      const { id } = yield* guardar({ con_biblioteca: true, equipo: existente(f.equipo), entrada: payloadWindows() }).pipe(como(f.autor))
       const guardado = yield* miDiagnostico(id).pipe(como(f.autor))
       expect(enBiblioteca(guardado.matriz)).toEqual(['Grand Theft Auto V'])
       expect(guardado.matriz.map((m) => m.titulo)).toEqual(['Grand Theft Auto V', 'Juego', 'Otro juego'])
@@ -177,7 +181,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
   it.effect('sin guardar la biblioteca, el diagnóstico guardado no la muestra', conBase((f) =>
     Effect.gen(function* () {
       yield* catalogoConSteam(f)
-      const { id } = yield* registrarDiagnostico({ con_biblioteca: false, equipo: existente(f.equipo), entrada: payloadWindows() }).pipe(como(f.autor))
+      const { id } = yield* guardar({ equipo: existente(f.equipo), entrada: payloadWindows() }).pipe(como(f.autor))
       const guardado = yield* miDiagnostico(id).pipe(como(f.autor))
       expect([guardado.biblioteca, guardado.captura.biblioteca_steam, enBiblioteca(guardado.matriz)]).toEqual([null, null, []])
     })))

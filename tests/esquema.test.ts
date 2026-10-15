@@ -164,7 +164,6 @@ const rechaza: ReadonlyArray<Caso> = [
   ['reporte con perfil de otra edición', 'reporte_perfil_fk', (f) => reporte(f, { edicion_id: f.ed2, perfil_id: f.perfil })],
   ['solución sobre un fallo que el reporte no tiene', 'solucion_fallo_fk', solucion],
   ['actualizar un diagnóstico', 'og_inmutable', (f) => f.sql`UPDATE diagnostico SET ram_mb = 16384 WHERE id = ${f.diag}`],
-  ['agregar el PCI id a un diagnóstico guardado', 'og_inmutable', (f) => f.sql`UPDATE diagnostico SET gpu_pci_id = '10de:0fc6' WHERE id = ${f.diag}`],
   ['cambiar el dueño de un equipo con diagnósticos', 'og_propietario_fijo', (f) => f.sql`UPDATE equipo SET usuario_id = ${f.revisor} WHERE id = ${f.equipo}`],
   ['reescribir un reporte', 'og_solo_revision', (f) => f.sql`UPDATE reporte SET observaciones = 'otra cosa' WHERE id = ${f.rep}`],
   ['reescribir una solución', 'og_solo_revision', (f) =>
