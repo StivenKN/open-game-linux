@@ -201,6 +201,12 @@ function Catalogo() {
                     {j.resumen.ultima_prueba
                       ? `${contar(j.resumen.pruebas, 'reporte aprobado', 'reportes aprobados')} · última prueba ${fecha(j.resumen.ultima_prueba)}`
                       : 'Nadie ha aprobado una prueba todavía'}
+                    {j.resumen.sin_confirmacion_reciente && (
+                      <>
+                        <br />
+                        Sin confirmación en el último año
+                      </>
+                    )}
                     {j.pendientes > 0 && (
                       <>
                         <br />

@@ -54,7 +54,7 @@ export function VeredictoParaMi({ personal, children }: { personal: Personal | n
               <Insignia etiqueta={estadoCompatibilidad[mia.resumen.estado]} />
               <span className="tenue">
                 {mia.resumen.ultima_prueba
-                  ? `${contar(mia.resumen.pruebas, 'reporte aprobado', 'reportes aprobados')} · última prueba ${fecha(mia.resumen.ultima_prueba)}`
+                  ? `${contar(mia.resumen.pruebas, 'reporte aprobado', 'reportes aprobados')} · última prueba ${fecha(mia.resumen.ultima_prueba)}${mia.resumen.sin_confirmacion_reciente ? ' · sin confirmación en el último año' : ''}`
                   : `nadie ha aprobado una prueba en ${mia.nombre}`}
               </span>
             </p>

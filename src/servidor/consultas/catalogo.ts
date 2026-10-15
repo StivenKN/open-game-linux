@@ -1,4 +1,4 @@
-import { Effect, Schema, Struct } from 'effect'
+import { Clock, Effect, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
 import type { FiltroCatalogo } from '../../dominio/aportes.ts'
 import { type EstadoCompatibilidad, resumir } from '../../dominio/compatibilidad.ts'
@@ -46,12 +46,17 @@ export const catalogo = (filtro: FiltroCatalogo) =>
         ORDER BY j.titulo`,
     })(undefined)
 
+    const ahora = new Date(yield* Clock.currentTimeMillis)
     const todas = yield* pruebasAprobadas(null)
     const candidatos = filas
       .map((j) => {
         const pruebas = todas.filter((p) => p.juego_id === j.id)
-        const { estado, pruebas: aprobados, ultima_prueba, fallos } = resumir(pruebas)
-        return { ...j, resumen: { estado, pruebas: aprobados, ultima_prueba, fallos }, ejemplo: pruebas.some((p) => p.ejemplo) }
+        const { estado, pruebas: aprobados, sin_confirmacion_reciente, ultima_prueba, fallos } = resumir(pruebas, ahora)
+        return {
+          ...j,
+          resumen: { estado, pruebas: aprobados, sin_confirmacion_reciente, ultima_prueba, fallos },
+          ejemplo: pruebas.some((p) => p.ejemplo),
+        }
       })
       .filter((j) => filtro.sin_anti_cheat !== true || !j.resumen.fallos.some((f) => f.codigo === 'anti_cheat'))
     const juegos = filtro.estado === undefined ? candidatos : candidatos.filter((j) => j.resumen.estado === filtro.estado)
