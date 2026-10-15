@@ -20,14 +20,14 @@ TanStack Start 1.168 on Vite 8 serves React 19 with SSR. Effect 4.0.2 runs the s
 1. Route loaders and `createServerFn` are the only server boundary. Each server fn is one line that calls `leer` (reads) or `accion` (UI-triggered calls, one transaction each) in `servidor/ejecutar.ts`.
 2. Domain failures come back as a returned `Respuesta<A, E>` union, never as thrown errors, so the compiler checks that each form handles exactly the failures its program can produce. Not found, login and forbidden use the router's own `notFound()` and `redirect()`.
 3. One Effect Schema per concept serves the DB CHECK lists, row decoding, browser form decoding, server fn validation and search params. Page data types are inferred from the server programs. Only `Schema` ships to the browser, with no Effect runtime there.
-4. Nothing stores a verdict. `resumir` and `estadoDe` compute compatibility from approved reports on each request, and `evaluar` gives exactly three outcomes with no FPS field.
+4. Nothing stores a verdict or a projection. `resumir` and `estadoDe` compute compatibility from approved reports on each request. `equipoEnLinux` projects what the GPU can do on Linux from its stored PCI id, and `evaluar` gives exactly three outcomes with no FPS field.
 5. Every 8.7/8.9/8.11 rule has one home. Row-local rules are DB constraints and three triggers. Cross-row rules live in `servidor/aportes/aportes.ts` (single writer of contributions) and `servidor/aportes/revision.ts` (single writer of the review block). `src/fronteras.test.ts` fails the build on a second writer or a wrong import.
 
 ## Decisions settled by prototype
 
 | Question | Evidence | Decision |
 |---|---|---|
-| Q1. Detector and handoff | `prototypes/detector/` | Bash script with no root. Handoff by URL fragment `#d=`, with paste as fallback. Vulkan stays `desconocido` without `vulkaninfo`. |
+| Q1. Detector and handoff | `prototypes/detector/` | Bash script with no root. Handoff by URL fragment `#d=`, with paste as fallback. Vulkan stays `desconocido` without `vulkaninfo`. Amended in U10: a PowerShell script does the same on Windows without admin rights. Windows never reports Vulkan, because Windows Vulkan says nothing about Linux. The GPU's PCI id projects it instead (RATIONALE, U10). |
 | Q1b. RAM comparison | `prototypes/detector/FINDINGS.md` | The script reports installed RAM from sysfs memory blocks. Exact comparison, no tolerance factor. |
 | Q2. Verdict presentation | `prototypes/veredicto/` | Variant 1 "semáforo derivado", plus variant 2's "En tu distribución" line. |
 | Q3. "Aplicar perfil" | Section 8.5 | Ordered steps with copy buttons. Nothing downloads or executes. |
