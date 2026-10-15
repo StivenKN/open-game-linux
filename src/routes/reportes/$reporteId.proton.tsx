@@ -27,12 +27,9 @@ function InformeParaValve() {
     </Link>
   )
   return (
-    <main className="envoltura estrecha pila">
+    <main className="envoltura estrecha-lectura pila">
       <p className="rotulo">Informe para Valve</p>
       <h1>{reporte.juego}</h1>
-      <p className="tenue">
-        Solo tú ves esta página: el informe lleva tu GPU, tu controlador y tu kernel. OpenGame no lo envía; lo abres tú en GitHub.
-      </p>
       {x._tag === 'no_aplica' ? (
         <section className="tarjeta pila">
           <p>{motivoSinInforme[x.motivo]}</p>
@@ -40,6 +37,9 @@ function InformeParaValve() {
         </section>
       ) : (
         <>
+          <p className="tenue">
+            Solo tú ves esta página: el informe lleva tu GPU, tu controlador y tu kernel. OpenGame no lo envía; lo abres tú en GitHub.
+          </p>
           <p>
             Valve corrige Proton a partir de informes en su repositorio de GitHub. Este ya lleva tu equipo y lo que viste; solo falta el
             registro de Proton.
