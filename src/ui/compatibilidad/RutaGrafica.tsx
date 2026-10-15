@@ -10,7 +10,7 @@ import { camino, etiquetaRuta, fraseRuta } from '../vocabulario.ts'
 export function RutaGrafica({ ruta, minimo, orientativa }: { ruta: RutaJuego; minimo: NivelX86 | null; orientativa: boolean }) {
   // The warning and launch option follow the path wherever it shows, a certain floor included.
   const visible = ruta.estado === 'con_ruta' ? ruta.camino : ruta.estado === 'sin_datos' ? ruta.al_menos : null
-  const { nota, opcion } = visible === null ? { nota: null, opcion: null } : camino[visible]
+  const { nota, opcion, tono } = visible === null ? { nota: null, opcion: null, tono: null } : camino[visible]
   return (
     <div className="pila">
       <div className="fila">
@@ -23,7 +23,7 @@ export function RutaGrafica({ ruta, minimo, orientativa }: { ruta: RutaJuego; mi
         </p>
       ))}
       {nota && (
-        <p className="pequeno nota" data-tono="amarillo">
+        <p className="pequeno nota" data-tono={tono === 'verde' ? 'azul' : 'amarillo'}>
           {nota}
         </p>
       )}

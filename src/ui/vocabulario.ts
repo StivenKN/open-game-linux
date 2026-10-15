@@ -215,7 +215,7 @@ export const etiquetaRuta = (r: RutaJuego): Etiqueta => {
 
 const falta = {
   grafica: 'Falta saber hasta qué versión de Vulkan llega tu tarjeta gráfica: en Linux, instala vulkan-tools y vuelve a ejecutar el detector.',
-  cpu: 'Falta el nivel x86-64 de tu procesador: lo mide el detector de Linux, vuelve a ejecutarlo.',
+  cpu: 'Falta el nivel x86-64 de tu procesador: lo mide la versión actual del detector de Linux.',
 } as const satisfies Record<Requisito, string>
 
 /** The verdict as sentences. `minimo` is the game's minimum x86-64 level, named when the CPU decides. */
