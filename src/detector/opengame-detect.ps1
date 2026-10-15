@@ -8,6 +8,7 @@
 # too long for a URL goes to the clipboard instead, and the page asks to paste it.
 # OPENGAME_URL overrides the app address. OPENGAME_DRY=1 prints the URL instead of opening it,
 # OPENGAME_IMPRIMIR=1 prints the JSON. OPENGAME_STEAM_DIR replaces the Steam folder read from the registry.
+# OPENGAME_MAX_JUEGOS overrides how many games are sent, which the server fills in like the URL.
 #
 # Must run on Windows PowerShell 5.1 (the Windows 10 default) as well as PowerShell 7: keep this file
 # ASCII (5.1 reads a file without BOM as ANSI) and free of 7-only syntax. A test checks both.
@@ -15,6 +16,11 @@
   $ErrorActionPreference = 'SilentlyContinue'
   $AppUrl = '__OPENGAME_URL__'
   if ($env:OPENGAME_URL) { $AppUrl = $env:OPENGAME_URL }
+  $MaxJuegos = 0
+  $tope = '__OPENGAME_MAX_JUEGOS__'
+  if ($env:OPENGAME_MAX_JUEGOS) { $tope = $env:OPENGAME_MAX_JUEGOS }
+  # Unfilled: send every game, the server cuts.
+  if (-not [int]::TryParse($tope, [ref]$MaxJuegos) -or $MaxJuegos -le 0) { $MaxJuegos = [int]::MaxValue }
   # Start-Process opens the URL through ShellExecute, which cuts URLs at about 2048 chars.
   $MaxUrl = 2000
 
@@ -143,7 +149,7 @@
     }
   }
 
-  # Installed Steam games as a JSON array, most recently played first, or 'null' without Steam.
+  # Installed Steam games as a JSON array, most recently played first and at most $MaxJuegos, or 'null' without Steam.
   # libraryfolders.vdf lists the libraries: "path" two levels deep, or a numbered key one level deep in
   # the pre-2021 format. Tools such as Proton stay in the list; the server filters them.
   function Get-OgBibliotecaJson {
@@ -180,7 +186,7 @@
     }
 
     $orden = @{ Expression = 'Ultima'; Descending = $true }, @{ Expression = 'AppId'; Descending = $false }
-    $items = foreach ($j in @($juegos | Sort-Object $orden)) {
+    $items = foreach ($j in @($juegos | Sort-Object $orden | Select-Object -First $MaxJuegos)) {
       '{"app_id":' + $j.AppId + ',"nombre":' + (Json-Str $j.Nombre) + '}'
     }
     '[' + (@($items) -join ',') + ']'

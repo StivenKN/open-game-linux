@@ -5,6 +5,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { MAX_JUEGOS_BIBLIOTECA } from '../dominio/biblioteca.ts'
 import { parsearPayload } from '../servidor/diagnostico/payload.ts'
 
 const raiz = fileURLToPath(new URL('../../', import.meta.url))
@@ -24,8 +25,8 @@ describe('opengame-detect.ps1 source', () => {
     expect(solo7.filter((patron) => patron.test(fuente))).toEqual([])
   })
 
-  it('has the one __OPENGAME_URL__ placeholder the route replaces', () => {
-    expect(fuente.split('__OPENGAME_URL__').length - 1).toBe(1)
+  it.each(['__OPENGAME_URL__', '__OPENGAME_MAX_JUEGOS__'])('has the one %s placeholder the route replaces', (marca) => {
+    expect(fuente.split(marca).length - 1).toBe(1)
   })
 })
 
@@ -62,7 +63,7 @@ const esperada = (cuantos: number) => Array.from({ length: cuantos }, (_, k) => 
 
 // Runs the real script the way `irm | iex` does, after the stubs that fake the Windows PC.
 const powershell = (env: Record<string, string>): string => {
-  const variables = { OPENGAME_URL: 'http://ejemplo.test', PROCESSOR_ARCHITECTURE: 'AMD64', OPENGAME_PRUEBA_STEAM: steam('nuevo'), OPENGAME_PRUEBA_REGISTRO: registro(), ...env }
+  const variables = { OPENGAME_URL: 'http://ejemplo.test', OPENGAME_MAX_JUEGOS: String(MAX_JUEGOS_BIBLIOTECA), PROCESSOR_ARCHITECTURE: 'AMD64', OPENGAME_PRUEBA_STEAM: steam('nuevo'), OPENGAME_PRUEBA_REGISTRO: registro(), ...env }
   const args = ['-NoProfile', '-NonInteractive', '-Command', `. '${stubs}'; Invoke-Expression (Get-Content -Raw -LiteralPath '${ps1}')`]
   if (motor === 'pwsh') return execFileSync('pwsh', args, { encoding: 'utf8', env: { ...process.env, ...variables } }).trim()
   const docker = [
@@ -73,7 +74,7 @@ const powershell = (env: Record<string, string>): string => {
   return execFileSync('docker', [...docker, IMAGEN, 'pwsh', ...args], { encoding: 'utf8' }).trim()
 }
 const bash = (env: Record<string, string>, ...args: Array<string>): string =>
-  execFileSync('bash', [sh, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, HOME: join(tmp, 'sin-steam'), ...env } }).trim()
+  execFileSync('bash', [sh, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, HOME: join(tmp, 'sin-steam'), OPENGAME_MAX_JUEGOS: String(MAX_JUEGOS_BIBLIOTECA), ...env } }).trim()
 const leerRegistro = (): Array<string> => {
   const lineas = readFileSync(registro(), 'utf8').trim().split('\n')
   rmSync(registro())
@@ -172,6 +173,11 @@ describe.skipIf(motor === null)(`opengame-detect.ps1 under ${motor ?? `pwsh (ski
     expect([abrir, resto]).toEqual(['Start-Process http://ejemplo.test/diagnostico?pegar=1', []])
     expect(leer((copiar ?? '').replace(/^Set-Clipboard /, ''))).toMatchObject({ biblioteca_steam: esperada(30) })
   })
+
+  it('sends at most MAX_JUEGOS_BIBLIOTECA games, the most recently played', () => {
+    const salida = powershell({ OPENGAME_STEAM_DIR: join(tmp, 'grande'), OPENGAME_IMPRIMIR: '1' })
+    expect(leer(salida)).toMatchObject({ biblioteca_steam: esperada(2000).slice(0, MAX_JUEGOS_BIBLIOTECA) })
+  })
 })
 
 describe.skipIf(motor === null || process.platform !== 'linux')('Steam library: bash and PowerShell detectors agree', { timeout: 60_000 }, () => {
@@ -186,8 +192,8 @@ describe.skipIf(motor === null || process.platform !== 'linux')('Steam library: 
 })
 
 describe.skipIf(process.platform !== 'linux')('opengame-detect.sh with a large Steam library', () => {
-  it('prints the JSON instead of a --open URL longer than 100 000 chars', () => {
+  it('prints the JSON, capped at MAX_JUEGOS_BIBLIOTECA games, instead of a --open URL longer than 100 000 chars', () => {
     const salida = bash({ OPENGAME_STEAM_DIR: join(tmp, 'grande'), OPENGAME_DRY: '1', OPENGAME_URL: 'http://ejemplo.test' }, '--open')
-    expect(leer(salida)).toMatchObject({ sistema: 'Linux', biblioteca_steam: esperada(2000) })
+    expect(leer(salida)).toMatchObject({ sistema: 'Linux', biblioteca_steam: esperada(2000).slice(0, MAX_JUEGOS_BIBLIOTECA) })
   })
 })

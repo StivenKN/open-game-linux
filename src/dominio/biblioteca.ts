@@ -4,7 +4,7 @@ import { Texto } from './ids.ts'
 /** `lanzador.nombre` of Steam: the seed writes it and the library read model joins on it. */
 export const LANZADOR_STEAM = 'Steam'
 
-/** Migration 3's CHECK freezes the same 1000; raising it needs a new migration. */
+/** The script routes fill it into both detectors. Migration 3's CHECK freezes the same 1000; raising it needs a new migration. */
 export const MAX_JUEGOS_BIBLIOTECA = 1000
 
 export const AppIdSteam = Schema.Int.pipe(Schema.check(Schema.isGreaterThan(0)), Schema.brand('AppIdSteam'))

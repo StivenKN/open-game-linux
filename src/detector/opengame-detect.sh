@@ -7,10 +7,13 @@
 #                                    which the browser never sends to the server
 #
 # OPENGAME_DRY=1 with --open prints the URL instead of opening a browser. OPENGAME_URL overrides the app address.
-# OPENGAME_STEAM_DIR adds a Steam folder to the ones searched for installed games.
+# OPENGAME_STEAM_DIR adds a Steam folder to the ones searched for installed games. OPENGAME_MAX_JUEGOS
+# overrides how many games are sent, which the server fills in like the URL.
 set -u
 
 APP_URL="${OPENGAME_URL:-__OPENGAME_URL__}"
+MAX_JUEGOS="${OPENGAME_MAX_JUEGOS:-__OPENGAME_MAX_JUEGOS__}"
+case "$MAX_JUEGOS" in ''|*[!0-9]*) MAX_JUEGOS=0 ;; esac # unfilled: send all, the server cuts
 
 json_str() {
   if [ -z "${1:-}" ]; then printf 'null'; else
@@ -105,7 +108,7 @@ vdf_pares() {
     }' "$@"
 }
 
-# Installed Steam games, most recently played first. Every Steam root (native, Flatpak, Snap) lists its
+# Installed Steam games, most recently played first, at most MAX_JUEGOS. Every Steam root (native, Flatpak, Snap) lists its
 # libraries in steamapps/libraryfolders.vdf: "path" two levels deep, or a numbered key one level deep
 # in the pre-2021 format. Tools such as Proton stay in the list; the server filters them.
 biblioteca_steam="null"; bibliotecas=()
@@ -135,7 +138,7 @@ if [ "${#bibliotecas[@]}" -gt 0 ]; then
               print (v[a, "lastplayed"] + 0) "\t" v[a, "appid"] "\t" v[a, "name"]
           }
         }' | sort -t "$(printf '\t')" -k1,1nr -k2,2n | tr -d '\000-\010\013-\037\177' | sed 's/\\/\\\\/g; s/"/\\"/g' |
-      awk -F'\t' 'BEGIN { printf "[" } { printf "%s{\"app_id\":%s,\"nombre\":\"%s\"}", (NR > 1 ? "," : ""), $2 + 0, $3 } END { printf "]" }')
+      awk -F'\t' -v max="$MAX_JUEGOS" 'BEGIN { printf "[" } max == 0 || NR <= max { printf "%s{\"app_id\":%s,\"nombre\":\"%s\"}", (NR > 1 ? "," : ""), $2 + 0, $3 } END { printf "]" }')
   fi
 fi
 
