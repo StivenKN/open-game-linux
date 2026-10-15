@@ -86,6 +86,11 @@ describe('parsearPayload', () => {
     ])
   })
 
+  it('drops control characters and replaces lone surrogates in a name, so jsonb can store it', () => {
+    const biblioteca_steam = [{ app_id: 271590, nombre: 'Grand\u0000 Theft\u001f Auto\u007f \udc00V' }]
+    expect(captura(JSON.stringify({ ...prototipo, biblioteca_steam })).biblioteca_steam).toEqual([{ app_id: 271590, nombre: 'Grand Theft Auto \ufffdV' }])
+  })
+
   it('keeps the first 1000 games of a larger library and an empty library as empty', () => {
     const biblioteca_steam = Array.from({ length: 1200 }, (_, i) => ({ app_id: i + 1, nombre: `Juego ${i + 1}` }))
     const leida = captura(JSON.stringify({ ...prototipo, biblioteca_steam })).biblioteca_steam

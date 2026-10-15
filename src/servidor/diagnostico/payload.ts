@@ -81,12 +81,14 @@ export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInv
 /**
  * Steam tools out, then games with a usable app id, the first of each id, in the detector's order
  * (most recently played first), cut to MAX_JUEGOS_BIBLIOTECA. A malformed entry is dropped, never a failure.
+ * Control characters and lone surrogates go before the cut: jsonb rejects \u0000 and unpaired surrogates.
  */
 const bibliotecaDe = (juegos: ReadonlyArray<typeof JuegoEnviado.Type>): typeof BibliotecaSteam.Encoded => {
   const vistos = new Set<number>()
   return juegos
     .flatMap(({ app_id, nombre }) => {
-      const limpio = nombre.trim().slice(0, largo.biblioteca.nombre).replace(/[\uD800-\uDBFF]$/, '').trim()
+      const legible = nombre.toWellFormed().replace(/\p{Cc}/gu, '').trim()
+      const limpio = legible.slice(0, largo.biblioteca.nombre).replace(/[\uD800-\uDBFF]$/, '').trim()
       if (limpio === '' || esHerramientaSteam(limpio) || !Number.isSafeInteger(app_id) || app_id <= 0 || vistos.has(app_id)) return []
       vistos.add(app_id)
       return [{ app_id, nombre: limpio }]
