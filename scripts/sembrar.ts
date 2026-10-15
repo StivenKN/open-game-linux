@@ -9,6 +9,7 @@ import type { NivelX86 } from '../src/dominio/plataforma.ts'
 import { AporteRef, Decision, type Rol } from '../src/dominio/revision.ts'
 import { registrarReporte, registrarSolucion } from '../src/servidor/aportes/aportes.ts'
 import { registrarDiagnostico } from '../src/servidor/aportes/diagnostico.ts'
+import { VERSION_ESQUEMA } from '../src/servidor/diagnostico/payload.ts'
 import { decidir } from '../src/servidor/aportes/revision.ts'
 import { asignarRol, auth, dominioDemo, Visitante } from '../src/servidor/auth.ts'
 import { filas, unaFila } from '../src/servidor/filas.ts'
@@ -335,6 +336,47 @@ const equipos = {
       version_vulkan: '1.3.289',
     },
   },
+  // Old hardware with no reports: the graphics path verdict must still say something.
+  brunoViejo: {
+    dueno: 'demo_bruno',
+    alias: 'PC viejo de Bruno',
+    distribucion: 'ubuntu',
+    diagnostico: {
+      capturado_en: '2026-10-12T18:00:00Z',
+      version_sistema: '7.0.0-30-generic',
+      cpu_modelo: 'Intel Core i5-4570',
+      gpu_modelo: 'NVIDIA GeForce GTX 760',
+      ram_mb: 8192,
+      vram_mb: 2048,
+      controlador: 'nouveau',
+      version_controlador: 'Mesa 25.2.8',
+      // Kepler without vulkan-tools: Vulkan 1.2 is projected, so D3D9-11 go through DXVK-Sarek.
+      gpu_pci_id: '10de:1187',
+      soporte_vulkan: 'desconocido',
+      version_vulkan: null,
+      nivel_x86: 'v3',
+    },
+  },
+  anaFamiliar: {
+    dueno: 'demo_ana',
+    alias: 'PC familiar de Ana',
+    distribucion: 'mint',
+    diagnostico: {
+      capturado_en: '2026-10-13T18:00:00Z',
+      version_sistema: '6.5.0-44-generic',
+      // Phenom II lacks SSSE3 and SSE4.1, so it stays at x86-64-v1 below CS2's v2.
+      cpu_modelo: 'AMD Phenom II X4 965',
+      gpu_modelo: 'NVIDIA GeForce GTX 1050 Ti',
+      ram_mb: 8192,
+      vram_mb: 4096,
+      controlador: 'nvidia',
+      version_controlador: null,
+      gpu_pci_id: '10de:1c82',
+      soporte_vulkan: 'desconocido',
+      version_vulkan: null,
+      nivel_x86: 'v1',
+    },
+  },
 } as const satisfies Record<string, { dueno: Cuenta; alias: string; distribucion: keyof typeof distribuciones; diagnostico: Readonly<Record<string, Valor>> }>
 
 type ReporteDemo = {
@@ -552,12 +594,19 @@ const programa = Effect.gen(function* () {
       const diagnosticoDe = new Map<keyof typeof equipos, number>()
       for (const [k, eq] of Record.toEntries(equipos)) {
         const { nombre, version } = distribuciones[eq.distribucion]
+        // As detector output: the manual form drops the PCI id and the CPU level the verdicts read.
+        const payload = {
+          version_esquema: VERSION_ESQUEMA,
+          sistema: 'Linux',
+          distribucion: { nombre, version },
+          arquitectura: 'x86_64',
+          soporte_vulkan: 'si',
+          biblioteca_steam: null,
+          ...eq.diagnostico,
+        }
         const guardar = yield* Schema.decodeUnknownEffect(GuardarDiagnostico)({
           equipo: { _tag: 'nuevo', alias: eq.alias },
-          entrada: {
-            _tag: 'manual',
-            captura: { ...eq.diagnostico, sistema: 'Linux', distribucion: { nombre, version }, arquitectura: 'x86_64', soporte_vulkan: 'si', biblioteca_steam: null },
-          },
+          entrada: { _tag: 'detector', texto: JSON.stringify(payload) },
         })
         const { id, nuevo } = yield* como(eq.dueno, registrarDiagnostico(guardar))
         if (nuevo) contar('diagnostico')
