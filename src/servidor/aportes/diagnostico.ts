@@ -48,6 +48,8 @@ export const registrarDiagnostico = (
       soporte_vulkan: captura.soporte_vulkan,
       version_vulkan: captura.version_vulkan,
       gpu_pci_id: captura.gpu_pci_id,
+      // Sent as JSON text: the untyped parameter takes the jsonb column's type.
+      biblioteca_steam: g.con_biblioteca && captura.biblioteca_steam !== null ? JSON.stringify(captura.biblioteca_steam) : null,
     }
     return yield* unaFila(
       Guardado,

@@ -3,6 +3,7 @@ import { EstadoCompatibilidad } from './compatibilidad.ts'
 import { SoporteVulkan } from './evaluacion.ts'
 import type { Discrepancia } from './fallos.ts'
 import {
+  Casilla,
   DiagnosticoId,
   DistribucionId,
   EdicionId,
@@ -122,7 +123,8 @@ export const EntradaDiagnostico = Schema.Union([
 ])
 export type EntradaDiagnostico = typeof EntradaDiagnostico.Type
 
-export const GuardarDiagnostico = Schema.Struct({ equipo: EquipoDestino, entrada: EntradaDiagnostico })
+/** With `con_biblioteca` false the capture is stored without its Steam library. */
+export const GuardarDiagnostico = Schema.Struct({ equipo: EquipoDestino, entrada: EntradaDiagnostico, con_biblioteca: Casilla })
 
 export const FiltroCatalogo = Schema.Struct({
   q: Schema.optionalKey(Schema.String),
