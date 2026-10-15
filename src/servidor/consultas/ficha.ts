@@ -4,8 +4,9 @@ import { enDistribucion, PruebaAprobada, resumir } from '../../dominio/compatibi
 import { condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
 import { NoEncontrado } from '../../dominio/fallos.ts'
 import { JuegoId, UsuarioId } from '../../dominio/ids.ts'
+import { ApiGrafica } from '../../dominio/literales.ts'
 import { EstadoRevision, estadosVigentes } from '../../dominio/revision.ts'
-import { Diagnostico, EdicionJuego, Equipo, Juego, Lanzador, PerfilConfiguracion, Solucion, TipoFallo } from '../../dominio/tablas.ts'
+import { Diagnostico, EdicionJuego, Equipo, Juego, JuegoApi, Lanzador, PerfilConfiguracion, Solucion, TipoFallo } from '../../dominio/tablas.ts'
 import { Visitante } from '../auth.ts'
 import { filas, unaFila } from '../filas.ts'
 import { equipoEnLinux } from '../gpu/capacidad.ts'
@@ -80,7 +81,7 @@ export const diagnosticoDelVisitante = Effect.flatMap(Visitante, (visitante) =>
   Option.match(visitante, { onNone: () => Effect.succeedNone, onSome: (u) => ultimoDiagnostico(u.id) }),
 )
 
-const FilaJuego = Juego.mapFields(Struct.pick(['id', 'titulo', 'descripcion']))
+const FilaJuego = Juego.mapFields(Struct.pick(['id', 'titulo', 'descripcion', 'nivel_x86_min']))
 
 const FilaEdicion = EdicionJuego.mapFields(Struct.pick(['id', 'identificador_externo'])).mapFields(
   Struct.assign({ lanzador: Lanzador.fields.nombre }),
@@ -111,9 +112,16 @@ export const fichaJuego = (juegoId: JuegoId) =>
     const juego = yield* SqlSchema.findOneOption({
       Request: JuegoId,
       Result: FilaJuego,
-      execute: (id) => sql`SELECT id, titulo, descripcion FROM juego WHERE id = ${id}`,
+      execute: (id) => sql`SELECT id, titulo, descripcion, nivel_x86_min FROM juego WHERE id = ${id}`,
     })(juegoId)
     if (Option.isNone(juego)) return yield* new NoEncontrado()
+
+    const declaradas = yield* SqlSchema.findAll({
+      Request: JuegoId,
+      Result: JuegoApi.mapFields(Struct.pick(['api'])),
+      execute: (id) => sql`SELECT api FROM juego_api WHERE juego_id = ${id}`,
+    })(juegoId)
+    const apis = ApiGrafica.literals.filter((api) => declaradas.some((d) => d.api === api))
 
     const ediciones = yield* SqlSchema.findAll({
       Request: JuegoId,
@@ -213,7 +221,7 @@ export const fichaJuego = (juegoId: JuegoId) =>
     })
 
     return {
-      juego: juego.value,
+      juego: { ...juego.value, apis },
       ediciones,
       resumen,
       ejemplo: pruebas.some((p) => p.ejemplo),

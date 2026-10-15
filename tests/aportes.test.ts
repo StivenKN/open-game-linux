@@ -8,6 +8,7 @@ import { AporteRef, Decision, type Rol } from '../src/dominio/revision.ts'
 import { crearJuego, registrarReporte, registrarSolucion } from '../src/servidor/aportes/aportes.ts'
 import { bloqueosAprobacion, decidir } from '../src/servidor/aportes/revision.ts'
 import { type Usuario, Visitante } from '../src/servidor/auth.ts'
+import { fichaJuego } from '../src/servidor/consultas/ficha.ts'
 import { enRollback, idDe, PgTest } from './apoyo.ts'
 
 const Fila = Schema.Array(Schema.Record(Schema.String, Schema.Unknown))
@@ -114,8 +115,11 @@ const solucion = (e: Escenario, reporte_id: number, cambios: Record<string, unkn
     ),
   )
 
-const nuevoJuego = (titulo: string, ediciones: ReadonlyArray<{ lanzador_id: number; identificador_externo: string }>) =>
-  Schema.decodeUnknownSync(NuevoJuego)({ titulo, descripcion: 'Un juego de prueba', ediciones })
+const nuevoJuego = (
+  titulo: string,
+  ediciones: ReadonlyArray<{ lanzador_id: number; identificador_externo: string }>,
+  graficos: { apis: ReadonlyArray<string>; nivel_x86_min: string | null } = { apis: ['d3d11'], nivel_x86_min: null },
+) => Schema.decodeUnknownSync(NuevoJuego)({ titulo, descripcion: 'Un juego de prueba', ediciones, ...graficos })
 
 const conFallo = (e: Escenario) => ({ resultado: 'no_inicia', fallos: [{ tipo_fallo_id: e.lanzadorFallo, detalle: 'El lanzador se cierra' }] })
 
@@ -286,6 +290,14 @@ layer(PgTest)('aportes', (it) => {
   })
 
   describe('la aplicación permite', () => {
+    it.effect('que un revisor registre un juego con sus APIs gráficas y CPU mínima, y la ficha las devuelve en orden', enEscenario((e) =>
+      Effect.gen(function* () {
+        const juego = nuevoJuego('Hades', [{ lanzador_id: e.lanzador, identificador_externo: '1145360' }], { apis: ['vulkan', 'd3d11', 'd3d11'], nivel_x86_min: 'v2' })
+        const { id } = yield* como(e.rita)(crearJuego(juego))
+        const ficha = yield* como(null)(fichaJuego(id))
+        expect(ficha.juego).toMatchObject({ apis: ['d3d11', 'vulkan'], nivel_x86_min: 'v2' })
+      })))
+
     it.effect('que un revisor registre un juego con dos ediciones', enEscenario((e) =>
       Effect.gen(function* () {
         const { id } = yield* como(e.rita)(

@@ -18,3 +18,7 @@ export const exigeFallo = {
   no_inicia: true,
   falla_en_ejecucion: true,
 } as const satisfies Record<ResultadoFuncional, false> & Record<ResultadoFallido, true>
+
+/** Graphics APIs a game can render with. A game with none declared has unknown APIs. */
+export const ApiGrafica = Schema.Literals(['d3d9', 'd3d10', 'd3d11', 'd3d12', 'vulkan', 'opengl'])
+export type ApiGrafica = typeof ApiGrafica.Type

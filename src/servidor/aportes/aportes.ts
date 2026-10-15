@@ -137,7 +137,11 @@ export const crearJuego = (j: NuevoJuego): Escritura<{ readonly id: JuegoId }, R
   Effect.gen(function* () {
     yield* exigirRevisor
     const sql = yield* SqlClient.SqlClient
-    const creado = yield* unaFila(ConIdJuego, sql`INSERT INTO juego ${sql.insert({ titulo: j.titulo, descripcion: j.descripcion })} RETURNING id`)
+    const creado = yield* unaFila(
+      ConIdJuego,
+      sql`INSERT INTO juego ${sql.insert({ titulo: j.titulo, descripcion: j.descripcion, nivel_x86_min: j.nivel_x86_min })} RETURNING id`,
+    )
     yield* conReglasDeBd(sql`INSERT INTO edicion_juego ${sql.insert(j.ediciones.map((e) => ({ juego_id: creado.id, ...e })))}`)
+    yield* sql`INSERT INTO juego_api ${sql.insert(Arr.dedupe(j.apis).map((api) => ({ juego_id: creado.id, api })))}`
     return { id: creado.id }
   })

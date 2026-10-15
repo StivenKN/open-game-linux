@@ -1,11 +1,17 @@
 import { createFileRoute, notFound, redirect, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { NuevoJuego } from '../../dominio/aportes.ts'
+import { ApiGrafica } from '../../dominio/literales.ts'
+import type { NivelX86 } from '../../dominio/plataforma.ts'
 import { crearJuegoFn, opcionesJuegoFn } from '../../fns/aportes.ts'
 import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
-import { Campo, campo } from '../../ui/formulario.tsx'
+import { Campo, campo, nulo } from '../../ui/formulario.tsx'
 import { erroresDeRegla, useAccion } from '../../ui/useAccion.ts'
+import { apiGrafica, nivelX86 } from '../../ui/vocabulario.ts'
 import { volverAqui } from '../-volver.ts'
+
+// v1 is every x86-64 CPU, so it is no requirement.
+const nivelesMinimos = ['v2', 'v3', 'v4'] as const satisfies ReadonlyArray<NivelX86>
 
 export const Route = createFileRoute('/catalogo/nuevo')({
   beforeLoad: ({ context, location }) => {
@@ -80,6 +86,31 @@ function NuevoJuegoPagina() {
           </p>
           <ErrorCampo errores={r.errores} campo="ediciones" />
         </fieldset>
+
+        <fieldset className="grupo">
+          <legend>APIs gráficas</legend>
+          <p className="pequeno tenue">Marca cada API con la que el juego puede dibujar, aunque sea un modo alternativo.</p>
+          <div className="fila">
+            {ApiGrafica.literals.map((api) => (
+              <label key={api} className="casilla">
+                <input type="checkbox" name="apis[]" value={api} />
+                {apiGrafica[api]}
+              </label>
+            ))}
+          </div>
+          <ErrorCampo errores={r.errores} campo="apis" />
+        </fieldset>
+
+        <Campo errores={r.errores} nombre="nivel_x86_min" etiqueta="CPU mínima" ayuda="Solo si el juego exige un conjunto de instrucciones, como SSE4.2 en Counter-Strike 2.">
+          <select {...campo(r.errores, 'nivel_x86_min')} defaultValue={nulo}>
+            <option value={nulo}>Sin requisito</option>
+            {nivelesMinimos.map((n) => (
+              <option key={n} value={n}>
+                {nivelX86[n]}
+              </option>
+            ))}
+          </select>
+        </Campo>
 
         <button type="submit" disabled={r.enviando}>
           Crear juego

@@ -15,7 +15,7 @@ import {
   TipoFalloId,
   VersionCapaId,
 } from './ids.ts'
-import { FamiliaCapa, ResultadoFallido, ResultadoFuncional } from './literales.ts'
+import { ApiGrafica, FamiliaCapa, ResultadoFallido, ResultadoFuncional } from './literales.ts'
 import { MAX_JUEGOS_BIBLIOTECA } from './biblioteca.ts'
 import { largo } from './largo.ts'
 import { Diagnostico, Distribucion, Equipo, Juego, PerfilConfiguracion, Reporte, Solucion, TextoHasta, TextoOpcionalHasta, VersionCapa } from './tablas.ts'
@@ -85,6 +85,12 @@ export const NuevoJuego = Schema.Struct({
   ediciones: Schema.NonEmptyArray(
     Schema.Struct({ lanzador_id: LanzadorId, identificador_externo: TextoOpcionalHasta(largo.edicion_juego.identificador_externo) }),
   ),
+  // Checkboxes named `apis[]`; with none checked the form posts no `apis` key at all.
+  apis: Schema.Array(ApiGrafica).pipe(
+    Schema.refine(Arr.isReadonlyArrayNonEmpty, { message: 'Marca al menos una API gráfica.' }),
+    Schema.withDecodingDefaultKey(Effect.succeed([])),
+  ),
+  nivel_x86_min: Juego.fields.nivel_x86_min,
 })
 export type NuevoJuego = typeof NuevoJuego.Type
 

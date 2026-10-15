@@ -22,7 +22,7 @@ import {
   VersionCapaId,
 } from './ids.ts'
 import { largo } from './largo.ts'
-import { FamiliaCapa, Resultado } from './literales.ts'
+import { ApiGrafica, FamiliaCapa, Resultado } from './literales.ts'
 import { ArranqueSeguro, NivelX86, Tpm } from './plataforma.ts'
 import { EstadoRevision, Rol } from './revision.ts'
 
@@ -86,9 +86,14 @@ export const Juego = Schema.Struct({
   id: JuegoId,
   titulo: TextoHasta(largo.juego.titulo),
   descripcion: Texto,
+  nivel_x86_min: Schema.NullOr(NivelX86),
   actualizado_en: Schema.Date,
 })
 export type Juego = typeof Juego.Type
+
+/** One row per graphics API the game can render with; no rows means unknown. */
+export const JuegoApi = Schema.Struct({ juego_id: JuegoId, api: ApiGrafica })
+export type JuegoApi = typeof JuegoApi.Type
 
 export const Lanzador = Schema.Struct({
   id: LanzadorId,

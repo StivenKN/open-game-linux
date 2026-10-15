@@ -1,10 +1,11 @@
 import type { EstadoCompatibilidad } from '../dominio/compatibilidad.ts'
-import type { Resultado } from '../dominio/literales.ts'
+import type { ApiGrafica, Resultado } from '../dominio/literales.ts'
 import type { Comprobacion, OrigenDato, Sistema, SoporteVulkan, VeredictoRequisitos } from '../dominio/evaluacion.ts'
 import type { AvisoGpu, ControladorLinux, FamiliaGpu, RutaD3d } from '../dominio/gpu.ts'
 import type { PayloadInvalido } from '../dominio/fallos.ts'
 import type { Bloqueo, EstadoRevision } from '../dominio/revision.ts'
 import type { TipoGuia } from '../dominio/guias.ts'
+import type { NivelX86 } from '../dominio/plataforma.ts'
 
 export type Tono = 'verde' | 'amarillo' | 'rojo' | 'gris' | 'morado' | 'azul'
 export type Etiqueta = { readonly texto: string; readonly tono: Tono; readonly icono: string }
@@ -46,6 +47,23 @@ export const soporteVulkan = {
 } as const satisfies Record<SoporteVulkan, string>
 
 export const sistema = { Linux: 'Linux', Windows: 'Windows' } as const satisfies Record<Sistema, string>
+
+export const apiGrafica = {
+  d3d9: 'Direct3D 9',
+  d3d10: 'Direct3D 10',
+  d3d11: 'Direct3D 11',
+  d3d12: 'Direct3D 12',
+  vulkan: 'Vulkan',
+  opengl: 'OpenGL',
+} as const satisfies Record<ApiGrafica, string>
+
+/** A level as a requirement, named by the instruction set games actually ask for. */
+export const nivelX86 = {
+  v1: 'x86-64-v1',
+  v2: 'x86-64-v2 (SSE4.2)',
+  v3: 'x86-64-v3 (AVX2)',
+  v4: 'x86-64-v4',
+} as const satisfies Record<NivelX86, string>
 
 export const estadoRevision = {
   pendiente: { texto: 'Pendiente de revisión', tono: 'gris', icono: '…' },

@@ -120,6 +120,12 @@ const rechaza: ReadonlyArray<Caso> = [
   ['nivel x86-64 fuera del dominio', 'diagnostico_nivel_x86_dominio', (f) => diagnostico(f, { nivel_x86: 'v5' })],
   ['TPM fuera del dominio', 'diagnostico_tpm_dominio', (f) => diagnostico(f, { tpm: '3.0' })],
   ['zram negativa', 'diagnostico_zram_no_negativa', (f) => diagnostico(f, { zram_mb: -1 })],
+  ['API gráfica fuera del dominio', 'juego_api_api_dominio', (f) =>
+    f.sql`INSERT INTO juego_api (juego_id, api) SELECT juego_id, 'd3d13' FROM edicion_juego WHERE id = ${f.ed}`],
+  ['la misma API dos veces en un juego', 'juego_api_pkey', (f) =>
+    f.sql`INSERT INTO juego_api (juego_id, api) SELECT juego_id, api FROM edicion_juego, (VALUES ('d3d11'), ('d3d11')) AS a(api) WHERE id = ${f.ed}`],
+  ['CPU mínima fuera del dominio', 'juego_nivel_x86_min_dominio', (f) =>
+    f.sql`UPDATE juego SET nivel_x86_min = 'v9' WHERE id = (SELECT juego_id FROM edicion_juego WHERE id = ${f.ed})`],
   ['FPS negativo', 'reporte_fps_no_negativo', (f) =>
     reporte(f, { fps_promedio: -1, resolucion: '1920x1080', calidad_grafica: 'alta', metodo_medicion: 'MangoHud' })],
   ['revisión de perfil cero', 'perfil_configuracion_revision_positiva', (f) => perfil(f, { revision: 0 })],

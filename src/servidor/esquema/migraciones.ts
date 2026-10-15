@@ -5,7 +5,7 @@ import { Migrator, SqlClient } from 'effect/sql'
 import { PgMigrator } from '@effect/sql-pg'
 import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
 import { EstadoGuia, TipoGuia } from '../../dominio/guias.ts'
-import { FamiliaCapa, Resultado } from '../../dominio/literales.ts'
+import { ApiGrafica, FamiliaCapa, Resultado } from '../../dominio/literales.ts'
 import { ArranqueSeguro, NivelX86, Tpm } from '../../dominio/plataforma.ts'
 import { type EstadoRevision, Rol } from '../../dominio/revision.ts'
 import { largo as L } from '../../dominio/largo.ts'
@@ -335,6 +335,14 @@ const hechosSistema = [
   dominio('diagnostico', 'tpm', Tpm.literals),
   check('diagnostico', 'zram_no_negativa', 'zram_mb IS NULL OR zram_mb >= 0'),
   check('diagnostico', 'swap_no_negativa', 'swap_mb IS NULL OR swap_mb >= 0'),
+  `ALTER TABLE juego ADD COLUMN nivel_x86_min varchar(${L.juego.nivel_x86_min})`,
+  dominio('juego', 'nivel_x86_min', NivelX86.literals),
+  // A set by construction; a game with no rows has unknown APIs.
+  `CREATE TABLE juego_api (
+     juego_id integer NOT NULL REFERENCES juego(id) ON DELETE RESTRICT,
+     api varchar(${L.juego_api.api}) NOT NULL,
+     PRIMARY KEY (juego_id, api))`,
+  dominio('juego_api', 'api', ApiGrafica.literals),
 ]
 
 export const migraciones = {

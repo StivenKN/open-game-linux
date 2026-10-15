@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Result, Schema } from 'effect'
-import { NuevoReporte } from '../dominio/aportes.ts'
+import { NuevoJuego, NuevoReporte } from '../dominio/aportes.ts'
 import { Casilla, NumeroOpcional } from '../dominio/ids.ts'
 import { leerFormulario } from './useAccion.ts'
 
@@ -21,6 +21,19 @@ describe('convenciones de formulario', () => {
   it('un número escrito y una casilla marcada llegan con su valor', () => {
     expect(leerFormulario(Ejemplo, datos({ vram_mb: '4096', obligatoria: 'true' }))).toEqual(Result.succeed({ vram_mb: '4096', obligatoria: true }))
     expect(Schema.decodeUnknownSync(Ejemplo)({ vram_mb: '4096', obligatoria: true })).toEqual({ vram_mb: 4096, obligatoria: true })
+  })
+
+  it('las casillas apis[] llegan como lista, también con una sola marcada', () => {
+    const juego = datos({ titulo: 'Hades', descripcion: 'd', 'ediciones[0][lanzador_id]': '1', 'ediciones[0][identificador_externo]': '', nivel_x86_min: 'null' })
+    const leer = (...apis: ReadonlyArray<string>) => {
+      const f = new FormData()
+      for (const [k, v] of juego) f.append(k, v)
+      for (const api of apis) f.append('apis[]', api)
+      return Result.map(leerFormulario(NuevoJuego, f), (j) => j.apis)
+    }
+    expect(leer('d3d11')).toEqual(Result.succeed(['d3d11']))
+    expect(leer('d3d11', 'vulkan')).toEqual(Result.succeed(['d3d11', 'vulkan']))
+    expect(leer()).toEqual(Result.fail({ apis: 'Marca al menos una API gráfica.' }))
   })
 
   it('un número inválido es un error del campo, no un null', () => {
