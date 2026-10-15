@@ -1,7 +1,8 @@
-import { Effect, Result, Schema, SchemaIssue } from 'effect'
+import { Effect, Option, Result, Schema, SchemaIssue } from 'effect'
 import { Captura, type EntradaDiagnostico } from '../../dominio/aportes.ts'
 import { PayloadInvalido } from '../../dominio/fallos.ts'
 import { SoporteVulkan } from '../../dominio/evaluacion.ts'
+import { PciId } from '../../dominio/gpu.ts'
 import { Diagnostico, Distribucion } from '../../dominio/tablas.ts'
 
 export const VERSION_ESQUEMA = 1
@@ -15,7 +16,7 @@ const PayloadV1 = Schema.Struct({
   arquitectura: Schema.String,
   cpu_modelo: Schema.NullOr(Schema.String), // ARM kernels may not name the CPU
   gpu_modelo: Schema.NullOr(Schema.String),
-  gpu_pci_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  gpu_pci_id: Schema.optionalKey(Schema.Unknown),
   ram_mb: Schema.Int,
   vram_mb: Schema.NullOr(Schema.Int),
   controlador: Schema.NullOr(Schema.String),
@@ -32,6 +33,7 @@ export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInv
     if (!('version_esquema' in valor) || valor.version_esquema !== VERSION_ESQUEMA)
       return yield* Result.fail(new PayloadInvalido({ motivo: 'version_esquema', campo: 'version_esquema' }))
     const p = yield* Result.mapError(Schema.decodeUnknownResult(PayloadV1)(valor), campoInvalido)
+    const pci = pciId(p.gpu_pci_id)
     const candidato: typeof Captura.Encoded = {
       capturado_en: p.capturado_en,
       sistema: p.sistema,
@@ -39,7 +41,8 @@ export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInv
       distribucion: { nombre: p.distribucion.nombre, version: versionDistribucion(p.distribucion.version) },
       arquitectura: p.arquitectura,
       cpu_modelo: p.cpu_modelo ?? 'CPU no detectada',
-      gpu_modelo: p.gpu_modelo ?? etiquetaPci(p.gpu_pci_id ?? null) ?? 'GPU no detectada',
+      gpu_modelo: p.gpu_modelo ?? (pci === null ? 'GPU no detectada' : etiquetaPci(pci)),
+      gpu_pci_id: pci,
       ram_mb: p.ram_mb,
       vram_mb: p.vram_mb,
       controlador: p.controlador,
@@ -67,14 +70,15 @@ const Columnas = Schema.Struct({
 const cabeEnColumnas = (captura: Captura): Result.Result<Captura, PayloadInvalido> =>
   Result.map(Result.mapError(Schema.decodeUnknownResult(Columnas)(captura), campoInvalido), () => captura)
 
+/** A malformed PCI id is dropped, never a failure: the capture is still useful without the projection. */
+const pciId = (valor: unknown): PciId | null =>
+  Option.getOrNull(Schema.decodeUnknownOption(PciId)(typeof valor === 'string' ? valor.trim().toLowerCase() : valor))
+
 const VENDORES: Readonly<Record<string, string>> = { '8086': 'Intel', '10de': 'NVIDIA', '1002': 'AMD' }
 
-export const etiquetaPci = (pci: string | null): string | null => {
-  const id = pci?.trim().toLowerCase() ?? ''
-  const vendor = /^([0-9a-f]{4}):[0-9a-f]{4}$/.exec(id)?.[1]
-  if (vendor === undefined) return null
-  const nombre = VENDORES[vendor]
-  return nombre === undefined ? `GPU [${id}]` : `${nombre} GPU [${id}]`
+const etiquetaPci = (pci: PciId): string => {
+  const nombre = VENDORES[pci.slice(0, 4)]
+  return nombre === undefined ? `GPU [${pci}]` : `${nombre} GPU [${pci}]`
 }
 
 const ilegible = new PayloadInvalido({ motivo: 'ilegible', campo: null })

@@ -144,6 +144,10 @@ const rechaza: ReadonlyArray<Caso> = [
   ['FPS sin resolución, calidad ni método', 'reporte_fps_con_contexto', (f) => reporte(f, { fps_promedio: 60 })],
   ['Linux sin distribución', 'diagnostico_linux_con_distribucion', (f) => diagnostico(f, { distribucion_id: null })],
   ['versión de Vulkan sin soporte', 'diagnostico_version_vulkan_solo_con_soporte', (f) => diagnostico(f, { soporte_vulkan: 'no', version_vulkan: '1.3' })],
+  ['PCI id en mayúsculas', 'diagnostico_gpu_pci_id_formato', (f) => diagnostico(f, { gpu_pci_id: '10DE:0FC6' })],
+  ['biblioteca de Steam que no es una lista', 'diagnostico_biblioteca_steam_forma', (f) => diagnostico(f, { biblioteca_steam: '{"app_id": 271590}' })],
+  ['biblioteca de Steam de más de 1000 juegos', 'diagnostico_biblioteca_steam_forma', (f) =>
+    diagnostico(f, { biblioteca_steam: JSON.stringify(Array.from({ length: 1001 }, (_, i) => ({ app_id: i + 1, nombre: 'juego' }))) })],
   ['Vulkan mínimo en un perfil que no exige Vulkan', 'perfil_configuracion_vulkan_min_requiere_vulkan', (f) => perfil(f, { version_vulkan_min: '1.3' })],
   ['texto obligatorio en blanco', 'juego_titulo_no_vacio', (f) => f.sql`INSERT INTO juego (titulo, descripcion) VALUES ('   ', 'd')`],
   ['texto opcional en blanco', 'reporte_version_lanzador_no_vacio', (f) => reporte(f, { version_lanzador: ' ' })],
@@ -157,6 +161,7 @@ const rechaza: ReadonlyArray<Caso> = [
   ['reporte con perfil de otra edición', 'reporte_perfil_fk', (f) => reporte(f, { edicion_id: f.ed2, perfil_id: f.perfil })],
   ['solución sobre un fallo que el reporte no tiene', 'solucion_fallo_fk', solucion],
   ['actualizar un diagnóstico', 'og_inmutable', (f) => f.sql`UPDATE diagnostico SET ram_mb = 16384 WHERE id = ${f.diag}`],
+  ['agregar el PCI id a un diagnóstico guardado', 'og_inmutable', (f) => f.sql`UPDATE diagnostico SET gpu_pci_id = '10de:0fc6' WHERE id = ${f.diag}`],
   ['cambiar el dueño de un equipo con diagnósticos', 'og_propietario_fijo', (f) => f.sql`UPDATE equipo SET usuario_id = ${f.revisor} WHERE id = ${f.equipo}`],
   ['reescribir un reporte', 'og_solo_revision', (f) => f.sql`UPDATE reporte SET observaciones = 'otra cosa' WHERE id = ${f.rep}`],
   ['reescribir una solución', 'og_solo_revision', (f) =>
@@ -216,6 +221,8 @@ layer(PgTest)('esquema', (it) => {
     it.effect('varios diagnósticos históricos del mismo equipo', conBase((f) =>
       Effect.andThen(acepta(diagnostico(f)), acepta(diagnostico(f, { capturado_en: new Date('2026-10-06T10:00:00Z'), version_controlador: '550.1' })))))
     it.effect('diagnóstico de Windows sin distribución', conBase((f) => acepta(diagnostico(f, { sistema: 'Windows', version_sistema: '11', distribucion_id: null }))))
+    it.effect('diagnóstico con PCI id y biblioteca de Steam', conBase((f) =>
+      acepta(diagnostico(f, { gpu_pci_id: '10de:0fc6', biblioteca_steam: JSON.stringify([{ app_id: 271590, nombre: 'Grand Theft Auto V' }]) }))))
     it.effect('cambiar el dueño de un equipo sin diagnósticos', conBase((f) =>
       Effect.gen(function* () {
         const nuevo = yield* idDe(f.sql`INSERT INTO equipo (usuario_id, alias) VALUES (${f.autor}, 'sobremesa') RETURNING id`)

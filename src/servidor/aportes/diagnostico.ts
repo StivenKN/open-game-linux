@@ -47,6 +47,7 @@ export const registrarDiagnostico = (
       version_controlador: captura.version_controlador,
       soporte_vulkan: captura.soporte_vulkan,
       version_vulkan: captura.version_vulkan,
+      gpu_pci_id: captura.gpu_pci_id,
     }
     return yield* unaFila(
       Guardado,

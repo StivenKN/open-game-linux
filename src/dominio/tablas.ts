@@ -1,5 +1,6 @@
 import { Schema } from 'effect'
 import { Sistema, SoporteVulkan } from './evaluacion.ts'
+import { PciId } from './gpu.ts'
 import { EstadoGuia, TipoGuia } from './guias.ts'
 import {
   DependenciaId,
@@ -35,6 +36,7 @@ export const largo = {
     version_controlador: 80,
     soporte_vulkan: 15,
     version_vulkan: 30,
+    gpu_pci_id: 9,
   },
   juego: { titulo: 180 },
   lanzador: { nombre: 80, url_oficial: 500 },
@@ -97,6 +99,7 @@ export const Diagnostico = Schema.Struct({
   version_controlador: Schema.NullOr(TextoHasta(largo.diagnostico.version_controlador)),
   soporte_vulkan: SoporteVulkan,
   version_vulkan: Schema.NullOr(TextoHasta(largo.diagnostico.version_vulkan)),
+  gpu_pci_id: Schema.NullOr(PciId),
 })
 export type Diagnostico = typeof Diagnostico.Type
 

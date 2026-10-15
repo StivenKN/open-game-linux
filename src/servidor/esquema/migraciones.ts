@@ -309,9 +309,23 @@ const guias = [
   check('guia_adopcion', 'fechas_ordenadas', 'actualizado_en >= creado_en'),
 ]
 
+// No backfill: captures are immutable, and an old row without a PCI id reads as "sin identificador PCI".
+// The 1000 is frozen here on purpose; a later limit belongs in a later migration.
+const gpuBiblioteca = [
+  `ALTER TABLE diagnostico ADD COLUMN gpu_pci_id varchar(${L.diagnostico.gpu_pci_id})`,
+  check('diagnostico', 'gpu_pci_id_formato', "gpu_pci_id IS NULL OR gpu_pci_id ~ '^[0-9a-f]{4}:[0-9a-f]{4}$'"),
+  `ALTER TABLE diagnostico ADD COLUMN biblioteca_steam jsonb`,
+  check(
+    'diagnostico',
+    'biblioteca_steam_forma',
+    "biblioteca_steam IS NULL OR CASE WHEN jsonb_typeof(biblioteca_steam) = 'array' THEN jsonb_array_length(biblioteca_steam) <= 1000 ELSE false END",
+  ),
+]
+
 export const migraciones = {
   '1_auth': ejecutar(auth),
   '2_opengame': ejecutar([...funciones, ...usuario, ...catalogo, ...diagnosticos, ...configuraciones, ...resultados, ...guias]),
+  '3_gpu_biblioteca': ejecutar(gpuBiblioteca),
 }
 
 export const migrar = PgMigrator.run({ loader: Migrator.fromRecord(migraciones) })

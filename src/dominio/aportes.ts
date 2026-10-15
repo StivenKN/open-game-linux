@@ -97,6 +97,7 @@ const camposCaptura = {
   version_controlador: TextoOpcionalHasta(largo.diagnostico.version_controlador),
   soporte_vulkan: SoporteVulkan,
   version_vulkan: TextoOpcionalHasta(largo.diagnostico.version_vulkan),
+  gpu_pci_id: Diagnostico.fields.gpu_pci_id,
 }
 
 export const Captura = Schema.Union([

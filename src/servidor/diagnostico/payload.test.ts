@@ -2,7 +2,7 @@ import { describe, expect, it } from '@effect/vitest'
 import { Result, Schema } from 'effect'
 import { readFileSync } from 'node:fs'
 import { PayloadInvalido } from '../../dominio/fallos.ts'
-import { etiquetaPci, parsearPayload } from './payload.ts'
+import { parsearPayload } from './payload.ts'
 
 const outJson = readFileSync(new URL('../../../prototypes/detector/out.json', import.meta.url), 'utf8')
 const prototipo = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown)))(outJson)
@@ -30,6 +30,7 @@ describe('parsearPayload', () => {
       version_controlador: 'Mesa 25.2.8-0ubuntu0.24.04.2',
       soporte_vulkan: 'desconocido',
       version_vulkan: null,
+      gpu_pci_id: null,
     })
   })
 
@@ -48,11 +49,15 @@ describe('parsearPayload', () => {
   })
 
   it.each([
-    ['8086:9A49', 'Intel GPU [8086:9a49]'],
-    ['10de:2504', 'NVIDIA GPU [10de:2504]'],
-    [null, 'GPU no detectada'],
-  ])('labels a null GPU name from gpu_pci_id %s', (gpu_pci_id, etiqueta) => {
-    expect(captura(JSON.stringify({ ...prototipo, gpu_modelo: null, gpu_pci_id })).gpu_modelo).toBe(etiqueta)
+    [' 8086:9A49 ', '8086:9a49', 'Intel GPU [8086:9a49]'],
+    ['10de:2504', '10de:2504', 'NVIDIA GPU [10de:2504]'],
+    ['1af4:1050', '1af4:1050', 'GPU [1af4:1050]'],
+    ['8086', null, 'GPU no detectada'],
+    ['10de:2504:00', null, 'GPU no detectada'],
+    [42, null, 'GPU no detectada'],
+    [null, null, 'GPU no detectada'],
+  ])('keeps gpu_pci_id %o as %o (never a failure) and labels a null GPU name from it', (enviado, gpu_pci_id, gpu_modelo) => {
+    expect(captura(JSON.stringify({ ...prototipo, gpu_modelo: null, gpu_pci_id: enviado }))).toMatchObject({ gpu_pci_id, gpu_modelo })
   })
 
   it('accepts the bare base64url fragment and a whole pasted URL with #d=', () => {
@@ -86,17 +91,5 @@ describe('parsearPayload', () => {
     expect(parsearPayload(JSON.stringify({ ...prototipo, ...cambio }))).toEqual(
       Result.fail(new PayloadInvalido({ motivo: 'campo_invalido', campo })),
     )
-  })
-})
-
-describe('etiquetaPci', () => {
-  it.each([
-    ['1002:73df', 'AMD GPU [1002:73df]'],
-    ['1af4:1050', 'GPU [1af4:1050]'],
-    ['8086', null],
-    ['', null],
-    [null, null],
-  ])('%o -> %o', (pci, etiqueta) => {
-    expect(etiquetaPci(pci)).toBe(etiqueta)
   })
 })

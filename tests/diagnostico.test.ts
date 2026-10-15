@@ -47,6 +47,13 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       expect(equipo?.diagnosticos.map((d) => [d.id, d.ram_mb])).toEqual([[b.id, 32768], [a.id, 15766], [f.diag, 8192]])
     })))
 
+  it.effect('guarda el PCI id normalizado y miDiagnostico lo devuelve en la captura', conBase((f) =>
+    Effect.gen(function* () {
+      const { id } = yield* registrarDiagnostico({ equipo: existente(f.equipo), entrada: payload({ gpu_pci_id: ' 10DE:128B ' }) }).pipe(como(f.autor))
+      expect(yield* f.sql`SELECT gpu_pci_id FROM diagnostico WHERE id = ${id}`).toEqual([{ gpu_pci_id: '10de:128b' }])
+      expect((yield* miDiagnostico(id).pipe(como(f.autor))).captura.gpu_pci_id).toBe('10de:128b')
+    })))
+
   it.effect('rechaza guardar en un equipo ajeno o inexistente, sin escribir nada', conBase((f) =>
     Effect.gen(function* () {
       const antes = yield* contar(f, 'diagnostico')
