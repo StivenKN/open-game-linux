@@ -2,10 +2,12 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { Option, Schema } from 'effect'
 import { useEffect, useState } from 'react'
 import { EquipoDestino } from '../../dominio/aportes.ts'
-import type { DiagnosticoId } from '../../dominio/ids.ts'
+import { Casilla, type DiagnosticoId } from '../../dominio/ids.ts'
 import { evaluarDiagnosticoFn, guardarDiagnosticoFn, misEquiposFn } from '../../fns/diagnostico.ts'
-import { MatrizDiagnostico } from '../../ui/diagnostico/MatrizDiagnostico.tsx'
+import { Distribuciones } from '../../ui/diagnostico/Distribuciones.tsx'
+import { JuegosDelEquipo } from '../../ui/diagnostico/JuegosDelEquipo.tsx'
 import { ResumenCaptura } from '../../ui/diagnostico/ResumenCaptura.tsx'
+import { TarjetaGraficaEnLinux } from '../../ui/diagnostico/TarjetaGraficaEnLinux.tsx'
 import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
 import { campo } from '../../ui/formulario.tsx'
 import { useAccion } from '../../ui/useAccion.ts'
@@ -75,22 +77,23 @@ function Importar() {
         predice FPS.
       </p>
       <ResumenCaptura captura={r.valor.captura} />
-      <Guardar entrada={estado.entrada} />
-      <h2 className="titulo-seccion">Juegos</h2>
-      <MatrizDiagnostico filas={r.valor.matriz} />
+      <TarjetaGraficaEnLinux equipo={r.valor.equipo} pci={r.valor.captura.gpu_pci_id} />
+      <Guardar entrada={estado.entrada} juegosEnBiblioteca={r.valor.biblioteca?.total ?? 0} />
+      <JuegosDelEquipo filas={r.valor.matriz} biblioteca={r.valor.biblioteca} orientativa={r.valor.captura.sistema === 'Windows'} />
+      <Distribuciones {...r.valor.distribuciones} />
     </main>
   )
 }
 
-const Destino = Schema.Struct({ equipo: EquipoDestino })
+const Destino = Schema.Struct({ equipo: EquipoDestino, con_biblioteca: Casilla })
 type Guardado = { readonly id: DiagnosticoId; readonly nuevo: boolean }
 
-function Guardar({ entrada }: { entrada: Entrada }) {
+function Guardar({ entrada, juegosEnBiblioteca }: { entrada: Entrada; juegosEnBiblioteca: number }) {
   const { visitante } = Route.useRouteContext()
   const equipos = Route.useLoaderData()
   const [destino, setDestino] = useState(() => (equipos[0] === undefined ? 'nuevo' : String(equipos[0].id)))
   const [guardado, setGuardado] = useState<Guardado | null>(null)
-  const r = useAccion(Destino, ({ data }) => guardarDiagnosticoFn({ data: { equipo: data.equipo, entrada } }), {
+  const r = useAccion(Destino, ({ data }) => guardarDiagnosticoFn({ data: { equipo: data.equipo, con_biblioteca: data.con_biblioteca, entrada } }), {
     alFallar: (f) =>
       f._tag === 'ReglaIncumplida'
         ? { 'equipo[id]': 'Ese equipo no es tuyo. Elige uno de tu lista.' }
@@ -116,28 +119,36 @@ function Guardar({ entrada }: { entrada: Entrada }) {
 
   return (
     <section className="tarjeta" aria-label="Guardar">
-      <form className="fila" {...r.formulario}>
-        <input type="hidden" name="equipo[_tag]" value={destino === 'nuevo' ? 'nuevo' : 'existente'} />
-        <label htmlFor="equipo[id]">Guardar en</label>
-        <select {...campo(r.errores, 'equipo[id]')} value={destino} onChange={(e) => setDestino(e.currentTarget.value)}>
-          {equipos.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.alias}
-            </option>
-          ))}
-          <option value="nuevo">Un equipo nuevo…</option>
-        </select>
-        {destino === 'nuevo' && (
-          <input
-            {...campo(r.errores, 'equipo[alias]')}
-            aria-label="Nombre del equipo nuevo"
-            defaultValue={equipos.length === 0 ? 'Mi equipo' : ''}
-            placeholder="Portátil del trabajo"
-          />
+      <form className="pila" {...r.formulario}>
+        <div className="fila">
+          <input type="hidden" name="equipo[_tag]" value={destino === 'nuevo' ? 'nuevo' : 'existente'} />
+          <label htmlFor="equipo[id]">Guardar en</label>
+          <select {...campo(r.errores, 'equipo[id]')} value={destino} onChange={(e) => setDestino(e.currentTarget.value)}>
+            {equipos.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.alias}
+              </option>
+            ))}
+            <option value="nuevo">Un equipo nuevo…</option>
+          </select>
+          {destino === 'nuevo' && (
+            <input
+              {...campo(r.errores, 'equipo[alias]')}
+              aria-label="Nombre del equipo nuevo"
+              defaultValue={equipos.length === 0 ? 'Mi equipo' : ''}
+              placeholder="Portátil del trabajo"
+            />
+          )}
+          <button type="submit" disabled={r.enviando}>
+            {r.enviando ? 'Guardando…' : 'Guardar en mi equipo'}
+          </button>
+        </div>
+        {juegosEnBiblioteca > 0 && (
+          <label className="casilla">
+            <input type="checkbox" name="con_biblioteca" value="true" />
+            Guardar también mi lista de juegos de Steam ({juegosEnBiblioteca}). Solo tú la ves.
+          </label>
         )}
-        <button type="submit" disabled={r.enviando}>
-          {r.enviando ? 'Guardando…' : 'Guardar en mi equipo'}
-        </button>
       </form>
       <ErrorCampo errores={r.errores} campo="equipo[id]" />
       <ErrorCampo errores={r.errores} campo="equipo[alias]" />

@@ -1,28 +1,49 @@
-import { Effect, Result, Schema, SchemaIssue } from 'effect'
+import { Effect, Option, Result, Schema, SchemaIssue } from 'effect'
 import { Captura, type EntradaDiagnostico } from '../../dominio/aportes.ts'
 import { PayloadInvalido } from '../../dominio/fallos.ts'
-import { SoporteVulkan } from '../../dominio/evaluacion.ts'
+import { type BibliotecaSteam, esHerramientaSteam, MAX_JUEGOS_BIBLIOTECA } from '../../dominio/biblioteca.ts'
+import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
+import { PciId, vendorDe, type VendorGpu } from '../../dominio/gpu.ts'
+import { largo } from '../../dominio/largo.ts'
 import { Diagnostico, Distribucion } from '../../dominio/tablas.ts'
 
 export const VERSION_ESQUEMA = 1
 
-const PayloadV1 = Schema.Struct({
+const JuegoEnviado = Schema.Struct({ app_id: Schema.Number, nombre: Schema.String })
+
+const comunes = {
   version_esquema: Schema.Literal(VERSION_ESQUEMA),
   capturado_en: Schema.String,
-  sistema: Schema.Literal('Linux'),
   version_sistema: Schema.String,
-  distribucion: Schema.Struct({ nombre: Schema.String, version: Schema.NullOr(Schema.String) }),
   arquitectura: Schema.String,
   cpu_modelo: Schema.NullOr(Schema.String), // ARM kernels may not name the CPU
   gpu_modelo: Schema.NullOr(Schema.String),
-  gpu_pci_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  gpu_pci_id: Schema.optionalKey(Schema.Unknown),
   ram_mb: Schema.Int,
   vram_mb: Schema.NullOr(Schema.Int),
-  controlador: Schema.NullOr(Schema.String),
-  version_controlador: Schema.NullOr(Schema.String),
-  soporte_vulkan: SoporteVulkan,
-  version_vulkan: Schema.NullOr(Schema.String),
-})
+  biblioteca_steam: Schema.optionalKey(Schema.NullOr(Schema.Array(JuegoEnviado))),
+}
+
+const PayloadV1 = {
+  Linux: Schema.Struct({
+    ...comunes,
+    sistema: Schema.Literal('Linux'),
+    distribucion: Schema.Struct({ nombre: Schema.String, version: Schema.NullOr(Schema.String) }),
+    controlador: Schema.NullOr(Schema.String),
+    version_controlador: Schema.NullOr(Schema.String),
+    soporte_vulkan: SoporteVulkan,
+    version_vulkan: Schema.NullOr(Schema.String),
+    // Added after version 1 shipped without a bump: older detectors omit them.
+    nivel_x86: Schema.optionalKey(Diagnostico.fields.nivel_x86),
+    arranque_seguro: Schema.optionalKey(Diagnostico.fields.arranque_seguro),
+    tpm: Schema.optionalKey(Diagnostico.fields.tpm),
+    zram_mb: Schema.optionalKey(Diagnostico.fields.zram_mb),
+    swap_mb: Schema.optionalKey(Diagnostico.fields.swap_mb),
+  }),
+  Windows: Schema.Struct({ ...comunes, sistema: Schema.Literal('Windows') }),
+} satisfies Record<Sistema, Schema.Top>
+
+const esSistema = Schema.is(Sistema)
 
 export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInvalido> =>
   Result.gen(function* () {
@@ -31,50 +52,83 @@ export const parsearPayload = (texto: string): Result.Result<Captura, PayloadInv
     if (typeof valor !== 'object' || valor === null || Array.isArray(valor)) return yield* Result.fail(ilegible)
     if (!('version_esquema' in valor) || valor.version_esquema !== VERSION_ESQUEMA)
       return yield* Result.fail(new PayloadInvalido({ motivo: 'version_esquema', campo: 'version_esquema' }))
-    const p = yield* Result.mapError(Schema.decodeUnknownResult(PayloadV1)(valor), campoInvalido)
-    const candidato: typeof Captura.Encoded = {
+    if (!('sistema' in valor) || !esSistema(valor.sistema)) return yield* Result.fail(new PayloadInvalido({ motivo: 'campo_invalido', campo: 'sistema' }))
+    const p = yield* Result.mapError(Schema.decodeUnknownResult(PayloadV1[valor.sistema])(valor), campoInvalido)
+    const pci = pciId(p.gpu_pci_id)
+    const comun = {
       capturado_en: p.capturado_en,
-      sistema: p.sistema,
       version_sistema: p.version_sistema,
-      distribucion: { nombre: p.distribucion.nombre, version: versionDistribucion(p.distribucion.version) },
       arquitectura: p.arquitectura,
       cpu_modelo: p.cpu_modelo ?? 'CPU no detectada',
-      gpu_modelo: p.gpu_modelo ?? etiquetaPci(p.gpu_pci_id ?? null) ?? 'GPU no detectada',
+      gpu_modelo: p.gpu_modelo ?? (pci === null ? 'GPU no detectada' : etiquetaPci(pci)),
+      gpu_pci_id: pci,
       ram_mb: p.ram_mb,
       vram_mb: p.vram_mb,
-      controlador: p.controlador,
-      version_controlador: p.version_controlador,
-      soporte_vulkan: p.soporte_vulkan,
-      version_vulkan: p.soporte_vulkan === 'si' ? p.version_vulkan : null,
+      biblioteca_steam: p.biblioteca_steam === undefined || p.biblioteca_steam === null ? null : bibliotecaDe(p.biblioteca_steam),
     }
+    const candidato: typeof Captura.Encoded =
+      p.sistema === 'Linux'
+        ? {
+            ...comun,
+            sistema: 'Linux',
+            distribucion: { nombre: p.distribucion.nombre, version: versionDistribucion(p.distribucion.version) },
+            controlador: p.controlador,
+            version_controlador: p.version_controlador,
+            soporte_vulkan: p.soporte_vulkan,
+            version_vulkan: p.soporte_vulkan === 'si' ? p.version_vulkan : null,
+            nivel_x86: p.nivel_x86 ?? null,
+            arranque_seguro: p.arranque_seguro ?? null,
+            tpm: p.tpm ?? null,
+            zram_mb: p.zram_mb ?? null,
+            swap_mb: p.swap_mb ?? null,
+          }
+        : { ...comun, sistema: 'Windows' }
     return yield* cabeEnColumnas(yield* Result.mapError(Schema.decodeResult(Captura)(candidato), campoInvalido))
   })
 
+/** jsonb rejects \u0000 and unpaired surrogates. */
+const bibliotecaDe = (juegos: ReadonlyArray<typeof JuegoEnviado.Type>): typeof BibliotecaSteam.Encoded => {
+  const vistos = new Set<number>()
+  return juegos
+    .flatMap(({ app_id, nombre }) => {
+      const legible = nombre.toWellFormed().replace(/\p{Cc}/gu, '').trim()
+      const limpio = legible.slice(0, largo.biblioteca.nombre).replace(/[\uD800-\uDBFF]$/, '').trim()
+      if (limpio === '' || esHerramientaSteam(limpio) || !Number.isSafeInteger(app_id) || app_id <= 0 || vistos.has(app_id)) return []
+      vistos.add(app_id)
+      return [{ app_id, nombre: limpio }]
+    })
+    .slice(0, MAX_JUEGOS_BIBLIOTECA)
+}
+
 export const capturaDe = (entrada: EntradaDiagnostico): Effect.Effect<Captura, PayloadInvalido> =>
-  Effect.fromResult(entrada._tag === 'manual' ? cabeEnColumnas(entrada.captura) : parsearPayload(entrada.texto))
+  Effect.fromResult(
+    entrada._tag === 'manual'
+      ? cabeEnColumnas({ ...entrada.captura, gpu_pci_id: null, biblioteca_steam: null, nivel_x86: null, arranque_seguro: null, tpm: null, zram_mb: null, swap_mb: null })
+      : parsearPayload(entrada.texto),
+  )
 
 const Columnas = Schema.Struct({
   version_sistema: Diagnostico.fields.version_sistema,
   arquitectura: Diagnostico.fields.arquitectura,
   cpu_modelo: Diagnostico.fields.cpu_modelo,
   gpu_modelo: Diagnostico.fields.gpu_modelo,
-  controlador: Diagnostico.fields.controlador,
-  version_controlador: Diagnostico.fields.version_controlador,
-  version_vulkan: Diagnostico.fields.version_vulkan,
+  controlador: Schema.optionalKey(Diagnostico.fields.controlador),
+  version_controlador: Schema.optionalKey(Diagnostico.fields.version_controlador),
+  version_vulkan: Schema.optionalKey(Diagnostico.fields.version_vulkan),
   distribucion: Schema.optionalKey(Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version })),
 })
 
 const cabeEnColumnas = (captura: Captura): Result.Result<Captura, PayloadInvalido> =>
   Result.map(Result.mapError(Schema.decodeUnknownResult(Columnas)(captura), campoInvalido), () => captura)
 
-const VENDORES: Readonly<Record<string, string>> = { '8086': 'Intel', '10de': 'NVIDIA', '1002': 'AMD' }
+const pciId = (valor: unknown): PciId | null =>
+  Option.getOrNull(Schema.decodeUnknownOption(PciId)(typeof valor === 'string' ? valor.trim().toLowerCase() : valor))
 
-export const etiquetaPci = (pci: string | null): string | null => {
-  const id = pci?.trim().toLowerCase() ?? ''
-  const vendor = /^([0-9a-f]{4}):[0-9a-f]{4}$/.exec(id)?.[1]
-  if (vendor === undefined) return null
-  const nombre = VENDORES[vendor]
-  return nombre === undefined ? `GPU [${id}]` : `${nombre} GPU [${id}]`
+const marca = { '8086': 'Intel', '1002': 'AMD', '10de': 'NVIDIA' } as const satisfies Record<VendorGpu, string>
+
+const etiquetaPci = (pci: PciId): string => {
+  const vendor = vendorDe(pci)
+  return vendor === null ? `GPU [${pci}]` : `${marca[vendor]} GPU [${pci}]`
 }
 
 const ilegible = new PayloadInvalido({ motivo: 'ilegible', campo: null })

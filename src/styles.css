@@ -552,6 +552,20 @@ button:disabled {
 .sin-margen {
   margin: 0;
 }
+.lista-biblioteca {
+  columns: 240px;
+  column-gap: 24px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.lista-biblioteca li {
+  padding: 3px 0;
+  break-inside: avoid;
+}
+details.tarjeta > summary {
+  cursor: pointer;
+}
 
 .formulario-ancho {
   max-width: 760px;

@@ -1,0 +1,23 @@
+"AppState"
+{
+	"appid"		"9999990"
+	"universe"		"1"
+	"LauncherPath"		"C:\\Program Files (x86)\\Steam\\steam.exe"
+	"name"		"Café \"Noir\": Édition™"
+	"StateFlags"		"4"
+	"installdir"		"app9999990"
+	"LastPlayed"		"1765000000"
+	"SizeOnDisk"		"1000"
+	"InstalledDepots"
+	{
+		"9999991"
+		{
+			"manifest"		"123"
+			"size"		"1000"
+		}
+	}
+	"MountedConfig"
+	{
+		"language"		"spanish"
+	}
+}

@@ -1,8 +1,10 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { DiagnosticoId } from '../../dominio/ids.ts'
 import { miDiagnosticoFn } from '../../fns/diagnostico.ts'
-import { MatrizDiagnostico } from '../../ui/diagnostico/MatrizDiagnostico.tsx'
+import { Distribuciones } from '../../ui/diagnostico/Distribuciones.tsx'
+import { JuegosDelEquipo } from '../../ui/diagnostico/JuegosDelEquipo.tsx'
 import { ResumenCaptura } from '../../ui/diagnostico/ResumenCaptura.tsx'
+import { TarjetaGraficaEnLinux } from '../../ui/diagnostico/TarjetaGraficaEnLinux.tsx'
 import { idDeRuta } from '../-ids.ts'
 import { volverAqui } from '../-volver.ts'
 
@@ -23,13 +25,14 @@ function DiagnosticoGuardado() {
   return (
     <main className="envoltura pila">
       <p className="migas">
-        <Link to="/diagnostico">Diagnóstico</Link> / {d.equipo}
+        <Link to="/diagnostico">Diagnóstico</Link> / {d.alias}
       </p>
-      <h1>Diagnóstico de «{d.equipo}»</h1>
+      <h1>Diagnóstico de «{d.alias}»</h1>
       <p className="tenue">Solo tú ves este diagnóstico. Los reportes que publiques mostrarán su contexto técnico, no tu correo.</p>
       <ResumenCaptura captura={d.captura} />
-      <h2 className="titulo-seccion">Juegos</h2>
-      <MatrizDiagnostico filas={d.matriz} />
+      <TarjetaGraficaEnLinux equipo={d.equipo} pci={d.captura.gpu_pci_id} />
+      <JuegosDelEquipo filas={d.matriz} biblioteca={d.biblioteca} orientativa={d.captura.sistema === 'Windows'} />
+      <Distribuciones {...d.distribuciones} />
     </main>
   )
 }

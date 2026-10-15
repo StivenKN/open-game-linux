@@ -1,0 +1,22 @@
+"AppState"
+{
+	"appID"		"292030"
+	"universe"		"1"
+	"LauncherPath"		"C:\\Program Files (x86)\\Steam\\steam.exe"
+	"name"		"The Witcher 3: Wild Hunt"
+	"StateFlags"		"6"
+	"installdir"		"app292030"
+	"SizeOnDisk"		"1000"
+	"InstalledDepots"
+	{
+		"292031"
+		{
+			"manifest"		"123"
+			"size"		"1000"
+		}
+	}
+	"MountedConfig"
+	{
+		"language"		"spanish"
+	}
+}

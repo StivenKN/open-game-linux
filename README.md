@@ -68,7 +68,9 @@ pnpm rol demo_ana@demo.opengame.test revisor
 
 ## Run the detector
 
-The detector is a Bash script that reads the hardware without root. With `--open`, it opens the app's import page with the result in the URL fragment. Nothing is saved until you choose to save it.
+The detector reads the hardware and the installed Steam games, without root or admin rights. It opens the app's import page with the result in the URL fragment. Nothing is saved until you choose to save it, and the Steam game list is saved only if you check its box.
+
+On Linux, run the Bash script with `--open`.
 
 ```sh
 curl -fsSL http://localhost:3000/opengame-detect.sh | bash -s -- --open
@@ -80,7 +82,33 @@ To print the URL instead of opening a browser, set `OPENGAME_DRY=1`.
 curl -s http://localhost:3000/opengame-detect.sh | OPENGAME_DRY=1 bash -s -- --open
 ```
 
-The `/diagnostico` page shows the same command, and it also accepts the pasted output or a manual form.
+On Windows 10 or 11, run the PowerShell script in a PowerShell window.
+
+```powershell
+irm http://localhost:3000/opengame-detect.ps1 | iex
+```
+
+To read the script before you run it, download <http://localhost:3000/opengame-detect.ps1> (the page links it as "Descargar opengame-detect.ps1"), then run the file.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\opengame-detect.ps1
+```
+
+If the result is too long for a URL, the Windows script copies it to the clipboard and opens `/diagnostico?pegar=1`, where you paste it. The Linux script prints it for you to paste instead. Both scripts accept `OPENGAME_DRY=1`.
+
+The `/diagnostico` page shows both commands, and it also accepts the pasted output or a manual form.
+
+## Update the GPU table
+
+The diagnosis projects what a GPU can do on Linux from its PCI id. The id table, `src/servidor/gpu/familias.generado.ts`, is generated from pinned Mesa, Linux and pci.ids sources. Do not edit it by hand.
+
+To recognize newer GPUs, bump the pins in `scripts/generar-gpus.ts`, then regenerate the table. Review the printed counts and the diff before you commit.
+
+```sh
+pnpm gpu:generar
+```
+
+The run downloads the sources and fails if a source has a line or a chip it cannot read, or fewer ids than expected.
 
 ## Check
 
@@ -88,7 +116,7 @@ The `/diagnostico` page shows the same command, and it also accepts the pasted o
 pnpm check
 ```
 
-This runs route generation, `tsc`, oxlint, Vitest, `vite build` and a guard that keeps server code out of the browser bundle. The tests in `tests/` need the database container. They empty and migrate `DATABASE_URL_TEST` once per run.
+This runs route generation, `tsc`, oxlint, Vitest, `vite build` and a guard that keeps server code out of the browser bundle. The tests in `tests/` need the database container. They empty and migrate `DATABASE_URL_TEST` once per run. The PowerShell detector tests need `pwsh` on the `PATH` or Docker with the `mcr.microsoft.com/powershell` image pulled. Without either, Vitest skips them and names the reason.
 
 ## Production
 

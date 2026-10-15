@@ -1,0 +1,29 @@
+"libraryfolders"
+{
+	"0"
+	{
+		"path"		"__RAIZ__/nuevo"
+		"label"		""
+		"contentid"		"111"
+		"totalsize"		"0"
+		"apps"
+		{
+			"271590"		"1000"
+			"2805730"		"1000"
+		}
+	}
+	"1"
+	{
+		"path"		"__RAIZ__/biblioteca2"
+		"label"		"Disco D"
+		"contentid"		"222"
+		"totalsize"		"0"
+		"apps"
+		{
+			"227300"		"1000"
+			"9999990"		"1000"
+			"730"		"1000"
+			"292030"		"1000"
+		}
+	}
+}

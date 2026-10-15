@@ -5,9 +5,11 @@ import { Migrator, SqlClient } from 'effect/sql'
 import { PgMigrator } from '@effect/sql-pg'
 import { Sistema, SoporteVulkan } from '../../dominio/evaluacion.ts'
 import { EstadoGuia, TipoGuia } from '../../dominio/guias.ts'
-import { FamiliaCapa, Resultado } from '../../dominio/literales.ts'
+import { ApiGrafica, FamiliaCapa, Resultado } from '../../dominio/literales.ts'
+import { ArranqueSeguro, NivelX86, Tpm } from '../../dominio/plataforma.ts'
 import { type EstadoRevision, Rol } from '../../dominio/revision.ts'
-import { BloqueRevision, largo as L } from '../../dominio/tablas.ts'
+import { largo as L } from '../../dominio/largo.ts'
+import { BloqueRevision } from '../../dominio/tablas.ts'
 import { unaFila } from '../filas.ts'
 
 const ejecutar = (sentencias: ReadonlyArray<string>) =>
@@ -309,9 +311,45 @@ const guias = [
   check('guia_adopcion', 'fechas_ordenadas', 'actualizado_en >= creado_en'),
 ]
 
+const gpuBiblioteca = [
+  `ALTER TABLE diagnostico ADD COLUMN gpu_pci_id varchar(${L.diagnostico.gpu_pci_id})`,
+  check('diagnostico', 'gpu_pci_id_formato', "gpu_pci_id IS NULL OR gpu_pci_id ~ '^[0-9a-f]{4}:[0-9a-f]{4}$'"),
+  `ALTER TABLE diagnostico ADD COLUMN biblioteca_steam jsonb`,
+  check(
+    'diagnostico',
+    'biblioteca_steam_forma',
+    "biblioteca_steam IS NULL OR CASE WHEN jsonb_typeof(biblioteca_steam) = 'array' THEN jsonb_array_length(biblioteca_steam) <= 1000 ELSE false END",
+  ),
+]
+
+// Adding columns fires no UPDATE trigger, so the immutable diagnostico rows keep NULL: not captured.
+const hechosSistema = [
+  `ALTER TABLE diagnostico
+     ADD COLUMN nivel_x86 varchar(${L.diagnostico.nivel_x86}),
+     ADD COLUMN arranque_seguro varchar(${L.diagnostico.arranque_seguro}),
+     ADD COLUMN tpm varchar(${L.diagnostico.tpm}),
+     ADD COLUMN zram_mb integer,
+     ADD COLUMN swap_mb integer`,
+  dominio('diagnostico', 'nivel_x86', NivelX86.literals),
+  dominio('diagnostico', 'arranque_seguro', ArranqueSeguro.literals),
+  dominio('diagnostico', 'tpm', Tpm.literals),
+  check('diagnostico', 'zram_no_negativa', 'zram_mb IS NULL OR zram_mb >= 0'),
+  check('diagnostico', 'swap_no_negativa', 'swap_mb IS NULL OR swap_mb >= 0'),
+  `ALTER TABLE juego ADD COLUMN nivel_x86_min varchar(${L.juego.nivel_x86_min})`,
+  dominio('juego', 'nivel_x86_min', NivelX86.literals),
+  // A set by construction; a game with no rows has unknown APIs.
+  `CREATE TABLE juego_api (
+     juego_id integer NOT NULL REFERENCES juego(id) ON DELETE RESTRICT,
+     api varchar(${L.juego_api.api}) NOT NULL,
+     PRIMARY KEY (juego_id, api))`,
+  dominio('juego_api', 'api', ApiGrafica.literals),
+]
+
 export const migraciones = {
   '1_auth': ejecutar(auth),
   '2_opengame': ejecutar([...funciones, ...usuario, ...catalogo, ...diagnosticos, ...configuraciones, ...resultados, ...guias]),
+  '3_gpu_biblioteca': ejecutar(gpuBiblioteca),
+  '4_hechos_sistema': ejecutar(hechosSistema),
 }
 
 export const migrar = PgMigrator.run({ loader: Migrator.fromRecord(migraciones) })

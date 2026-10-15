@@ -23,8 +23,6 @@ const comunes = {
   gpu_modelo: Diagnostico.fields.gpu_modelo,
   ram_mb: Diagnostico.fields.ram_mb,
   vram_mb: Diagnostico.fields.vram_mb,
-  soporte_vulkan: SoporteVulkan,
-  version_vulkan: Diagnostico.fields.version_vulkan,
 }
 
 export const FormularioManual = Schema.Union([
@@ -32,17 +30,19 @@ export const FormularioManual = Schema.Union([
     ...comunes,
     sistema: Schema.Literal('Linux'),
     distribucion: Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version }),
+    soporte_vulkan: SoporteVulkan,
+    version_vulkan: Diagnostico.fields.version_vulkan,
   }),
   Schema.Struct({ ...comunes, sistema: Schema.Literal('Windows') }),
 ])
 
-export const entradaManual = (f: typeof FormularioManual.Encoded): Entrada => ({
-  _tag: 'manual',
-  captura: {
-    ...f,
-    capturado_en: new Date().toISOString(),
-    controlador: null,
-    version_controlador: null,
-    version_vulkan: f.soporte_vulkan === 'si' ? f.version_vulkan : null,
-  },
-})
+export const entradaManual = (f: typeof FormularioManual.Encoded): Entrada => {
+  const capturado_en = new Date().toISOString()
+  return {
+    _tag: 'manual',
+    captura:
+      f.sistema === 'Linux'
+        ? { ...f, capturado_en, version_vulkan: f.soporte_vulkan === 'si' ? f.version_vulkan : null, controlador: null, version_controlador: null }
+        : { ...f, capturado_en },
+  }
+}

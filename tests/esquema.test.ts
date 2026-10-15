@@ -2,6 +2,7 @@ import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient, type SqlError } from 'effect/sql'
 import { getMigrations } from 'better-auth/db/migration'
+import { MAX_JUEGOS_BIBLIOTECA } from '../src/dominio/biblioteca.ts'
 import { ReglaIncumplida } from '../src/dominio/fallos.ts'
 import { auth } from '../src/servidor/auth.ts'
 import { conReglasDeBd, reglaDeRestriccion } from '../src/servidor/esquema/restricciones.ts'
@@ -36,6 +37,8 @@ const diagnostico = (f: Base, cambios: Record<string, Valor> = {}) =>
     soporte_vulkan: 'no',
     ...cambios,
   })}`
+
+const bibliotecaDe = (juegos: number) => JSON.stringify(Array.from({ length: juegos }, (_, i) => ({ app_id: i + 1, nombre: 'juego' })))
 
 const perfil = (f: Base, cambios: Record<string, Valor> = {}) =>
   f.sql`INSERT INTO perfil_configuracion ${f.sql.insert({
@@ -114,6 +117,15 @@ const rechaza: ReadonlyArray<Caso> = [
   ['estado de guía fuera del dominio', 'guia_adopcion_estado_dominio', (f) => guia(f, { estado: 'oculta' })],
   ['RAM cero', 'diagnostico_ram_positiva', (f) => diagnostico(f, { ram_mb: 0 })],
   ['VRAM negativa', 'diagnostico_vram_no_negativa', (f) => diagnostico(f, { vram_mb: -1 })],
+  ['nivel x86-64 fuera del dominio', 'diagnostico_nivel_x86_dominio', (f) => diagnostico(f, { nivel_x86: 'v5' })],
+  ['TPM fuera del dominio', 'diagnostico_tpm_dominio', (f) => diagnostico(f, { tpm: '3.0' })],
+  ['zram negativa', 'diagnostico_zram_no_negativa', (f) => diagnostico(f, { zram_mb: -1 })],
+  ['API gráfica fuera del dominio', 'juego_api_api_dominio', (f) =>
+    f.sql`INSERT INTO juego_api (juego_id, api) SELECT juego_id, 'd3d13' FROM edicion_juego WHERE id = ${f.ed}`],
+  ['la misma API dos veces en un juego', 'juego_api_pkey', (f) =>
+    f.sql`INSERT INTO juego_api (juego_id, api) SELECT juego_id, api FROM edicion_juego, (VALUES ('d3d11'), ('d3d11')) AS a(api) WHERE id = ${f.ed}`],
+  ['CPU mínima fuera del dominio', 'juego_nivel_x86_min_dominio', (f) =>
+    f.sql`UPDATE juego SET nivel_x86_min = 'v9' WHERE id = (SELECT juego_id FROM edicion_juego WHERE id = ${f.ed})`],
   ['FPS negativo', 'reporte_fps_no_negativo', (f) =>
     reporte(f, { fps_promedio: -1, resolucion: '1920x1080', calidad_grafica: 'alta', metodo_medicion: 'MangoHud' })],
   ['revisión de perfil cero', 'perfil_configuracion_revision_positiva', (f) => perfil(f, { revision: 0 })],
@@ -144,6 +156,10 @@ const rechaza: ReadonlyArray<Caso> = [
   ['FPS sin resolución, calidad ni método', 'reporte_fps_con_contexto', (f) => reporte(f, { fps_promedio: 60 })],
   ['Linux sin distribución', 'diagnostico_linux_con_distribucion', (f) => diagnostico(f, { distribucion_id: null })],
   ['versión de Vulkan sin soporte', 'diagnostico_version_vulkan_solo_con_soporte', (f) => diagnostico(f, { soporte_vulkan: 'no', version_vulkan: '1.3' })],
+  ['PCI id en mayúsculas', 'diagnostico_gpu_pci_id_formato', (f) => diagnostico(f, { gpu_pci_id: '10DE:0FC6' })],
+  ['biblioteca de Steam que no es una lista', 'diagnostico_biblioteca_steam_forma', (f) => diagnostico(f, { biblioteca_steam: '{"app_id": 271590}' })],
+  [`biblioteca de Steam de más de ${MAX_JUEGOS_BIBLIOTECA} juegos`, 'diagnostico_biblioteca_steam_forma', (f) =>
+    diagnostico(f, { biblioteca_steam: bibliotecaDe(MAX_JUEGOS_BIBLIOTECA + 1) })],
   ['Vulkan mínimo en un perfil que no exige Vulkan', 'perfil_configuracion_vulkan_min_requiere_vulkan', (f) => perfil(f, { version_vulkan_min: '1.3' })],
   ['texto obligatorio en blanco', 'juego_titulo_no_vacio', (f) => f.sql`INSERT INTO juego (titulo, descripcion) VALUES ('   ', 'd')`],
   ['texto opcional en blanco', 'reporte_version_lanzador_no_vacio', (f) => reporte(f, { version_lanzador: ' ' })],
@@ -216,6 +232,8 @@ layer(PgTest)('esquema', (it) => {
     it.effect('varios diagnósticos históricos del mismo equipo', conBase((f) =>
       Effect.andThen(acepta(diagnostico(f)), acepta(diagnostico(f, { capturado_en: new Date('2026-10-06T10:00:00Z'), version_controlador: '550.1' })))))
     it.effect('diagnóstico de Windows sin distribución', conBase((f) => acepta(diagnostico(f, { sistema: 'Windows', version_sistema: '11', distribucion_id: null }))))
+    it.effect(`diagnóstico con PCI id y biblioteca de Steam de ${MAX_JUEGOS_BIBLIOTECA} juegos`, conBase((f) =>
+      acepta(diagnostico(f, { gpu_pci_id: '10de:0fc6', biblioteca_steam: bibliotecaDe(MAX_JUEGOS_BIBLIOTECA) }))))
     it.effect('cambiar el dueño de un equipo sin diagnósticos', conBase((f) =>
       Effect.gen(function* () {
         const nuevo = yield* idDe(f.sql`INSERT INTO equipo (usuario_id, alias) VALUES (${f.autor}, 'sobremesa') RETURNING id`)

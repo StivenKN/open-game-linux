@@ -8,7 +8,7 @@ import { contar, fecha } from '../../ui/formato.ts'
 import { Chip, Insignia } from '../../ui/Insignia.tsx'
 import { Arte } from '../../ui/Portada.tsx'
 import { SelloEjemplo } from '../../ui/SelloEjemplo.tsx'
-import { tipoFallo, veredictoRequisitos } from '../../ui/vocabulario.ts'
+import { apiGrafica, nivelX86, tipoFallo, veredictoRequisitos } from '../../ui/vocabulario.ts'
 import { idDeRuta } from '../-ids.ts'
 
 const juegoId = idDeRuta(JuegoId)
@@ -46,6 +46,10 @@ function Ficha() {
             {ejemplo && <SelloEjemplo />}
           </div>
           <p className="ficha-descripcion">{juego.descripcion}</p>
+          <p className="ficha-descripcion pequeno fila">
+            <span>{juego.apis.length === 0 ? 'APIs gráficas sin declarar' : `Gráficos: ${juego.apis.map((api) => apiGrafica[api]).join(' · ')}`}</span>
+            {juego.nivel_x86_min !== null && <span>CPU mínima: {nivelX86[juego.nivel_x86_min]}</span>}
+          </p>
         </div>
         <div className="ficha-accion">{reportar}</div>
       </header>

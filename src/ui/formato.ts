@@ -16,3 +16,6 @@ export const memoria = (mb: number) => (mb > 0 && mb % 1024 === 0 ? `${mb / 1024
 const unDecimal = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 })
 
 export const fps = (n: number) => unDecimal.format(n)
+
+/** Swap and zram sizes: /proc/swaps reports a page less than the device, so exact GB never shows. */
+export const memoriaAproximada = (mb: number) => (mb < 1024 ? `${mb} MB` : `${unDecimal.format(mb / 1024)} GB`)

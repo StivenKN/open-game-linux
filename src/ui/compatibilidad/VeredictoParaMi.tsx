@@ -1,13 +1,19 @@
 import type { ReactNode } from 'react'
 import type { ResumenCompatibilidad } from '../../dominio/compatibilidad.ts'
+import type { NivelX86 } from '../../dominio/plataforma.ts'
+import type { RutaJuego } from '../../dominio/ruta.ts'
 import { contar, fecha } from '../formato.ts'
 import { Insignia } from '../Insignia.tsx'
 import { estadoCompatibilidad } from '../vocabulario.ts'
 import { ChecklistEvaluacion, type PerfilEvaluado } from './ChecklistEvaluacion.tsx'
+import { RutaGrafica } from './RutaGrafica.tsx'
 
 export type Personal = {
   readonly en_mi_distribucion: { readonly nombre: string; readonly resumen: ResumenCompatibilidad } | null
   readonly perfil: PerfilEvaluado | null
+  readonly ruta: RutaJuego
+  readonly nivel_x86_min: NivelX86 | null
+  readonly orientativa: boolean
 }
 
 /** The dashed "Tu equipo" panel: everything in it is computed from the visitor's hardware. */
@@ -37,8 +43,8 @@ export function VeredictoParaMi({ personal, children }: { personal: Personal | n
     <PanelEquipo>
       {personal === null ? (
         <p className="pequeno tenue">
-          Sin diagnóstico. Ejecuta el detector para ver la evidencia de tu distribución y comparar RAM, VRAM y Vulkan con
-          un perfil aprobado.
+          Sin diagnóstico. Ejecuta el detector para ver si tu tarjeta gráfica tiene una ruta para este juego, la evidencia
+          de tu distribución y cómo te comparas con un perfil aprobado.
         </p>
       ) : (
         <>
@@ -53,6 +59,9 @@ export function VeredictoParaMi({ personal, children }: { personal: Personal | n
               </span>
             </p>
           )}
+          <hr />
+          <RutaGrafica ruta={personal.ruta} minimo={personal.nivel_x86_min} orientativa={personal.orientativa} />
+          <hr />
           <ChecklistEvaluacion perfil={personal.perfil} />
         </>
       )}

@@ -22,16 +22,20 @@ export const alMenos = (v: VersionVulkan, minimo: VersionVulkan): boolean => {
   return true
 }
 
-export type Vulkan =
-  | { readonly soporte: 'si'; readonly version: VersionVulkan | null }
-  | { readonly soporte: 'no' }
+export type OrigenDato = 'medido' | 'proyectado'
+
+export type RangoVulkan = { readonly desde: VersionVulkan; readonly hasta: VersionVulkan }
+
+export type VulkanEquipo =
+  | { readonly soporte: 'si'; readonly origen: OrigenDato; readonly rango: RangoVulkan | null }
+  | { readonly soporte: 'no'; readonly origen: OrigenDato }
   | { readonly soporte: 'desconocido' }
 
 export type Capacidades = {
   readonly sistema: Sistema
   readonly ram_mb: number
   readonly vram_mb: number | null
-  readonly vulkan: Vulkan
+  readonly vulkan: VulkanEquipo
 }
 
 export type CondicionesConocidas = {
@@ -48,7 +52,7 @@ export type Comprobacion = {
   readonly requisito: 'ram' | 'vram' | 'vulkan'
   readonly estado: 'cumple' | 'no_cumple' | 'desconocido'
   readonly exigido: string
-  readonly detectado: string | null
+  readonly detectado: { readonly valor: string; readonly origen: OrigenDato } | null
 }
 
 export type Evaluacion = {
@@ -64,21 +68,21 @@ export const evaluar = (equipo: Capacidades, perfil: CondicionesConocidas): Eval
       requisito: 'ram',
       estado: equipo.ram_mb >= perfil.ram_min_mb ? 'cumple' : 'no_cumple',
       exigido: String(perfil.ram_min_mb),
-      detectado: String(equipo.ram_mb),
+      detectado: { valor: String(equipo.ram_mb), origen: 'medido' },
     })
   if (perfil.vram_min_mb !== null)
     comprobaciones.push({
       requisito: 'vram',
       estado: equipo.vram_mb === null ? 'desconocido' : equipo.vram_mb >= perfil.vram_min_mb ? 'cumple' : 'no_cumple',
       exigido: String(perfil.vram_min_mb),
-      detectado: equipo.vram_mb === null ? null : String(equipo.vram_mb),
+      detectado: equipo.vram_mb === null ? null : { valor: String(equipo.vram_mb), origen: 'medido' },
     })
   if (perfil.requiere_vulkan === true)
     comprobaciones.push({
       requisito: 'vulkan',
       estado: estadoVulkan(equipo.vulkan, perfil.version_vulkan_min),
       exigido: perfil.version_vulkan_min?.texto ?? 'si',
-      detectado: equipo.vulkan.soporte === 'si' ? (equipo.vulkan.version?.texto ?? 'si') : equipo.vulkan.soporte === 'no' ? 'no' : null,
+      detectado: equipo.vulkan.soporte === 'desconocido' ? null : { valor: valorVulkan(equipo.vulkan), origen: equipo.vulkan.origen },
     })
   const veredicto: VeredictoRequisitos = comprobaciones.some((c) => c.estado === 'no_cumple')
     ? 'no_cumple'
@@ -88,31 +92,19 @@ export const evaluar = (equipo: Capacidades, perfil: CondicionesConocidas): Eval
   return { veredicto, comprobaciones, solo_orientativa: equipo.sistema === 'Windows' }
 }
 
-const estadoVulkan = (vulkan: Vulkan, minimo: VersionVulkan | null): Comprobacion['estado'] => {
-  if (vulkan.soporte === 'no') return 'no_cumple'
-  if (vulkan.soporte === 'desconocido') return 'desconocido'
+export const estadoVulkan = (vulkan: VulkanEquipo, minimo: VersionVulkan | null): Comprobacion['estado'] => {
+  if (vulkan.soporte !== 'si') return vulkan.soporte === 'no' ? 'no_cumple' : 'desconocido'
   if (minimo === null) return 'cumple'
-  if (vulkan.version === null) return 'desconocido'
-  return alMenos(vulkan.version, minimo) ? 'cumple' : 'no_cumple'
+  if (vulkan.rango === null) return 'desconocido'
+  if (alMenos(vulkan.rango.desde, minimo)) return 'cumple'
+  return alMenos(vulkan.rango.hasta, minimo) ? 'desconocido' : 'no_cumple'
 }
 
-export type ColumnasCapacidad = {
-  readonly sistema: Sistema
-  readonly ram_mb: number
-  readonly vram_mb: number | null
-  readonly soporte_vulkan: SoporteVulkan
-  readonly version_vulkan: string | null
-}
+const valorVulkan = (vulkan: Exclude<VulkanEquipo, { readonly soporte: 'desconocido' }>): string =>
+  vulkan.soporte === 'no' ? 'no' : vulkan.rango === null ? 'si' : rangoVulkan(vulkan.rango)
 
-export const capacidades = (c: ColumnasCapacidad): Capacidades => ({
-  sistema: c.sistema,
-  ram_mb: c.ram_mb,
-  vram_mb: c.vram_mb,
-  vulkan:
-    c.soporte_vulkan === 'si'
-      ? { soporte: 'si', version: versionVulkan(c.version_vulkan) }
-      : { soporte: c.soporte_vulkan },
-})
+export const rangoVulkan = (r: RangoVulkan): string =>
+  r.desde.texto === r.hasta.texto ? r.desde.texto : `${r.desde.texto}–${r.hasta.texto}`
 
 export type ColumnasCondicion = {
   readonly ram_min_mb: number | null

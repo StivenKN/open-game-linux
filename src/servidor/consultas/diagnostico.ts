@@ -1,18 +1,24 @@
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import type { Captura, EntradaDiagnostico } from '../../dominio/aportes.ts'
+import { type BibliotecaEvaluada, type BibliotecaSteam, LANZADOR_STEAM } from '../../dominio/biblioteca.ts'
 import { estadoDe } from '../../dominio/compatibilidad.ts'
-import { capacidades, condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
+import { descartarDistros, type DistroEvaluada } from '../../dominio/distros.ts'
+import { condiciones, evaluar, sugerirPerfil } from '../../dominio/evaluacion.ts'
+import type { EquipoEnLinux } from '../../dominio/gpu.ts'
 import { NoEncontrado, type PayloadInvalido } from '../../dominio/fallos.ts'
-import type { DiagnosticoId } from '../../dominio/ids.ts'
-import { Resultado } from '../../dominio/literales.ts'
-import { Diagnostico, Distribucion, Equipo, Juego, PerfilConfiguracion } from '../../dominio/tablas.ts'
+import type { DiagnosticoId, GuiaId, JuegoId } from '../../dominio/ids.ts'
+import { ApiGrafica, Resultado } from '../../dominio/literales.ts'
+import type { NivelX86 } from '../../dominio/plataforma.ts'
+import { rutaJuego } from '../../dominio/ruta.ts'
+import { Diagnostico, Distribucion, Equipo, GuiaAdopcion, Juego, PerfilConfiguracion } from '../../dominio/tablas.ts'
 import { exigirUsuario, Visitante } from '../auth.ts'
 import { capturaDe } from '../diagnostico/payload.ts'
+import { equipoEnLinux } from '../gpu/capacidad.ts'
 import { filas, type Infra } from '../filas.ts'
 import { etiquetaCapa, etiquetaDistribucion } from './etiquetas.ts'
 
-const JuegoFila = Schema.Struct({ id: Juego.fields.id, titulo: Juego.fields.titulo })
+const JuegoFila = Schema.Struct({ id: Juego.fields.id, titulo: Juego.fields.titulo, nivel_x86_min: Juego.fields.nivel_x86_min, apis: Schema.Array(ApiGrafica) })
 const ResultadoAprobado = Schema.Struct({ juego_id: Juego.fields.id, resultado: Resultado })
 
 const PerfilAprobado = Schema.Struct({
@@ -30,14 +36,20 @@ const PerfilAprobado = Schema.Struct({
   distribucion: Schema.String,
 })
 
-type EquipoEvaluado = Pick<Captura, 'sistema' | 'arquitectura' | 'ram_mb' | 'vram_mb' | 'soporte_vulkan' | 'version_vulkan'> & {
-  readonly distribucion_id: typeof Distribucion.Type.id | null
-}
+/** The capture facts beyond the GPU that the verdicts read. */
+type Entorno = { readonly distribucion_id: typeof Distribucion.Type.id | null; readonly arquitectura: string; readonly nivel_x86: NivelX86 | null }
 
-const matriz = (equipo: EquipoEvaluado) =>
+const matriz = (equipo: EquipoEnLinux, entorno: Entorno, enBiblioteca: ReadonlySet<JuegoId>) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const juegos = yield* filas(JuegoFila, sql`SELECT id, titulo FROM juego ORDER BY titulo, id`)
+    const juegos = yield* filas(
+      JuegoFila,
+      sql`
+        SELECT j.id, j.titulo, j.nivel_x86_min, COALESCE(array_agg(ja.api) FILTER (WHERE ja.api IS NOT NULL), '{}') AS apis
+        FROM juego j LEFT JOIN juego_api ja ON ja.juego_id = j.id
+        GROUP BY j.id
+        ORDER BY j.titulo, j.id`,
+    )
     const resultados = yield* filas(
       ResultadoAprobado,
       sql`
@@ -57,16 +69,18 @@ const matriz = (equipo: EquipoEvaluado) =>
         WHERE p.estado_revision = 'aprobado'
         ORDER BY p.id`,
     )
-    const suyas = capacidades(equipo)
     return juegos.map((juego) => {
       const aprobados = resultados.filter((r) => r.juego_id === juego.id).map((r) => r.resultado)
-      const evaluados = perfiles.filter((p) => p.juego_id === juego.id).map((p) => ({ ...p, evaluacion: evaluar(suyas, condiciones(p)) }))
-      const perfil = sugerirPerfil(evaluados, equipo)
+      const evaluados = perfiles.filter((p) => p.juego_id === juego.id).map((p) => ({ ...p, evaluacion: evaluar(equipo, condiciones(p)) }))
+      const perfil = sugerirPerfil(evaluados, entorno)
       return {
         juego_id: juego.id,
         titulo: juego.titulo,
+        en_biblioteca: enBiblioteca.has(juego.id),
         estado: estadoDe(aprobados),
         pruebas: aprobados.length,
+        nivel_x86_min: juego.nivel_x86_min,
+        ruta: rutaJuego(equipo, entorno.nivel_x86, juego),
         perfil:
           perfil === null
             ? null
@@ -77,9 +91,57 @@ const matriz = (equipo: EquipoEvaluado) =>
 
 export type FilaMatriz = Effect.Success<ReturnType<typeof matriz>>[number]
 
+const EdicionSteam = Schema.Struct({ app_id: Schema.String, juego_id: Juego.fields.id })
+
+const separarBiblioteca = (juegos: BibliotecaSteam) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    const ediciones =
+      juegos.length === 0
+        ? []
+        : yield* filas(
+            EdicionSteam,
+            sql`
+              SELECT ej.identificador_externo AS app_id, ej.juego_id FROM edicion_juego ej JOIN lanzador l ON l.id = ej.lanzador_id
+              WHERE l.nombre = ${LANZADOR_STEAM} AND ej.identificador_externo IN ${sql.in(juegos.map((j) => String(j.app_id)))}`,
+          )
+    const conocidos = new Set(ediciones.map((e) => e.app_id))
+    return {
+      enCatalogo: new Set(ediciones.map((e) => e.juego_id)),
+      biblioteca: { total: juegos.length, desconocidos: juegos.filter((j) => !conocidos.has(String(j.app_id))) },
+    }
+  })
+
+const GuiaDistribucion = Schema.Struct({ id: GuiaAdopcion.fields.id })
+
+const evaluarEquipo = (equipo: EquipoEnLinux, entorno: Entorno, juegos: BibliotecaSteam | null) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    const separada = juegos === null ? null : yield* separarBiblioteca(juegos)
+    const [guia] = yield* filas(
+      GuiaDistribucion,
+      sql`SELECT id FROM guia_adopcion WHERE tipo = 'eleccion_distribucion' AND estado = 'publicada' ORDER BY id LIMIT 1`,
+    )
+    return {
+      matriz: yield* matriz(equipo, entorno, separada?.enCatalogo ?? new Set()),
+      biblioteca: separada?.biblioteca ?? null,
+      distribuciones: { guia: guia?.id ?? null, evaluadas: descartarDistros(equipo, entorno.arquitectura) },
+    }
+  })
+
 export const evaluarSinGuardar = (
   entrada: EntradaDiagnostico,
-): Effect.Effect<{ readonly captura: Captura; readonly matriz: ReadonlyArray<FilaMatriz> }, PayloadInvalido | Infra, SqlClient.SqlClient> =>
+): Effect.Effect<
+  {
+    readonly captura: Captura
+    readonly equipo: EquipoEnLinux
+    readonly matriz: ReadonlyArray<FilaMatriz>
+    readonly biblioteca: BibliotecaEvaluada | null
+    readonly distribuciones: { readonly guia: GuiaId | null; readonly evaluadas: ReadonlyArray<DistroEvaluada> }
+  },
+  PayloadInvalido | Infra,
+  SqlClient.SqlClient
+> =>
   Effect.gen(function* () {
     const captura = yield* capturaDe(entrada)
     const sql = yield* SqlClient.SqlClient
@@ -90,12 +152,14 @@ export const evaluarSinGuardar = (
             sql`SELECT id FROM distribucion WHERE nombre = ${captura.distribucion.nombre} AND version = ${captura.distribucion.version}`,
           )
         : []
-    return { captura, matriz: yield* matriz({ ...captura, distribucion_id: distribucion?.id ?? null }) }
+    const equipo = equipoEnLinux(captura)
+    const entorno = { distribucion_id: distribucion?.id ?? null, arquitectura: captura.arquitectura, nivel_x86: captura.nivel_x86 }
+    return { captura, equipo, ...(yield* evaluarEquipo(equipo, entorno, captura.biblioteca_steam)) }
   })
 
 const DiagnosticoGuardado = Schema.Struct({
   ...Diagnostico.fields,
-  equipo: Equipo.fields.alias,
+  alias: Equipo.fields.alias,
   distribucion: Schema.NullOr(Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version })),
 })
 
@@ -108,14 +172,25 @@ const capturaGuardada = (d: typeof DiagnosticoGuardado.Type): Effect.Effect<Capt
     gpu_modelo: d.gpu_modelo,
     ram_mb: d.ram_mb,
     vram_mb: d.vram_mb,
+    nivel_x86: d.nivel_x86,
+    arranque_seguro: d.arranque_seguro,
+    tpm: d.tpm,
+    zram_mb: d.zram_mb,
+    swap_mb: d.swap_mb,
+    gpu_pci_id: d.gpu_pci_id,
+    biblioteca_steam: d.biblioteca_steam,
+  }
+  if (d.sistema === 'Windows') return Effect.succeed({ ...comunes, sistema: 'Windows' })
+  if (d.distribucion === null) return Effect.die(`diagnostico ${d.id}: Linux sin distribucion`)
+  return Effect.succeed({
+    ...comunes,
+    sistema: 'Linux',
+    distribucion: d.distribucion,
     controlador: d.controlador,
     version_controlador: d.version_controlador,
     soporte_vulkan: d.soporte_vulkan,
     version_vulkan: d.version_vulkan,
-  }
-  if (d.sistema === 'Windows') return Effect.succeed({ ...comunes, sistema: 'Windows' })
-  if (d.distribucion === null) return Effect.die(`diagnostico ${d.id}: Linux sin distribucion`)
-  return Effect.succeed({ ...comunes, sistema: 'Linux', distribucion: d.distribucion })
+  })
 }
 
 export const miDiagnostico = (id: DiagnosticoId) =>
@@ -125,7 +200,7 @@ export const miDiagnostico = (id: DiagnosticoId) =>
     const [d] = yield* filas(
       DiagnosticoGuardado,
       sql`
-        SELECT d.*, e.alias AS equipo,
+        SELECT d.*, e.alias,
                CASE WHEN dist.id IS NULL THEN NULL ELSE json_build_object('nombre', dist.nombre, 'version', dist.version) END AS distribucion
         FROM diagnostico d
         JOIN equipo e ON e.id = d.equipo_id
@@ -133,7 +208,8 @@ export const miDiagnostico = (id: DiagnosticoId) =>
         WHERE d.id = ${id} AND e.usuario_id = ${usuario.id}`,
     )
     if (d === undefined) return yield* Effect.fail(new NoEncontrado())
-    return { id: d.id, equipo: d.equipo, captura: yield* capturaGuardada(d), matriz: yield* matriz(d) }
+    const equipo = equipoEnLinux(d)
+    return { id: d.id, alias: d.alias, captura: yield* capturaGuardada(d), equipo, ...(yield* evaluarEquipo(equipo, d, d.biblioteca_steam)) }
   })
 
 const EquipoFila = Schema.Struct({ id: Equipo.fields.id, alias: Equipo.fields.alias })

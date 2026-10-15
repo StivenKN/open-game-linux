@@ -20,6 +20,7 @@
     "db:sembrar": "node --env-file-if-exists=.env scripts/sembrar.ts",
     "rol": "node --env-file-if-exists=.env scripts/rol.ts",
     "db:auth-sql": "node --env-file-if-exists=.env scripts/auth-sql.ts",
+    "gpu:generar": "node scripts/generar-gpus.ts",
     "check": "tsr generate && tsc --noEmit && oxlint && vitest run && vite build && node scripts/sin-servidor-en-cliente.ts"
   },
   "dependencies": {

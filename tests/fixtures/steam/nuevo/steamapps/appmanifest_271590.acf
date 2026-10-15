@@ -1,0 +1,28 @@
+"AppState"
+{
+	"appid"		"271590"
+	"universe"		"1"
+	"LauncherPath"		"C:\\Program Files (x86)\\Steam\\steam.exe"
+	"name"		"Grand Theft Auto V"
+	"StateFlags"		"4"
+	"installdir"		"app271590"
+	"LastPlayed"		"1760000000"
+	"SizeOnDisk"		"1000"
+	"InstalledDepots"
+	{
+		"271591"
+		{
+			"manifest"		"123"
+			"size"		"1000"
+		}
+	}
+	"UserConfig"
+	{
+		"name"		"trampa: nombre de UserConfig"
+		"language"		"spanish"
+	}
+	"MountedConfig"
+	{
+		"language"		"spanish"
+	}
+}

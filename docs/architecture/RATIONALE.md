@@ -90,7 +90,8 @@ export const decidirFn = createServerFn({ method: 'POST' })
 ```ts
 estadoDe(['funciona', 'no_inicia'])                    // 'resultados_variables'
 estadoDe([])                                           // 'sin_evidencia'
-evaluar(capacidades(diag), condiciones(perfil))        // { veredicto: 'informacion_insuficiente', comprobaciones, solo_orientativa }
+evaluar(equipoEnLinux(diag), condiciones(perfil))      // { veredicto: 'informacion_insuficiente', comprobaciones, solo_orientativa }
+evaluar(proyectado('1.0', '1.1'), minimo('1.1'))       // a straddling range: comprobaciones [{ estado: 'desconocido', detectado: { valor: '1.0–1.1', origen: 'proyectado' } }]
 planificar('aprobado', { _tag: 'Aprobar', ... })       // 'sin_cambios'
 discrepancias(prueba, perfil)                          // ['perfil_otra_distribucion']
 ```
@@ -156,7 +157,7 @@ The only lists the compiler cannot derive are the `Record<Union, …>` tables (`
 
 It is ceremony elsewhere, so it is absent there: React components and hooks, better-auth (left as is), the detector, pure functions (plain TS, no `Effect` return types). The only Effect type that crosses into the browser is `Schema`.
 
-**What it deliberately does not do.** It never stores a verdict or an FPS estimate. It never executes or downloads a stored command. It has no HttpApi or OpenAPI, no serialization adapters, no client-side Effect runtime, no admin UI, and no profile or guide authoring UI (round 1 cuts stand).
+**What it deliberately does not do.** It never stores a verdict, a projection or an FPS estimate. It stores a Steam library only when the user chooses to. It never executes or downloads a stored command. It has no HttpApi or OpenAPI, no serialization adapters, no client-side Effect runtime, no admin UI, and no profile or guide authoring UI (round 1 cuts stand).
 
 ## Synthesis decision
 
@@ -225,7 +226,7 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 - **`servidor/aportes/diagnostico.ts` is the single writer of `equipo` and `diagnostico`**, not `aportes.ts`, so lanes U5 and U6 never share a file. `src/fronteras.test.ts` fails on an `INSERT INTO`/`UPDATE` of either table anywhere else.
 - **Saving converges.** `registrarDiagnostico` locks the user's row, reuses the user's equipo with the same alias (case-insensitive) for `nuevo`, and returns `{ id, nuevo }`. A double click, a retry or a re-import of the same payload leaves one equipo and one diagnostico.
 - **Column limits are checked in `capturaDe`.** `Captura` in `dominio/aportes.ts` has unbounded text, so `servidor/diagnostico/payload.ts` checks the `tablas.ts` limits and answers `campo_invalido` instead of an SQL error at INSERT. The parser also names a null `cpu_modelo` "CPU no detectada" (ARM kernels).
-- **The manual form has its own schema**, `FormularioManual` in `routes/diagnostico/-entrada.ts`. It covers only what a person types, with the column limits, and `entradaManual` turns it into a `Captura` taken now. Nullable selects post `"null"` ("No sé").
+- **The manual form has its own schema**, `FormularioManual` in `routes/diagnostico/-entrada.ts`. It covers only what a person types, with the column limits, and `entradaManual` turns it into a `CapturaManual` taken now. That schema has no PCI id or library, which only a detector reads, so a manual entry cannot store a library the parser never normalized. Nullable selects post `"null"` ("No sé").
 - **Paste and manual entries are evaluated twice.** `/diagnostico` evaluates first, so a bad paste keeps its error under the box. Then `/diagnostico/importar` evaluates again from sessionStorage. That page owns the result and the save. The read is cheap, and one result page is simpler than two.
 - **`/entrar` and `/registro` accept `?volver=`** from a closed list (`/diagnostico/importar`), so a guest who signs in to save returns to the unsaved result.
 - **The public origin comes from `BETTER_AUTH_URL`** (`servidor/origen.ts`), with the request URL only as a dev fallback. `origenFn` and `/opengame-detect.sh` use it for the `curl … | bash` command. That route is allowlisted in `fronteras.test.ts`, like `/api/auth/$`.
@@ -257,7 +258,7 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 
 Found by the pre-PR comment audit. None is a correctness bug; each would make an illegal state unrepresentable or remove a hand-synced copy.
 
-- `Comprobacion.exigido` and `detectado` hold either MB or a Vulkan version in one string. A union tagged by requisito would remove the `Number()` parse in `ChecklistEvaluacion`.
+- `Comprobacion.exigido` and `detectado.valor` hold either MB or a Vulkan version in one string. A union tagged by requisito would remove the `Number()` parse in `ChecklistEvaluacion`.
 - `Personal` (`VeredictoParaMi`) and the FPS fields of `PruebaAprobada` are sets of nullables whose combinations mean different things. Each should be a tagged union or one nullable struct, like `MedicionFps`.
 - `MedicionFps.fps_promedio`'s maximum copies `numeric(7,2)` by hand, and the failure-type codes live in both `scripts/sembrar.ts` and `ui/vocabulario.ts`. Derive both from one source.
 - Migrations build their CHECK lists from today's literal Schemas, so an old migration renders different SQL after a literal changes. Snapshot the lists per migration before the first real deploy.
@@ -265,6 +266,44 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 - `ui/muestras/fixtures.ts` is hand-written and could be derived with `resumir` and `evaluar`.
 - `pnpm db:up` from a second checkout recreates `opengame-pg` because the init-script mount path differs per checkout. The data survives, but connections drop.
 - Open product gaps from `cobertura.md`: no game editing after creation (RF-03), guides and profiles only from the seed (RF-09), no distribution recommendation from hardware, no "hardware modesto" filter (wireframe 9.1).
+
+## U10: Windows detector, GPU projection and Steam library
+
+**Problem.** The target player has an old PC that still runs Windows 10. In the interviews, 9 of 10 wanted to know whether their games run on Linux before migrating, and 8 of 10 feared losing their library. Until U10 the app answered only on Linux. A Windows player filled in the manual form, and the Vulkan version they typed came from the Windows driver, which says nothing about Linux.
+
+**Shape.**
+
+- `detector/opengame-detect.ps1` is the Windows twin of the bash script. `irm <origen>/opengame-detect.ps1 | iex` reads the OS, the CPU, the installed RAM, the GPU's name, PCI id and VRAM, and the installed Steam games. It needs no admin rights and makes no network call. It hands off through `/diagnostico/importar#d=` like bash. When that URL is over 2000 characters, it copies the JSON to the clipboard and opens `/diagnostico?pegar=1`, which focuses the paste box. `Start-Process` opens a URL through ShellExecute, which cuts it at about 2048 characters, so a library of a few dozen games already takes the clipboard path.
+- Both detectors send `gpu_pci_id` and `biblioteca_steam`. The payload stays `version_esquema: 1`. `parsearPayload` picks a member by `sistema`, and the Windows member has no Vulkan keys and no kernel driver, in the payload and in `Captura`. Its row stores those columns as unknown. The manual form asks for Vulkan only on Linux.
+- Migration `3_gpu_biblioteca` adds `gpu_pci_id varchar(9)` and `biblioteca_steam jsonb` to `diagnostico`, each with a CHECK. It does not backfill, because captures are immutable. An older row has no PCI id, and the card asks the user to run the detector again.
+- `servidor/gpu/capacidad.ts` `equipoEnLinux` turns the stored columns into what `evaluar` consumes, plus the data for "Tu tarjeta gráfica en Linux". The diagnosis, the ficha and the profile page all call it, and nothing else builds `Capacidades`. Vulkan follows one precedence: Linux Vulkan measured by `vulkaninfo`, then the family's projection, then `desconocido`. A Windows row's stored Vulkan is never read.
+- `VulkanEquipo` carries its `origen` whenever support is known. Its level is a range: a measured version is a one-point range, and a projection can be wider because some levels are unverified. `evaluar` answers `cumple` only when the whole range meets the minimum, `no_cumple` when none of it does, and `desconocido` when the range straddles it, so an unverified level never gives a false `cumple`. The UI labels each value "Detectado" or "Proyectado".
+- The library read model matches app ids against Steam's `edicion_juego.identificador_externo`. `matriz` marks each row `en_biblioteca`, so library games get the same evaluation as every other game. Games the catalog does not know are listed by name with a link to their Steam page.
+
+**The Linux capability is projected from the PCI id and never stored.** The PCI id is the fact the detector reads, and it does not go stale. What a family can do on Linux changes with Mesa and kernel releases. A stored projection would freeze today's answer into an immutable row, and after the next `pnpm gpu:generar` old and new rows would disagree about the same GPU. Projecting at read time keeps sentence 4 of `ARCHITECTURE.md` true. The id table is generated from pinned Mesa, Linux and pci.ids sources, so a reviewer can rerun the generator and diff its output.
+
+**The library is read on the player's machine, not through the Steam Web API.** `GetOwnedGames` needs an API key the server keeps secret, a public profile with public game details, and rate limiting, and it would be the app's first outbound HTTP call. The detectors already run on the player's machine, where `steamapps/libraryfolders.vdf` and the `appmanifest_<appid>.acf` files are plain files the user can read. That works with a private profile and sends nothing until the user chooses. The cost is that it lists installed games, not every owned game. For a player deciding whether to migrate, the installed games are the ones that matter first.
+
+**The library is private by default.** It is stored only when the user checks "Guardar también mi lista de juegos de Steam" (`con_biblioteca`). The box starts unchecked because storage cannot be undone: diagnosis rows are immutable and nothing deletes them. It shows only when the capture has a library. Only the owner can read a saved diagnosis, and saving the same capture again keeps the first choice.
+
+**Two cuts reversed, in a narrow form.** `PLAN.md` cut "Windows comparators" and "PCI device database" for the first delivery. U10 reverses both, narrowly. The PCI database is a generated, server-only table from device id to one of 15 families, with no device picker and no per-model page. The Windows comparison is the Windows detector plus a projection labelled as one. There is still no Windows 11 versus Linux RAM comparator and no FPS estimate.
+
+**Alternatives considered.** Three designs ran in parallel. The synthesis and the cross-judge (Fable) picked the same base, which the judge scored 27 against 24 and 16.
+
+- **A `diagnostico_biblioteca` table with its own privacy guard.** The jsonb column needs no new table, trigger or single-writer rule, and the owner-only read already exists.
+- **Storing the projected family or Vulkan level on the row.** Rejected for the staleness reason above.
+- **NVIDIA ids scraped from the driver README.** Nobody probed it, and pci.ids already names every NVIDIA chip's codename.
+- **`ConvertTo-Json` in the PowerShell script.** Its output differs between Windows PowerShell 5.1 and pwsh 7. The script builds its JSON by hand and escapes every non-ASCII character.
+- **A test-only fixture branch in the shipped script.** The tests shadow `Get-CimInstance` and the other cmdlets with stub functions (`src/detector/pruebas/stubs.ps1`) and run the real script.
+
+**Open questions and risks.**
+
+1. On a hybrid laptop, bash projects the first DRM card, which can be the integrated GPU. The PowerShell script picks the adapter with the most VRAM (ties go to NVIDIA, then AMD, then Intel), so a Ryzen iGPU listed before a GeForce does not win.
+2. The Haswell (Vulkan 1.0 to 1.1) and Broadwell (1.1 to 1.2) ranges are unverified. Both show the warning `vulkan_sin_verificar` until someone reads `vulkaninfo` on that hardware.
+3. No run on a real Windows PowerShell 5.1 was possible. A static test rejects PowerShell 7-only syntax and non-ASCII source, and the behavior tests run pwsh 7 against stubbed cmdlets.
+4. The library match joins on `lanzador.nombre = 'Steam'` (`LANZADOR_STEAM`), a string key older than U10. Renaming that launcher row would turn every library game into an unknown game.
+5. An id the table does not list projects nothing; the card says the GPU is not recognized. The table has no ids for AMD's IP-discovery parts (Radeon RX 7000 and newer), which `amdgpu_drv.c` matches by class, so those cards get no projection yet. A guessed "newest family" was tried and removed: it projected Vulkan 1.3 to 1.4 for PowerVR and pre-GCN parts that are also missing from the sources.
+6. A pasted payload over 300 000 characters fails the server fn validator and shows a generic error, not a field message. A full library of 1000 games with 120-character names is about 200 000 characters in base64url, so a real detector stays under the limit with ASCII names. PowerShell writes a non-ASCII character as `\uXXXX`, so a full library of long non-ASCII names can exceed it.
 
 ## Open questions and risks
 

@@ -2,9 +2,10 @@ import { describe, expect, it } from '@effect/vitest'
 import { Result, Schema } from 'effect'
 import { readFileSync } from 'node:fs'
 import { PayloadInvalido } from '../../dominio/fallos.ts'
-import { etiquetaPci, parsearPayload } from './payload.ts'
+import { parsearPayload } from './payload.ts'
 
 const outJson = readFileSync(new URL('../../../prototypes/detector/out.json', import.meta.url), 'utf8')
+const windowsJson = readFileSync(new URL('../../../prototypes/detector/windows-out.json', import.meta.url), 'utf8')
 const prototipo = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown)))(outJson)
 const base64url = (valor: unknown) => Buffer.from(JSON.stringify(valor)).toString('base64url')
 
@@ -15,7 +16,7 @@ const captura = (texto: string) => {
 }
 
 describe('parsearPayload', () => {
-  it('reads the prototype out.json and drops the Vulkan version an ICD reported', () => {
+  it('reads the prototype out.json, which predates the machine facts, with every fact null', () => {
     expect(captura(outJson)).toEqual({
       capturado_en: new Date('2026-10-10T18:43:52Z'),
       sistema: 'Linux',
@@ -30,7 +31,82 @@ describe('parsearPayload', () => {
       version_controlador: 'Mesa 25.2.8-0ubuntu0.24.04.2',
       soporte_vulkan: 'desconocido',
       version_vulkan: null,
+      nivel_x86: null,
+      arranque_seguro: null,
+      tpm: null,
+      zram_mb: null,
+      swap_mb: null,
+      gpu_pci_id: null,
+      biblioteca_steam: null,
     })
+  })
+
+  it('reads the machine facts a current detector sends', () => {
+    const hechos = { nivel_x86: 'v3', arranque_seguro: 'bios', tpm: 'no_detectado', zram_mb: 8192, swap_mb: 0 }
+    expect(captura(JSON.stringify({ ...prototipo, ...hechos }))).toMatchObject(hechos)
+  })
+
+  it('reads the PowerShell detector output: no distro, no Linux driver, Vulkan unknown, Steam tools dropped', () => {
+    expect(captura(windowsJson)).toEqual({
+      capturado_en: new Date('2026-10-15T00:57:49Z'),
+      sistema: 'Windows',
+      version_sistema: 'Windows 10 Home 22H2 (19045)',
+      arquitectura: 'x86_64',
+      cpu_modelo: 'Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz',
+      gpu_modelo: 'NVIDIA GeForce GTX 750 Ti',
+      gpu_pci_id: '10de:1380',
+      ram_mb: 8192,
+      vram_mb: 2048,
+      nivel_x86: null,
+      arranque_seguro: null,
+      tpm: null,
+      zram_mb: null,
+      swap_mb: null,
+      biblioteca_steam: [
+        { app_id: 9999990, nombre: 'Café "Noir": Édition™' },
+        { app_id: 271590, nombre: 'Grand Theft Auto V' },
+        { app_id: 227300, nombre: 'Euro Truck Simulator 2' },
+        { app_id: 292030, nombre: 'The Witcher 3: Wild Hunt' },
+      ],
+    })
+  })
+
+  it('drops the Vulkan and driver keys a Windows payload sends', () => {
+    const conVulkan = { ...JSON.parse(windowsJson), soporte_vulkan: 'si', version_vulkan: '1.3.280', controlador: 'nvlddmkm' }
+    expect(captura(JSON.stringify(conVulkan))).toEqual(captura(windowsJson))
+  })
+
+  it('normalizes the library: tools, bad ids and repeats out, order kept, names trimmed and cut', () => {
+    const biblioteca_steam = [
+      { app_id: 271590, nombre: '  Grand Theft Auto V ' },
+      { app_id: 1493710, nombre: 'Proton Experimental' },
+      { app_id: 1628350, nombre: 'Steam Linux Runtime 3.0 (sniper)' },
+      { app_id: 228980, nombre: 'Steamworks Common Redistributables' },
+      { app_id: 0, nombre: 'Cero' },
+      { app_id: -5, nombre: 'Negativo' },
+      { app_id: 1.5, nombre: 'Decimal' },
+      { app_id: 730, nombre: '   ' },
+      { app_id: 271590, nombre: 'GTA V repetido' },
+      { app_id: 227300, nombre: 'N'.repeat(130) },
+      { app_id: 1245620, nombre: 'ProtonDB Fan Game' },
+    ]
+    expect(captura(JSON.stringify({ ...prototipo, biblioteca_steam })).biblioteca_steam).toEqual([
+      { app_id: 271590, nombre: 'Grand Theft Auto V' },
+      { app_id: 227300, nombre: 'N'.repeat(120) },
+      { app_id: 1245620, nombre: 'ProtonDB Fan Game' },
+    ])
+  })
+
+  it('drops control characters and replaces lone surrogates in a name, so jsonb can store it', () => {
+    const biblioteca_steam = [{ app_id: 271590, nombre: 'Grand\u0000 Theft\u001f Auto\u007f \udc00V' }]
+    expect(captura(JSON.stringify({ ...prototipo, biblioteca_steam })).biblioteca_steam).toEqual([{ app_id: 271590, nombre: 'Grand Theft Auto \ufffdV' }])
+  })
+
+  it('keeps the first 1000 games of a larger library and an empty library as empty', () => {
+    const biblioteca_steam = Array.from({ length: 1200 }, (_, i) => ({ app_id: i + 1, nombre: `Juego ${i + 1}` }))
+    const leida = captura(JSON.stringify({ ...prototipo, biblioteca_steam })).biblioteca_steam
+    expect([leida?.length, leida?.[0], leida?.[999]]).toEqual([1000, { app_id: 1, nombre: 'Juego 1' }, { app_id: 1000, nombre: 'Juego 1000' }])
+    expect(captura(JSON.stringify({ ...prototipo, biblioteca_steam: [] })).biblioteca_steam).toEqual([])
   })
 
   it('keeps the Vulkan version when support is si', () => {
@@ -48,11 +124,15 @@ describe('parsearPayload', () => {
   })
 
   it.each([
-    ['8086:9A49', 'Intel GPU [8086:9a49]'],
-    ['10de:2504', 'NVIDIA GPU [10de:2504]'],
-    [null, 'GPU no detectada'],
-  ])('labels a null GPU name from gpu_pci_id %s', (gpu_pci_id, etiqueta) => {
-    expect(captura(JSON.stringify({ ...prototipo, gpu_modelo: null, gpu_pci_id })).gpu_modelo).toBe(etiqueta)
+    [' 8086:9A49 ', '8086:9a49', 'Intel GPU [8086:9a49]'],
+    ['10de:2504', '10de:2504', 'NVIDIA GPU [10de:2504]'],
+    ['1af4:1050', '1af4:1050', 'GPU [1af4:1050]'],
+    ['8086', null, 'GPU no detectada'],
+    ['10de:2504:00', null, 'GPU no detectada'],
+    [42, null, 'GPU no detectada'],
+    [null, null, 'GPU no detectada'],
+  ])('keeps gpu_pci_id %o as %o (never a failure) and labels a null GPU name from it', (enviado, gpu_pci_id, gpu_modelo) => {
+    expect(captura(JSON.stringify({ ...prototipo, gpu_modelo: null, gpu_pci_id: enviado }))).toMatchObject({ gpu_pci_id, gpu_modelo })
   })
 
   it('accepts the bare base64url fragment and a whole pasted URL with #d=', () => {
@@ -79,24 +159,18 @@ describe('parsearPayload', () => {
     [{ ram_mb: 'mucha' }, 'ram_mb'],
     [{ cpu_modelo: '   ' }, 'cpu_modelo'],
     [{ distribucion: { nombre: '', version: '24.04' } }, 'distribucion.nombre'],
-    [{ sistema: 'Windows' }, 'sistema'],
+    [{ sistema: 'Mac' }, 'sistema'],
+    [{ biblioteca_steam: [{ app_id: '271590', nombre: 'GTA V' }] }, 'biblioteca_steam.0.app_id'],
     [{ gpu_modelo: 'G'.repeat(161) }, 'gpu_modelo'],
     [{ distribucion: { nombre: 'D'.repeat(81), version: '1' } }, 'distribucion.nombre'],
+    [{ nivel_x86: 'v5' }, 'nivel_x86'],
+    [{ arranque_seguro: 'on' }, 'arranque_seguro'],
+    [{ tpm: '2' }, 'tpm'],
+    [{ zram_mb: -1 }, 'zram_mb'],
+    [{ swap_mb: 1.5 }, 'swap_mb'],
   ])('a bad field %o is campo_invalido at %s', (cambio, campo) => {
     expect(parsearPayload(JSON.stringify({ ...prototipo, ...cambio }))).toEqual(
       Result.fail(new PayloadInvalido({ motivo: 'campo_invalido', campo })),
     )
-  })
-})
-
-describe('etiquetaPci', () => {
-  it.each([
-    ['1002:73df', 'AMD GPU [1002:73df]'],
-    ['1af4:1050', 'GPU [1af4:1050]'],
-    ['8086', null],
-    ['', null],
-    [null, null],
-  ])('%o -> %o', (pci, etiqueta) => {
-    expect(etiquetaPci(pci)).toBe(etiqueta)
   })
 })

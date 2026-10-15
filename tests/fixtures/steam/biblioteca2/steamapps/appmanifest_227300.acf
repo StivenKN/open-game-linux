@@ -1,0 +1,23 @@
+"AppState"
+{
+	"appid"		"227300"
+	"universe"		"1"
+	"LauncherPath"		"C:\\Program Files (x86)\\Steam\\steam.exe"
+	"name"		"Euro Truck Simulator 2"
+	"StateFlags"		"1026"
+	"installdir"		"app227300"
+	"LastPlayed"		"1750000000"
+	"SizeOnDisk"		"1000"
+	"InstalledDepots"
+	{
+		"227301"
+		{
+			"manifest"		"123"
+			"size"		"1000"
+		}
+	}
+	"MountedConfig"
+	{
+		"language"		"spanish"
+	}
+}

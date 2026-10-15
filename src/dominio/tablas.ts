@@ -1,5 +1,7 @@
 import { Schema } from 'effect'
+import { BibliotecaSteam } from './biblioteca.ts'
 import { Sistema, SoporteVulkan } from './evaluacion.ts'
+import { PciId } from './gpu.ts'
 import { EstadoGuia, TipoGuia } from './guias.ts'
 import {
   DependenciaId,
@@ -19,38 +21,10 @@ import {
   UsuarioId,
   VersionCapaId,
 } from './ids.ts'
-import { FamiliaCapa, Resultado } from './literales.ts'
+import { largo } from './largo.ts'
+import { ApiGrafica, FamiliaCapa, Resultado } from './literales.ts'
+import { ArranqueSeguro, NivelX86, Tpm } from './plataforma.ts'
 import { EstadoRevision, Rol } from './revision.ts'
-
-export const largo = {
-  usuario: { alias: 60, correo: 254 },
-  equipo: { alias: 80 },
-  diagnostico: {
-    sistema: 20,
-    version_sistema: 80,
-    arquitectura: 20,
-    cpu_modelo: 160,
-    gpu_modelo: 160,
-    controlador: 120,
-    version_controlador: 80,
-    soporte_vulkan: 15,
-    version_vulkan: 30,
-  },
-  juego: { titulo: 180 },
-  lanzador: { nombre: 80, url_oficial: 500 },
-  edicion_juego: { identificador_externo: 120 },
-  distribucion: { nombre: 80, version: 40, url_oficial: 500 },
-  version_capa: { familia: 10, variante: 60, version: 60 },
-  bloque_revision: { estado_revision: 15 },
-  perfil_configuracion: { arquitectura: 20, titulo: 180, version_juego_objetivo: 80, version_vulkan_min: 30 },
-  paso_configuracion: { titulo: 160 },
-  dependencia: { nombre: 120, gestor: 60 },
-  perfil_dependencia: { version_requerida: 80 },
-  tipo_fallo: { codigo: 40 },
-  reporte: { version_juego: 80, version_lanzador: 80, resultado: 35, resolucion: 30, calidad_grafica: 80 },
-  solucion: { titulo: 180 },
-  guia_adopcion: { tipo: 25, titulo: 180, estado: 15 },
-} as const
 
 export const TextoHasta = (n: number) => Texto.pipe(Schema.check(Schema.isMaxLength(n)))
 
@@ -97,6 +71,14 @@ export const Diagnostico = Schema.Struct({
   version_controlador: Schema.NullOr(TextoHasta(largo.diagnostico.version_controlador)),
   soporte_vulkan: SoporteVulkan,
   version_vulkan: Schema.NullOr(TextoHasta(largo.diagnostico.version_vulkan)),
+  gpu_pci_id: Schema.NullOr(PciId),
+  biblioteca_steam: Schema.NullOr(BibliotecaSteam),
+  // NULL: not captured (old detectors, Windows, the manual form).
+  nivel_x86: Schema.NullOr(NivelX86),
+  arranque_seguro: Schema.NullOr(ArranqueSeguro),
+  tpm: Schema.NullOr(Tpm),
+  zram_mb: Schema.NullOr(NoNegativo),
+  swap_mb: Schema.NullOr(NoNegativo),
 })
 export type Diagnostico = typeof Diagnostico.Type
 
@@ -104,9 +86,14 @@ export const Juego = Schema.Struct({
   id: JuegoId,
   titulo: TextoHasta(largo.juego.titulo),
   descripcion: Texto,
+  nivel_x86_min: Schema.NullOr(NivelX86),
   actualizado_en: Schema.Date,
 })
 export type Juego = typeof Juego.Type
+
+/** One row per graphics API the game can render with; no rows means unknown. */
+export const JuegoApi = Schema.Struct({ juego_id: JuegoId, api: ApiGrafica })
+export type JuegoApi = typeof JuegoApi.Type
 
 export const Lanzador = Schema.Struct({
   id: LanzadorId,

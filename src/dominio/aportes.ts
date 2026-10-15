@@ -3,6 +3,7 @@ import { EstadoCompatibilidad } from './compatibilidad.ts'
 import { SoporteVulkan } from './evaluacion.ts'
 import type { Discrepancia } from './fallos.ts'
 import {
+  Casilla,
   DiagnosticoId,
   DistribucionId,
   EdicionId,
@@ -14,8 +15,10 @@ import {
   TipoFalloId,
   VersionCapaId,
 } from './ids.ts'
-import { FamiliaCapa, ResultadoFallido, ResultadoFuncional } from './literales.ts'
-import { Diagnostico, Distribucion, Equipo, Juego, largo, PerfilConfiguracion, Reporte, Solucion, TextoHasta, TextoOpcionalHasta, VersionCapa } from './tablas.ts'
+import { ApiGrafica, FamiliaCapa, ResultadoFallido, ResultadoFuncional } from './literales.ts'
+import { MAX_JUEGOS_BIBLIOTECA } from './biblioteca.ts'
+import { largo } from './largo.ts'
+import { Diagnostico, Distribucion, Equipo, Juego, PerfilConfiguracion, Reporte, Solucion, TextoHasta, TextoOpcionalHasta, VersionCapa } from './tablas.ts'
 
 export const VersionCapaRef = Schema.Union([
   Schema.TaggedStruct('existente', { id: VersionCapaId }),
@@ -82,6 +85,12 @@ export const NuevoJuego = Schema.Struct({
   ediciones: Schema.NonEmptyArray(
     Schema.Struct({ lanzador_id: LanzadorId, identificador_externo: TextoOpcionalHasta(largo.edicion_juego.identificador_externo) }),
   ),
+  // Checkboxes named `apis[]`; with none checked the form posts no `apis` key at all.
+  apis: Schema.Array(ApiGrafica).pipe(
+    Schema.refine(Arr.isReadonlyArrayNonEmpty, { message: 'Marca al menos una API gráfica.' }),
+    Schema.withDecodingDefaultKey(Effect.succeed([])),
+  ),
+  nivel_x86_min: Juego.fields.nivel_x86_min,
 })
 export type NuevoJuego = typeof NuevoJuego.Type
 
@@ -93,33 +102,54 @@ const camposCaptura = {
   gpu_modelo: Diagnostico.fields.gpu_modelo,
   ram_mb: Diagnostico.fields.ram_mb,
   vram_mb: Diagnostico.fields.vram_mb,
+}
+
+const camposLinux = {
+  sistema: Schema.Literal('Linux'),
+  distribucion: Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version }),
   controlador: TextoOpcionalHasta(largo.diagnostico.controlador),
   version_controlador: TextoOpcionalHasta(largo.diagnostico.version_controlador),
   soporte_vulkan: SoporteVulkan,
   version_vulkan: TextoOpcionalHasta(largo.diagnostico.version_vulkan),
 }
 
+const camposDetectados = {
+  gpu_pci_id: Diagnostico.fields.gpu_pci_id,
+  biblioteca_steam: Diagnostico.fields.biblioteca_steam,
+  // Only the Linux detector reads these; the Windows detector and older payloads omit them.
+  nivel_x86: Diagnostico.fields.nivel_x86.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  arranque_seguro: Diagnostico.fields.arranque_seguro.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  tpm: Diagnostico.fields.tpm.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  zram_mb: Diagnostico.fields.zram_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  swap_mb: Diagnostico.fields.swap_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+}
+
+const vulkanConSoporte = Schema.makeFilter((c: { readonly soporte_vulkan: SoporteVulkan; readonly version_vulkan: string | null }) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
+  message: 'Solo hay versión de Vulkan si hay soporte.',
+})
+
 export const Captura = Schema.Union([
-  Schema.Struct({
-    ...camposCaptura,
-    sistema: Schema.Literal('Linux'),
-    distribucion: Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version }),
-  }),
-  Schema.Struct({ ...camposCaptura, sistema: Schema.Literal('Windows') }),
-]).check(
-  Schema.makeFilter((c) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
-    message: 'Solo hay versión de Vulkan si hay soporte.',
-  }),
-)
+  Schema.Struct({ ...camposCaptura, ...camposDetectados, ...camposLinux }).check(vulkanConSoporte),
+  Schema.Struct({ ...camposCaptura, ...camposDetectados, sistema: Schema.Literal('Windows') }),
+])
 export type Captura = typeof Captura.Type
 
+export const CapturaManual = Schema.Union([
+  Schema.Struct({ ...camposCaptura, ...camposLinux }).check(vulkanConSoporte),
+  Schema.Struct({ ...camposCaptura, sistema: Schema.Literal('Windows') }),
+])
+
+// About 30 characters of JSON around each name, then ×2 for base64url (4/3) and the hardware fields.
+// PowerShell writes non-ASCII as \uXXXX, so a full library of long non-ASCII names can still exceed it.
+const MAX_TEXTO_DETECTOR = MAX_JUEGOS_BIBLIOTECA * (30 + largo.biblioteca.nombre) * 2
+
 export const EntradaDiagnostico = Schema.Union([
-  Schema.TaggedStruct('detector', { texto: Schema.String }),
-  Schema.TaggedStruct('manual', { captura: Captura }),
+  Schema.TaggedStruct('detector', { texto: Schema.String.pipe(Schema.check(Schema.isMaxLength(MAX_TEXTO_DETECTOR))) }),
+  Schema.TaggedStruct('manual', { captura: CapturaManual }),
 ])
 export type EntradaDiagnostico = typeof EntradaDiagnostico.Type
 
-export const GuardarDiagnostico = Schema.Struct({ equipo: EquipoDestino, entrada: EntradaDiagnostico })
+export const GuardarDiagnostico = Schema.Struct({ equipo: EquipoDestino, entrada: EntradaDiagnostico, con_biblioteca: Casilla })
 
 export const FiltroCatalogo = Schema.Struct({
   q: Schema.optionalKey(Schema.String),

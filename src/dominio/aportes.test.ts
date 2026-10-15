@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Result, Schema, SchemaIssue } from 'effect'
-import { Captura, type ContextoPrueba, discrepancias, NuevoReporte, type PerfilObjetivo } from './aportes.ts'
+import { CapturaManual, type ContextoPrueba, discrepancias, NuevoReporte, type PerfilObjetivo } from './aportes.ts'
 import { DistribucionId, EdicionId, VersionCapaId } from './ids.ts'
 
 describe('discrepancias (8.7 comparability)', () => {
@@ -102,8 +102,8 @@ describe('NuevoReporte from the report form', () => {
   })
 })
 
-describe('Captura from the manual form', () => {
-  const decodificar = formulario(Captura)
+describe('CapturaManual from the manual form', () => {
+  const decodificar = formulario(CapturaManual)
   const comun = {
     capturado_en: '2026-10-10T18:43:52Z',
     version_sistema: '10.0.19045',
@@ -112,26 +112,31 @@ describe('Captura from the manual form', () => {
     gpu_modelo: 'Intel Iris Xe',
     ram_mb: '16384',
     vram_mb: 'null',
+  }
+  const linux = {
+    ...comun,
+    sistema: 'Linux',
+    'distribucion[nombre]': 'Ubuntu',
+    'distribucion[version]': '24.04',
     controlador: '',
     version_controlador: '',
     soporte_vulkan: 'desconocido',
     version_vulkan: '',
   }
 
-  it('a Windows capture has no distribution', () => {
-    const r = decodificar({ ...comun, sistema: 'Windows' })
-    expect(Result.isSuccess(r) && r.success).toMatchObject({ sistema: 'Windows', controlador: null })
-    expect(Result.isSuccess(r) && 'distribucion' in r.success).toBe(false)
+  it('a Windows capture has no distribution, Linux driver, Vulkan, PCI id or library', () => {
+    const r = decodificar({ ...comun, sistema: 'Windows', soporte_vulkan: 'si', gpu_pci_id: '10de:1380' })
+    expect(Result.isSuccess(r) && Object.keys(r.success).sort()).toEqual([...Object.keys(comun), 'sistema'].sort())
   })
 
   it('a Linux capture requires its distribution', () => {
-    expect(Result.isFailure(decodificar({ ...comun, sistema: 'Linux' }))).toBe(true)
-    const r = decodificar({ ...comun, sistema: 'Linux', 'distribucion[nombre]': 'Ubuntu', 'distribucion[version]': '24.04' })
-    expect(Result.isSuccess(r) && r.success).toMatchObject({ sistema: 'Linux', distribucion: { nombre: 'Ubuntu', version: '24.04' } })
+    expect(Result.isFailure(decodificar({ ...comun, sistema: 'Linux', soporte_vulkan: 'desconocido' }))).toBe(true)
+    const r = decodificar(linux)
+    expect(Result.isSuccess(r) && r.success).toMatchObject({ sistema: 'Linux', distribucion: { nombre: 'Ubuntu', version: '24.04' }, controlador: null })
   })
 
   it('a Vulkan version without support si is rejected', () => {
-    expect(Result.isFailure(decodificar({ ...comun, sistema: 'Windows', version_vulkan: '1.3' }))).toBe(true)
-    expect(Result.isSuccess(decodificar({ ...comun, sistema: 'Windows', soporte_vulkan: 'si', version_vulkan: '1.3' }))).toBe(true)
+    expect(Result.isFailure(decodificar({ ...linux, version_vulkan: '1.3' }))).toBe(true)
+    expect(Result.isSuccess(decodificar({ ...linux, soporte_vulkan: 'si', version_vulkan: '1.3' }))).toBe(true)
   })
 })

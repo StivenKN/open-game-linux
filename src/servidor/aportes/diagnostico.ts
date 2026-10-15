@@ -32,21 +32,35 @@ export const registrarDiagnostico = (
           )
     if (equipo === undefined) return yield* Effect.fail(new ReglaIncumplida({ regla: 'equipo_ajeno' }))
 
+    const soloLinux =
+      captura.sistema === 'Linux'
+        ? {
+            distribucion_id: yield* distribucionDe(captura.distribucion),
+            controlador: captura.controlador,
+            version_controlador: captura.version_controlador,
+            soporte_vulkan: captura.soporte_vulkan,
+            version_vulkan: captura.version_vulkan,
+          }
+        : { distribucion_id: null, controlador: null, version_controlador: null, soporte_vulkan: 'desconocido', version_vulkan: null }
     const fila = {
       equipo_id: equipo.id,
       capturado_en: captura.capturado_en,
       sistema: captura.sistema,
       version_sistema: captura.version_sistema,
-      distribucion_id: captura.sistema === 'Linux' ? yield* distribucionDe(captura.distribucion) : null,
       arquitectura: captura.arquitectura,
       cpu_modelo: captura.cpu_modelo,
       gpu_modelo: captura.gpu_modelo,
       ram_mb: captura.ram_mb,
       vram_mb: captura.vram_mb,
-      controlador: captura.controlador,
-      version_controlador: captura.version_controlador,
-      soporte_vulkan: captura.soporte_vulkan,
-      version_vulkan: captura.version_vulkan,
+      nivel_x86: captura.nivel_x86,
+      arranque_seguro: captura.arranque_seguro,
+      tpm: captura.tpm,
+      zram_mb: captura.zram_mb,
+      swap_mb: captura.swap_mb,
+      ...soloLinux,
+      gpu_pci_id: captura.gpu_pci_id,
+      // Sent as JSON text: the untyped parameter takes the jsonb column's type.
+      biblioteca_steam: g.con_biblioteca && captura.biblioteca_steam !== null ? JSON.stringify(captura.biblioteca_steam) : null,
     }
     return yield* unaFila(
       Guardado,

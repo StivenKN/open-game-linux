@@ -71,6 +71,7 @@ const gta: Muestra = {
   },
   pendientes: 1,
   personal: {
+    ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
       resumen: { estado: 'funciona', pruebas: 2, ultima_prueba: dia('2026-09-28'), entornos: [gtaMint], fallos: [] },
@@ -80,8 +81,8 @@ const gta: Muestra = {
       evaluacion: {
         veredicto: 'cumple', solo_orientativa: false,
         comprobaciones: [
-          { requisito: 'ram', estado: 'cumple', exigido: '8192', detectado: '8192' },
-          { requisito: 'vulkan', estado: 'cumple', exigido: '1.1', detectado: '1.3' },
+          { requisito: 'ram', estado: 'cumple', exigido: '8192', detectado: { valor: '8192', origen: 'medido' } },
+          { requisito: 'vulkan', estado: 'cumple', exigido: '1.1', detectado: { valor: '1.3', origen: 'medido' } },
         ],
       },
     },
@@ -111,6 +112,7 @@ const valorant: Muestra = {
   },
   pendientes: 0,
   personal: {
+    ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
       resumen: { estado: 'no_inicia', pruebas: 1, ultima_prueba: dia('2026-07-11'), entornos: [valMint], fallos: [{ codigo: 'anti_cheat', reportes: 1 }] },
@@ -128,6 +130,7 @@ const ets2: Muestra = {
   resumen: { estado: 'sin_evidencia', pruebas: 0, ultima_prueba: null, entornos: [], fallos: [] },
   pendientes: 2,
   personal: {
+    ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
       resumen: { estado: 'sin_evidencia', pruebas: 0, ultima_prueba: null, entornos: [], fallos: [] },
@@ -158,6 +161,7 @@ const eldenRing: Muestra = {
   resumen: { estado: 'funciona_con_ajustes', pruebas: 2, ultima_prueba: dia('2026-09-30'), entornos: [erUbuntu, erMint], fallos: [] },
   pendientes: 0,
   personal: {
+    ruta: { estado: 'con_ruta', camino: 'vkd3d_proton' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
       resumen: { estado: 'funciona_con_ajustes', pruebas: 1, ultima_prueba: dia('2026-09-21'), entornos: [erMint], fallos: [] },
@@ -167,9 +171,9 @@ const eldenRing: Muestra = {
       evaluacion: {
         veredicto: 'no_cumple', solo_orientativa: false,
         comprobaciones: [
-          { requisito: 'ram', estado: 'no_cumple', exigido: '12288', detectado: '8192' },
+          { requisito: 'ram', estado: 'no_cumple', exigido: '12288', detectado: { valor: '8192', origen: 'medido' } },
           { requisito: 'vram', estado: 'desconocido', exigido: '4096', detectado: null },
-          { requisito: 'vulkan', estado: 'cumple', exigido: '1.3', detectado: '1.3' },
+          { requisito: 'vulkan', estado: 'cumple', exigido: '1.3', detectado: { valor: '1.3', origen: 'medido' } },
         ],
       },
     },
@@ -196,6 +200,7 @@ const witcher: Muestra = {
   resumen: { estado: 'funciona', pruebas: 2, ultima_prueba: dia('2026-09-10'), entornos: [twPop, twMint], fallos: [] },
   pendientes: 0,
   personal: {
+    ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
       resumen: { estado: 'funciona', pruebas: 1, ultima_prueba: dia('2026-08-20'), entornos: [twMint], fallos: [] },
@@ -205,9 +210,9 @@ const witcher: Muestra = {
       evaluacion: {
         veredicto: 'informacion_insuficiente', solo_orientativa: false,
         comprobaciones: [
-          { requisito: 'ram', estado: 'cumple', exigido: '6144', detectado: '8192' },
+          { requisito: 'ram', estado: 'cumple', exigido: '6144', detectado: { valor: '8192', origen: 'medido' } },
           { requisito: 'vram', estado: 'desconocido', exigido: '2048', detectado: null },
-          { requisito: 'vulkan', estado: 'cumple', exigido: '1.1', detectado: '1.3' },
+          { requisito: 'vulkan', estado: 'cumple', exigido: '1.1', detectado: { valor: '1.3', origen: 'medido' } },
         ],
       },
     },
