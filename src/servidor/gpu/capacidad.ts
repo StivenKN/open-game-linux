@@ -1,21 +1,13 @@
-import { alMenos, type Sistema, type SoporteVulkan, type VersionVulkan, versionVulkan, type VulkanEquipo } from '../../dominio/evaluacion.ts'
+import { alMenos, type VersionVulkan, versionVulkan, type VulkanEquipo } from '../../dominio/evaluacion.ts'
 import { type AvisoGpu, type ControladorLinux, type EquipoEnLinux, FamiliaGpu, type PciId, type RutaD3d, type RutaLinux, VendorGpu } from '../../dominio/gpu.ts'
+import type { Diagnostico } from '../../dominio/tablas.ts'
 import { tablaGpu } from './familias.generado.ts'
 import { decodificarTramos } from './tramos.ts'
 
 /** The diagnostico columns the projection reads. */
-export type ColumnasEquipo = {
-  readonly sistema: Sistema
-  readonly ram_mb: number
-  readonly vram_mb: number | null
-  readonly soporte_vulkan: SoporteVulkan
-  readonly version_vulkan: string | null
-  readonly controlador: string | null
-  readonly gpu_pci_id: PciId | null
-}
+export type ColumnasEquipo = Pick<Diagnostico, 'sistema' | 'ram_mb' | 'vram_mb' | 'soporte_vulkan' | 'version_vulkan' | 'controlador' | 'gpu_pci_id'>
 
 const v = (mayor: number, menor: number): VersionVulkan => ({ texto: `${mayor}.${menor}`, partes: [mayor, menor] })
-const rango = (desde: VersionVulkan, hasta: VersionVulkan) => ({ desde, hasta })
 
 type Politica = {
   readonly controlador: ControladorLinux
@@ -29,18 +21,18 @@ const POLITICA = {
   intel_gen5_o_anterior: { controlador: 'i915', vulkan: null, avisos: [] },
   intel_gen6: { controlador: 'i915', vulkan: null, avisos: [] },
   intel_gen7: { controlador: 'i915', vulkan: null, avisos: [{ aviso: 'hasvk_incompleto', salvo_con: null }] },
-  intel_gen7_5: { controlador: 'i915', vulkan: rango(v(1, 0), v(1, 1)), avisos: [{ aviso: 'vulkan_sin_verificar', salvo_con: null }] },
-  intel_gen8: { controlador: 'i915', vulkan: rango(v(1, 1), v(1, 2)), avisos: [{ aviso: 'vulkan_sin_verificar', salvo_con: null }] },
-  intel_gen9_o_posterior: { controlador: 'i915', vulkan: rango(v(1, 3), v(1, 4)), avisos: [] },
+  intel_gen7_5: { controlador: 'i915', vulkan: { desde: v(1, 0), hasta: v(1, 1) }, avisos: [{ aviso: 'vulkan_sin_verificar', salvo_con: null }] },
+  intel_gen8: { controlador: 'i915', vulkan: { desde: v(1, 1), hasta: v(1, 2) }, avisos: [{ aviso: 'vulkan_sin_verificar', salvo_con: null }] },
+  intel_gen9_o_posterior: { controlador: 'i915', vulkan: { desde: v(1, 3), hasta: v(1, 4) }, avisos: [] },
   amd_terascale_o_anterior: { controlador: 'radeon', vulkan: null, avisos: [] },
-  amd_gcn1: { controlador: 'amdgpu', vulkan: rango(v(1, 3), v(1, 4)), avisos: [{ aviso: 'gcn_usar_amdgpu', salvo_con: 'amdgpu' }] },
-  amd_gcn2: { controlador: 'amdgpu', vulkan: rango(v(1, 3), v(1, 4)), avisos: [{ aviso: 'gcn_usar_amdgpu', salvo_con: 'amdgpu' }] },
-  amd_gcn3_o_posterior: { controlador: 'amdgpu', vulkan: rango(v(1, 3), v(1, 4)), avisos: [] },
+  amd_gcn1: { controlador: 'amdgpu', vulkan: { desde: v(1, 3), hasta: v(1, 4) }, avisos: [{ aviso: 'gcn_usar_amdgpu', salvo_con: 'amdgpu' }] },
+  amd_gcn2: { controlador: 'amdgpu', vulkan: { desde: v(1, 3), hasta: v(1, 4) }, avisos: [{ aviso: 'gcn_usar_amdgpu', salvo_con: 'amdgpu' }] },
+  amd_gcn3_o_posterior: { controlador: 'amdgpu', vulkan: { desde: v(1, 3), hasta: v(1, 4) }, avisos: [] },
   nvidia_tesla_o_anterior: { controlador: 'nouveau', vulkan: null, avisos: [{ aviso: 'nvidia_sin_controlador', salvo_con: null }] },
   nvidia_fermi: { controlador: 'nouveau', vulkan: null, avisos: [{ aviso: 'nvidia_sin_controlador', salvo_con: null }] },
-  nvidia_kepler: { controlador: 'nouveau', vulkan: rango(v(1, 2), v(1, 2)), avisos: [{ aviso: 'kepler_470_fin', salvo_con: null }] },
-  nvidia_maxwell_a_volta: { controlador: 'nvidia_580xx', vulkan: rango(v(1, 4), v(1, 4)), avisos: [{ aviso: 'fijar_nvidia_580xx', salvo_con: null }] },
-  nvidia_turing_o_posterior: { controlador: 'nvidia', vulkan: rango(v(1, 4), v(1, 4)), avisos: [] },
+  nvidia_kepler: { controlador: 'nouveau', vulkan: { desde: v(1, 2), hasta: v(1, 2) }, avisos: [{ aviso: 'kepler_470_fin', salvo_con: null }] },
+  nvidia_maxwell_a_volta: { controlador: 'nvidia_580xx', vulkan: { desde: v(1, 4), hasta: v(1, 4) }, avisos: [{ aviso: 'fijar_nvidia_580xx', salvo_con: null }] },
+  nvidia_turing_o_posterior: { controlador: 'nvidia', vulkan: { desde: v(1, 4), hasta: v(1, 4) }, avisos: [] },
 } as const satisfies Record<FamiliaGpu, Politica>
 
 const ids: Record<VendorGpu, Partial<Record<FamiliaGpu, string>>> = tablaGpu.ids
@@ -53,7 +45,10 @@ const familiaPorId: ReadonlyMap<string, FamiliaGpu> = new Map(
   ),
 )
 
-const identificar = (pci: PciId): FamiliaGpu | null => familiaPorId.get(pci) ?? null
+const identificar = (pci: PciId | null): { readonly familia: FamiliaGpu; readonly politica: Politica } | null => {
+  const familia = pci === null ? undefined : familiaPorId.get(pci)
+  return familia === undefined ? null : { familia, politica: POLITICA[familia] }
+}
 
 /** Measured Linux Vulkan wins; otherwise the family projects it. A Windows row's stored Vulkan is never used. */
 const vulkanEnLinux = (c: ColumnasEquipo, politica: Politica | null): VulkanEquipo => {
@@ -88,16 +83,15 @@ const avisosDe = (c: ColumnasEquipo, politica: Politica, vulkan: VulkanEquipo): 
 
 /** The one way to build what `evaluar` consumes from a stored or unsaved capture. */
 export const equipoEnLinux = (c: ColumnasEquipo): EquipoEnLinux => {
-  const familia = c.gpu_pci_id === null ? null : identificar(c.gpu_pci_id)
-  const politica: Politica | null = familia === null ? null : POLITICA[familia]
-  const vulkan = vulkanEnLinux(c, politica)
+  const gpu = identificar(c.gpu_pci_id)
+  const vulkan = vulkanEnLinux(c, gpu?.politica ?? null)
   return {
     sistema: c.sistema,
     ram_mb: c.ram_mb,
     vram_mb: c.vram_mb,
     vulkan,
     gpu:
-      familia === null || politica === null ? null : { familia, controlador: politica.controlador, avisos: avisosDe(c, politica, vulkan) },
+      gpu === null ? null : { familia: gpu.familia, controlador: gpu.politica.controlador, avisos: avisosDe(c, gpu.politica, vulkan) },
     ruta: rutaDe(vulkan),
   }
 }
