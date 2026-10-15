@@ -5,9 +5,9 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { parsearPayload } from './payload.ts'
+import { parsearPayload } from '../servidor/diagnostico/payload.ts'
 
-const raiz = fileURLToPath(new URL('../../../', import.meta.url))
+const raiz = fileURLToPath(new URL('../../', import.meta.url))
 const ps1 = join(raiz, 'src/detector/opengame-detect.ps1')
 const sh = join(raiz, 'src/detector/opengame-detect.sh')
 const stubs = join(raiz, 'src/detector/pruebas/stubs.ps1')
