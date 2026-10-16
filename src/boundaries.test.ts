@@ -55,7 +55,7 @@ describe('fronteras', () => {
   })
 
   it('only server/commands/review.ts writes the review block (8.9 single writer)', () => {
-    const escritura = /`[^`]*\b(SET|INSERT INTO)\b[^`]*\b(estado_revision|revisor_id|evidencia_revision)\b[^`]*`/s
+    const escritura = /`[^`]*\b(SET|INSERT INTO)\b[^`]*\b(review_status|reviewer_id|review_evidence)\b[^`]*`/s
     const violaciones = [...archivos('src'), ...archivos('scripts')]
       .filter((f) => f !== 'src/server/commands/review.ts' && !f.startsWith('src/server/schema/') && escritura.test(leer(f)))
       .map((f) => `${f} writes the review block; call decidir() from server/commands/review.ts instead`)
@@ -70,19 +70,19 @@ describe('fronteras', () => {
     expect(violaciones).toEqual([])
   })
 
-  it('only server/external/protondb.ts writes protondb_resumen (external evidence single writer)', () => {
-    const escritura = /\b(INSERT INTO|UPDATE|DELETE FROM|TRUNCATE)\s+(TABLE\s+)?protondb_resumen\b/
+  it('only server/external/protondb.ts writes protondb_summary (external evidence single writer)', () => {
+    const escritura = /\b(INSERT INTO|UPDATE|DELETE FROM|TRUNCATE)\s+(TABLE\s+)?protondb_summary\b/
     const violaciones = [...archivos('src'), ...archivos('scripts')]
       .filter((f) => f !== 'src/server/external/protondb.ts' && !f.startsWith('src/server/schema/') && escritura.test(leer(f)))
-      .map((f) => `${f} writes protondb_resumen; call importarProtonDb() from server/external/protondb.ts instead`)
+      .map((f) => `${f} writes protondb_summary; call importProtonDb() from server/external/protondb.ts instead`)
     expect(violaciones).toEqual([])
   })
 
-  it('only server/commands/upstream.ts writes arreglo_upstream (single writer)', () => {
-    const escritura = /\b(INSERT INTO|UPDATE|DELETE FROM)\s+arreglo_upstream\b/
+  it('only server/commands/upstream.ts writes upstream_fix (single writer)', () => {
+    const escritura = /\b(INSERT INTO|UPDATE|DELETE FROM)\s+upstream_fix\b/
     const violaciones = [...archivos('src'), ...archivos('scripts')]
       .filter((f) => f !== 'src/server/commands/upstream.ts' && !f.startsWith('src/server/schema/') && escritura.test(leer(f)))
-      .map((f) => `${f} writes arreglo_upstream; call anotarArreglo() from server/commands/upstream.ts instead`)
+      .map((f) => `${f} writes upstream_fix; call noteFix() from server/commands/upstream.ts instead`)
     expect(violaciones).toEqual([])
   })
 })

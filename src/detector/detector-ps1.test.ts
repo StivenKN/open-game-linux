@@ -120,7 +120,7 @@ describe.skipIf(motor === null)(`opengame-detect.ps1 under ${motor ?? `pwsh (ski
       swap_mb: null,
       steam_library: bibliotecaNuevo.filter((j) => j.nombre !== 'Proton 9.0'),
     })
-    expect({ ...captura(powershell({ OPENGAME_DRY: '1' })), capturado_en: leida.captured_at }).toEqual(leida)
+    expect({ ...captura(powershell({ OPENGAME_DRY: '1' })), captured_at: leida.captured_at }).toEqual(leida)
   })
 
   it('picks the GeForce over a Ryzen iGPU listed first: the adapter with the most VRAM runs the games', () => {

@@ -136,7 +136,7 @@ The only lists the compiler cannot derive are the `Record<Union, …>` tables (`
 
 - **Ids are `integer GENERATED ALWAYS AS IDENTITY`**, branded `Schema.Int`. They decode as numbers, so URLs, React keys and JSON never meet `bigint`. The doc says "Entero", and 2^31 rows is plenty.
 - **`numeric(7,2)` FPS decodes through `FiniteFromString`**, and U0 confirms the driver type.
-- **Column names stay snake_case Spanish from the DB through TS to JSX** (`estado_revision`, `ultima_prueba`). No rename layer exists to drift.
+- **Column names stay snake_case from the DB through TS to JSX** (`review_status`, `last_tested`). No rename layer exists to drift. Migration 7 moved them from Spanish to English in one step.
 
 **Rules have one home each.** The index sits in the header of `server/schema/migrations.ts`. Row-local rules are DB CHECKs, keys and three triggers. Every trigger now raises `USING ERRCODE='check_violation', CONSTRAINT='og_*'`, so `withDbRules` can map it (Q5). Cross-row rules live in the two single writers. Comparability is one pure function, `mismatches`, called at save, at approval, and by the report form's loader to offer only comparable profiles. The failing-result rule is a filter on `NewReport`, so the browser shows it before any request.
 

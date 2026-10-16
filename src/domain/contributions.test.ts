@@ -27,7 +27,7 @@ describe('mismatches (8.7 comparability)', () => {
   })
 
   it('checks the game version only when the profile limits it, as exact text', () => {
-    const pinned = { ...profile, version_juego_objetivo: '1.0.3179' }
+    const pinned = { ...profile, target_game_version: '1.0.3179' }
     expect(mismatches(context, pinned)).toEqual([])
     expect(mismatches({ ...context, game_version: '1.0.3179.0' }, pinned)).toEqual([
       { aspect: 'version_juego', expected: '1.0.3179', actual: '1.0.3179.0' },
@@ -35,7 +35,7 @@ describe('mismatches (8.7 comparability)', () => {
   })
 
   it('reports every mismatch, not only the first', () => {
-    const other = { ...context, distribucion_id: DistributionId.make(2), arquitectura: 'aarch64' }
+    const other = { ...context, distribution_id: DistributionId.make(2), architecture: 'aarch64' }
     expect(mismatches(other, profile).map((d) => d.aspect)).toEqual(['distribucion', 'arquitectura'])
   })
 })
@@ -132,7 +132,7 @@ describe('ManualCapture from the manual form', () => {
   it('a Linux capture requires its distribution', () => {
     expect(Result.isFailure(decode({ ...common, sistema: 'Linux', soporte_vulkan: 'desconocido' }))).toBe(true)
     const r = decode(linux)
-    expect(Result.isSuccess(r) && r.success).toMatchObject({ sistema: 'Linux', distribution: { name: 'Ubuntu', version: '24.04' }, driver: null })
+    expect(Result.isSuccess(r) && r.success).toMatchObject({ sistema: 'Linux', distribucion: { nombre: 'Ubuntu', version: '24.04' }, controlador: null })
   })
 
   it('a Vulkan version without support si is rejected', () => {

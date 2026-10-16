@@ -518,53 +518,53 @@ const programa = Effect.gen(function* () {
   for (const [alias, role] of Record.toEntries(cuentas)) {
     const email = correoDe(alias)
     const [existente] = yield* rows(ConIdTexto, sql`SELECT id FROM app_user WHERE email = ${email}`)
-    if (existente === undefined) contar('usuario')
+    if (existente === undefined) contar('app_user')
     const id =
       existente?.id ?? (yield* Effect.promise(() => auth.api.signUpEmail({ body: { name: alias, email, password: contrasenaDemo } }))).user.id
-    if ((yield* assignRole(email, role)).changed) contar('usuario.rol')
+    if ((yield* assignRole(email, role)).changed) contar('app_user.role')
     user.set(alias, id)
   }
 
   yield* sql.withTransaction(
     Effect.gen(function* () {
       const launcher = new Map<keyof typeof launchers, number>()
-      for (const [k, l] of Record.toEntries(launchers)) launcher.set(k, yield* idDe('lanzador', { name: l.name }, { official_url: l.official_url }))
+      for (const [k, l] of Record.toEntries(launchers)) launcher.set(k, yield* idDe('launcher', { name: l.name }, { official_url: l.official_url }))
 
       const distribution = new Map<keyof typeof distribuciones, number>()
       for (const [k, d] of Record.toEntries(distribuciones))
-        distribution.set(k, yield* idDe('distribucion', { name: d.name, version: d.version }, { official_url: d.official_url }))
+        distribution.set(k, yield* idDe('distribution', { name: d.name, version: d.version }, { official_url: d.official_url }))
 
       const layer = new Map<keyof typeof capas, number>()
-      for (const [k, c] of Record.toEntries(capas)) layer.set(k, yield* idDe('version_capa', c))
+      for (const [k, c] of Record.toEntries(capas)) layer.set(k, yield* idDe('layer_version', c))
 
       const tipoFallo = new Map<keyof typeof tiposFallo, number>()
-      for (const [code, description] of Record.toEntries(tiposFallo)) tipoFallo.set(code, yield* idDe('tipo_fallo', { code }, { description }))
+      for (const [code, description] of Record.toEntries(tiposFallo)) tipoFallo.set(code, yield* idDe('failure_type', { code }, { description }))
 
       const dependency = new Map<keyof typeof dependencias, number>()
       for (const [k, d] of Record.toEntries(dependencias))
-        dependency.set(k, yield* idDe('dependencia', { name: d.name, package_manager: d.package_manager }, { description: d.description }))
+        dependency.set(k, yield* idDe('dependency', { name: d.name, package_manager: d.package_manager }, { description: d.description }))
 
       const edicion = new Map<string, number>()
       for (const [k, j] of Record.toEntries(juegos)) {
-        const game_id = yield* idDe('juego', { title: j.title }, { description: j.description })
+        const game_id = yield* idDe('game', { title: j.title }, { description: j.description })
         // Converges on reruns: fills the level on a database seeded before the column existed.
         const nivel = yield* sql`UPDATE game SET x86_level_min = ${j.x86_level_min} WHERE id = ${game_id} AND x86_level_min IS DISTINCT FROM ${j.x86_level_min} RETURNING id`
-        if (nivel.length > 0) contar('juego.nivel_x86_min')
+        if (nivel.length > 0) contar('game.x86_level_min')
         const apis = yield* sql`INSERT INTO game_api ${sql.insert(j.apis.map((api) => ({ game_id, api })))} ON CONFLICT DO NOTHING RETURNING api`
-        for (const _ of apis) contar('juego_api')
+        for (const _ of apis) contar('game_api')
         const ediciones: Partial<Record<keyof typeof launchers, string | null>> = j.ediciones
         for (const l of Record.keys(launchers)) {
           const external_id = ediciones[l]
           if (external_id === undefined) continue
           const launcher_id = yield* de(launcher, l)
-          edicion.set(`${k}/${l}`, yield* idDe('edicion_juego', { game_id, launcher_id }, { external_id }))
+          edicion.set(`${k}/${l}`, yield* idDe('game_edition', { game_id, launcher_id }, { external_id }))
         }
       }
 
       const perfilDe = new Map<string, number>()
       for (const p of perfiles) {
         const profile = yield* asegurar(
-          'perfil_configuracion',
+          'profile',
           {
             edition_id: yield* de(edicion, p.edicion.join('/')),
             distribution_id: yield* de(distribution, p.distribution),
@@ -586,18 +586,18 @@ const programa = Effect.gen(function* () {
         if (!profile.inserted) continue
         for (const [i, [title, instruction]] of p.steps.entries()) {
           yield* sql`INSERT INTO profile_step ${sql.insert({ profile_id: profile.id, position: i + 1, title, instruction })}`
-          contar('paso_configuracion')
+          contar('profile_step')
         }
         for (const d of p.dependencias) {
           const fila = { profile_id: profile.id, dependency_id: yield* de(dependency, d.dependency), required: d.required, install_instruction: d.install_instruction }
           yield* sql`INSERT INTO profile_dependency ${sql.insert(fila)}`
-          contar('perfil_dependencia')
+          contar('profile_dependency')
         }
       }
 
       for (const g of guias)
         yield* idDe(
-          'guia_adopcion',
+          'adoption_guide',
           { title: g.title },
           {
             author_id: yield* de(user, 'demo_revisor'),
@@ -616,12 +616,12 @@ const programa = Effect.gen(function* () {
 
       const diagnosticoDe = new Map<keyof typeof equipos, number>()
       for (const [k, eq] of Record.toEntries(equipos)) {
-        const { name: nombre, version } = distribuciones[eq.distribution]
+        const { name, version } = distribuciones[eq.distribution]
         // As detector output: the manual form drops the PCI id and the CPU level the verdicts read.
         const payload = {
           version_esquema: SCHEMA_VERSION,
           sistema: 'Linux',
-          distribucion: { nombre, version },
+          distribucion: { nombre: name, version },
           arquitectura: 'x86_64',
           soporte_vulkan: 'si',
           biblioteca_steam: null,
@@ -632,7 +632,7 @@ const programa = Effect.gen(function* () {
           entrada: { _tag: 'detector', texto: JSON.stringify(payload) },
         })
         const { id, inserted } = yield* como(eq.dueno, submitDiagnostic(guardar))
-        if (inserted) contar('diagnostico')
+        if (inserted) contar('diagnostic')
         diagnosticoDe.set(k, id)
       }
 
@@ -665,7 +665,7 @@ const programa = Effect.gen(function* () {
           observaciones: r.observaciones,
         })
         reporteDe.set(i, (yield* como(eq.dueno, submitReport(inserted))).id)
-        contar('reporte')
+        contar('report')
       }
 
       const sol = solucionDemo
@@ -679,7 +679,7 @@ const programa = Effect.gen(function* () {
       if (solucion_id === undefined) {
         const nueva = yield* Schema.decodeUnknownEffect(NewSolution)({ reporte_id, tipo_fallo_id, perfil_id: null, titulo: sol.titulo, instrucciones: sol.instrucciones })
         solucion_id = (yield* como('demo_bruno', submitSolution(nueva))).id
-        contar('solucion')
+        contar('solution')
       }
 
       const aprobar = (ref: { _tag: ContributionRef['_tag']; id: number }, que: string) =>

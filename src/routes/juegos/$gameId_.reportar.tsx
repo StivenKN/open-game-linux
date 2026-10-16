@@ -148,9 +148,9 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
       }
     },
     onComplete: (v) => {
-      const layer = layerType === 'existente' ? layers.find((c) => c.id === layerId) : newLayer
+      const layer = layerType === 'existente' ? layers.find((c) => c.id === layerId) : { family: newLayer.familia, variant: newLayer.variante }
       const launcher = editions.find((e) => e.id === editionId)?.launcher
-      const proton = layer !== undefined && launcher !== undefined && protonReportPossible({ launcher, family: layer.familia, variant: layer.variant.trim(), outcome })
+      const proton = layer !== undefined && launcher !== undefined && protonReportPossible({ launcher, family: layer.family, variant: layer.variant.trim(), outcome })
       onSubmitted({ id: v.id, hasFailures: failures.length > 0, proton })
     },
   })

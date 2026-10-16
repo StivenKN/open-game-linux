@@ -14,10 +14,10 @@ ui/ ─────┴───────────────────�
 | `src/fns/` | `@tanstack/react-start`, `effect`, `domain/`, `server/` | same, plus the rule that **a top-level line is only an import or `export const x = createServerFn(`** (gotcha 3) |
 | `src/routes/` | `@tanstack/*`, `react`, `effect`, `domain/`, `fns/`, `ui/`, `routes/` (helpers in `-*.ts` files the router skips), `detector/`, `assets/`, `better-auth/react` | same. Three allowlisted exceptions, server handlers with no component: `routes/api/auth/$.ts`, `routes/opengame-detect[.]sh.ts` and `routes/opengame-detect[.]ps1.ts` |
 | `src/ui/` | `react`, `effect`, `@tanstack/react-router`, `domain/`, `ui/` | same |
-| review block writes | only `server/commands/review.ts` (and DDL in `server/schema/`) | same test: an SQL template with `SET`/`INSERT INTO` that touches `estado_revision`, `revisor_id` or `evidencia_revision` anywhere else, `scripts/` included, fails |
+| review block writes | only `server/commands/review.ts` (and DDL in `server/schema/`) | same test: an SQL template with `SET`/`INSERT INTO` that touches `review_status`, `revisor_id` or `evidencia_revision` anywhere else, `scripts/` included, fails |
 | equipo/diagnostico writes | only `server/commands/diagnostic.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
-| protondb_resumen writes | only `server/external/protondb.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
-| arreglo_upstream writes | only `server/commands/upstream.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
+| protondb_summary writes | only `server/external/protondb.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
+| upstream_fix writes | only `server/commands/upstream.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
 | browser bundle | no server code, no GPU table, no detector script | `scripts/sin-servidor-en-cliente.ts` after `vite build`, inside `pnpm check` (markers include `OPENGAME_TABLA_GPU` and `Win32_VideoController`) |
 | `styles.css` | every rule closed (no accidental nesting), one rule per selector | `src/styles.test.ts` |
 
@@ -48,11 +48,11 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `server/run.ts` | `runRead`, `runAction`: session → `Visitor`, transaction per action, control errors → `notFound`/`redirect`, domain failures → `Reply` | Business rules |
 | `server/schema/migrations.ts` | All DDL, the rule-home index, and CHECK lists generated from Schema literals | |
 | `server/schema/constraints.ts` | `ruleByConstraint` (constraint name → `Rule`), `withDbRules` | |
-| `server/commands/contributions.ts` | **Single writer** of reporte/reporte_fallo/version_capa upsert, solucion, and juego/edicion_juego (`createGame`, reviewers only). App-side 8.7/8.9 write rules | The review block, equipo/diagnostico |
+| `server/commands/contributions.ts` | **Single writer** of report/report_failure/layer_version upsert, solution, and game/game_edition (`createGame`, reviewers only). App-side 8.7/8.9 write rules | The review block, equipo/diagnostico |
 | `server/commands/diagnostic.ts` | **Single writer** of equipo and diagnostico, and the distribucion a capture names (`submitDiagnostic`, converging on one equipo per alias and one capture per time). Stores `biblioteca_steam` only when `con_biblioteca` is true | |
 | `server/commands/review.ts` | **Single writer** of the review block. `decide`, `approvalBlockers`, the reviewable-table registry | |
-| `server/commands/upstream.ts` | **Single writer** of arreglo_upstream (`noteFix`, reviewers only): merged umu-protonfixes PRs of approved, exportable, non-demo profiles | |
-| `server/external/protondb.ts` | **Single writer** of `protondb_resumen`. `arrayElements` (streams the export's top-level array), `importProtonDb` (read all, then replace in one transaction; refuses an older export), `importSummary` | Catalog rows: it only matches existing Steam editions |
+| `server/commands/upstream.ts` | **Single writer** of upstream_fix (`noteFix`, reviewers only): merged umu-protonfixes PRs of approved, exportable, non-demo profiles | |
+| `server/external/protondb.ts` | **Single writer** of `protondb_summary`. `arrayElements` (streams the export's top-level array), `importProtonDb` (read all, then replace in one transaction; refuses an older export), `importSummary` | Catalog rows: it only matches existing Steam editions |
 | `server/queries/*.ts` | Read models: `catalog`, `profile`, `guides`, `guide`, `reportOptions`, `solutionOptions`, `gameOptions`, `gamePage`, `queue`, `evaluateWithoutSaving`, `myDiagnostic`, `myMachines`, `protonDbSummaries` (ficha and catalog), `myProtonReport`. Their success types are the page types. `gamePage` and `catalog` read `ahora` once from the `Clock` | Writes |
 | `server/diagnostics/payload.ts` | **The only detector parser**: `parsePayload` over payload v1, a union on `sistema` (the Windows member has no Vulkan and no kernel driver). It normalizes `gpu_pci_id` (a malformed id becomes null), the library (drops Steam tools and bad app ids, keeps the first of each id in the detector's order, cuts at 1000) and `rolling`. The private `etiquetaPci` names a GPU the detector could not name | |
 | `server/gpu/capability.ts` | **`machineOnLinux`**, the only builder of what `evaluate` consumes: PCI id to family, the policy per family (Linux driver, Vulkan range, warnings), the Direct3D path. Measured Linux Vulkan wins over the projection, and a Windows row's stored Vulkan is never read | Storing anything |
@@ -103,16 +103,16 @@ Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names 
 | PK, FK, UQ, composite keys, no duplicate dependencia / fallo | DB keys |
 | enumerated domains, magnitudes, ranges | DB CHECK (lists from domain Schemas) |
 | blank strings | DB CHECK *_no_vacio (+ Texto on input) |
-| review block shape per state, approval needs evidence, valid estado_revision | DB CHECK *_bloque_revision |
+| review block shape per state, approval needs evidence, valid review_status | DB CHECK *_review_block |
 | revisado_en >= creado_en | DB CHECK *_revision_posterior |
 | fps => resolucion, calidad, metodo | DB CHECK reporte_fps_con_contexto |
 | Linux capture <=> distribucion_id; vulkan version only if si | DB CHECK |
 | gpu_pci_id is lowercase `vvvv:dddd`; the library is a JSON array of at most 1000 | DB CHECK diagnostico_gpu_pci_id_formato, diagnostico_biblioteca_steam_forma (+ PciId, BibliotecaSteam on input) |
-| capture immutable | DB trigger og_inmutable |
+| capture immutable | DB trigger og_immutable |
 | equipo owner fixed once it has a capture | DB trigger og_propietario_fijo |
-| report / solution content never rewritten (frozen at birth) | DB trigger og_solo_revision |
+| report / solution content never rewritten (frozen at birth) | DB trigger og_review_only |
 | profile, its steps and deps frozen once reviewed or used | DB trigger og_perfil_congelado |
-| solucion -> reporte_fallo | DB composite FK solucion_fallo_fk |
+| solution -> report_failure | DB composite FK solution_failure_fk |
 | report comparability (edition, layer, distro, arch, version) (edition + layer also a composite FK backstop, unmapped) | app: domain/contributions.ts discrepancias (+ DB reporte_perfil_fk) |
 | own equipo; Linux diagnosis; fecha_prueba >= capturado_en | app: server/commands/contributions.ts |
 | solution's profile in the report's edition | app: server/commands/contributions.ts |
@@ -122,19 +122,19 @@ Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names 
 | reviewer role + activo (also: only reviewers register games) | app: server/auth.ts requireReviewer |
 | author != reviewer (all three tables), transitions, approval preconditions | app: server/commands/review.ts decide |
 | only reviewers publish guides | no write path this delivery (seeded) |
-| one profile per merged PR; only approved, exportable, non-demo profiles | DB UQ arreglo_upstream_pr_uq + app: server/commands/upstream.ts |
-| arreglo_upstream rows never rewritten (Anular deletes) | DB trigger og_inmutable |
+| one profile per merged PR; only approved, exportable, non-demo profiles | DB UQ upstream_fix_pr_uq + app: server/commands/upstream.ts |
+| upstream_fix rows never rewritten (Anular deletes) | DB trigger og_immutable |
 | public view hides retired rows | app: server/queries (WHERE aprobado) |
 | state from the approved reports of the last 365 days, else all of them flagged | app: domain/compatibility.ts resumir + domain/recency.ts |
-| ProtonDB never feeds the computed state; aggregates only (8.9) | app: no path from domain/protondb.ts to resumir; DB: protondb_resumen has no report rows |
-| ProtonDB row counts nest, a layer only with its count | DB CHECK protondb_resumen_conteos_anidados, _capa_con_reportes, _version_con_variante |
+| ProtonDB never feeds the computed state; aggregates only (8.9) | app: no path from domain/protondb.ts to resumir; DB: protondb_summary has no report rows |
+| ProtonDB row counts nest, a layer only with its count | DB CHECK protondb_summary_nested_counts, _layer_with_reports, _version_with_variant |
 
 Single writers. `src/boundaries.test.ts` checks the SQL in `src/` and `scripts/` for the first two and the last two.
 
 | Tables | Writer |
 |---|---|
 | `equipo`, `diagnostico` (and the `distribucion` a capture names) | `server/commands/diagnostic.ts` |
-| review block of `perfil_configuracion`, `reporte`, `solucion` | `server/commands/review.ts` `decide` |
-| `reporte` (with `reporte_fallo` and the `version_capa` upsert), `solucion`, `juego` (with `edicion_juego`) | `server/commands/contributions.ts` |
-| `protondb_resumen` | `server/external/protondb.ts` `importProtonDb` |
-| `arreglo_upstream` | `server/commands/upstream.ts` `noteFix` |
+| review block of `profile`, `report`, `solution` | `server/commands/review.ts` `decide` |
+| `report` (with `report_failure` and the `layer_version` upsert), `solution`, `game` (with `game_edition`) | `server/commands/contributions.ts` |
+| `protondb_summary` | `server/external/protondb.ts` `importProtonDb` |
+| `upstream_fix` | `server/commands/upstream.ts` `noteFix` |

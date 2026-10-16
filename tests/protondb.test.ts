@@ -44,15 +44,15 @@ const scenario = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
   const insert = (table: string, row: Record<string, string | number | null>) =>
     idOf(sql`INSERT INTO ${sql(table)} ${sql.insert(row)} RETURNING id`)
-  const steam = yield* insert('lanzador', { name: 'Steam' })
-  const epic = yield* insert('lanzador', { name: 'Epic Games Store' })
-  const uno = yield* insert('juego', { title: 'Juego Uno', description: 'd' })
-  const dos = yield* insert('juego', { title: 'Juego Dos', description: 'd' })
-  const tres = yield* insert('juego', { title: 'Juego Tres', description: 'd' })
-  const unoSteam = yield* insert('edicion_juego', { game_id: uno, launcher_id: steam, external_id: '1000' })
-  yield* insert('edicion_juego', { game_id: uno, launcher_id: epic, external_id: '2000' })
-  const dosSteam = yield* insert('edicion_juego', { game_id: dos, launcher_id: steam, external_id: '2000' })
-  yield* insert('edicion_juego', { game_id: tres, launcher_id: steam, external_id: null })
+  const steam = yield* insert('launcher', { name: 'Steam' })
+  const epic = yield* insert('launcher', { name: 'Epic Games Store' })
+  const uno = yield* insert('game', { title: 'Juego Uno', description: 'd' })
+  const dos = yield* insert('game', { title: 'Juego Dos', description: 'd' })
+  const tres = yield* insert('game', { title: 'Juego Tres', description: 'd' })
+  const unoSteam = yield* insert('game_edition', { game_id: uno, launcher_id: steam, external_id: '1000' })
+  yield* insert('game_edition', { game_id: uno, launcher_id: epic, external_id: '2000' })
+  const dosSteam = yield* insert('game_edition', { game_id: dos, launcher_id: steam, external_id: '2000' })
+  yield* insert('game_edition', { game_id: tres, launcher_id: steam, external_id: null })
   return { uno: GameId.make(uno), tres: GameId.make(tres), unoSteam: EditionId.make(unoSteam), dosSteam: EditionId.make(dosSteam) }
 })
 

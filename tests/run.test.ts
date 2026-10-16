@@ -35,7 +35,7 @@ const sessionCookie = async (role: Role, active = true) => {
     body: { name: `demo_${role}`, email, password: 'contrasena-de-prueba' },
     returnHeaders: true,
   })
-  await sql((s) => s`UPDATE usuario SET rol = ${role}, activo = ${active} WHERE correo = ${email}`)
+  await sql((s) => s`UPDATE app_user SET role = ${role}, active = ${active} WHERE email = ${email}`)
   const [cookie] = headers.getSetCookie()
   if (cookie === undefined) throw new Error('better-auth returned no session cookie')
   return cookie.split(';')[0] ?? ''
@@ -66,10 +66,10 @@ describe('runRead', () => {
 
 describe('runAction', () => {
   const countLaunchers = (name: string) =>
-    sql((s) => s`SELECT count(*)::int AS n FROM lanzador WHERE nombre = ${name}`).then(
+    sql((s) => s`SELECT count(*)::int AS n FROM launcher WHERE name = ${name}`).then(
       Schema.decodeUnknownSync(Schema.Tuple([Schema.Struct({ n: Schema.Int })])),
     )
-  const insertLauncher = (name: string) => Effect.flatMap(SqlClient.SqlClient, (s) => s`INSERT INTO lanzador (nombre) VALUES (${name})`)
+  const insertLauncher = (name: string) => Effect.flatMap(SqlClient.SqlClient, (s) => s`INSERT INTO launcher (name) VALUES (${name})`)
 
   it('un fallo de dominio vuelve como dato y revierte lo que el programa ya escribió', async () => {
     const name = `revertido-${crypto.randomUUID()}`

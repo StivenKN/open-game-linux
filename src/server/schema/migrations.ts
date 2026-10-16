@@ -385,8 +385,8 @@ const upstream = [
   `CREATE TRIGGER arreglo_upstream_inmutable BEFORE UPDATE ON arreglo_upstream FOR EACH ROW EXECUTE FUNCTION og_inmutable()`,
 ]
 
-// Migration 7 gives every identifier an English name. Postgres renames a table or column in place but leaves
-// the names of its constraints, indexes, sequences and triggers alone, so those are renamed one by one below.
+// Postgres renames a table or column in place but leaves the names of its constraints, indexes, sequences
+// and triggers alone, so those are renamed one by one below.
 const renamedTables = {
   usuario: 'app_user',
   juego: 'game',
@@ -418,7 +418,8 @@ const reviewColumnRenames = {
   evidencia_revision: 'review_evidence',
 }
 
-// Keyed by the new table name: tables are renamed first.
+type RenamedTable = (typeof renamedTables)[keyof typeof renamedTables]
+
 const renamedColumns = {
   app_user: {
     correo: 'email',
@@ -530,9 +531,8 @@ const renamedColumns = {
     capa_reportes: 'layer_reports',
   },
   upstream_fix: { perfil_id: 'profile_id', registrado_por: 'noted_by', registrado_en: 'noted_at' },
-}
+} satisfies Partial<Record<RenamedTable, Record<string, string>>>
 
-// The constraints migrations 1 to 6 named themselves. Keyed by the new table name.
 const renamedConstraints = {
   app_user: {
     usuario_rol_dominio: 'app_user_role_domain',
@@ -666,10 +666,10 @@ const renamedConstraints = {
     protondb_resumen_fechas_ordenadas: 'protondb_summary_dates_ordered',
   },
   upstream_fix: { arreglo_upstream_pr_uq: 'upstream_fix_pr_uq', arreglo_upstream_pr_positivo: 'upstream_fix_pr_positive' },
-}
+} satisfies Partial<Record<RenamedTable, Record<string, string>>>
 
 // Postgres named the primary keys, foreign keys, single-column UNIQUEs and (from 18 on) NOT NULLs after the
-// table and columns. This gives each one the name Postgres would pick for the new table and column names.
+// table and columns.
 const renameDefaultConstraintNames = `DO $$
   DECLARE c record; suffix text; wanted text;
   BEGIN
@@ -721,8 +721,6 @@ const renamedSequences = {
   arreglo_upstream_id_seq: 'upstream_fix_id_seq',
 }
 
-// The og_* bodies name tables and columns, and og_contenido lists the review columns as text, so the
-// functions are recreated. Their triggers go with them and come back under English names.
 const oldTriggers = [
   'DROP TRIGGER equipo_propietario_fijo ON machine',
   'DROP TRIGGER diagnostico_inmutable ON diagnostic',
@@ -834,7 +832,7 @@ export const migrate = PgMigrator.run({ loader: Migrator.fromRecord(migrations) 
 export const dropSchema = (expectedDatabase: string) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const { nombre: name } = yield* oneRow(Schema.Struct({ nombre: Schema.String }), sql`SELECT current_database() AS nombre`)
+    const { name } = yield* oneRow(Schema.Struct({ name: Schema.String }), sql`SELECT current_database() AS name`)
     if (name !== expectedDatabase) return yield* Effect.die(`dropSchema: connected to «${name}», not «${expectedDatabase}»; nothing was dropped`)
     yield* runStatements(['DROP SCHEMA public CASCADE', 'CREATE SCHEMA public'])
   })

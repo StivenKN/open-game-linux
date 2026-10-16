@@ -124,8 +124,10 @@ const detectedFields = {
   swap_mb: Diagnostic.fields.swap_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
 }
 
-const vulkanNeedsSupport = Schema.makeFilter((c: { readonly soporte_vulkan: VulkanSupport; readonly version_vulkan: string | null }) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
-  message: 'Solo hay versión de Vulkan si hay soporte.',
+const vulkanMessage = 'Solo hay versión de Vulkan si hay soporte.'
+
+const vulkanNeedsSupport = Schema.makeFilter((c: { readonly vulkan_support: VulkanSupport; readonly vulkan_version: string | null }) => c.vulkan_support === 'si' || c.vulkan_version === null, {
+  message: vulkanMessage,
 })
 
 export const Capture = Schema.Union([
@@ -134,10 +136,33 @@ export const Capture = Schema.Union([
 ])
 export type Capture = typeof Capture.Type
 
+const manualFields = {
+  capturado_en: Schema.DateFromString,
+  version_sistema: Diagnostic.fields.os_version,
+  arquitectura: Diagnostic.fields.architecture,
+  cpu_modelo: Diagnostic.fields.cpu_model,
+  gpu_modelo: Diagnostic.fields.gpu_model,
+  ram_mb: Diagnostic.fields.ram_mb,
+  vram_mb: Diagnostic.fields.vram_mb,
+}
+
+const manualVulkanNeedsSupport = Schema.makeFilter((c: { readonly soporte_vulkan: VulkanSupport; readonly version_vulkan: string | null }) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
+  message: vulkanMessage,
+})
+
 export const ManualCapture = Schema.Union([
-  Schema.Struct({ ...captureFields, ...linuxFields }).check(vulkanNeedsSupport),
-  Schema.Struct({ ...captureFields, sistema: Schema.Literal('Windows') }),
+  Schema.Struct({
+    ...manualFields,
+    sistema: Schema.Literal('Linux'),
+    distribucion: Schema.Struct({ nombre: Distribution.fields.name, version: Distribution.fields.version }),
+    controlador: OptionalTextUpTo(maxLengths.diagnostic.driver),
+    version_controlador: OptionalTextUpTo(maxLengths.diagnostic.driver_version),
+    soporte_vulkan: VulkanSupport,
+    version_vulkan: OptionalTextUpTo(maxLengths.diagnostic.vulkan_version),
+  }).check(manualVulkanNeedsSupport),
+  Schema.Struct({ ...manualFields, sistema: Schema.Literal('Windows') }),
 ])
+export type ManualCapture = typeof ManualCapture.Type
 
 // About 30 characters of JSON around each name, then ×2 for base64url (4/3) and the hardware fields.
 // PowerShell writes non-ASCII as \uXXXX, so a full library of long non-ASCII names can still exceed it.

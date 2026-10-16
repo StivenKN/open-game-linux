@@ -244,8 +244,8 @@ describe('ProtonfixesPr', () => {
 
   it('a reviewer note decodes the pasted URL to the PR number', () => {
     expect(
-      Schema.decodeUnknownSync(FixNote)({ _tag: 'Aceptado', profile_id: 12, pr: 'https://github.com/Open-Wine-Components/umu-protonfixes/pull/512/files' }),
-    ).toEqual({ _tag: 'Aceptado', profile_id: 12, pr: 512 })
+      Schema.decodeUnknownSync(FixNote)({ _tag: 'Aceptado', perfil_id: 12, pr: 'https://github.com/Open-Wine-Components/umu-protonfixes/pull/512/files' }),
+    ).toEqual({ _tag: 'Aceptado', perfil_id: 12, pr: 512 })
   })
 })
 

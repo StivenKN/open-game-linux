@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from '@effect/vitest'
-import { Result, Schema, Struct } from 'effect'
+import { Result, Schema } from 'effect'
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { Capture } from '../../domain/contributions.ts'
 import { Diagnostic } from '../../domain/tables.ts'
 import { parsePayload } from './payload.ts'
 
@@ -13,8 +14,14 @@ const runScript = (...args: Array<string>) =>
   execFileSync('bash', [script, ...args], { encoding: 'utf8', env: { ...process.env, OPENGAME_DRY: '1', OPENGAME_URL: 'http://ejemplo.test' } }).trim()
 
 // Required keys, unlike the parser: an omitted fact would decode to null there and hide the regression.
-const facts = ['nivel_x86', 'arranque_seguro', 'tpm', 'zram_mb', 'swap_mb'] as const
-const Facts = Diagnostic.mapFields(Struct.pick(facts))
+const Facts = Schema.Struct({
+  nivel_x86: Diagnostic.fields.x86_level,
+  arranque_seguro: Diagnostic.fields.secure_boot,
+  tpm: Diagnostic.fields.tpm,
+  zram_mb: Diagnostic.fields.zram_mb,
+  swap_mb: Diagnostic.fields.swap_mb,
+})
+const factsOf = (c: Capture): typeof Facts.Type => ({ nivel_x86: c.x86_level, arranque_seguro: c.secure_boot, tpm: c.tpm, zram_mb: c.zram_mb, swap_mb: c.swap_mb })
 
 describe.skipIf(process.platform !== 'linux')('opengame-detect.sh', () => {
   it('prints a payload the server parses, and --open carries it in #d=', () => {
@@ -23,7 +30,7 @@ describe.skipIf(process.platform !== 'linux')('opengame-detect.sh', () => {
     const url = runScript('--open')
     expect(url).toMatch(/^http:\/\/ejemplo\.test\/diagnostico\/importar#d=[A-Za-z0-9_-]+$/)
     const fromUrl = parsePayload(url)
-    const withoutTime = Result.map((c: { readonly capturado_en: Date }) => ({ ...c, capturado_en: null }))
+    const withoutTime = Result.map((c: { readonly captured_at: Date }) => ({ ...c, captured_at: null }))
     expect(withoutTime(fromUrl)).toEqual(withoutTime(json))
   })
 
@@ -31,8 +38,8 @@ describe.skipIf(process.platform !== 'linux')('opengame-detect.sh', () => {
     const output = runScript()
     const sent = Schema.decodeUnknownSync(Schema.fromJsonString(Facts))(output)
     if (existsSync('/proc/swaps')) expect([typeof sent.zram_mb, typeof sent.swap_mb]).toEqual(['number', 'number'])
-    if (!existsSync('/sys/firmware/efi')) expect(sent.secure_boot).toBe('bios')
-    expect(Result.map(parsePayload(output), Struct.pick(facts))).toEqual(Result.succeed(sent))
+    if (!existsSync('/sys/firmware/efi')) expect(sent.arranque_seguro).toBe('bios')
+    expect(Result.map(parsePayload(output), factsOf)).toEqual(Result.succeed(sent))
   })
 })
 

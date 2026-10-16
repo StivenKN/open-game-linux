@@ -43,7 +43,7 @@ describe('parsePayload', () => {
 
   it('reads the machine facts a current detector sends', () => {
     const facts = { nivel_x86: 'v3', arranque_seguro: 'bios', tpm: 'no_detectado', zram_mb: 8192, swap_mb: 0 }
-    expect(capture(JSON.stringify({ ...prototype, ...facts }))).toMatchObject(facts)
+    expect(capture(JSON.stringify({ ...prototype, ...facts }))).toMatchObject({ x86_level: 'v3', secure_boot: 'bios', tpm: 'no_detectado', zram_mb: 8192, swap_mb: 0 })
   })
 
   it('reads the PowerShell detector output: no distro, no Linux driver, Vulkan unknown, Steam tools dropped', () => {

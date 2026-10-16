@@ -95,7 +95,7 @@ export const queue = (type: ContributionType) =>
                        j.title AS game, l.name AS launcher, ${sql.literal(distributionLabel('di'))} AS distribution, d.distribution_id, d.architecture,
                        ${sql.literal(layerLabel('c'))} AS layer,
                        ${sql.literal(profileLabel('p'))} AS profile,
-                       COALESCE((SELECT json_agg(json_build_object('codigo', t.code, 'detalle', f.detail) ORDER BY t.id)
+                       COALESCE((SELECT json_agg(json_build_object('code', t.code, 'detail', f.detail) ORDER BY t.id)
                                  FROM report_failure f JOIN failure_type t ON t.id = f.failure_type_id WHERE f.report_id = r.id), '[]') AS failures
                 FROM report r JOIN diagnostic d ON d.id = r.diagnostic_id JOIN machine eq ON eq.id = d.machine_id JOIN app_user u ON u.id = eq.user_id
                   JOIN game_edition e ON e.id = r.edition_id JOIN game j ON j.id = e.game_id JOIN launcher l ON l.id = e.launcher_id

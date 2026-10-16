@@ -170,14 +170,14 @@ const countFailures = (tests: ReadonlyArray<ApprovedTest>): ReadonlyArray<Failur
 
 const fpsBySetting = (tests: ReadonlyArray<ApprovedTest>): ReadonlyArray<MeasuredFps> =>
   groupBy(
-    tests.flatMap(({ avg_fps, resolution: resolucion, graphics_quality }) =>
-      avg_fps === null || resolucion === null || graphics_quality === null
+    tests.flatMap(({ avg_fps, resolution, graphics_quality }) =>
+      avg_fps === null || resolution === null || graphics_quality === null
         ? []
-        : [{ fps: avg_fps, resolucion, quality: graphics_quality }],
+        : [{ fps: avg_fps, resolution, quality: graphics_quality }],
     ),
-    (m) => JSON.stringify([m.resolucion, m.quality]),
+    (m) => JSON.stringify([m.resolution, m.quality]),
   ).map((group) => ({
-    resolution: group[0].resolucion,
+    resolution: group[0].resolution,
     quality: group[0].quality,
     average: group.reduce((n, m) => n + m.fps, 0) / group.length,
     samples: group.length,

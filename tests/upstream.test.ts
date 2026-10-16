@@ -28,12 +28,12 @@ const scenario = Effect.gen(function* () {
   const bruno = yield* insertUser('up_bruno', 'up_bruno@opengame.test', 'usuario')
   yield* insertUser('up_demo', 'up_demo@demo.opengame.test', 'usuario')
 
-  const steam = yield* insert('lanzador', { name: 'Steam' })
-  const game = yield* insert('juego', { title: 'The Witcher 3: Wild Hunt', description: 'd' })
-  const edicion = yield* insert('edicion_juego', { game_id: game, launcher_id: steam, external_id: '292030' })
-  const fedora = yield* insert('distribucion', { name: 'Fedora', version: '40' })
-  const proton = yield* insert('version_capa', { family: 'Proton', variant: 'Valve', version: '9.0-3' })
-  const wine = yield* insert('version_capa', { family: 'Wine', variant: 'estable', version: '9.0' })
+  const steam = yield* insert('launcher', { name: 'Steam' })
+  const game = yield* insert('game', { title: 'The Witcher 3: Wild Hunt', description: 'd' })
+  const edicion = yield* insert('game_edition', { game_id: game, launcher_id: steam, external_id: '292030' })
+  const fedora = yield* insert('distribution', { name: 'Fedora', version: '40' })
+  const proton = yield* insert('layer_version', { family: 'Proton', variant: 'Valve', version: '9.0-3' })
+  const wine = yield* insert('layer_version', { family: 'Wine', variant: 'estable', version: '9.0' })
 
   const approved = {
     review_status: 'aprobado',
@@ -45,7 +45,7 @@ const scenario = Effect.gen(function* () {
   }
   const insertProfile = (revision: number, overrides: Record<string, Value> = {}) =>
     Effect.map(
-      insert('perfil_configuracion', {
+      insert('profile', {
         edition_id: edicion,
         distribution_id: fedora,
         layer_version_id: proton,
@@ -59,8 +59,8 @@ const scenario = Effect.gen(function* () {
       }),
       ProfileId.make,
     )
-  const machine = yield* insert('equipo', { user_id: ana.id, alias: 'torre' })
-  const diagnostic = yield* insert('diagnostico', {
+  const machine = yield* insert('machine', { user_id: ana.id, alias: 'torre' })
+  const diagnostic = yield* insert('diagnostic', {
     machine_id: machine,
     captured_at: new Date('2026-09-20T18:00:00Z'),
     operating_system: 'Linux',
@@ -74,7 +74,7 @@ const scenario = Effect.gen(function* () {
     driver_version: 'Mesa 24.1.7',
     vulkan_support: 'si',
   })
-  const fallido = yield* insert('reporte', {
+  const fallido = yield* insert('report', {
     edition_id: edicion,
     diagnostic_id: diagnostic,
     layer_version_id: proton,
@@ -83,7 +83,7 @@ const scenario = Effect.gen(function* () {
     outcome: 'no_inicia',
     observations: 'Pantalla negra al iniciar.',
   })
-  const lanzadorFallo = yield* insert('tipo_fallo', { code: 'lanzador', description: 'El lanzador no abre.' })
+  const lanzadorFallo = yield* insert('failure_type', { code: 'lanzador', description: 'El lanzador no abre.' })
   yield* sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${fallido}, ${lanzadorFallo}, 'El lanzador se cierra.')`
 
   return {

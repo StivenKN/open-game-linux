@@ -38,7 +38,7 @@ const diagnostic = (f: Seed, cambios: Record<string, Valor> = {}) =>
     ...cambios,
   })}`
 
-const bibliotecaDe = (juegos: number) => JSON.stringify(Array.from({ length: juegos }, (_, i) => ({ app_id: i + 1, name: 'juego' })))
+const bibliotecaDe = (juegos: number) => JSON.stringify(Array.from({ length: juegos }, (_, i) => ({ app_id: i + 1, nombre: 'juego' })))
 
 const profile = (f: Seed, cambios: Record<string, Valor> = {}) =>
   f.sql`INSERT INTO profile ${f.sql.insert({
@@ -63,10 +63,10 @@ const guia = (f: Seed, cambios: Record<string, Valor> = {}) =>
     ...cambios,
   })}`
 
-const revisar = (f: Seed, tabla: 'reporte' | 'solucion' | 'perfil_configuracion', id: number, cambios: Record<string, Valor>) =>
+const revisar = (f: Seed, tabla: 'report' | 'solution' | 'profile', id: number, cambios: Record<string, Valor>) =>
   f.sql`UPDATE ${f.sql(tabla)} SET ${f.sql.update({ reviewer_id: f.revisor, reviewed_at: new Date(), review_reason: 'probado', ...cambios })} WHERE id = ${id}`
 
-const aprobarReporte = (f: Seed, evidencia: string | null) => revisar(f, 'reporte', f.rep, { review_status: 'aprobado', review_evidence: evidencia })
+const aprobarReporte = (f: Seed, evidencia: string | null) => revisar(f, 'report', f.rep, { review_status: 'aprobado', review_evidence: evidencia })
 
 const falloDelReporte = (f: Seed) => f.sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${f.rep}, ${f.tipoFallo}, 'pantalla negra al iniciar')`
 
@@ -139,17 +139,17 @@ const rechaza: ReadonlyArray<Caso> = [
   ['rechazo sin motivo', 'solution_review_block', (f) =>
     Effect.gen(function* () {
       yield* falloDelReporte(f)
-      yield* revisar(f, 'solucion', yield* solution(f), { review_status: 'rechazado', review_reason: null })
+      yield* revisar(f, 'solution', yield* solution(f), { review_status: 'rechazado', review_reason: null })
     })],
   ['evidencia en blanco en un rechazo', 'report_review_evidence_not_blank', (f) =>
-    revisar(f, 'reporte', f.rep, { review_status: 'rechazado', review_evidence: '  ' })],
+    revisar(f, 'report', f.rep, { review_status: 'rechazado', review_evidence: '  ' })],
   ['pendiente con revisor asignado', 'profile_review_block', (f) => f.sql`UPDATE profile SET reviewer_id = ${f.revisor} WHERE id = ${f.profile}`],
-  ...(['perfil_configuracion', 'reporte', 'solucion'] as const).map((tabla): Caso => [
+  ...(['profile', 'report', 'solution'] as const).map((tabla): Caso => [
     `revisión anterior a la creación (${tabla})`,
-    `${tabla}_revision_posterior`,
+    `${tabla}_reviewed_after_created`,
     (f) =>
       Effect.gen(function* () {
-        const id = tabla === 'perfil_configuracion' ? f.profile : tabla === 'reporte' ? f.rep : yield* Effect.andThen(falloDelReporte(f), solution(f))
+        const id = tabla === 'profile' ? f.profile : tabla === 'report' ? f.rep : yield* Effect.andThen(falloDelReporte(f), solution(f))
         yield* revisar(f, tabla, id, { review_status: 'rechazado', reviewed_at: new Date('2000-01-01T00:00:00Z') })
       }),
   ]),
@@ -190,18 +190,18 @@ const rechaza: ReadonlyArray<Caso> = [
   ['sacar un paso de un perfil revisado hacia otro pendiente', 'og_profile_frozen', (f) =>
     Effect.gen(function* () {
       yield* paso(f, f.profile)
-      yield* revisar(f, 'perfil_configuracion', f.profile, { review_status: 'rechazado' })
+      yield* revisar(f, 'profile', f.profile, { review_status: 'rechazado' })
       const otro = yield* idOf(profile(f))
       yield* f.sql`UPDATE profile_step SET profile_id = ${otro} WHERE profile_id = ${f.profile}`
     })],
   ['reescribir un perfil revisado', 'og_profile_frozen', (f) =>
     Effect.andThen(
-      revisar(f, 'perfil_configuracion', f.profile, { review_status: 'rechazado' }),
+      revisar(f, 'profile', f.profile, { review_status: 'rechazado' }),
       f.sql`UPDATE profile SET title = 'otro título' WHERE id = ${f.profile}`,
     )],
   ['agregar una dependencia a un perfil revisado', 'og_profile_frozen', (f) =>
     Effect.gen(function* () {
-      yield* revisar(f, 'perfil_configuracion', f.profile, { review_status: 'rechazado' })
+      yield* revisar(f, 'profile', f.profile, { review_status: 'rechazado' })
       yield* f.sql`INSERT INTO profile_dependency (profile_id, dependency_id, required, install_instruction) VALUES (${f.profile}, ${f.dependency}, true, 'i')`
     })],
 ]
@@ -253,7 +253,7 @@ layer(PgTest)('esquema', (it) => {
     it.effect('aprobar con evidencia y luego retirar conservándola', withSeed((f) =>
       Effect.gen(function* () {
         yield* accepts(aprobarReporte(f, 'captura #12'))
-        yield* accepts(revisar(f, 'reporte', f.rep, { review_status: 'retirado', review_reason: 'versión obsoleta' }))
+        yield* accepts(revisar(f, 'report', f.rep, { review_status: 'retirado', review_reason: 'versión obsoleta' }))
         const [fila] = yield* f.sql`SELECT review_status, review_evidence FROM report WHERE id = ${f.rep}`
         expect(fila).toEqual({ review_status: 'retirado', review_evidence: 'captura #12' })
       })))

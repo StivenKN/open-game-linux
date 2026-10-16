@@ -1853,7 +1853,6 @@
       "largo": "oversized",
       "controlador": "driverName",
       "fuera": "notApplicable",
-      "perfil_id:prop": "profile_id",
       "version_controlador": "driver_version"
     },
     "src/ui/vocabulary.ts": {
@@ -2863,7 +2862,6 @@
     },
     "src/server/diagnostics/detector.test.ts": {
       "ejecutar": "runScript",
-      "hechos": "facts",
       "Hechos": "Facts",
       "desdeUrl": "fromUrl",
       "sinHora": "withoutTime",
@@ -3330,7 +3328,6 @@
       "diagnostico.cpu_modelo:prop": "cpu_model",
       "diagnostico.gpu_modelo:prop": "gpu_model",
       "diagnostico.soporte_vulkan:prop": "vulkan_support",
-      "bibliotecaDe.nombre:prop": "name",
       "perfil": "profile",
       "perfil.edicion_id:prop": "edition_id",
       "perfil.distribucion_id:prop": "distribution_id",

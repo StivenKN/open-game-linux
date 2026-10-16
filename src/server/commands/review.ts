@@ -29,7 +29,7 @@ const ReportTest = Schema.Struct({
 
 const reviewables = {
   perfil: {
-    table: 'perfil_configuracion',
+    table: 'profile',
     lock: (sql, id) => sql`SELECT review_status, author_id FROM profile WHERE id = ${id} FOR UPDATE`,
     blockers: (id) =>
       Effect.gen(function* () {
@@ -43,7 +43,7 @@ const reviewables = {
       }),
   },
   reporte: {
-    table: 'reporte',
+    table: 'report',
     lock: (sql, id) =>
       sql`SELECT r.review_status, e.user_id AS author_id
           FROM report r JOIN diagnostic d ON d.id = r.diagnostic_id JOIN machine e ON e.id = d.machine_id
@@ -66,7 +66,7 @@ const reviewables = {
       }),
   },
   solucion: {
-    table: 'solucion',
+    table: 'solution',
     lock: (sql, id) => sql`SELECT review_status, author_id FROM solution WHERE id = ${id} FOR UPDATE`,
     blockers: (id) =>
       Effect.gen(function* () {

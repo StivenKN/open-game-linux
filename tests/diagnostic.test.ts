@@ -21,7 +21,7 @@ const windowsLibrary = [
   { app_id: 292030, nombre: 'The Witcher 3: Wild Hunt' },
 ]
 
-const asUser = (id: string) => Effect.provideService(Visitor, Option.some({ id: Schema.decodeSync(UserId)(id), alias: id, rol: 'usuario' as const }))
+const asUser = (id: string) => Effect.provideService(Visitor, Option.some({ id: Schema.decodeSync(UserId)(id), alias: id, role: 'usuario' as const }))
 const asGuest = Effect.provideService(Visitor, Option.none())
 
 const save = (g: Omit<Parameters<typeof submitDiagnostic>[0], 'con_biblioteca'> & { readonly con_biblioteca?: boolean }) =>
@@ -31,7 +31,7 @@ const newMachine = (alias: string) => ({ _tag: 'nuevo' as const, alias })
 const existingMachine = (id: number) => ({ _tag: 'existente' as const, id: Schema.decodeSync(MachineId)(id) })
 
 const Count = Schema.NonEmptyArray(Schema.Struct({ n: Schema.Int }))
-const count = (f: Seed, table: 'diagnostico' | 'equipo' | 'distribucion') =>
+const count = (f: Seed, table: 'diagnostic' | 'machine' | 'distribution') =>
   Effect.map(Effect.flatMap(f.sql`SELECT count(*)::int AS n FROM ${f.sql(table)}`, Schema.decodeUnknownEffect(Count)), ([c]) => c.n)
 
 const withSeed = (test: (f: Seed) => Effect.Effect<void, unknown, SqlClient.SqlClient>) => () => inRollback(Effect.flatMap(seed, test))
@@ -49,11 +49,11 @@ layer(PgTest)('registrarDiagnostico', (it) => {
 
   it.effect('varios diagnósticos históricos del mismo equipo', withSeed((f) =>
     Effect.gen(function* () {
-      const before = yield* count(f, 'diagnostico')
+      const before = yield* count(f, 'diagnostic')
       const a = yield* save({ equipo: existingMachine(f.machine), entrada: payload({ capturado_en: '2026-10-08T10:00:00Z' }) }).pipe(asUser(f.author))
       const b = yield* save({ equipo: existingMachine(f.machine), entrada: payload({ capturado_en: '2026-10-09T10:00:00Z', ram_mb: 32768 }) }).pipe(asUser(f.author))
       expect(a.id).not.toBe(b.id)
-      expect(yield* count(f, 'diagnostico')).toBe(before + 2)
+      expect(yield* count(f, 'diagnostic')).toBe(before + 2)
       const [equipo] = yield* myMachines().pipe(asUser(f.author))
       expect(equipo?.diagnostics.map((d) => [d.id, d.ram_mb])).toEqual([[b.id, 32768], [a.id, 15766], [f.diag, 8192]])
     })))
@@ -72,9 +72,9 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       const row = (id: number) =>
         f.sql`SELECT operating_system, distribution_id, driver, vulkan_support, gpu_pci_id, steam_library FROM diagnostic WHERE id = ${id}`
       expect(yield* row(full.id)).toEqual([
-        { sistema: 'Windows', distribucion_id: null, controlador: null, soporte_vulkan: 'desconocido', gpu_pci_id: '10de:1380', biblioteca_steam: windowsLibrary },
+        { operating_system: 'Windows', distribution_id: null, driver: null, vulkan_support: 'desconocido', gpu_pci_id: '10de:1380', steam_library: windowsLibrary },
       ])
-      expect(yield* row(bare.id)).toMatchObject([{ sistema: 'Windows', biblioteca_steam: null }])
+      expect(yield* row(bare.id)).toMatchObject([{ operating_system: 'Windows', steam_library: null }])
     })))
 
   it.effect('guardar otra vez la misma captura conserva la elección de la primera vez', withSeed((f) =>
@@ -82,17 +82,17 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       const first = yield* save({ equipo: existingMachine(f.machine), entrada: windowsPayload() }).pipe(asUser(f.author))
       const second = yield* save({ con_biblioteca: true, equipo: existingMachine(f.machine), entrada: windowsPayload() }).pipe(asUser(f.author))
       expect(second).toEqual({ id: first.id, inserted: false })
-      expect(yield* f.sql`SELECT steam_library FROM diagnostic WHERE id = ${first.id}`).toEqual([{ biblioteca_steam: null }])
+      expect(yield* f.sql`SELECT steam_library FROM diagnostic WHERE id = ${first.id}`).toEqual([{ steam_library: null }])
     })))
 
   it.effect('rechaza guardar en un equipo ajeno o inexistente, sin escribir nada', withSeed((f) =>
     Effect.gen(function* () {
-      const before = yield* count(f, 'diagnostico')
+      const before = yield* count(f, 'diagnostic')
       for (const equipo of [existingMachine(f.machine), existingMachine(999999)]) {
         const failure = yield* Effect.flip(save({ equipo, entrada: payload() }).pipe(asUser(f.revisor)))
         expect(failure).toMatchObject({ _tag: 'ReglaIncumplida', rule: 'equipo_ajeno' })
       }
-      expect(yield* count(f, 'diagnostico')).toBe(before)
+      expect(yield* count(f, 'diagnostic')).toBe(before)
     })))
 
   it.effect('un payload de Arch guarda la versión rolling y reutiliza su distribución', withSeed((f) =>
@@ -111,17 +111,17 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       const full = yield* save({ equipo: newMachine('Con hechos'), entrada: payload(facts) }).pipe(asUser(f.author))
       const bare = yield* save({ equipo: newMachine('Sin hechos'), entrada: payload() }).pipe(asUser(f.author))
       const readCapture = (id: number) => Effect.map(myDiagnostic(Schema.decodeSync(DiagnosticId)(id)).pipe(asUser(f.author)), (d) => d.capture)
-      expect(yield* readCapture(full.id)).toMatchObject(facts)
+      expect(yield* readCapture(full.id)).toMatchObject({ x86_level: 'v3', secure_boot: 'activo', tpm: '2.0', zram_mb: 8192, swap_mb: 0 })
       expect(yield* readCapture(bare.id)).toMatchObject({ x86_level: null, secure_boot: null, tpm: null, zram_mb: null, swap_mb: null })
     })))
 
   it.effect('sin sesión o con un payload ilegible no guarda nada', withSeed((f) =>
     Effect.gen(function* () {
-      const before = yield* count(f, 'diagnostico')
+      const before = yield* count(f, 'diagnostic')
       expect(yield* Effect.flip(save({ equipo: newMachine('x'), entrada: payload() }).pipe(asGuest))).toBeInstanceOf(Unauthenticated)
       const unreadable = yield* Effect.flip(save({ equipo: newMachine('x'), entrada: { _tag: 'detector', texto: 'no es un payload' } }).pipe(asUser(f.author)))
       expect(unreadable).toMatchObject({ _tag: 'PayloadInvalido', reason: 'ilegible' })
-      expect(yield* count(f, 'diagnostico')).toBe(before)
+      expect(yield* count(f, 'diagnostic')).toBe(before)
       expect(yield* f.sql`SELECT count(*)::int AS n FROM machine WHERE alias = 'x'`).toEqual([{ n: 0 }])
     })))
 })
@@ -130,7 +130,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
   const addProfiles = (f: Seed) =>
     Effect.gen(function* () {
       yield* f.sql`UPDATE profile SET ram_min_mb = 32768, vram_min_mb = 2048 WHERE id = ${f.profile}`
-      yield* f.sql`UPDATE profile SET ${f.sql.update({ estado_revision: 'aprobado', revisor_id: f.revisor, revisado_en: new Date(), motivo_revision: 'probado', evidencia_revision: 'reporte' })} WHERE id = ${f.profile}`
+      yield* f.sql`UPDATE profile SET ${f.sql.update({ review_status: 'aprobado', reviewer_id: f.revisor, reviewed_at: new Date(), review_reason: 'probado', review_evidence: 'reporte' })} WHERE id = ${f.profile}`
       yield* f.sql`INSERT INTO profile (edition_id, distribution_id, layer_version_id, author_id, architecture, revision, title, ram_min_mb)
                    VALUES (${f.ed2}, ${f.dist}, ${f.layer}, ${f.author}, 'x86_64', 1, 'pendiente', 1024)`
     })
@@ -138,9 +138,9 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
   it.effect('evaluateWithoutSaving evaluates against approved profiles and saves nothing, not even the distribution', withSeed((f) =>
     Effect.gen(function* () {
       yield* addProfiles(f)
-      const before = yield* Effect.all([count(f, 'diagnostico'), count(f, 'equipo'), count(f, 'distribucion')])
+      const before = yield* Effect.all([count(f, 'diagnostic'), count(f, 'machine'), count(f, 'distribution')])
       const { capture, matrix } = yield* evaluateWithoutSaving(payload({ distribucion: { nombre: 'Distro Nueva', version: '1' } }))
-      expect(yield* Effect.all([count(f, 'diagnostico'), count(f, 'equipo'), count(f, 'distribucion')])).toEqual(before)
+      expect(yield* Effect.all([count(f, 'diagnostic'), count(f, 'machine'), count(f, 'distribution')])).toEqual(before)
       expect(capture.ram_mb).toBe(15766)
       const row = (title: string) => matrix.find((m) => m.title === title)
       expect(row('Juego')).toMatchObject({ status: 'sin_evidencia', test_count: 0, profile: { id: f.profile, evaluation: { verdict: 'no_cumple' } } })
@@ -192,8 +192,8 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       const epic = yield* idOf(f.sql`INSERT INTO launcher (name) VALUES ('Epic Games Store') RETURNING id`)
       yield* f.sql`INSERT INTO game_edition (game_id, launcher_id, external_id) SELECT game_id, ${epic}, '227300' FROM game_edition WHERE id = ${f.ed2}`
     })
-  const inLibrary = (matrix: ReadonlyArray<{ readonly titulo: string; readonly in_library: boolean }>) =>
-    matrix.filter((m) => m.in_library).map((m) => m.titulo)
+  const inLibrary = (matrix: ReadonlyArray<{ readonly title: string; readonly in_library: boolean }>) =>
+    matrix.filter((m) => m.in_library).map((m) => m.title)
 
   it.effect('myDiagnostic splits the saved library into catalog games and unknown games', withSeed((f) =>
     Effect.gen(function* () {
@@ -224,9 +224,9 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
   it.effect('un invitado ve su biblioteca evaluada sin que se guarde nada', withSeed((f) =>
     Effect.gen(function* () {
       yield* catalogWithSteam(f)
-      const before = yield* Effect.all([count(f, 'diagnostico'), count(f, 'equipo')])
+      const before = yield* Effect.all([count(f, 'diagnostic'), count(f, 'machine')])
       const evaluated = yield* evaluateWithoutSaving(windowsPayload()).pipe(asGuest)
-      expect(yield* Effect.all([count(f, 'diagnostico'), count(f, 'equipo')])).toEqual(before)
+      expect(yield* Effect.all([count(f, 'diagnostic'), count(f, 'machine')])).toEqual(before)
       expect(inLibrary(evaluated.matrix)).toEqual(['Grand Theft Auto V'])
       expect(evaluated.library?.unknown.map((j) => j.app_id)).toEqual([9999990, 227300, 292030])
     })))

@@ -141,7 +141,9 @@ export const createGame = (j: NewGame): Write<{ readonly id: GameId }, RuleViola
       GameIdRow,
       sql`INSERT INTO game ${sql.insert({ title: j.titulo, description: j.descripcion, x86_level_min: j.nivel_x86_min })} RETURNING id`,
     )
-    yield* withDbRules(sql`INSERT INTO game_edition ${sql.insert(j.ediciones.map((e) => ({ game_id: created.id, ...e })))}`)
+    yield* withDbRules(
+      sql`INSERT INTO game_edition ${sql.insert(j.ediciones.map((e) => ({ game_id: created.id, launcher_id: e.lanzador_id, external_id: e.identificador_externo })))}`,
+    )
     yield* sql`INSERT INTO game_api ${sql.insert(Arr.dedupe(j.apis).map((api) => ({ game_id: created.id, api })))}`
     return { id: created.id }
   })

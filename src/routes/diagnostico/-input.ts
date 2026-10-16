@@ -42,7 +42,7 @@ export const manualInput = (f: typeof ManualForm.Encoded): Input => {
     _tag: 'manual',
     captura:
       f.sistema === 'Linux'
-        ? { ...f, captured_at: capturado_en, vulkan_version: f.soporte_vulkan === 'si' ? f.version_vulkan : null, driver: null, driver_version: null }
-        : { ...f, captured_at: capturado_en },
+        ? { ...f, capturado_en, version_vulkan: f.soporte_vulkan === 'si' ? f.version_vulkan : null, controlador: null, version_controlador: null }
+        : { ...f, capturado_en },
   }
 }

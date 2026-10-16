@@ -201,7 +201,7 @@ export const myDiagnostic = (id: DiagnosticId) =>
       SavedDiagnostic,
       sql`
         SELECT d.*, e.alias,
-               CASE WHEN dist.id IS NULL THEN NULL ELSE json_build_object('nombre', dist.name, 'version', dist.version) END AS distribution
+               CASE WHEN dist.id IS NULL THEN NULL ELSE json_build_object('name', dist.name, 'version', dist.version) END AS distribution
         FROM diagnostic d
         JOIN machine e ON e.id = d.machine_id
         LEFT JOIN distribution dist ON dist.id = d.distribution_id

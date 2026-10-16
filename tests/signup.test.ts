@@ -10,7 +10,7 @@ const AccountCount = Schema.Tuple([Schema.Struct({ n: Schema.Int })])
 
 const accountsWith = (email: string) =>
   runtime.runPromise(
-    Effect.flatMap(SqlClient.SqlClient, (s) => s`SELECT count(*)::int AS n FROM usuario WHERE correo = ${email.toLowerCase()}`),
+    Effect.flatMap(SqlClient.SqlClient, (s) => s`SELECT count(*)::int AS n FROM app_user WHERE email = ${email.toLowerCase()}`),
   ).then(Schema.decodeUnknownSync(AccountCount))
 
 // The same handler /api/auth/$ hands every request to.

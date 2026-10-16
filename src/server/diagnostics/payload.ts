@@ -1,5 +1,5 @@
 import { Effect, Option, Result, Schema, SchemaIssue } from 'effect'
-import { Capture, type DiagnosticInput } from '../../domain/contributions.ts'
+import { Capture, type DiagnosticInput, type ManualCapture } from '../../domain/contributions.ts'
 import { InvalidPayload } from '../../domain/errors.ts'
 import { type SteamLibrary, isSteamTool, MAX_LIBRARY_GAMES } from '../../domain/library.ts'
 import { OperatingSystem, VulkanSupport } from '../../domain/evaluation.ts'
@@ -83,7 +83,7 @@ export const parsePayload = (text: string): Result.Result<Capture, InvalidPayloa
             swap_mb: p.swap_mb ?? null,
           }
         : { ...common, operating_system: 'Windows' }
-    return yield* fitsColumns(yield* Result.mapError(Schema.decodeResult(Capture)(candidate), invalidField))
+    return yield* fitsColumns(yield* Result.mapError(Schema.decodeResult(Capture)(candidate), invalidCaptureField))
   })
 
 /** jsonb rejects \u0000 and unpaired surrogates. */
@@ -101,11 +101,37 @@ const libraryOf = (games: ReadonlyArray<typeof SentGame.Type>): typeof SteamLibr
 }
 
 export const captureOf = (input: DiagnosticInput): Effect.Effect<Capture, InvalidPayload> =>
-  Effect.fromResult(
-    input._tag === 'manual'
-      ? fitsColumns({ ...input.captura, gpu_pci_id: null, steam_library: null, x86_level: null, secure_boot: null, tpm: null, zram_mb: null, swap_mb: null })
-      : parsePayload(input.texto),
-  )
+  Effect.fromResult(input._tag === 'manual' ? fitsColumns(manualCapture(input.captura)) : parsePayload(input.texto))
+
+const manualCapture = (m: ManualCapture): Capture => {
+  const common = {
+    captured_at: m.capturado_en,
+    os_version: m.version_sistema,
+    architecture: m.arquitectura,
+    cpu_model: m.cpu_modelo,
+    gpu_model: m.gpu_modelo,
+    ram_mb: m.ram_mb,
+    vram_mb: m.vram_mb,
+    gpu_pci_id: null,
+    steam_library: null,
+    x86_level: null,
+    secure_boot: null,
+    tpm: null,
+    zram_mb: null,
+    swap_mb: null,
+  }
+  return m.sistema === 'Linux'
+    ? {
+        ...common,
+        operating_system: 'Linux',
+        distribution: { name: m.distribucion.nombre, version: m.distribucion.version },
+        driver: m.controlador,
+        driver_version: m.version_controlador,
+        vulkan_support: m.soporte_vulkan,
+        vulkan_version: m.version_vulkan,
+      }
+    : { ...common, operating_system: 'Windows' }
+}
 
 const Columns = Schema.Struct({
   os_version: Diagnostic.fields.os_version,
@@ -119,7 +145,25 @@ const Columns = Schema.Struct({
 })
 
 const fitsColumns = (capture: Capture): Result.Result<Capture, InvalidPayload> =>
-  Result.map(Result.mapError(Schema.decodeUnknownResult(Columns)(capture), invalidField), () => capture)
+  Result.map(Result.mapError(Schema.decodeUnknownResult(Columns)(capture), invalidCaptureField), () => capture)
+
+const payloadNameOf: Record<string, string> = {
+  captured_at: 'capturado_en',
+  operating_system: 'sistema',
+  os_version: 'version_sistema',
+  architecture: 'arquitectura',
+  cpu_model: 'cpu_modelo',
+  gpu_model: 'gpu_modelo',
+  driver: 'controlador',
+  driver_version: 'version_controlador',
+  vulkan_support: 'soporte_vulkan',
+  vulkan_version: 'version_vulkan',
+  distribution: 'distribucion',
+  name: 'nombre',
+  x86_level: 'nivel_x86',
+  secure_boot: 'arranque_seguro',
+  steam_library: 'biblioteca_steam',
+}
 
 const pciId = (value: unknown): PciId | null =>
   Option.getOrNull(Schema.decodeUnknownOption(PciId)(typeof value === 'string' ? value.trim().toLowerCase() : value))
@@ -145,11 +189,13 @@ const jsonBody = (text: string): Result.Result<string, InvalidPayload> => {
 
 const formatter = SchemaIssue.makeFormatterStandardSchemaV1()
 
-const invalidField = (error: Schema.SchemaError): InvalidPayload => {
+const invalidField = (error: Schema.SchemaError, name = (key: string) => key): InvalidPayload => {
   const path = formatter(error.issue).issues[0]?.path ?? []
-  const field = path.map((p) => String(typeof p === 'object' ? p.key : p)).join('.')
+  const field = path.map((p) => name(String(typeof p === 'object' ? p.key : p))).join('.')
   return new InvalidPayload({ reason: 'campo_invalido', field: field === '' ? null : field })
 }
+
+const invalidCaptureField = (error: Schema.SchemaError) => invalidField(error, (key) => payloadNameOf[key] ?? key)
 
 /** Rolling distros report no version or a build date (Arch VERSION_ID "20261004.0.606936"). */
 const distributionVersion = (version: string | null): string => {

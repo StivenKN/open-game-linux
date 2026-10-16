@@ -285,7 +285,7 @@ layer(PgTest)('aportes', (it) => {
         yield* asUser(e.rita)(createGame(newGame('Hades', [{ lanzador_id: e.launcher, identificador_externo: '1145360' }])))
         const foreign = newGame('Hades II', [{ lanzador_id: e.launcher, identificador_externo: '1145360' }])
         expect(yield* Effect.flip(asUser(e.rita)(createGame(foreign)))).toEqual(rule('identificador_en_uso'))
-        expect(yield* e.sql`SELECT title FROM game WHERE title LIKE 'Hades%' ORDER BY title`).toEqual([{ titulo: 'Hades' }])
+        expect(yield* e.sql`SELECT title FROM game WHERE title LIKE 'Hades%' ORDER BY title`).toEqual([{ title: 'Hades' }])
       })))
   })
 
@@ -308,10 +308,10 @@ layer(PgTest)('aportes', (it) => {
             ]),
           ),
         )
-        expect(yield* e.sql`SELECT title, description FROM game WHERE id = ${id}`).toEqual([{ titulo: 'Hades', descripcion: 'Un juego de prueba' }])
+        expect(yield* e.sql`SELECT title, description FROM game WHERE id = ${id}`).toEqual([{ title: 'Hades', description: 'Un juego de prueba' }])
         expect(yield* e.sql`SELECT launcher_id, external_id FROM game_edition WHERE game_id = ${id} ORDER BY launcher_id`).toEqual([
-          { lanzador_id: e.launcher, identificador_externo: '1145360' },
-          { lanzador_id: e.lanzador2, identificador_externo: null },
+          { launcher_id: e.launcher, external_id: '1145360' },
+          { launcher_id: e.lanzador2, external_id: null },
         ])
       })))
 
@@ -321,7 +321,7 @@ layer(PgTest)('aportes', (it) => {
         yield* fileReport(e)
         yield* fileReport(e, { diagnostico_id: later, fecha_prueba: '2026-10-06T10:00:00.000Z' })
         const rows = yield* e.sql`SELECT diagnostic_id FROM report ORDER BY tested_at`
-        expect(rows).toEqual([{ diagnostico_id: e.diagAna }, { diagnostico_id: later }])
+        expect(rows).toEqual([{ diagnostic_id: e.diagAna }, { diagnostic_id: later }])
       })))
 
     it.effect('un reporte sin perfil, con su medición y sus fallos', inScenario((e) =>
@@ -329,9 +329,9 @@ layer(PgTest)('aportes', (it) => {
         const medicion = { fps_promedio: 54.5, resolucion: '1280x720', calidad_grafica: 'Bajo', metodo_medicion: 'MangoHud, 5 min' }
         const { id } = yield* fileReport(e, { resultado: 'falla_en_ejecucion', medicion, fallos: [{ tipo_fallo_id: e.otro, detalle: 'Se cierra a los 10 min' }] })
         const report = Schema.decodeUnknownSync(Rows)(yield* e.sql`SELECT profile_id, avg_fps, resolution, review_status FROM report WHERE id = ${id}`)
-        expect(report).toEqual([{ perfil_id: null, fps_promedio: '54.50', resolucion: '1280x720', review_status: 'pendiente' }])
+        expect(report).toEqual([{ profile_id: null, avg_fps: '54.50', resolution: '1280x720', review_status: 'pendiente' }])
         expect(yield* e.sql`SELECT failure_type_id, detail FROM report_failure WHERE report_id = ${id}`).toEqual([
-          { tipo_fallo_id: e.otro, detalle: 'Se cierra a los 10 min' },
+          { failure_type_id: e.otro, detail: 'Se cierra a los 10 min' },
         ])
       })))
 
