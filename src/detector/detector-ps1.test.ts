@@ -181,10 +181,10 @@ describe.skipIf(engine === null || process.platform !== 'linux')('Steam library:
   it.each([
     ['nuevo', newFormatLibrary],
     ['antiguo', oldFormatLibrary],
-  ])('reads the same games from the %s libraryfolders.vdf format', (steamRoot, expected) => {
+  ])('reads the same games from the %s libraryfolders.vdf format', (steamRoot, games) => {
     const fromBash = parse(bash({ OPENGAME_STEAM_DIR: steam(steamRoot) }))
     const fromPowershell = parse(powershell({ OPENGAME_STEAM_DIR: steam(steamRoot), OPENGAME_IMPRIMIR: '1' }))
-    expect([fromBash, fromPowershell]).toMatchObject([{ biblioteca_steam: expected }, { biblioteca_steam: expected }])
+    expect([fromBash, fromPowershell]).toMatchObject([{ biblioteca_steam: games }, { biblioteca_steam: games }])
   })
 })
 

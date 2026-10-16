@@ -86,6 +86,7 @@ function shellSegments(source: string): ReadonlyArray<Segment> {
       i = (end === -1 ? source.length : end) - 1
     } else if (c === "'") {
       const end = source.indexOf("'", i + 1)
+      if (end === -1) throw new Error(`unclosed single quote at offset ${i}`)
       const lineBefore = source.slice(source.lastIndexOf('\n', i - 1) + 1, i)
       flush()
       out.push({ code: false, text: "'" }, ...(awkProgramNext.test(lineBefore) ? awkSegments(source.slice(i + 1, end)) : [{ code: false, text: source.slice(i + 1, end) }]), { code: false, text: "'" })
@@ -125,14 +126,20 @@ const powershellSegments = (source: string, quotedKeys: ReadonlySet<string>): Re
       i = (end === -1 ? source.length : end) - 1
     } else if (c === "'") {
       let end = i + 1
-      while (source[end] !== "'" || source[end + 1] === "'") end += source[end] === "'" ? 2 : 1
+      while (source[end] !== "'" || source[end + 1] === "'") {
+        end += source[end] === "'" ? 2 : 1
+        if (end >= source.length) throw new Error(`unclosed single quote at offset ${i}`)
+      }
       const literal = source.slice(i, end + 1)
       flush()
       out.push({ code: quotedKeys.has(literal), text: literal })
       i = end
     } else if (c === '"') {
       let end = i + 1
-      while (source[end] !== '"') end += source[end] === '`' ? 2 : 1
+      while (source[end] !== '"') {
+        end += source[end] === '`' ? 2 : 1
+        if (end >= source.length) throw new Error(`unclosed double quote at offset ${i}`)
+      }
       const literal = source.slice(i, end + 1)
       if (literal.includes('$')) throw new Error(`expandable string ${literal} is not supported`)
       flush()

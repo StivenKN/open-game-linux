@@ -6,7 +6,8 @@ import { MAX_LIBRARY_GAMES } from '../../src/domain/library.ts'
 
 // Runs the detector scripts of a base ref and of the working tree on the same fake machines and fails on any byte
 // difference in stdout, stderr, exit code, or what they hand to xdg-open, Start-Process and Set-Clipboard.
-// PowerShell runs under pwsh, or under docker with the image detector-ps1.test.ts uses.
+// PowerShell runs under pwsh, or under docker with the image detector-ps1.test.ts uses. Windows PowerShell 5.1
+// does not run, and every bash case reads this host's /proc, /sys/firmware and ld.so.
 const base = process.argv[2]
 if (base === undefined) throw new Error('usage: node scripts/rename/detector-equivalence.ts <base-ref>')
 
@@ -218,7 +219,12 @@ const runSh = (side: Side, c: ShCase): Outcome => {
 }
 
 type Gpu = readonly [vendor: string, device: string, vramMb: number | null]
-type Ps1Case = { readonly name: string; readonly served?: boolean; readonly gpus?: ReadonlyArray<Gpu>; readonly env: Readonly<Record<string, string>> }
+type Ps1Case = {
+  readonly name: string
+  readonly served?: boolean
+  readonly gpus?: { readonly cards: ReadonlyArray<Gpu>; readonly picks: string }
+  readonly env: Readonly<Record<string, string>>
+}
 const ps1Cases: ReadonlyArray<Ps1Case> = [
   { name: 'hybrid laptop, OPENGAME_IMPRIMIR', served: true, env: { OPENGAME_IMPRIMIR: '1' } },
   { name: 'hybrid laptop, dry run', served: true, env: { OPENGAME_DRY: '1' } },
@@ -227,10 +233,10 @@ const ps1Cases: ReadonlyArray<Ps1Case> = [
   { name: 'OPENGAME_URL overrides the app address', served: true, env: { OPENGAME_URL: 'https://other.example', OPENGAME_DRY: '1' } },
   { name: 'Ryzen iGPU listed first', served: true, env: { OPENGAME_TEST_MACHINE: 'ryzen', OPENGAME_IMPRIMIR: '1' } },
   { name: 'basic display adapter, no Steam', served: true, env: { OPENGAME_TEST_MACHINE: 'basic', OPENGAME_IMPRIMIR: '1' } },
-  { name: 'no VRAM anywhere: brand picks NVIDIA over AMD and Intel', served: true, gpus: [['8086', '0412', null], ['1002', '1638', null], ['10de', '1380', null]], env: { OPENGAME_IMPRIMIR: '1' } },
-  { name: 'unknown vendor loses to Intel', served: true, gpus: [['1af4', '1050', null], ['8086', '0412', null]], env: { OPENGAME_IMPRIMIR: '1' } },
-  { name: 'same brand and VRAM: listing order picks', served: true, gpus: [['10de', '1f91', 2048], ['10de', '1380', 2048]], env: { OPENGAME_IMPRIMIR: '1' } },
-  { name: 'VRAM beats brand', served: true, gpus: [['10de', '1380', 1024], ['1002', '1638', 4096]], env: { OPENGAME_IMPRIMIR: '1' } },
+  { name: 'no VRAM anywhere: brand picks NVIDIA over AMD and Intel', served: true, gpus: { cards: [['8086', '0412', null], ['1002', '1638', null], ['10de', '1380', null]], picks: '"gpu_pci_id":"10de:1380","ram_mb":8192,"vram_mb":null' }, env: { OPENGAME_IMPRIMIR: '1' } },
+  { name: 'unknown vendor loses to Intel', served: true, gpus: { cards: [['1af4', '1050', null], ['8086', '0412', null]], picks: '"gpu_pci_id":"8086:0412","ram_mb":8192,"vram_mb":null' }, env: { OPENGAME_IMPRIMIR: '1' } },
+  { name: 'same brand and VRAM: listing order picks', served: true, gpus: { cards: [['10de', '1f91', 2048], ['10de', '1380', 2048]], picks: '"gpu_pci_id":"10de:1f91","ram_mb":8192,"vram_mb":2048' }, env: { OPENGAME_IMPRIMIR: '1' } },
+  { name: 'VRAM beats brand', served: true, gpus: { cards: [['10de', '1380', 1024], ['1002', '1638', 4096]], picks: '"gpu_pci_id":"1002:1638","ram_mb":8192,"vram_mb":4096' }, env: { OPENGAME_IMPRIMIR: '1' } },
   { name: 'no PROCESSOR_ARCHITECTURE', served: true, env: { PROCESSOR_ARCHITECTURE: '', OPENGAME_IMPRIMIR: '1' } },
   { name: '32-bit shell on 64-bit Windows', served: true, env: { PROCESSOR_ARCHITECTURE: 'x86', PROCESSOR_ARCHITEW6432: 'AMD64', OPENGAME_IMPRIMIR: '1' } },
   { name: 'ARM64', served: true, env: { PROCESSOR_ARCHITECTURE: 'ARM64', OPENGAME_IMPRIMIR: '1' } },
@@ -264,7 +270,7 @@ writeFileSync(
   function Get-ItemProperty([string]$Path) {
     if ($Path -notlike 'HKLM:\SYSTEM\*') { return & $equivalenceItem $Path }
     foreach ($c in $equivalenceCards) {
-      $k = [pscustomobject]@{ MatchingDeviceId = 'pcien_' + $c.Ven + '&dev_' + $c.Dev }
+      $k = [pscustomobject]@{ MatchingDeviceId = 'pci\ven_' + $c.Ven + '&dev_' + $c.Dev }
       if ($c.Mb -gt 0) { $k | Add-Member -NotePropertyName 'HardwareInformation.qwMemorySize' -NotePropertyValue ($c.Mb * 1MB) }
       $k
     }
@@ -272,7 +278,7 @@ writeFileSync(
 }
 `,
 )
-const powershellEnv = (c: Ps1Case) => ({ PROCESSOR_ARCHITECTURE: 'AMD64', OPENGAME_TEST_STEAM: join(steam, 'nuevo'), OPENGAME_TEST_HANDOFF_LOG: handoff, ...gpuEnv(c.gpus), ...c.env })
+const powershellEnv = (c: Ps1Case) => ({ PROCESSOR_ARCHITECTURE: 'AMD64', OPENGAME_TEST_STEAM: join(steam, 'nuevo'), OPENGAME_TEST_HANDOFF_LOG: handoff, ...gpuEnv(c.gpus?.cards), ...c.env })
 const powershellArgs = (script: string) => ['-NoProfile', '-NonInteractive', '-Command', `. '${stubsFile}'; . '${tieStubs}'; Invoke-Expression (Get-Content -Raw -LiteralPath '${script}')`]
 
 const hasPwsh = spawnSync('pwsh', ['-NoProfile', '-Command', 'exit 0'], { stdio: 'ignore' }).status === 0
@@ -292,6 +298,7 @@ const runPs1 = (side: Side, c: Ps1Case): Outcome => {
     container === null
       ? spawnSync('pwsh', powershellArgs(script), { cwd: run, env: { PATH: process.env.PATH, HOME: emptyHome, ...env }, encoding: 'utf8' })
       : spawnSync('docker', ['exec', '-w', run, ...Object.entries(env).flatMap(([k, v]) => ['-e', `${k}=${v}`]), container, 'pwsh', ...powershellArgs(script)], { encoding: 'utf8' })
+  if (c.gpus !== undefined && !r.stdout.includes(c.gpus.picks)) throw new Error(`${side} ${c.name}: expected ${c.gpus.picks}`)
   return { status: r.status, stdout: r.stdout, stderr: r.stderr, handoff: existsSync(handoff) ? readFileSync(handoff, 'utf8') : '' }
 }
 
