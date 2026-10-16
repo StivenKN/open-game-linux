@@ -117,10 +117,10 @@ Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names 
 | own equipo; Linux diagnosis; fecha_prueba >= capturado_en | app: server/commands/contributions.ts |
 | solution's profile in the report's edition | app: server/commands/contributions.ts |
 | one equipo per alias per user, one capture per time; the library stored only by the user's choice | app: server/commands/diagnostic.ts |
-| measured Linux Vulkan beats the projection; Windows Vulkan is never evaluated | app: server/gpu/capability.ts equipoEnLinux |
+| measured Linux Vulkan beats the projection; Windows Vulkan is never evaluated | app: server/gpu/capability.ts machineOnLinux |
 | failing result has >= 1 fallo | app: domain/contributions.ts NuevoReporte |
-| reviewer role + activo (also: only reviewers register games) | app: server/auth.ts exigirRevisor |
-| author != reviewer (all three tables), transitions, approval preconditions | app: server/commands/review.ts decidir |
+| reviewer role + activo (also: only reviewers register games) | app: server/auth.ts requireReviewer |
+| author != reviewer (all three tables), transitions, approval preconditions | app: server/commands/review.ts decide |
 | only reviewers publish guides | no write path this delivery (seeded) |
 | one profile per merged PR; only approved, exportable, non-demo profiles | DB UQ arreglo_upstream_pr_uq + app: server/commands/upstream.ts |
 | arreglo_upstream rows never rewritten (Anular deletes) | DB trigger og_inmutable |

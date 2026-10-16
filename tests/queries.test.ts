@@ -175,7 +175,7 @@ const shape = (r: CompatibilitySummary) => ({
 const titles = (c: { readonly games: ReadonlyArray<{ readonly titulo: string }> }) => c.games.map((j) => j.titulo)
 
 layer(PgTest)('consultas', (it) => {
-  describe('fichaJuego', () => {
+  describe('gamePage', () => {
     it.effect('resume GTA V igual que el fixture de samples.ts, sin contar el pendiente', () =>
       inRollback(
         Effect.gen(function* () {
@@ -250,7 +250,7 @@ layer(PgTest)('consultas', (it) => {
     )
   })
 
-  describe('catalogo', () => {
+  describe('catalog', () => {
     it.effect('filtra por estado calculado, anti-cheat y título, y cuenta solo lo aprobado', () =>
       inRollback(
         Effect.gen(function* () {
@@ -303,7 +303,7 @@ layer(PgTest)('consultas', (it) => {
     )
   })
 
-  describe('perfil', () => {
+  describe('profile', () => {
     it.effect('muestra los pasos en orden y no evalúa un perfil en prueba', () =>
       inRollback(
         Effect.gen(function* () {
@@ -330,7 +330,7 @@ layer(PgTest)('consultas', (it) => {
     )
   })
 
-  describe('guias', () => {
+  describe('guides', () => {
     it.effect('solo las publicadas son públicas', () =>
       inRollback(
         Effect.gen(function* () {

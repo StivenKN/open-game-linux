@@ -58,7 +58,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       expect(equipo?.diagnostics.map((d) => [d.id, d.ram_mb])).toEqual([[b.id, 32768], [a.id, 15766], [f.diag, 8192]])
     })))
 
-  it.effect('guarda el PCI id normalizado y miDiagnostico lo devuelve en la captura', withSeed((f) =>
+  it.effect('saves the normalized PCI id and myDiagnostic returns it in the capture', withSeed((f) =>
     Effect.gen(function* () {
       const { id } = yield* save({ equipo: existingMachine(f.equipo), entrada: payload({ gpu_pci_id: ' 10DE:128B ' }) }).pipe(asUser(f.autor))
       expect(yield* f.sql`SELECT gpu_pci_id FROM diagnostico WHERE id = ${id}`).toEqual([{ gpu_pci_id: '10de:128b' }])
@@ -105,7 +105,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       expect(yield* f.sql`SELECT count(*)::int AS n FROM distribucion WHERE nombre = 'Arch Linux'`).toEqual([{ n: 1 }])
     })))
 
-  it.effect('guarda los hechos del sistema y miDiagnostico los devuelve; un payload sin ellos queda en null', withSeed((f) =>
+  it.effect('saves the system facts and myDiagnostic returns them; a payload without them stays null', withSeed((f) =>
     Effect.gen(function* () {
       const facts = { nivel_x86: 'v3', arranque_seguro: 'activo', tpm: '2.0', zram_mb: 8192, swap_mb: 0 }
       const full = yield* save({ equipo: newMachine('Con hechos'), entrada: payload(facts) }).pipe(asUser(f.autor))
@@ -135,7 +135,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
                    VALUES (${f.ed2}, ${f.dist}, ${f.capa}, ${f.autor}, 'x86_64', 1, 'pendiente', 1024)`
     })
 
-  it.effect('evaluarSinGuardar evalúa contra perfiles aprobados y no guarda nada, ni la distribución', withSeed((f) =>
+  it.effect('evaluateWithoutSaving evaluates against approved profiles and saves nothing, not even the distribution', withSeed((f) =>
     Effect.gen(function* () {
       yield* addProfiles(f)
       const before = yield* Effect.all([count(f, 'diagnostico'), count(f, 'equipo'), count(f, 'distribucion')])
@@ -148,7 +148,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       expect(row('Otro juego')?.profile).toBeNull()
     })))
 
-  it.effect('evaluarSinGuardar proyecta la GPU a Linux desde el PCI id cuando no hay vulkaninfo', withSeed(() =>
+  it.effect('evaluateWithoutSaving projects the GPU to Linux from the PCI id when there is no vulkaninfo', withSeed(() =>
     Effect.gen(function* () {
       const { machine: equipo } = yield* evaluateWithoutSaving(payload({ gpu_pci_id: '8086:9a49', controlador: 'i915' }))
       expect(equipo).toMatchObject({
@@ -195,7 +195,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
   const inLibrary = (matrix: ReadonlyArray<{ readonly titulo: string; readonly in_library: boolean }>) =>
     matrix.filter((m) => m.in_library).map((m) => m.titulo)
 
-  it.effect('miDiagnostico separa la biblioteca guardada en juegos del catálogo y juegos desconocidos', withSeed((f) =>
+  it.effect('myDiagnostic splits the saved library into catalog games and unknown games', withSeed((f) =>
     Effect.gen(function* () {
       yield* catalogWithSteam(f)
       const { id } = yield* save({ con_biblioteca: true, equipo: existingMachine(f.equipo), entrada: windowsPayload() }).pipe(asUser(f.autor))
@@ -231,7 +231,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       expect(evaluated.library?.unknown.map((j) => j.app_id)).toEqual([9999990, 227300, 292030])
     })))
 
-  it.effect('miDiagnostico es solo del dueño; misEquipos de un invitado está vacío', withSeed((f) =>
+  it.effect('myDiagnostic belongs to its owner only; myMachines is empty for a guest', withSeed((f) =>
     Effect.gen(function* () {
       yield* addProfiles(f)
       const id = Schema.decodeSync(DiagnosticId)(f.diag)

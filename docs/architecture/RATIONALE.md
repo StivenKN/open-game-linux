@@ -19,27 +19,27 @@ Same product, same section 8, same round 1 domain decisions; the stack changed t
 ```tsx
 // src/routes/juegos/$juegoId.tsx
 export const Route = createFileRoute('/juegos/$juegoId')({
-  loader: ({ params }) => fichaJuegoFn({ data: { juegoId: params.juegoId } }),
+  loader: ({ params }) => gamePageFn({ data: { juegoId: params.juegoId } }),
   component: Ficha,
 })
 function Ficha() {
-  const { juego, resumen, personal, perfiles, pendientes } = Route.useLoaderData()   // fully typed
+  const { game, summary, personal, profiles, pending } = Route.useLoaderData()     // fully typed
   return (<>
-    <EstadoJuego resumen={resumen} pendientes={pendientes.length} />                  {/* variant 1 badge */}
-    {personal?.en_mi_distribucion && <p>En tu distribución: {estadoCompatibilidad[personal.en_mi_distribucion.estado].texto}</p>}
-    {resumen.entornos.map((e) => <FilaEntorno key={e.clave} entorno={e} />)}          {/* matrix */}
+    <EstadoJuego resumen={summary} pendientes={pending} />                            {/* variant 1 badge */}
+    {personal?.on_my_distribution && <p>En tu distribución: {estadoCompatibilidad[personal.on_my_distribution.summary.status].texto}</p>}
+    {summary.setups.map((e) => <FilaEntorno key={e.key} entorno={e} />)}              {/* matrix */}
   </>)
 }
 
 // src/fns/catalog.ts: the whole server boundary for this page
-export const fichaJuegoFn = createServerFn({ method: 'GET' })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ juegoId: IdDesdeTexto(JuegoId) })))
-  .handler(({ data }) => leer(fichaJuego(data.juegoId)))
+export const gamePageFn = createServerFn({ method: 'GET' })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ juegoId: GameId })))
+  .handler(({ data }) => runRead(gamePage(data.juegoId)))
 
 // src/server/queries/game.ts: rows decoded by the domain Schema, summary by the pure rule
-const pruebas = yield* SqlSchema.findAll({ Request: JuegoId, Result: PruebaAprobada, execute: (id) => sql`...` })(juegoId)
-const resumen = resumir(pruebas)                       // PruebaAprobada has estado_revision: Literal('aprobado')
-return { juego, ediciones, resumen, personal, perfiles, causas, aprobados, pendientes }
+const tests = yield* approvedTests(gameId)             // ApprovedTest has estado_revision: Literal('aprobado')
+const summary = summarize(tests, now)
+return { game, editions, summary, protondb, ejemplo, pending, profiles, causes, diagnostic, personal }
 ```
 
 A missing game makes the program fail with `NotFound`. `runRead` turns that into `throw notFound()`, and the root `notFoundComponent` renders it, on SSR and on client navigation alike.
@@ -48,8 +48,8 @@ A missing game makes the program fail with `NotFound`. `runRead` turns that into
 
 ```tsx
 // src/routes/juegos/$juegoId.reportar.tsx
-const r = useAccion(NuevoReporte, registrarReporteFn, {
-  alFallar: erroresDeRegla,                   // fallo: { _tag: 'ReglaIncumplida'; regla: Regla }, the only failure registrarReporte returns
+const r = useAccion(NewReport, submitReportFn, {
+  alFallar: erroresDeRegla,                   // error: { _tag: 'ReglaIncumplida'; rule: Rule }, the only failure submitReport returns
   alCompletar: () => navigate({ to: '/juegos/$juegoId', params: { juegoId } }),
 })
 <form {...r.formulario}>
@@ -59,17 +59,17 @@ const r = useAccion(NuevoReporte, registrarReporteFn, {
 </form>
 ```
 
-`useAccion` checks the input in two places. First, the browser decodes the FormData with `NewReport`, so a blank observation or a failing result without a fallo shows its field error before any request. If that passes, the server fn validates the same Encoded value with the same schema. The program then fails with `RuleViolated({ regla: 'perfil_otra_distribucion' })` from `mismatches`, and `runAction` returns `{ ok: false, fallo: { _tag: 'RuleViolated', regla: 'perfil_otra_distribucion' } }`. The `rules` table (`domain/errors.ts`) maps each rule to `{ campo, mensaje }`.
+`useAccion` checks the input in two places. First, the browser decodes the FormData with `NewReport`, so a blank observation or a failing result without a fallo shows its field error before any request. If that passes, the server fn validates the same Encoded value with the same schema. The program then fails with `RuleViolated({ rule: 'perfil_otra_distribucion' })` from `mismatches`, and `runAction` returns `{ ok: false, error: { _tag: 'ReglaIncumplida', rule: 'perfil_otra_distribucion' } }`. The `rules` table (`domain/errors.ts`) maps each rule to `{ field, message }`.
 
 **A reviewer approves.**
 
 ```tsx
-// src/routes/revision.tsx: blockers come from the same function decidir runs
-const r = useAccion(Schema.Struct({ ref: AporteRef, decision: Decision }), decidirFn, {
+// src/routes/revision.tsx: blockers come from the same function decide runs
+const r = useAccion(Schema.Struct({ ref: ContributionRef, decision: Decision }), decideFn, {
   alFallar: (f) => {                                  // exhaustive: delete a case and tsc fails (verified)
     switch (f._tag) {
-      case 'ReglaIncumplida':     return { decision: reglas[f.regla].mensaje }
-      case 'AprobacionBloqueada': return { decision: f.bloqueos.map((b) => bloqueo[b]).join(' ') }
+      case 'ReglaIncumplida':     return { decision: rules[f.rule].message }
+      case 'AprobacionBloqueada': return { decision: f.blockers.map((b) => bloqueo[b]).join(' ') }
     }
   },
   alCompletar: () => router.invalidate(),
@@ -78,22 +78,22 @@ const r = useAccion(Schema.Struct({ ref: AporteRef, decision: Decision }), decid
 // Decision's 'Aprobar' member requires a non-blank evidencia: "approve without evidence" has no encoding.
 
 // src/fns/review.ts
-export const decidirFn = createServerFn({ method: 'POST' })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ ref: AporteRef, decision: Decision })))
-  .handler(({ data }) => accion(Schema.Union([ReglaIncumplida, AprobacionBloqueada]), decidir(data.ref, data.decision)))
+export const decideFn = createServerFn({ method: 'POST' })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ ref: ContributionRef, decision: Decision })))
+  .handler(({ data }) => runAction(Schema.Union([RuleViolated, InvalidTransition, ApprovalBlocked]), decide(data.ref, data.decision)))
 ```
 
-`decide` requires a `Reviewer`, a branded `User` that only `requireReviewer` can mint. It locks the row, rejects self-review, and runs `planTransition(estado, decision)`. The result `sin_cambios` makes a double click a no-op. It checks `approvalBlockers` and writes the five columns. All of this happens inside the one transaction `runAction` opens.
+`decide` requires a `Reviewer`, a branded `SignedInUser` that only `requireReviewer` can mint. It locks the row, rejects self-review, and runs `planTransition(estado, decision)`. The result `sin_cambios` makes a double click a no-op. It checks `approvalBlockers` and writes the five columns. All of this happens inside the one transaction `runAction` opens.
 
 **The pure core, as its tests call it.**
 
 ```ts
-estadoDe(['funciona', 'no_inicia'])                    // 'resultados_variables'
-estadoDe([])                                           // 'sin_evidencia'
-evaluar(equipoEnLinux(diag), condiciones(perfil))      // { veredicto: 'informacion_insuficiente', comprobaciones, solo_orientativa }
-evaluar(proyectado('1.0', '1.1'), minimo('1.1'))       // a straddling range: comprobaciones [{ estado: 'desconocido', detectado: { valor: '1.0–1.1', origen: 'proyectado' } }]
-planificar('aprobado', { _tag: 'Aprobar', ... })       // 'sin_cambios'
-discrepancias(prueba, perfil)                          // ['perfil_otra_distribucion']
+statusOf(['funciona', 'no_inicia'])                    // 'resultados_variables'
+statusOf([])                                           // 'sin_evidencia'
+evaluate(machineOnLinux(diag), requirements(profile))  // { verdict: 'informacion_insuficiente', checks, advisory_only }
+evaluate(projected('1.0', '1.1'), minimum('1.1'))      // a straddling range: checks [{ status: 'desconocido', detected: { value: '1.0–1.1', origin: 'proyectado' } }]
+planTransition('aprobado', { _tag: 'Aprobar', ... })   // 'sin_cambios'
+mismatches(test, profile)                              // [{ aspect: 'distribucion', ... }]
 ```
 
 ## Shape
@@ -287,7 +287,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 - Migration `3_gpu_biblioteca` adds `gpu_pci_id varchar(9)` and `biblioteca_steam jsonb` to `diagnostico`, each with a CHECK. It does not backfill, because captures are immutable. An older row has no PCI id, and the card asks the user to run the detector again.
 - `server/gpu/capability.ts` `machineOnLinux` turns the stored columns into what `evaluate` consumes, plus the data for "Tu tarjeta gráfica en Linux". The diagnosis, the ficha and the profile page all call it, and nothing else builds `Capabilities`. Vulkan follows one precedence: Linux Vulkan measured by `vulkaninfo`, then the family's projection, then `desconocido`. A Windows row's stored Vulkan is never read.
 - `MachineVulkan` carries its `origen` whenever support is known. Its level is a range: a measured version is a one-point range, and a projection can be wider because some levels are unverified. `evaluate` answers `cumple` only when the whole range meets the minimum, `no_cumple` when none of it does, and `desconocido` when the range straddles it, so an unverified level never gives a false `cumple`. The UI labels each value "Detectado" or "Proyectado".
-- The library read model matches app ids against Steam's `edicion_juego.identificador_externo`. `matriz` marks each row `en_biblioteca`, so library games get the same evaluation as every other game. Games the catalog does not know are listed by name with a link to their Steam page.
+- The library read model matches app ids against Steam's `edicion_juego.identificador_externo`. `matrix` marks each row `in_library`, so library games get the same evaluation as every other game. Games the catalog does not know are listed by name with a link to their Steam page.
 
 **The Linux capability is projected from the PCI id and never stored.** The PCI id is the fact the detector reads, and it does not go stale. What a family can do on Linux changes with Mesa and kernel releases. A stored projection would freeze today's answer into an immutable row, and after the next `pnpm gpu:generar` old and new rows would disagree about the same GPU. Projecting at read time keeps sentence 4 of `ARCHITECTURE.md` true. The id table is generated from pinned Mesa, Linux and pci.ids sources, so a reviewer can rerun the generator and diff its output.
 

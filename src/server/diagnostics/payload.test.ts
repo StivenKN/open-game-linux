@@ -15,7 +15,7 @@ const capture = (text: string) => {
   return r.success
 }
 
-describe('parsearPayload', () => {
+describe('parsePayload', () => {
   it('reads the prototype out.json, which predates the machine facts, with every fact null', () => {
     expect(capture(outJson)).toEqual({
       capturado_en: new Date('2026-10-10T18:43:52Z'),

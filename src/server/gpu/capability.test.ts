@@ -25,7 +25,7 @@ const v = (text: string) => {
 }
 const projected = (from: string, to: string) => ({ support: 'si', origin: 'proyectado', range: { from: v(from), to: v(to) } }) as const
 
-describe('equipoEnLinux: golden GPUs (Windows capture, nothing measured)', () => {
+describe('machineOnLinux: golden GPUs (Windows capture, nothing measured)', () => {
   it.each([
     ['GT 710', '10de:128b', 'nvidia_kepler', 'nouveau', projected('1.2', '1.2'), { d3d9_11: 'dxvk_sarek', d3d12: false }, ['kepler_470_fin']],
     ['GTX 750 Ti', '10de:1380', 'nvidia_maxwell_a_volta', 'nvidia_580xx', projected('1.4', '1.4'), { d3d9_11: 'dxvk', d3d12: true }, ['fijar_nvidia_580xx']],
@@ -62,7 +62,7 @@ describe('equipoEnLinux: golden GPUs (Windows capture, nothing measured)', () =>
   })
 })
 
-describe('equipoEnLinux: measured Linux Vulkan wins over the projection', () => {
+describe('machineOnLinux: measured Linux Vulkan wins over the projection', () => {
   it('vulkaninfo 1.3.275 on a Kepler card is used as measured', () => {
     expect(machineOnLinux(linux('10de:128b', { soporte_vulkan: 'si', version_vulkan: '1.3.275', controlador: 'nouveau' }))).toMatchObject({
       vulkan: { support: 'si', origin: 'medido', range: { from: v('1.3.275'), to: v('1.3.275') } },
@@ -90,7 +90,7 @@ describe('equipoEnLinux: measured Linux Vulkan wins over the projection', () => 
   })
 })
 
-describe('equipoEnLinux: salvo_con', () => {
+describe('machineOnLinux: unless_driver', () => {
   it.each([
     ['Windows (no Linux driver measured)', windows('1002:6798'), ['gcn_usar_amdgpu']],
     ['Linux on radeon', linux('1002:6798', { controlador: 'radeon' }), ['gcn_usar_amdgpu']],

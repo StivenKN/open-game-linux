@@ -83,7 +83,7 @@ export function useAccion<T, E, A, F>(
   const enCurso = useRef(false)
 
   const alLanzar = async (e: unknown) => {
-    // leer/accion turn NoAutenticado into a redirect; outside a loader nobody else follows it.
+    // runRead/runAction turn NoAutenticado into a redirect; outside a loader nobody else follows it.
     if (isRedirect(e)) await router.navigate(router.resolveRedirect(e).options)
     else if (isNotFound(e)) setErrores({ formulario: 'Lo que intentas modificar ya no existe o no tienes acceso.' })
     else setErrores({ formulario: 'Algo falló de nuestro lado. Intenta de nuevo.' })

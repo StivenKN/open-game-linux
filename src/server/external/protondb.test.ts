@@ -13,7 +13,7 @@ const elements = async (text: string, size = text.length || 1) => {
 
 const invalidExport = (reason: string) => expect.objectContaining({ _tag: 'ExportacionInvalida', reason })
 
-describe('elementosDeArreglo', () => {
+describe('arrayElements', () => {
   const expected = ['{"a":"}],[{","b":"comilla \\" y ] {"}', '{"c":[1,{"d":"ñandú 😀"}]}', '3', '"s,t"', 'null', '{"e":"barra \\\\","f":"]"}']
   const text = `\n[${expected[0]},\n  ${expected[1]} , ${expected[2]},${expected[3]},\t${expected[4]},${expected[5]}\n]\n`
 
@@ -48,7 +48,7 @@ describe('elementosDeArreglo', () => {
   })
 })
 
-describe('resumenImportacion', () => {
+describe('importSummary', () => {
   it('prints the counts with Spanish digit grouping and the export date', () => {
     const text = importSummary({ read: 395467, discarded: 12, matched: 5215, saved: 4, exported_at: new Date('2026-10-01T03:00:00Z') })
     expect(text).toBe(

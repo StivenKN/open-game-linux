@@ -265,7 +265,7 @@ layer(PgTest)('esquema', (it) => {
   })
 
   describe('contrato con la aplicación', () => {
-    it.effect('cada clave de reglaDeRestriccion existe en la base', () =>
+    it.effect('every ruleByConstraint key exists in the database', () =>
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient
         const filas = yield* sql`
@@ -275,7 +275,7 @@ layer(PgTest)('esquema', (it) => {
         expect(Object.keys(ruleByConstraint).filter((n) => !nombres.has(n))).toEqual([])
       }))
 
-    it.effect('conReglasDeBd convierte una restricción mapeada en ReglaIncumplida', () =>
+    it.effect('withDbRules turns a mapped constraint into ReglaIncumplida', () =>
       inRollback(
         Effect.gen(function* () {
           const f = yield* seed

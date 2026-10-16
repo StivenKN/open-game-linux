@@ -1,4 +1,4 @@
-// Prints better-auth's DDL for esquemaAuth, to paste into migration 1_auth (one array element per statement).
+// Prints better-auth's DDL for authSchema, to paste into migration 1_auth (one array element per statement).
 // Run: node --env-file=.env scripts/auth-sql.ts
 // It compiles against an empty schema, so it resets `public` and refuses any database not named *_test.
 import { getMigrations } from 'better-auth/db/migration'

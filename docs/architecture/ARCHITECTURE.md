@@ -53,7 +53,7 @@ Three candidates ran in parallel with assigned shapes.
 | Fable | Fixtures for app tests come from an `escenario()` helper that writes through the real writers, so a fixture cannot encode a state the app cannot reach. Route components are named functions (an inline arrow loses the loader type). |
 | Fable | `InvalidTransition { de, a }` is its own failure class, not a `Rule` case. |
 | Sonnet | `Capture` is a union of Linux and Windows members. `ResultadoObservado` requires a `NonEmptyArray` of fallos for a failing result, replacing the filter with a TODO. |
-| Sonnet | The review CHECK is built from `formaPorEstado satisfies Record<ReviewStatus, string>`. That makes the separate `estado_revision IN (...)` CHECK redundant, so it goes. |
+| Sonnet | The review CHECK is built from `shapeByStatus satisfies Record<ReviewStatus, string>`. That makes the separate `estado_revision IN (...)` CHECK redundant, so it goes. |
 | Sonnet | `test/ayudas/db.ts` (savepoint-based `constraintOf`) and the `schema.test.ts` bodies that ran green on PostgreSQL 18.6 replace the sketch's `it.todo` list, renamed to the sketch's constraint names. A report's content is frozen from birth, so FPS rules are tested with INSERT. |
 | Sonnet | `IncomparableProfile { mismatches: NonEmptyArray<Mismatch> }` with `{ de, esperado, observado }`, so the message can say "perfil para x86_64, tu diagnóstico es aarch64". |
 | Sonnet | `.oxlintrc.json` with `no-explicit-any`, `consistent-type-assertions: never` and `no-non-null-assertion`, inside `pnpm check`. |
