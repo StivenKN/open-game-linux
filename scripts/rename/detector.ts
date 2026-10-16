@@ -25,8 +25,9 @@ const closing = (source: string, open: number, pair: '()' | '{}') => {
   throw new Error(`unclosed ${pair[0]} at offset ${open}`)
 }
 
-// An awk program is the first single-quoted word after `awk` and its -F / -v options.
-const startsAwkProgram = (lineBefore: string) => /(?:^|[|(;&]|\$\()\s*awk(?:\s+(?:-F\s*(?:'[^']*'|\S+)|-v\s+\S+))*\s+$/.test(lineBefore)
+const commandStart = String.raw`(?:^|[|(;&]|\$\()\s*`
+const awkOption = String.raw`\s+(?:-F\s*(?:'[^']*'|\S+)|-v\s+\S+)`
+const awkProgramNext = new RegExp(String.raw`${commandStart}awk(?:${awkOption})*\s+$`)
 
 const awkSegments = (program: string): ReadonlyArray<Segment> => {
   const out: Segment[] = []
@@ -87,7 +88,7 @@ function shellSegments(source: string): ReadonlyArray<Segment> {
       const end = source.indexOf("'", i + 1)
       const lineBefore = source.slice(source.lastIndexOf('\n', i - 1) + 1, i)
       flush()
-      out.push({ code: false, text: "'" }, ...(startsAwkProgram(lineBefore) ? awkSegments(source.slice(i + 1, end)) : [{ code: false, text: source.slice(i + 1, end) }]), { code: false, text: "'" })
+      out.push({ code: false, text: "'" }, ...(awkProgramNext.test(lineBefore) ? awkSegments(source.slice(i + 1, end)) : [{ code: false, text: source.slice(i + 1, end) }]), { code: false, text: "'" })
       i = end
     } else if (c === '"') {
       let end = i + 1
@@ -165,7 +166,6 @@ const renameFile = (file: string, entries: Readonly<Record<string, string>>) => 
         count(s.text)
         return entries[s.text] ?? s.text
       }
-      // PowerShell ignores case, so a casing the map does not list is an error, not a miss.
       return s.text.replace(pattern, (name: string) => {
         const to = entries[name]
         if (to === undefined) throw new Error(`${file}: ${name} appears in a casing the map does not list`)
@@ -179,12 +179,12 @@ const renameFile = (file: string, entries: Readonly<Record<string, string>>) => 
     .filter((s) => !s.code)
     .flatMap((s) => [...s.text.matchAll(pattern)].map((m) => m[0]))
   const unused = Object.keys(entries).filter((k) => !hits.has(k))
-  if (after !== before) writeFileSync(join(root, file), after)
   const total = [...hits.values()].reduce((a, b) => a + b, 0)
   console.log(`${file}: ${total} renames across ${hits.size} names`)
   for (const [key, n] of hits) console.log(`  ${key} -> ${entries[key] ?? '?'}  x${n}`)
   if (inText.length > 0) console.log(`  left in quoted text: ${[...new Set(inText)].join(', ')}`)
   if (unused.length > 0 && total > 0) throw new Error(`${file}: map entries with no use: ${unused.join(', ')}`)
+  if (after !== before) writeFileSync(join(root, file), after)
   return total
 }
 
