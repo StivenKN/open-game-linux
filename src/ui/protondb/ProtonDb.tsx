@@ -3,7 +3,7 @@ import type { ProtonDbSummary } from '../../domain/tables.ts'
 import { count, date } from '../format.ts'
 import { protonVariant } from '../vocabulary.ts'
 
-type Recent = Pick<ProtonDbSummary, 'recientes' | 'recientes_funcionan' | 'reportes_total'>
+type Recent = Pick<ProtonDbSummary, 'recent' | 'recent_working' | 'total_reports'>
 
 /** The license asks for this on every page that shows ProtonDB data. */
 export function ProtonDbAttribution() {
@@ -21,9 +21,9 @@ const workingLine = (n: number, total: number) =>
 export function ProtonDbLine({ summary }: { summary: Recent }) {
   return (
     <p className="juego-meta">
-      {summary.recientes === 0
-        ? `ProtonDB: sin reportes en el último año (${summary.reportes_total} en total)`
-        : `ProtonDB: ${workingLine(summary.recientes_funcionan, summary.recientes)} en el último año`}
+      {summary.recent === 0
+        ? `ProtonDB: sin reportes en el último año (${summary.total_reports} en total)`
+        : `ProtonDB: ${workingLine(summary.recent_working, summary.recent)} en el último año`}
     </p>
   )
 }
@@ -42,24 +42,24 @@ export function ProtonDbSection({ protondb: p }: { protondb: (ProtonDbSummary & 
       </p>
       <ul className="pila sin-margen">
         <li>
-          Último año: <b>{workingLine(p.recientes_funcionan, p.recientes)}</b>
+          Último año: <b>{workingLine(p.recent_working, p.recent)}</b>
         </li>
         <li>
           En equipos modestos (8 GB de RAM o menos, o gráficos Intel integrados):{' '}
-          <b>{workingLine(p.modestos_funcionan, p.modestos_recientes)}</b>
+          <b>{workingLine(p.modest_working, p.modest_recent)}</b>
         </li>
         <li>
-          {count(p.reportes_total, 'reporte', 'reportes')} en total · último reporte {date(p.ultimo_reporte)}
+          {count(p.total_reports, 'reporte', 'reportes')} en total · último reporte {date(p.latest_report)}
         </li>
-        {p.capa_variante !== null && (
+        {p.layer_variant !== null && (
           <li>
-            Lo más usado entre los que funcionan: <b>{layer(p.capa_variante, p.capa_version)}</b> (
-            {count(p.capa_reportes, 'reporte', 'reportes')})
+            Lo más usado entre los que funcionan: <b>{layer(p.layer_variant, p.layer_version)}</b> (
+            {count(p.layer_reports, 'reporte', 'reportes')})
           </li>
         )}
       </ul>
       <p className="pequeno tenue">
-        «Último año» son los 12 meses antes del export de ProtonDB del {date(p.exportado_en)}.{' '}
+        «Último año» son los 12 meses antes del export de ProtonDB del {date(p.exported_at)}.{' '}
         <a href={`https://www.protondb.com/app/${encodeURIComponent(p.app_id)}`}>Ver el juego en ProtonDB</a>
       </p>
       <ProtonDbAttribution />

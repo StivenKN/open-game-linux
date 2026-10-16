@@ -14,8 +14,8 @@ export type Write<A, E> = Effect.Effect<A, E | Unauthenticated | Infra, SqlClien
 const violate = (rule: Rule) => Effect.fail(new RuleViolated({ rule }))
 
 const ReportDiagnostic = Schema.Struct({
-  usuario_id: Machine.fields.usuario_id,
-  ...Diagnostic.mapFields(Struct.pick(['sistema', 'distribucion_id', 'arquitectura', 'capturado_en'])).fields,
+  user_id: Machine.fields.user_id,
+  ...Diagnostic.mapFields(Struct.pick(['operating_system', 'distribution_id', 'architecture', 'captured_at'])).fields,
 })
 
 const ReportIdRow = Schema.Struct({ id: ReportId })
@@ -30,11 +30,11 @@ export const submitReport = (n: NewReport): Write<{ readonly id: ReportId }, Rul
       sql`SELECT e.user_id, d.operating_system, d.distribution_id, d.architecture, d.captured_at
           FROM diagnostic d JOIN machine e ON e.id = d.machine_id WHERE d.id = ${n.diagnostico_id}`,
     )
-    if (d === undefined || d.usuario_id !== user.id) return yield* violate('equipo_ajeno')
-    if (d.sistema !== 'Linux' || d.distribucion_id === null) return yield* violate('diagnostico_no_linux')
-    if (n.fecha_prueba < d.capturado_en) return yield* violate('fecha_antes_del_diagnostico')
+    if (d === undefined || d.user_id !== user.id) return yield* violate('equipo_ajeno')
+    if (d.operating_system !== 'Linux' || d.distribution_id === null) return yield* violate('diagnostico_no_linux')
+    if (n.fecha_prueba < d.captured_at) return yield* violate('fecha_antes_del_diagnostico')
 
-    const version_capa_id = yield* resolveLayerVersion(n.version_capa)
+    const layer_version_id = yield* resolveLayerVersion(n.version_capa)
 
     if (n.perfil_id !== null) {
       const [profile] = yield* rows(
@@ -44,7 +44,7 @@ export const submitReport = (n: NewReport): Write<{ readonly id: ReportId }, Rul
       )
       if (profile === undefined) return yield* violate('perfil_no_disponible')
       const found = mismatches(
-        { edicion_id: n.edicion_id, version_capa_id, distribucion_id: d.distribucion_id, arquitectura: d.arquitectura, version_juego: n.version_juego },
+        { edition_id: n.edicion_id, layer_version_id, distribution_id: d.distribution_id, architecture: d.architecture, game_version: n.version_juego },
         profile,
       )
       if (Arr.isReadonlyArrayNonEmpty(found)) return yield* Effect.fail(new IncomparableProfile({ mismatches: found }))
@@ -53,24 +53,24 @@ export const submitReport = (n: NewReport): Write<{ readonly id: ReportId }, Rul
     const created = yield* oneRow(
       ReportIdRow,
       sql`INSERT INTO report ${sql.insert({
-        edicion_id: n.edicion_id,
-        diagnostico_id: n.diagnostico_id,
-        version_capa_id,
-        perfil_id: n.perfil_id,
-        version_juego: n.version_juego,
-        version_lanzador: n.version_lanzador,
-        fecha_prueba: n.fecha_prueba,
-        resultado: n.resultado,
-        fps_promedio: n.medicion?.fps_promedio ?? null,
-        resolucion: n.medicion?.resolucion ?? null,
-        calidad_grafica: n.medicion?.calidad_grafica ?? null,
-        metodo_medicion: n.medicion?.metodo_medicion ?? null,
-        observaciones: n.observaciones,
+        edition_id: n.edicion_id,
+        diagnostic_id: n.diagnostico_id,
+        layer_version_id,
+        profile_id: n.perfil_id,
+        game_version: n.version_juego,
+        launcher_version: n.version_lanzador,
+        tested_at: n.fecha_prueba,
+        outcome: n.resultado,
+        avg_fps: n.medicion?.fps_promedio ?? null,
+        resolution: n.medicion?.resolucion ?? null,
+        graphics_quality: n.medicion?.calidad_grafica ?? null,
+        measurement_method: n.medicion?.metodo_medicion ?? null,
+        observations: n.observaciones,
       })} RETURNING id`,
     )
     if (Arr.isReadonlyArrayNonEmpty(n.fallos))
       yield* withDbRules(
-        sql`INSERT INTO report_failure ${sql.insert(n.fallos.map((f) => ({ reporte_id: created.id, tipo_fallo_id: f.tipo_fallo_id, detalle: f.detalle })))}`,
+        sql`INSERT INTO report_failure ${sql.insert(n.fallos.map((f) => ({ report_id: created.id, failure_type_id: f.tipo_fallo_id, detail: f.detalle })))}`,
       )
     return { id: created.id }
   })
@@ -92,8 +92,8 @@ const resolveLayerVersion = (ref: NewReport['version_capa']) =>
     return layer.id
   })
 
-const SolutionOrigin = Report.mapFields(Struct.pick(['edicion_id']))
-const RecommendedProfile = Profile.mapFields(Struct.pick(['edicion_id']))
+const SolutionOrigin = Report.mapFields(Struct.pick(['edition_id']))
+const RecommendedProfile = Profile.mapFields(Struct.pick(['edition_id']))
 const SolutionIdRow = Schema.Struct({ id: SolutionId })
 
 export const submitSolution = (s: NewSolution): Write<{ readonly id: SolutionId }, RuleViolated> =>
@@ -114,18 +114,18 @@ export const submitSolution = (s: NewSolution): Write<{ readonly id: SolutionId 
         sql`SELECT edition_id FROM profile WHERE id = ${s.perfil_id} AND review_status IN ${sql.in(activeStatuses)}`,
       )
       if (profile === undefined) return yield* violate('perfil_no_disponible')
-      if (profile.edicion_id !== origin.edicion_id) return yield* violate('solucion_perfil_otra_edicion')
+      if (profile.edition_id !== origin.edition_id) return yield* violate('solucion_perfil_otra_edicion')
     }
 
     const created = yield* oneRow(
       SolutionIdRow,
       sql`INSERT INTO solution ${sql.insert({
-        reporte_id: s.reporte_id,
-        tipo_fallo_id: s.tipo_fallo_id,
-        autor_id: user.id,
-        perfil_id: s.perfil_id,
-        titulo: s.titulo,
-        instrucciones: s.instrucciones,
+        report_id: s.reporte_id,
+        failure_type_id: s.tipo_fallo_id,
+        author_id: user.id,
+        profile_id: s.perfil_id,
+        title: s.titulo,
+        instructions: s.instrucciones,
       })} RETURNING id`,
     )
     return { id: created.id }
@@ -139,9 +139,9 @@ export const createGame = (j: NewGame): Write<{ readonly id: GameId }, RuleViola
     const sql = yield* SqlClient.SqlClient
     const created = yield* oneRow(
       GameIdRow,
-      sql`INSERT INTO game ${sql.insert({ titulo: j.titulo, descripcion: j.descripcion, nivel_x86_min: j.nivel_x86_min })} RETURNING id`,
+      sql`INSERT INTO game ${sql.insert({ title: j.titulo, description: j.descripcion, x86_level_min: j.nivel_x86_min })} RETURNING id`,
     )
-    yield* withDbRules(sql`INSERT INTO game_edition ${sql.insert(j.ediciones.map((e) => ({ juego_id: created.id, ...e })))}`)
-    yield* sql`INSERT INTO game_api ${sql.insert(Arr.dedupe(j.apis).map((api) => ({ juego_id: created.id, api })))}`
+    yield* withDbRules(sql`INSERT INTO game_edition ${sql.insert(j.ediciones.map((e) => ({ game_id: created.id, ...e })))}`)
+    yield* sql`INSERT INTO game_api ${sql.insert(Arr.dedupe(j.apis).map((api) => ({ game_id: created.id, api })))}`
     return { id: created.id }
   })

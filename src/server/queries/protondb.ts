@@ -4,7 +4,7 @@ import { GameId } from '../../domain/ids.ts'
 import { ProtonDbSummary } from '../../domain/tables.ts'
 import { rows } from '../rows.ts'
 
-const ProtonDbRow = Schema.Struct({ ...ProtonDbSummary.fields, juego_id: GameId, app_id: Schema.String })
+const ProtonDbRow = Schema.Struct({ ...ProtonDbSummary.fields, game_id: GameId, app_id: Schema.String })
 export type ProtonDbRow = typeof ProtonDbRow.Type
 
 /** ProtonDB's aggregate per game, from its Steam edition: one game, or every game with `null`. */

@@ -79,14 +79,14 @@ function ImportPage() {
       <CaptureSummary capture={r.value.capture} />
       <GraphicsCardOnLinux machine={r.value.machine} pci={r.value.capture.gpu_pci_id} />
       <SavePanel input={state.input} libraryGameCount={r.value.library?.total ?? 0} />
-      <MachineGames rows={r.value.matrix} library={r.value.library} approximate={r.value.capture.sistema === 'Windows'} />
+      <MachineGames rows={r.value.matrix} library={r.value.library} approximate={r.value.capture.operating_system === 'Windows'} />
       <Distributions {...r.value.distributions} />
     </main>
   )
 }
 
 const SaveTarget = Schema.Struct({ equipo: TargetMachine, con_biblioteca: Checkbox })
-type Saved = { readonly id: DiagnosticId; readonly nuevo: boolean }
+type Saved = { readonly id: DiagnosticId; readonly inserted: boolean }
 
 function SavePanel({ input, libraryGameCount }: { input: Input; libraryGameCount: number }) {
   const { visitor } = Route.useRouteContext()
@@ -155,7 +155,7 @@ function SavePanel({ input, libraryGameCount }: { input: Input; libraryGameCount
       <FieldError errors={r.errors} field="formulario" />
       {saved && (
         <p role="status" className="pequeno">
-          {saved.nuevo ? 'Guardado.' : 'Ya estaba guardado; no se creó una copia.'}{' '}
+          {saved.inserted ? 'Guardado.' : 'Ya estaba guardado; no se creó una copia.'}{' '}
           <Link to="/diagnosticos/$diagnosticId" params={{ diagnosticId: saved.id }}>
             Ver el diagnóstico guardado
           </Link>

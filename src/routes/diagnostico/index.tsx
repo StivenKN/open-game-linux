@@ -50,10 +50,10 @@ function DiagnosticPage() {
                   {e.diagnostics.map((d) => (
                     <li key={d.id}>
                       <Link to="/diagnosticos/$diagnosticId" params={{ diagnosticId: d.id }}>
-                        {dateTime(d.capturado_en)}
+                        {dateTime(d.captured_at)}
                       </Link>{' '}
                       <span className="pequeno tenue dato">
-                        {d.distribucion ?? operatingSystemLabel[d.sistema]} · {d.gpu_modelo} · {memory(d.ram_mb)} RAM
+                        {d.distribution ?? operatingSystemLabel[d.operating_system]} · {d.gpu_model} · {memory(d.ram_mb)} RAM
                       </span>
                     </li>
                   ))}

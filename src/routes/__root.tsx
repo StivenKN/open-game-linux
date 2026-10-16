@@ -72,7 +72,7 @@ function SiteHeader() {
         </Link>
         <Link to="/diagnostico">Diagnóstico</Link>
         <Link to="/guias">Guías</Link>
-        {visitor !== null && visitor.rol !== 'usuario' && (
+        {visitor !== null && visitor.role !== 'usuario' && (
           <>
             <Link to="/revision">Revisión</Link>
             <Link to="/catalogo/nuevo">Nuevo juego</Link>

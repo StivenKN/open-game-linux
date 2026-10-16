@@ -27,7 +27,7 @@ export const Route = createFileRoute('/juegos/$gameId_/reportar')({
   },
   loaderDeps: ({ search }) => ({ perfil: search.perfil ?? null }),
   loader: ({ params, deps }) => reportOptionsFn({ data: { gameId: params.gameId, perfil: deps.perfil } }),
-  head: ({ loaderData }) => ({ meta: [{ title: `Reportar ${loaderData?.game.titulo ?? 'resultado'} · OpenGame Linux` }] }),
+  head: ({ loaderData }) => ({ meta: [{ title: `Reportar ${loaderData?.game.title ?? 'resultado'} · OpenGame Linux` }] }),
   component: ReportPage,
 })
 
@@ -42,7 +42,7 @@ function ReportPage() {
   return (
     <main className="envoltura">
       <p className="rotulo">Reportar resultado</p>
-      <h1>{game.titulo}</h1>
+      <h1>{game.title}</h1>
       {submitted !== null ? (
         <section className="tarjeta pila" aria-live="polite">
           <h2>Reporte enviado</h2>
@@ -86,17 +86,17 @@ const byId = <I extends number>(list: ReadonlyArray<{ readonly id: I }>, value: 
 
 const mismatchNames = (o: Options) => {
   const distributions = new Map<number, string>([
-    ...o.profiles.map((p) => [p.distribucion_id, p.distribucion] as const),
-    ...o.diagnostics.map((d) => [d.distribucion_id, d.distribucion] as const),
+    ...o.profiles.map((p) => [p.distribution_id, p.distribution] as const),
+    ...o.diagnostics.map((d) => [d.distribution_id, d.distribution] as const),
   ])
   const layerName = (id: number) => {
     const c = o.layers.find((x) => x.id === id)
-    return c === undefined ? 'otra capa' : `${c.familia} ${c.variante} ${c.version}`
+    return c === undefined ? 'otra capa' : `${c.family} ${c.variant} ${c.version}`
   }
   return (d: Encoded<IncomparableProfile>['mismatches'][number]): readonly [string, string] => {
     switch (d.aspect) {
       case 'edicion':
-        return [o.editions.find((e) => e.id === d.expected)?.lanzador ?? 'otra edición', o.editions.find((e) => e.id === d.actual)?.lanzador ?? 'otra edición']
+        return [o.editions.find((e) => e.id === d.expected)?.launcher ?? 'otra edición', o.editions.find((e) => e.id === d.actual)?.launcher ?? 'otra edición']
       case 'capa':
         return [layerName(d.expected), layerName(d.actual)]
       case 'distribucion':
@@ -113,11 +113,11 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
   const selected = profiles.find((p) => p.id === selectedProfile)
 
   const [diagnosticId, setDiagnosticId] = useState(diagnostics.at(0)?.id)
-  const [editionId, setEditionId] = useState(selected?.edicion_id ?? editions.at(0)?.id)
+  const [editionId, setEditionId] = useState(selected?.edition_id ?? editions.at(0)?.id)
   const [layerType, setLayerType] = useState<'existente' | 'nueva'>('existente')
-  const [layerId, setLayerId] = useState(selected?.version_capa_id ?? layers.at(0)?.id)
+  const [layerId, setLayerId] = useState(selected?.layer_version_id ?? layers.at(0)?.id)
   const [newLayer, setNewLayer] = useState<{ readonly familia: LayerFamily; readonly variante: string }>({ familia: 'Wine', variante: '' })
-  const [gameVersion, setGameVersion] = useState(selected?.version_juego_objetivo ?? '')
+  const [gameVersion, setGameVersion] = useState(selected?.target_game_version ?? '')
   const [profileId, setProfileId] = useState(selected === undefined ? nullText : String(selected.id))
   const [outcome, setOutcome] = useState<Outcome>('funciona')
   const [failures, setFailures] = useState<ReadonlyArray<number>>([])
@@ -126,7 +126,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
   const diagnostic = diagnostics.find((d) => d.id === diagnosticId)
   const testRun =
     diagnostic !== undefined && editionId !== undefined && layerId !== undefined && layerType === 'existente'
-      ? { edicion_id: editionId, version_capa_id: layerId, distribucion_id: diagnostic.distribucion_id, arquitectura: diagnostic.arquitectura, version_juego: gameVersion.trim() }
+      ? { edition_id: editionId, layer_version_id: layerId, distribution_id: diagnostic.distribution_id, architecture: diagnostic.architecture, game_version: gameVersion.trim() }
       : null
   const comparable = profiles.filter((p) => p.id === selectedProfile || (testRun !== null && mismatches(testRun, p).length === 0))
   const profileValue = comparable.some((p) => String(p.id) === profileId) ? profileId : nullText
@@ -149,8 +149,8 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
     },
     onComplete: (v) => {
       const layer = layerType === 'existente' ? layers.find((c) => c.id === layerId) : newLayer
-      const launcher = editions.find((e) => e.id === editionId)?.lanzador
-      const proton = layer !== undefined && launcher !== undefined && protonReportPossible({ lanzador: launcher, familia: layer.familia, variante: layer.variante.trim(), resultado: outcome })
+      const launcher = editions.find((e) => e.id === editionId)?.launcher
+      const proton = layer !== undefined && launcher !== undefined && protonReportPossible({ launcher, family: layer.familia, variant: layer.variant.trim(), outcome })
       onSubmitted({ id: v.id, hasFailures: failures.length > 0, proton })
     },
   })
@@ -169,7 +169,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
         <select {...fieldProps(r.errors, 'diagnostico_id')} value={diagnosticId ?? ''} onChange={(e) => setDiagnosticId(byId(diagnostics, e.currentTarget.value))}>
           {diagnostics.map((d) => (
             <option key={d.id} value={d.id}>
-              {d.equipo} · {d.distribucion} · {d.arquitectura} · {dateTime(d.capturado_en)}
+              {d.machine} · {d.distribution} · {d.architecture} · {dateTime(d.captured_at)}
             </option>
           ))}
         </select>
@@ -178,7 +178,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
         <select {...fieldProps(r.errors, 'edicion_id')} value={editionId ?? ''} onChange={(e) => setEditionId(byId(editions, e.currentTarget.value))}>
           {editions.map((e) => (
             <option key={e.id} value={e.id}>
-              {e.lanzador}
+              {e.launcher}
             </option>
           ))}
         </select>
@@ -201,7 +201,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
             <select {...fieldProps(r.errors, 'version_capa[id]')} value={layerId ?? ''} onChange={(e) => setLayerId(byId(layers, e.currentTarget.value))}>
               {layers.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.familia} {c.variante} {c.version}
+                  {c.family} {c.variant} {c.version}
                 </option>
               ))}
             </select>
@@ -254,7 +254,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
           <option value={nullText}>Sin perfil</option>
           {comparable.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.titulo} (r{p.revision}, {reviewStatus[p.estado_revision].text.toLowerCase()}) · {p.distribucion}
+              {p.title} (r{p.revision}, {reviewStatus[p.review_status].text.toLowerCase()}) · {p.distribution}
             </option>
           ))}
         </select>
@@ -288,8 +288,8 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
             <Field errors={r.errors} name={`fallos[${i}][tipo_fallo_id]`} label="Tipo">
               <select {...fieldProps(r.errors, `fallos[${i}][tipo_fallo_id]`)}>
                 {failureTypes.map((t) => (
-                  <option key={t.id} value={t.id} title={t.descripcion}>
-                    {failureType(t.codigo).text}
+                  <option key={t.id} value={t.id} title={t.description}>
+                    {failureType(t.code).text}
                   </option>
                 ))}
               </select>

@@ -10,17 +10,17 @@ import { rows } from '../rows.ts'
 import { isDemo, distributionLabel } from './labels.ts'
 
 const ProtonReportRow = Schema.Struct({
-  juego_id: Game.fields.id,
-  juego: Game.fields.titulo,
-  lanzador: Launcher.fields.nombre,
-  identificador_externo: GameEdition.fields.identificador_externo,
-  ...LayerVersion.mapFields(Struct.pick(['familia', 'variante', 'version'])).fields,
-  ...Report.mapFields(Struct.pick(['resultado', 'version_juego', 'fecha_prueba', 'observaciones'])).fields,
-  ...Diagnostic.mapFields(Struct.pick(['gpu_modelo', 'controlador', 'version_controlador', 'version_sistema'])).fields,
-  distribucion: Schema.String,
-  ejemplo: Schema.Boolean,
+  game_id: Game.fields.id,
+  game: Game.fields.title,
+  launcher: Launcher.fields.name,
+  external_id: GameEdition.fields.external_id,
+  ...LayerVersion.mapFields(Struct.pick(['family', 'variant', 'version'])).fields,
+  ...Report.mapFields(Struct.pick(['outcome', 'game_version', 'tested_at', 'observations'])).fields,
+  ...Diagnostic.mapFields(Struct.pick(['gpu_model', 'driver', 'driver_version', 'os_version'])).fields,
+  distribution: Schema.String,
+  demo: Schema.Boolean,
 })
-const FailureRow = ReportFailure.mapFields(Struct.pick(['detalle']))
+const FailureRow = ReportFailure.mapFields(Struct.pick(['detail']))
 
 /**
  * The Proton report for one of the visitor's own reports. It embeds the diagnosis hardware, which only its
@@ -50,7 +50,7 @@ export const myProtonReport = (reportId: ReportId) =>
     if (row === undefined) return yield* Effect.fail(new NotFound())
     const failures = yield* rows(FailureRow, sql`SELECT detail FROM report_failure WHERE report_id = ${reportId} ORDER BY failure_type_id`)
     return {
-      report: { id: reportId, juego_id: row.juego_id, juego: row.juego },
-      protonReport: protonReport({ ...row, failures: failures.map((f) => f.detalle) }),
+      report: { id: reportId, game_id: row.game_id, game: row.game },
+      protonReport: protonReport({ ...row, failures: failures.map((f) => f.detail) }),
     }
   })

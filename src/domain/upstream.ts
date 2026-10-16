@@ -39,12 +39,12 @@ const query = (params: Readonly<Record<string, string>>) =>
     .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
     .join('&')
 
-type Edition = { readonly lanzador: string; readonly identificador_externo: string | null }
+type Edition = { readonly launcher: string; readonly external_id: string | null }
 
 const appIdOf = (e: Edition): { readonly _tag: 'steam'; readonly appid: SteamAppId } | { readonly _tag: 'no'; readonly reason: 'no_es_steam' | 'sin_appid' } =>
-  e.lanzador !== STEAM
+  e.launcher !== STEAM
     ? { _tag: 'no', reason: 'no_es_steam' }
-    : Option.match(Schema.decodeOption(SteamAppId)(e.identificador_externo ?? ''), {
+    : Option.match(Schema.decodeOption(SteamAppId)(e.external_id ?? ''), {
         onNone: () => ({ _tag: 'no', reason: 'sin_appid' }),
         onSome: (appid) => ({ _tag: 'steam', appid }),
       })
@@ -127,16 +127,16 @@ const translateLaunchOptions = (options: string | null): ReadonlyArray<Piece> =>
   ]
 }
 
-type FixDependency = Pick<Dependency, 'nombre' | 'gestor'> & Pick<ProfileDependency, 'obligatoria'>
+type FixDependency = Pick<Dependency, 'name' | 'package_manager'> & Pick<ProfileDependency, 'required'>
 
 const translateDependency = (d: FixDependency): Piece =>
-  d.gestor !== 'winetricks'
-    ? skip(d.nombre, 'paquete_del_sistema')
-    : !d.obligatoria
-      ? skip(d.nombre, 'dependencia_opcional') // a fix file would make it mandatory
-      : isWinetricksVerb(d.nombre)
-        ? { _tag: 'winetricks', verb: d.nombre }
-        : skip(d.nombre, 'forma_invalida')
+  d.package_manager !== 'winetricks'
+    ? skip(d.name, 'paquete_del_sistema')
+    : !d.required
+      ? skip(d.name, 'dependencia_opcional') // a fix file would make it mandatory
+      : isWinetricksVerb(d.name)
+        ? { _tag: 'winetricks', verb: d.name }
+        : skip(d.name, 'forma_invalida')
 
 export type NotExportableReason = 'no_es_steam' | 'sin_appid' | 'capa_sin_protonfixes'
 
@@ -144,21 +144,21 @@ type NotExportable = { readonly _tag: 'no_exportable'; readonly reason: NotExpor
 
 /** Whether a profile maps to gamefixes-steam/<appid>.py at all. Shared by exportFix and the writer of arreglo_upstream. */
 export const exportableAppId = (
-  e: Edition & { readonly familia: LayerFamily },
+  e: Edition & { readonly family: LayerFamily },
 ): NotExportable | { readonly _tag: 'exportable'; readonly appid: SteamAppId } => {
   const edition = appIdOf(e)
   if (edition._tag === 'no') return { _tag: 'no_exportable', reason: edition.reason }
   // Any Proton variant: the profile was tested in a Proton prefix, which is what protonfixes patches. Wine and native never load it.
-  return e.familia === 'Proton' ? { _tag: 'exportable', appid: edition.appid } : { _tag: 'no_exportable', reason: 'capa_sin_protonfixes' }
+  return e.family === 'Proton' ? { _tag: 'exportable', appid: edition.appid } : { _tag: 'no_exportable', reason: 'capa_sin_protonfixes' }
 }
 
 export type FixInput = Edition & {
-  readonly familia: LayerFamily
-  readonly juego: string
+  readonly family: LayerFamily
+  readonly game: string
   readonly profile: { readonly id: ProfileId; readonly revision: number }
-  readonly parametros_lanzamiento: string | null
+  readonly launch_options: string | null
   readonly dependencies: ReadonlyArray<FixDependency>
-  readonly ejemplo: boolean
+  readonly demo: boolean
 }
 
 export type FixExport =
@@ -209,7 +209,7 @@ const pythonFile = (game: string, profile: FixInput['profile'], operations: Read
 export const exportFix = (input: FixInput): FixExport => {
   const target = exportableAppId(input)
   if (target._tag === 'no_exportable') return target
-  const options = translateLaunchOptions(input.parametros_lanzamiento)
+  const options = translateLaunchOptions(input.launch_options)
   const dependencies = input.dependencies.map(translateDependency)
   // Dependencies first keeps upstream's line order: protontricks, then environment, then arguments.
   const operations = [...dependencies, ...options].filter((p) => '_tag' in p)
@@ -217,7 +217,7 @@ export const exportFix = (input: FixInput): FixExport => {
   if (!Arr.isReadonlyArrayNonEmpty(operations)) return { _tag: 'nada_traducible', skipped }
 
   const { appid } = target
-  const content = pythonFile(input.juego, input.profile, operations)
+  const content = pythonFile(input.game, input.profile, operations)
   const path = `gamefixes-steam/${appid}.py`
   return {
     _tag: 'archivo',
@@ -229,14 +229,14 @@ export const exportFix = (input: FixInput): FixExport => {
     // No line of the file can equal the quoted delimiter, so the heredoc always ends where we mean.
     local_command: `mkdir -p ~/.config/protonfixes/localfixes && cat > ~/.config/protonfixes/localfixes/${appid}.py <<'OPENGAME_FIX'\n${content}OPENGAME_FIX`,
     view_existing: `https://github.com/${PROTONFIXES}/blob/master/${path}`,
-    propose: input.ejemplo
+    propose: input.demo
       ? { _tag: 'datos_de_ejemplo' }
       : {
           _tag: 'enlace',
           url: `https://github.com/${PROTONFIXES}/new/master/gamefixes-steam?${query({
             filename: `${appid}.py`,
             value: content,
-            message: `Add ${input.juego} (${appid}) fix from OpenGame Linux`,
+            message: `Add ${input.game} (${appid}) fix from OpenGame Linux`,
           })}`,
         },
   }
@@ -246,24 +246,24 @@ export const exportFix = (input: FixInput): FixExport => {
 
 export type NoReportReason = 'no_es_steam' | 'sin_appid' | 'capa_no_valve' | 'funciona'
 
-type Trial = Pick<LayerVersion, 'familia' | 'variante'> & Pick<Report, 'resultado'>
+type Trial = Pick<LayerVersion, 'family' | 'variant'> & Pick<Report, 'outcome'>
 
 // Valve's tracker is for its own Proton. A tweak-dependent result still counts: that tweak is what Valve fixes.
 const trialReason = (r: Trial): 'capa_no_valve' | 'funciona' | null =>
-  r.familia !== 'Proton' || r.variante !== 'Valve' ? 'capa_no_valve' : r.resultado === 'funciona' ? 'funciona' : null
+  r.family !== 'Proton' || r.variant !== 'Valve' ? 'capa_no_valve' : r.outcome === 'funciona' ? 'funciona' : null
 
 /** The "Reporte enviado" panel knows the launcher, layer and result but not the AppID; the report page decides for good. */
-export const protonReportPossible = (r: Trial & { readonly lanzador: string }) => r.lanzador === STEAM && trialReason(r) === null
+export const protonReportPossible = (r: Trial & { readonly launcher: string }) => r.launcher === STEAM && trialReason(r) === null
 
 export type ReportInput = Edition &
   Trial &
   Pick<LayerVersion, 'version'> &
-  Pick<Report, 'version_juego' | 'fecha_prueba' | 'observaciones'> &
-  Pick<Diagnostic, 'gpu_modelo' | 'controlador' | 'version_controlador' | 'version_sistema'> & {
-    readonly juego: string
-    readonly distribucion: string
+  Pick<Report, 'game_version' | 'tested_at' | 'observations'> &
+  Pick<Diagnostic, 'gpu_model' | 'driver' | 'driver_version' | 'os_version'> & {
+    readonly game: string
+    readonly distribution: string
     readonly failures: ReadonlyArray<string>
-    readonly ejemplo: boolean
+    readonly demo: boolean
   }
 
 export type ProtonReport =
@@ -288,22 +288,22 @@ const outcomeInEnglish = {
   falla_en_ejecucion: 'Fails while playing',
 } as const satisfies Record<Outcome, string>
 
-const driverOf = (e: Pick<Diagnostic, 'controlador' | 'version_controlador'>) =>
-  e.version_controlador === null ? (e.controlador ?? 'unknown') : e.controlador === null ? e.version_controlador : `${e.version_controlador} (${e.controlador})`
+const driverOf = (e: Pick<Diagnostic, 'driver' | 'driver_version'>) =>
+  e.driver_version === null ? (e.driver ?? 'unknown') : e.driver === null ? e.driver_version : `${e.driver_version} (${e.driver})`
 
 /** Valve's compatibility-report.md with what OpenGame knows filled in. The "I confirm" boxes stay for the user to tick. */
 const reportBody = (e: ReportInput, appid: SteamAppId) => {
-  const symptoms = [...e.failures, e.observaciones].map((t) => t.trim()).filter((t) => t !== '')
+  const symptoms = [...e.failures, e.observations].map((t) => t.trim()).filter((t) => t !== '')
   return [
     '# Compatibility Report',
-    `- Name of the game with compatibility issues: ${e.juego}`,
+    `- Name of the game with compatibility issues: ${e.game}`,
     `- Steam AppID of the game: ${appid}`,
     '',
     '## System Information',
-    `- GPU: ${e.gpu_modelo}`,
+    `- GPU: ${e.gpu_model}`,
     `- Video driver version: ${driverOf(e)}`,
-    `- Kernel version: ${e.version_sistema}`,
-    `- Distribution: ${e.distribucion}`,
+    `- Kernel version: ${e.os_version}`,
+    `- Distribution: ${e.distribution}`,
     '- Link to full system information report as [Gist](https://gist.github.com/):',
     `- Proton version: Proton ${e.version}`,
     '',
@@ -319,9 +319,9 @@ const reportBody = (e: ReportInput, appid: SteamAppId) => {
     symptoms.length === 0 ? '<!-- Describe what goes wrong. -->' : symptoms.join('\n\n'),
     '',
     '## Reproduction',
-    `- Game version: ${e.version_juego}`,
-    `- Result: ${outcomeInEnglish[e.resultado]}`,
-    `- Tested on: ${e.fecha_prueba.toISOString().slice(0, 10)}`,
+    `- Game version: ${e.game_version}`,
+    `- Result: ${outcomeInEnglish[e.outcome]}`,
+    `- Tested on: ${e.tested_at.toISOString().slice(0, 10)}`,
     '<!-- List the steps that lead to the problem. -->',
     '',
     'Prepared with OpenGame Linux.',
@@ -336,7 +336,7 @@ export const protonReport = (input: ReportInput): ProtonReport => {
   if (reason !== null) return { _tag: 'no_aplica', reason }
 
   const { appid } = edition
-  const title = `${input.juego} (${appid})`
+  const title = `${input.game} (${appid})`
   const body = reportBody(input, appid)
   const newIssue = `https://github.com/${PROTON}/issues/new?`
   const withBody = newIssue + query({ template: 'compatibility-report.md', title, body })
@@ -349,7 +349,7 @@ export const protonReport = (input: ReportInput): ProtonReport => {
     log_command: 'PROTON_LOG=1 %command%',
     compress_command: `gzip -k ~/steam-${appid}.log`,
     search: `https://github.com/${PROTON}/issues?${query({ q: appid })}`,
-    open: input.ejemplo
+    open: input.demo
       ? { _tag: 'datos_de_ejemplo' }
       : { _tag: 'enlace', url: body_in_link ? withBody : newIssue + query({ template: 'compatibility-report.md', title }) },
     body_in_link,

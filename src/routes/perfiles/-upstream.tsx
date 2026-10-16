@@ -11,7 +11,7 @@ import { DemoStamp } from '../../ui/DemoStamp.tsx'
 import { ruleErrors, useAction } from '../../ui/useAction.ts'
 import { notExportableReason, skipReason } from '../../ui/vocabulary.ts'
 
-type Fix = { readonly pr: PrNumber; readonly registrado_en: Date }
+type Fix = { readonly pr: PrNumber; readonly noted_at: Date }
 
 /** "Compartir con umu-protonfixes" on an approved profile: its fix file, what did not translate, and the merged PRs it led to. */
 export function ShareUpstream({
@@ -79,7 +79,7 @@ export function ShareUpstream({
                   <a href={prUrl(a.pr)} target="_blank" rel="noreferrer">
                     Aceptado en umu-protonfixes · PR #{a.pr}
                   </a>
-                  <span className="pequeno tenue">registrado el {date(a.registrado_en)}</span>
+                  <span className="pequeno tenue">registrado el {date(a.noted_at)}</span>
                   {reviewer && <RetractFix pr={a.pr} />}
                 </li>
               ))}

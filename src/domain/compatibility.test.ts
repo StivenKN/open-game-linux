@@ -29,7 +29,7 @@ describe('summarize on the sample games', () => {
     expect(r.status).toBe('resultados_variables')
     expect(r.test_count).toBe(4)
     expect(r.last_tested).toEqual(new Date('2026-10-02T12:00:00Z'))
-    expect(r.setups.map((e) => [e.distribucion, e.capa, e.perfil, e.status, e.test_count])).toEqual([
+    expect(r.setups.map((e) => [e.distribution, e.layer, e.profile, e.status, e.test_count])).toEqual([
       ['Fedora 40', 'Proton 9.0-3', null, 'falla_en_ejecucion', 1],
       ['Linux Mint 21.3', 'Proton 8.0-5', 'GTAV-BAJO r2', 'funciona', 2],
       ['Arch Linux', 'GE-Proton 9-4', null, 'funciona_con_ajustes', 1],
@@ -38,7 +38,7 @@ describe('summarize on the sample games', () => {
   })
 
   it('GTA V: an environment counts its results and keeps its newest test date', () => {
-    const mint = summarize(gtaV.tests, now).setups.find((e) => e.distribucion === 'Linux Mint 21.3')
+    const mint = summarize(gtaV.tests, now).setups.find((e) => e.distribution === 'Linux Mint 21.3')
     expect(mint?.by_outcome).toEqual({ funciona: 2 })
     expect(mint?.last_tested).toEqual(new Date('2026-09-28T12:00:00Z'))
     expect(mint?.fps).toEqual([{ resolution: '1280x720', quality: 'Bajo', average: 54, samples: 1 }])
@@ -68,7 +68,7 @@ describe('summarize on the sample games', () => {
 describe('summarize FPS', () => {
   const base = gtaV.tests[0]
   const measured = (fps: number, resolution: string, quality: string): ApprovedTest =>
-    ({ ...base, fps_promedio: fps, resolucion: resolution, calidad_grafica: quality })
+    ({ ...base, avg_fps: fps, resolution, graphics_quality: quality })
 
   it('averages per (resolucion, calidad) inside one environment, never one mixed average', () => {
     const tests = [measured(50, '1280x720', 'Bajo'), measured(60, '1280x720', 'Bajo'), measured(30, '1920x1080', 'Alto')]
@@ -91,7 +91,7 @@ describe('onDistribution', () => {
     const r = onDistribution(gtaV.tests, DistributionId.make(1), now)
     expect(r.status).toBe('funciona')
     expect(r.test_count).toBe(2)
-    expect(r.setups.map((e) => e.distribucion)).toEqual(['Linux Mint 21.3'])
+    expect(r.setups.map((e) => e.distribution)).toEqual(['Linux Mint 21.3'])
     expect(r.failures).toEqual([])
   })
 
@@ -109,8 +109,8 @@ describe('onDistribution', () => {
 })
 
 const [gtaMint] = gtaV.tests
-const approved = (reporte_id: number, resultado: Outcome, fecha_prueba: string, changes: Partial<ApprovedTest> = {}): ApprovedTest =>
-  ({ ...gtaMint, ...changes, reporte_id: ReportId.make(reporte_id), resultado, fecha_prueba: new Date(fecha_prueba), fps_promedio: null, fallos: changes.fallos ?? [] })
+const approved = (report_id: number, outcome: Outcome, tested_at: string, changes: Partial<ApprovedTest> = {}): ApprovedTest =>
+  ({ ...gtaMint, ...changes, report_id: ReportId.make(report_id), outcome, tested_at: new Date(tested_at), avg_fps: null, failures: changes.failures ?? [] })
 
 describe('isRecent', () => {
   it('a test exactly 365 days old is recent, one millisecond older is not', () => {
@@ -126,7 +126,7 @@ describe('summarize with the 365-day window', () => {
     expect([r.status, r.test_count, r.recent_count, r.no_recent_confirmation]).toEqual(['falla_en_ejecucion', 4, 1, false])
     expect(r.last_tested).toEqual(new Date('2026-10-02T12:00:00Z'))
     expect(r.failures).toEqual([{ code: 'lanzador', reports: 1 }])
-    expect(r.setups.map((e) => [e.distribucion, e.test_count, e.recent_count])).toEqual([
+    expect(r.setups.map((e) => [e.distribution, e.test_count, e.recent_count])).toEqual([
       ['Fedora 40', 1, 1],
       ['Linux Mint 21.3', 2, 0],
       ['Arch Linux', 1, 0],
@@ -134,7 +134,7 @@ describe('summarize with the 365-day window', () => {
   })
 
   it('a cause seen only in stale tests leaves the summary once a recent test exists', () => {
-    const recovered = approved(7, 'funciona', '2027-09-01T12:00:00Z', { edicion_id: EditionId.make(3) })
+    const recovered = approved(7, 'funciona', '2027-09-01T12:00:00Z', { edition_id: EditionId.make(3) })
     const r = summarize([...valorant.tests, recovered], new Date('2027-10-01T00:00:00Z'))
     expect([r.status, r.recent_count, r.failures]).toEqual(['funciona', 1, []])
   })
@@ -147,7 +147,7 @@ describe('summarize with the 365-day window', () => {
 
   it('an environment applies the same rule: its stale failure gives way to its recent success', () => {
     const [e, ...others] = summarize(
-      [approved(1, 'no_inicia', '2025-01-10T12:00:00Z', { fallos: ['lanzador'] }), approved(2, 'funciona', '2026-09-01T12:00:00Z')],
+      [approved(1, 'no_inicia', '2025-01-10T12:00:00Z', { failures: ['lanzador'] }), approved(2, 'funciona', '2026-09-01T12:00:00Z')],
       now,
     ).setups
     expect(others).toEqual([])
@@ -159,12 +159,12 @@ describe('summarize regressions', () => {
   it('GTA V: the Steam edition newest test fails after earlier ones worked', () => {
     expect(summarize(gtaV.tests, now).regressions).toEqual([
       {
-        edicion_id: EditionId.make(1),
-        lanzador: 'Steam',
-        fecha_prueba: new Date('2026-10-02T12:00:00Z'),
-        version_juego: '1.0.3258',
-        capa: 'Proton 9.0-3',
-        resultado: 'falla_en_ejecucion',
+        edition_id: EditionId.make(1),
+        launcher: 'Steam',
+        tested_at: new Date('2026-10-02T12:00:00Z'),
+        game_version: '1.0.3258',
+        layer: 'Proton 9.0-3',
+        outcome: 'falla_en_ejecucion',
       },
     ])
   })
@@ -178,7 +178,7 @@ describe('summarize regressions', () => {
   })
 
   it('an edition whose newest test works has no regression', () => {
-    const withoutFedora = gtaV.tests.filter((p) => p.distribucion !== 'Fedora 40')
+    const withoutFedora = gtaV.tests.filter((p) => p.distribution !== 'Fedora 40')
     expect(summarize(withoutFedora, now).regressions).toEqual([])
   })
 
@@ -186,12 +186,12 @@ describe('summarize regressions', () => {
     const sameDay = '2026-10-01T12:00:00Z'
     expect(summarize([approved(10, 'funciona', sameDay), approved(11, 'no_inicia', sameDay)], now).regressions).toEqual([
       {
-        edicion_id: EditionId.make(1),
-        lanzador: 'Steam',
-        fecha_prueba: new Date(sameDay),
-        version_juego: '1.0.3179',
-        capa: 'Proton 8.0-5',
-        resultado: 'no_inicia',
+        edition_id: EditionId.make(1),
+        launcher: 'Steam',
+        tested_at: new Date(sameDay),
+        game_version: '1.0.3179',
+        layer: 'Proton 8.0-5',
+        outcome: 'no_inicia',
       },
     ])
     expect(summarize([approved(10, 'no_inicia', sameDay), approved(11, 'funciona', sameDay)], now).regressions).toEqual([])

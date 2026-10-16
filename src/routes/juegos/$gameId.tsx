@@ -17,12 +17,12 @@ const gameId = routeIdParser(GameId)
 export const Route = createFileRoute('/juegos/$gameId')({
   params: { parse: (p) => ({ gameId: gameId(p.gameId) }), stringify: (p) => ({ gameId: String(p.gameId) }) },
   loader: ({ params }) => gamePageFn({ data: params }),
-  head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.game.titulo} · OpenGame Linux` : 'OpenGame Linux' }] }),
+  head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.game.title} · OpenGame Linux` : 'OpenGame Linux' }] }),
   component: GamePage,
 })
 
 function GamePage() {
-  const { game, editions, summary, protondb, ejemplo, pending, profiles, causes, diagnostic, personal } = Route.useLoaderData()
+  const { game, editions, summary, protondb, demo, pending, profiles, causes, diagnostic, personal } = Route.useLoaderData()
   const reportLink = (
     <Link to="/juegos/$gameId/reportar" params={{ gameId: game.id }} className="boton">
       Reportar un resultado
@@ -31,25 +31,25 @@ function GamePage() {
   return (
     <main className="envoltura">
       <header className="ficha-banner">
-        <Artwork title={game.titulo} width={1320} height={420} />
+        <Artwork title={game.title} width={1320} height={420} />
         <div className="ficha-banner-texto">
           <nav className="migas" aria-label="Migas de pan">
-            <Link to="/">Catálogo</Link> / {game.titulo}
+            <Link to="/">Catálogo</Link> / {game.title}
           </nav>
-          <h1 className="titulo-ficha">{game.titulo}</h1>
+          <h1 className="titulo-ficha">{game.title}</h1>
           <div className="fila" aria-label="Ediciones">
             {editions.map((e) => (
               <span key={e.id} className="etiqueta">
-                {e.lanzador}
-                {e.identificador_externo && <span className="tenue"> {e.identificador_externo}</span>}
+                {e.launcher}
+                {e.external_id && <span className="tenue"> {e.external_id}</span>}
               </span>
             ))}
-            {ejemplo && <DemoStamp />}
+            {demo && <DemoStamp />}
           </div>
-          <p className="ficha-descripcion">{game.descripcion}</p>
+          <p className="ficha-descripcion">{game.description}</p>
           <p className="ficha-descripcion pequeno fila">
             <span>{game.apis.length === 0 ? 'APIs gráficas sin declarar' : `Gráficos: ${game.apis.map((api) => graphicsApi[api]).join(' · ')}`}</span>
-            {game.nivel_x86_min !== null && <span>CPU mínima: {x86Level[game.nivel_x86_min]}</span>}
+            {game.x86_level_min !== null && <span>CPU mínima: {x86Level[game.x86_level_min]}</span>}
           </p>
         </div>
         <div className="ficha-accion">{reportLink}</div>
@@ -60,7 +60,7 @@ function GamePage() {
         <VerdictForMe personal={personal}>
           {diagnostic && (
             <p className="pequeno tenue">
-              Según tu diagnóstico más reciente: {diagnostic.equipo}, {date(diagnostic.capturado_en)}.
+              Según tu diagnóstico más reciente: {diagnostic.machine}, {date(diagnostic.captured_at)}.
             </p>
           )}
         </VerdictForMe>
@@ -69,7 +69,7 @@ function GamePage() {
       <section className="seccion" aria-labelledby="entornos">
         <h2 id="entornos">Dónde lo probaron</h2>
         <p className="tenue">Cada fila es un entorno con reportes aprobados.</p>
-        <EnvironmentMatrix setups={summary.setups} myDistribution={diagnostic?.distribucion_id ?? null} />
+        <EnvironmentMatrix setups={summary.setups} myDistribution={diagnostic?.distribution_id ?? null} />
       </section>
 
       <section className="seccion" aria-labelledby="protondb">
@@ -88,18 +88,18 @@ function GamePage() {
                 <li key={p.id} className="tarjeta pila">
                   <div className="fila">
                     <Link to="/perfiles/$profileId" params={{ profileId: p.id }} className="nombre-juego">
-                      {p.titulo} r{p.revision}
+                      {p.title} r{p.revision}
                     </Link>
-                    {p.estado_revision === 'pendiente' && <Chip tone="gris">en prueba</Chip>}
+                    {p.review_status === 'pendiente' && <Chip tone="gris">en prueba</Chip>}
                   </div>
                   <div className="fila-chips">
-                    <span className="chip">{p.lanzador}</span>
-                    <span className="chip">{p.distribucion}</span>
-                    <span className="chip">{p.capa}</span>
-                    <span className="chip">{p.arquitectura}</span>
-                    {p.ejemplo && <DemoStamp />}
+                    <span className="chip">{p.launcher}</span>
+                    <span className="chip">{p.distribution}</span>
+                    <span className="chip">{p.layer}</span>
+                    <span className="chip">{p.architecture}</span>
+                    {p.demo && <DemoStamp />}
                   </div>
-                  {p.estado_revision === 'pendiente' ? (
+                  {p.review_status === 'pendiente' ? (
                     <p className="pequeno tenue">Aún no está aprobado. Puedes probarlo: tu reporte aporta la evidencia que su aprobación necesita.</p>
                   ) : (
                     p.evaluation && (
@@ -129,20 +129,20 @@ function GamePage() {
                       <Chip tone={label.tone}>{label.text}</Chip>
                       <span className="pequeno tenue">{count(c.reports, 'reporte aprobado', 'reportes aprobados')}</span>
                     </div>
-                    {c.descripcion && <p>{c.descripcion}</p>}
+                    {c.description && <p>{c.description}</p>}
                     {c.solutions.length === 0 ? (
                       <p className="pequeno tenue">Sin soluciones verificadas todavía.</p>
                     ) : (
                       c.solutions.map((s) => (
                         <div key={s.id} className="solucion pila">
                           <div className="fila">
-                            <b>{s.titulo}</b>
-                            {s.ejemplo && <DemoStamp />}
+                            <b>{s.title}</b>
+                            {s.demo && <DemoStamp />}
                           </div>
-                          <p className="texto-largo pequeno">{s.instrucciones}</p>
+                          <p className="texto-largo pequeno">{s.instructions}</p>
                           <p className="pequeno tenue">
-                            Aportada por {s.autor}
-                            {s.perfil && <>. Recomienda el perfil {s.perfil}</>}.
+                            Aportada por {s.author}
+                            {s.profile && <>. Recomienda el perfil {s.profile}</>}.
                           </p>
                         </div>
                       ))
@@ -151,8 +151,8 @@ function GamePage() {
                       <p className="pequeno">
                         <Link
                           to="/reportes/$reportId/solucion"
-                          params={{ reportId: c.reply.reporte_id }}
-                          search={{ tipoFallo: c.reply.tipo_fallo_id }}
+                          params={{ reportId: c.reply.report_id }}
+                          search={{ tipoFallo: c.reply.failure_type_id }}
                         >
                           Proponer una solución
                         </Link>

@@ -59,9 +59,9 @@ const levelIndex = (n: X86Level) => X86Level.literals.indexOf(n)
 export const gamePath = (
   machine: MachineOnLinux,
   cpu: X86Level | null,
-  game: { readonly apis: ReadonlyArray<GraphicsApi>; readonly nivel_x86_min: X86Level | null },
+  game: { readonly apis: ReadonlyArray<GraphicsApi>; readonly x86_level_min: X86Level | null },
 ): GamePath => {
-  const minimum = game.nivel_x86_min
+  const minimum = game.x86_level_min
   if (minimum !== null && cpu !== null && levelIndex(cpu) < levelIndex(minimum)) return { status: 'sin_ruta', reason: 'cpu' }
   if (game.apis.length === 0) return { status: 'sin_apis' }
   const offers = game.apis.map((api) => OFFERS[api](machine))

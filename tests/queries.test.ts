@@ -14,7 +14,7 @@ import { onDay, inRollback, idOf, PgTest } from './support.ts'
 type Value = string | number | boolean | Date | null
 
 const guest = Visitor.of(Option.none())
-const ana = Visitor.of(Option.some({ id: UserId.make('ana'), alias: 'ana', rol: 'usuario' }))
+const ana = Visitor.of(Option.some({ id: UserId.make('ana'), alias: 'ana', role: 'usuario' }))
 
 const today = new Date('2026-10-15T00:00:00Z')
 
@@ -22,29 +22,29 @@ const scenario = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
   const insertar = (table: string, row: Record<string, Value>) => idOf(sql`INSERT INTO ${sql(table)} ${sql.insert(row)} RETURNING id`)
   const reviewed = {
-    creado_en: new Date('2026-10-03T00:00:00Z'),
-    revisor_id: 'revisor',
-    revisado_en: new Date('2026-10-04T00:00:00Z'),
-    motivo_revision: 'probado',
+    created_at: new Date('2026-10-03T00:00:00Z'),
+    reviewer_id: 'revisor',
+    reviewed_at: new Date('2026-10-04T00:00:00Z'),
+    review_reason: 'probado',
   }
-  const aprobado = { ...reviewed, estado_revision: 'aprobado', evidencia_revision: 'captura de MangoHud' }
+  const aprobado = { ...reviewed, review_status: 'aprobado', review_evidence: 'captura de MangoHud' }
 
   for (const [id, email] of [['autor', 'autor@demo.opengame.test'], ['revisor', 'revisor@opengame.test'], ['ana', 'ana@opengame.test']])
     yield* sql`INSERT INTO app_user (id, alias, email, email_verified, role, active) VALUES (${id}, ${id}, ${email}, false, ${id === 'revisor' ? 'revisor' : 'usuario'}, true)`
 
-  const steam = yield* insertar('lanzador', { nombre: 'Steam' })
-  const epic = yield* insertar('lanzador', { nombre: 'Epic Games Store' })
-  const mint = yield* insertar('distribucion', { nombre: 'Linux Mint', version: '21.3' })
-  const arch = yield* insertar('distribucion', { nombre: 'Arch Linux', version: 'rolling' })
-  const fedora = yield* insertar('distribucion', { nombre: 'Fedora', version: '40' })
-  const proton8 = yield* insertar('version_capa', { familia: 'Proton', variante: 'Valve', version: '8.0-5' })
-  const ge94 = yield* insertar('version_capa', { familia: 'Proton', variante: 'GE', version: '9-4' })
-  const proton9 = yield* insertar('version_capa', { familia: 'Proton', variante: 'Valve', version: '9.0-3' })
-  const lanzadorFallo = yield* insertar('tipo_fallo', { codigo: 'lanzador', descripcion: 'El lanzador no abre.' })
-  const antiCheat = yield* insertar('tipo_fallo', { codigo: 'anti_cheat', descripcion: 'El anti-trampas bloquea Linux.' })
+  const steam = yield* insertar('lanzador', { name: 'Steam' })
+  const epic = yield* insertar('lanzador', { name: 'Epic Games Store' })
+  const mint = yield* insertar('distribucion', { name: 'Linux Mint', version: '21.3' })
+  const arch = yield* insertar('distribucion', { name: 'Arch Linux', version: 'rolling' })
+  const fedora = yield* insertar('distribucion', { name: 'Fedora', version: '40' })
+  const proton8 = yield* insertar('version_capa', { family: 'Proton', variant: 'Valve', version: '8.0-5' })
+  const ge94 = yield* insertar('version_capa', { family: 'Proton', variant: 'GE', version: '9-4' })
+  const proton9 = yield* insertar('version_capa', { family: 'Proton', variant: 'Valve', version: '9.0-3' })
+  const lanzadorFallo = yield* insertar('tipo_fallo', { code: 'lanzador', description: 'El lanzador no abre.' })
+  const antiCheat = yield* insertar('tipo_fallo', { code: 'anti_cheat', description: 'El anti-trampas bloquea Linux.' })
 
-  const insertGame = (titulo: string) => insertar('juego', { titulo, descripcion: 'd' })
-  const insertEdition = (juego_id: number, lanzador_id: number) => insertar('edicion_juego', { juego_id, lanzador_id })
+  const insertGame = (title: string) => insertar('juego', { title, description: 'd' })
+  const insertEdition = (game_id: number, launcher_id: number) => insertar('edicion_juego', { game_id, launcher_id })
   const gta = yield* insertGame('Grand Theft Auto V')
   const gtaSteam = yield* insertEdition(gta, steam)
   const gtaEpic = yield* insertEdition(gta, epic)
@@ -55,19 +55,19 @@ const scenario = Effect.gen(function* () {
   const ets2 = yield* insertGame('Euro Truck Simulator 2')
   const ets2Steam = yield* insertEdition(ets2, steam)
 
-  const insertMachine = (usuario_id: string) => insertar('equipo', { usuario_id, alias: `pc de ${usuario_id}` })
-  const insertDiagnostic = (equipo_id: number, distribucion_id: number, capturado_en: string, extra: Record<string, Value> = {}) =>
+  const insertMachine = (user_id: string) => insertar('equipo', { user_id, alias: `pc de ${user_id}` })
+  const insertDiagnostic = (machine_id: number, distribution_id: number, captured_at: string, extra: Record<string, Value> = {}) =>
     insertar('diagnostico', {
-      equipo_id,
-      capturado_en: new Date(capturado_en),
-      sistema: 'Linux',
-      version_sistema: '6.8',
-      distribucion_id,
-      arquitectura: 'x86_64',
-      cpu_modelo: 'cpu',
-      gpu_modelo: 'gpu',
+      machine_id,
+      captured_at: new Date(captured_at),
+      operating_system: 'Linux',
+      os_version: '6.8',
+      distribution_id,
+      architecture: 'x86_64',
+      cpu_model: 'cpu',
+      gpu_model: 'gpu',
       ram_mb: 8192,
-      soporte_vulkan: 'desconocido',
+      vulkan_support: 'desconocido',
       ...extra,
     })
   const pcAutor = yield* insertMachine('autor')
@@ -75,64 +75,64 @@ const scenario = Effect.gen(function* () {
   const enArch = yield* insertDiagnostic(pcAutor, arch, '2026-08-02T00:00:00Z')
   const enFedora = yield* insertDiagnostic(pcAutor, fedora, '2026-08-03T00:00:00Z')
 
-  const requirements = { arquitectura: 'x86_64', ram_min_mb: 8192, vram_min_mb: 2048, requiere_vulkan: true, version_vulkan_min: '1.1' }
+  const requirements = { architecture: 'x86_64', ram_min_mb: 8192, vram_min_mb: 2048, requires_vulkan: true, vulkan_version_min: '1.1' }
   const perfilAprobado = yield* insertar('perfil_configuracion', {
-    edicion_id: gtaSteam, distribucion_id: mint, version_capa_id: proton8, autor_id: 'autor', revision: 2, titulo: 'GTAV-BAJO', ...requirements,
-    creado_en: reviewed.creado_en,
+    edition_id: gtaSteam, distribution_id: mint, layer_version_id: proton8, author_id: 'autor', revision: 2, title: 'GTAV-BAJO', ...requirements,
+    created_at: reviewed.created_at,
   })
   const perfilEnPrueba = yield* insertar('perfil_configuracion', {
-    edicion_id: gtaSteam, distribucion_id: mint, version_capa_id: proton8, autor_id: 'autor', revision: 3, titulo: 'GTAV-BAJO', ...requirements,
+    edition_id: gtaSteam, distribution_id: mint, layer_version_id: proton8, author_id: 'autor', revision: 3, title: 'GTAV-BAJO', ...requirements,
   })
   const perfilRetirado = yield* insertar('perfil_configuracion', {
-    edicion_id: gtaSteam, distribucion_id: mint, version_capa_id: proton8, autor_id: 'autor', revision: 1, titulo: 'GTAV-BAJO',
-    ...requirements, ...reviewed, estado_revision: 'retirado',
+    edition_id: gtaSteam, distribution_id: mint, layer_version_id: proton8, author_id: 'autor', revision: 1, title: 'GTAV-BAJO',
+    ...requirements, ...reviewed, review_status: 'retirado',
   })
   for (const [order, title] of [[2, 'Elige Proton 8.0-5'], [1, 'Activa Steam Play']] as const)
     yield* sql`INSERT INTO profile_step (profile_id, position, title, instruction) VALUES (${perfilAprobado}, ${order}, ${title}, 'i')`
-  yield* sql`UPDATE profile SET ${sql.update(Struct.omit(aprobado, ['creado_en']))} WHERE id = ${perfilAprobado}`
+  yield* sql`UPDATE profile SET ${sql.update(Struct.omit(aprobado, ['created_at']))} WHERE id = ${perfilAprobado}`
 
-  const noFps = { fps_promedio: null, resolucion: null, calidad_grafica: null, metodo_medicion: null }
+  const noFps = { avg_fps: null, resolution: null, graphics_quality: null, measurement_method: null }
   const insertReport = (row: Record<string, Value>, review: Record<string, Value> = aprobado) =>
-    insertar('reporte', { observaciones: 'o', ...noFps, ...row, ...review })
+    insertar('reporte', { observations: 'o', ...noFps, ...row, ...review })
   yield* insertReport({
-    edicion_id: gtaSteam, diagnostico_id: enMint, version_capa_id: proton8, perfil_id: perfilAprobado, version_juego: '1.0.3179',
-    resultado: 'funciona', fecha_prueba: new Date('2026-09-28T12:00:00Z'),
-    fps_promedio: 54, resolucion: '1280x720', calidad_grafica: 'Bajo', metodo_medicion: 'MangoHud · misión Prólogo · 5 min',
+    edition_id: gtaSteam, diagnostic_id: enMint, layer_version_id: proton8, profile_id: perfilAprobado, game_version: '1.0.3179',
+    outcome: 'funciona', tested_at: new Date('2026-09-28T12:00:00Z'),
+    avg_fps: 54, resolution: '1280x720', graphics_quality: 'Bajo', measurement_method: 'MangoHud · misión Prólogo · 5 min',
   })
   yield* insertReport({
-    edicion_id: gtaSteam, diagnostico_id: enMint, version_capa_id: proton8, perfil_id: perfilAprobado, version_juego: '1.0.3179',
-    resultado: 'funciona', fecha_prueba: new Date('2026-09-14T12:00:00Z'),
+    edition_id: gtaSteam, diagnostic_id: enMint, layer_version_id: proton8, profile_id: perfilAprobado, game_version: '1.0.3179',
+    outcome: 'funciona', tested_at: new Date('2026-09-14T12:00:00Z'),
   })
   yield* insertReport({
-    edicion_id: gtaEpic, diagnostico_id: enArch, version_capa_id: ge94, version_juego: '1.0.3179',
-    resultado: 'funciona_con_ajustes', fecha_prueba: new Date('2026-09-02T12:00:00Z'),
-    fps_promedio: 60, resolucion: '1920x1080', calidad_grafica: 'Medio', metodo_medicion: 'MangoHud · conducción en ciudad · 10 min',
+    edition_id: gtaEpic, diagnostic_id: enArch, layer_version_id: ge94, game_version: '1.0.3179',
+    outcome: 'funciona_con_ajustes', tested_at: new Date('2026-09-02T12:00:00Z'),
+    avg_fps: 60, resolution: '1920x1080', graphics_quality: 'Medio', measurement_method: 'MangoHud · conducción en ciudad · 10 min',
   })
   const gtaFedora = yield* insertReport({
-    edicion_id: gtaSteam, diagnostico_id: enFedora, version_capa_id: proton9, version_juego: '1.0.3258',
-    resultado: 'falla_en_ejecucion', fecha_prueba: new Date('2026-10-02T12:00:00Z'),
+    edition_id: gtaSteam, diagnostic_id: enFedora, layer_version_id: proton9, game_version: '1.0.3258',
+    outcome: 'falla_en_ejecucion', tested_at: new Date('2026-10-02T12:00:00Z'),
   })
   yield* sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${gtaFedora}, ${lanzadorFallo}, 'el lanzador no abre')`
-  const insertSolution = (titulo: string, perfil_id: number | null, review: Record<string, Value>) =>
-    insertar('solucion', { reporte_id: gtaFedora, tipo_fallo_id: lanzadorFallo, autor_id: 'ana', titulo, instrucciones: 'i', perfil_id, ...review })
+  const insertSolution = (title: string, profile_id: number | null, review: Record<string, Value>) =>
+    insertar('solucion', { report_id: gtaFedora, failure_type_id: lanzadorFallo, author_id: 'ana', title, instructions: 'i', profile_id, ...review })
   yield* insertSolution('Volver a Proton 8.0-5', null, aprobado)
   yield* insertSolution('Usar el perfil retirado', perfilRetirado, aprobado)
   yield* insertSolution('Sin revisar', null, {})
-  yield* insertReport({ edicion_id: gtaSteam, diagnostico_id: enMint, version_capa_id: proton8, version_juego: '1.0.3179', resultado: 'no_inicia', fecha_prueba: new Date('2026-10-05T12:00:00Z') }, {})
-  yield* insertReport({ edicion_id: ets2Steam, diagnostico_id: enMint, version_capa_id: proton8, version_juego: '1.5', resultado: 'funciona', fecha_prueba: new Date('2026-10-05T12:00:00Z') }, {})
+  yield* insertReport({ edition_id: gtaSteam, diagnostic_id: enMint, layer_version_id: proton8, game_version: '1.0.3179', outcome: 'no_inicia', tested_at: new Date('2026-10-05T12:00:00Z') }, {})
+  yield* insertReport({ edition_id: ets2Steam, diagnostic_id: enMint, layer_version_id: proton8, game_version: '1.5', outcome: 'funciona', tested_at: new Date('2026-10-05T12:00:00Z') }, {})
 
   const valorantFallo = yield* insertReport({
-    edicion_id: valorantSteam, diagnostico_id: enArch, version_capa_id: ge94, version_juego: '9.07', resultado: 'no_inicia', fecha_prueba: new Date('2026-08-03T12:00:00Z'),
+    edition_id: valorantSteam, diagnostic_id: enArch, layer_version_id: ge94, game_version: '9.07', outcome: 'no_inicia', tested_at: new Date('2026-08-03T12:00:00Z'),
   })
   yield* sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${valorantFallo}, ${antiCheat}, 'Vanguard')`
-  yield* insertReport({ edicion_id: cs2Steam, diagnostico_id: enArch, version_capa_id: ge94, version_juego: '1.0', resultado: 'funciona', fecha_prueba: new Date('2026-09-01T12:00:00Z') })
+  yield* insertReport({ edition_id: cs2Steam, diagnostic_id: enArch, layer_version_id: ge94, game_version: '1.0', outcome: 'funciona', tested_at: new Date('2026-09-01T12:00:00Z') })
 
   const pcAna = yield* insertMachine('ana')
   yield* insertDiagnostic(pcAna, fedora, '2026-07-01T00:00:00Z')
-  yield* insertDiagnostic(pcAna, mint, '2026-09-01T00:00:00Z', { ram_mb: 16384, vram_mb: 4096, soporte_vulkan: 'si', version_vulkan: '1.3' })
+  yield* insertDiagnostic(pcAna, mint, '2026-09-01T00:00:00Z', { ram_mb: 16384, vram_mb: 4096, vulkan_support: 'si', vulkan_version: '1.3' })
 
-  const insertGuide = (titulo: string, estado: string) =>
-    insertar('guia_adopcion', { autor_id: 'revisor', tipo: 'instalacion', titulo, contenido: 'Pasos', revision: 1, estado })
+  const insertGuide = (title: string, status: string) =>
+    insertar('guia_adopcion', { author_id: 'revisor', type: 'instalacion', title, content: 'Pasos', revision: 1, status })
   const guiaPublicada = yield* insertGuide('Instalar Linux Mint', 'publicada')
   const guiaBorrador = yield* insertGuide('Borrador sin publicar', 'borrador')
 
@@ -153,26 +153,26 @@ const scenario = Effect.gen(function* () {
 })
 
 const shape = (r: CompatibilitySummary) => ({
-  estado: r.status,
+  status: r.status,
   pruebas: r.test_count,
   vigentes: r.recent_count,
   sin_confirmacion_reciente: r.no_recent_confirmation,
-  regresiones: r.regressions.map((x) => [x.fecha_prueba, x.version_juego, x.resultado]),
+  regresiones: r.regressions.map((x) => [x.tested_at, x.game_version, x.outcome]),
   ultima_prueba: r.last_tested,
-  fallos: r.failures,
+  failures: r.failures,
   entornos: r.setups.map((e) => ({
-    version_juego: e.version_juego,
-    estado: e.status,
+    game_version: e.game_version,
+    status: e.status,
     pruebas: e.test_count,
     vigentes: e.recent_count,
     por_resultado: e.by_outcome,
     ultima_prueba: e.last_tested,
-    fallos: e.failures,
+    failures: e.failures,
     fps: e.fps,
   })),
 })
 
-const titles = (c: { readonly games: ReadonlyArray<{ readonly titulo: string }> }) => c.games.map((j) => j.titulo)
+const titles = (c: { readonly games: ReadonlyArray<{ readonly title: string }> }) => c.games.map((j) => j.title)
 
 layer(PgTest)('consultas', (it) => {
   describe('gamePage', () => {
@@ -185,9 +185,9 @@ layer(PgTest)('consultas', (it) => {
           expect(page.summary.status).toBe('resultados_variables')
           expect(page.summary.setups).toHaveLength(3)
           expect(page.pending).toBe(1)
-          expect(page.ejemplo).toBe(true)
+          expect(page.demo).toBe(true)
           expect(page.personal).toBeNull()
-          expect(page.causes.map((c) => [c.code, c.descripcion, c.solutions.map((x) => x.titulo)])).toEqual([
+          expect(page.causes.map((c) => [c.code, c.description, c.solutions.map((x) => x.title)])).toEqual([
             ['lanzador', 'El lanzador no abre.', ['Volver a Proton 8.0-5']],
           ])
         }),
@@ -203,7 +203,7 @@ layer(PgTest)('consultas', (it) => {
           expect(page.personal?.on_my_distribution?.summary.status).toBe('funciona')
           expect(page.personal?.on_my_distribution?.summary.test_count).toBe(2)
           expect(page.personal?.profile).toMatchObject({ id: e.perfilAprobado, evaluation: { verdict: 'cumple' } })
-          expect(page.profiles.map((p) => [p.id, p.estado_revision, p.evaluation?.verdict ?? null])).toEqual([
+          expect(page.profiles.map((p) => [p.id, p.review_status, p.evaluation?.verdict ?? null])).toEqual([
             [e.perfilAprobado, 'aprobado', 'cumple'],
             [e.perfilEnPrueba, 'pendiente', null],
           ])
@@ -216,17 +216,17 @@ layer(PgTest)('consultas', (it) => {
         Effect.gen(function* () {
           const e = yield* scenario
           const sql = yield* SqlClient.SqlClient
-          const pc = yield* e.insertar('equipo', { usuario_id: 'ana', alias: 'pc con Windows' })
+          const pc = yield* e.insertar('equipo', { user_id: 'ana', alias: 'pc con Windows' })
           yield* e.insertar('diagnostico', {
-            equipo_id: pc, capturado_en: new Date('2026-10-10T00:00:00Z'), sistema: 'Windows', version_sistema: 'Windows 10 Home 22H2 (19045)',
-            distribucion_id: null, arquitectura: 'x86_64', cpu_modelo: 'cpu', gpu_modelo: 'NVIDIA GeForce GT 710', gpu_pci_id: '10de:128b',
-            ram_mb: 16384, vram_mb: 2048, soporte_vulkan: 'si', version_vulkan: '1.4',
+            machine_id: pc, captured_at: new Date('2026-10-10T00:00:00Z'), operating_system: 'Windows', os_version: 'Windows 10 Home 22H2 (19045)',
+            distribution_id: null, architecture: 'x86_64', cpu_model: 'cpu', gpu_model: 'NVIDIA GeForce GT 710', gpu_pci_id: '10de:128b',
+            ram_mb: 16384, vram_mb: 2048, vulkan_support: 'si', vulkan_version: '1.4',
           })
           const demanding = yield* e.insertar('perfil_configuracion', {
-            edicion_id: e.gtaSteam, distribucion_id: e.fedora, version_capa_id: e.proton9, autor_id: 'autor', revision: 1, titulo: 'GTAV-VULKAN',
-            arquitectura: 'x86_64', ram_min_mb: 8192, requiere_vulkan: true, version_vulkan_min: '1.3', creado_en: e.aprobado.creado_en,
+            edition_id: e.gtaSteam, distribution_id: e.fedora, layer_version_id: e.proton9, author_id: 'autor', revision: 1, title: 'GTAV-VULKAN',
+            architecture: 'x86_64', ram_min_mb: 8192, requires_vulkan: true, vulkan_version_min: '1.3', created_at: e.aprobado.created_at,
           })
-          yield* sql`UPDATE profile SET ${sql.update(Struct.omit(e.aprobado, ['creado_en']))} WHERE id = ${demanding}`
+          yield* sql`UPDATE profile SET ${sql.update(Struct.omit(e.aprobado, ['created_at']))} WHERE id = ${demanding}`
           const page = yield* Effect.provideService(gamePage(e.gta), Visitor, ana)
           expect(page.profiles.find((p) => p.id === demanding)?.evaluation).toEqual({
             verdict: 'no_cumple',
@@ -262,8 +262,8 @@ layer(PgTest)('consultas', (it) => {
           expect(titles(yield* catalog({ q: '%' }))).toEqual([])
           expect(titles(yield* catalog({ lanzador: e.epic }))).toEqual(['Grand Theft Auto V'])
           const all = yield* catalog({})
-          expect(all.games.find((j) => j.titulo === 'Euro Truck Simulator 2')).toMatchObject({ pendientes: 1, summary: { test_count: 0 } })
-          expect(all.counters).toEqual({ juegos_verificados: 3, reportes_aprobados: 6, perfiles_aprobados: 1, distribuciones_probadas: 3, arreglos_upstream: 0 })
+          expect(all.games.find((j) => j.title === 'Euro Truck Simulator 2')).toMatchObject({ pending: 1, summary: { test_count: 0 } })
+          expect(all.counters).toEqual({ verified_games: 3, approved_reports: 6, approved_profiles: 1, tested_distributions: 3, upstream_fixes: 0 })
         }),
       ).pipe(onDay(today)),
     )
@@ -288,7 +288,7 @@ layer(PgTest)('consultas', (it) => {
         Effect.gen(function* () {
           const e = yield* scenario
           const all = yield* catalog({})
-          expect(all.games.map((j) => [j.titulo, j.summary.status, j.summary.no_recent_confirmation])).toEqual([
+          expect(all.games.map((j) => [j.title, j.summary.status, j.summary.no_recent_confirmation])).toEqual([
             ['Counter-Strike 2', 'funciona', true],
             ['Euro Truck Simulator 2', 'sin_evidencia', false],
             ['Grand Theft Auto V', 'falla_en_ejecucion', false],
@@ -297,7 +297,7 @@ layer(PgTest)('consultas', (it) => {
           expect(titles(yield* catalog({ estado: 'falla_en_ejecucion' }))).toEqual(['Grand Theft Auto V'])
           const page = yield* Effect.provideService(gamePage(e.gta), Visitor, guest)
           expect([page.summary.status, page.summary.recent_count, page.summary.test_count]).toEqual(['falla_en_ejecucion', 1, 4])
-          expect(all.counters).toEqual({ juegos_verificados: 3, reportes_aprobados: 6, perfiles_aprobados: 1, distribuciones_probadas: 3, arreglos_upstream: 0 })
+          expect(all.counters).toEqual({ verified_games: 3, approved_reports: 6, approved_profiles: 1, tested_distributions: 3, upstream_fixes: 0 })
         }),
       ).pipe(onDay(new Date('2027-10-01T00:00:00Z'))),
     )
@@ -309,7 +309,7 @@ layer(PgTest)('consultas', (it) => {
         Effect.gen(function* () {
           const e = yield* scenario
           const approved = yield* Effect.provideService(profile(e.perfilAprobado), Visitor, guest)
-          expect(approved.steps.map((p) => p.titulo)).toEqual(['Activa Steam Play', 'Elige Proton 8.0-5'])
+          expect(approved.steps.map((p) => p.title)).toEqual(['Activa Steam Play', 'Elige Proton 8.0-5'])
           expect(approved.evaluation).toBe('sin_diagnostico')
           const inTesting = yield* Effect.provideService(profile(e.perfilEnPrueba), Visitor, ana)
           expect(inTesting.evaluation).toBe('perfil_en_prueba')
@@ -336,7 +336,7 @@ layer(PgTest)('consultas', (it) => {
         Effect.gen(function* () {
           const e = yield* scenario
           expect((yield* guides).map((g) => g.id)).toEqual([e.guiaPublicada])
-          expect((yield* guide(e.guiaPublicada)).titulo).toBe('Instalar Linux Mint')
+          expect((yield* guide(e.guiaPublicada)).title).toBe('Instalar Linux Mint')
           const exit = yield* Effect.exit(guide(e.guiaBorrador))
           expect(Exit.findErrorOption(exit).pipe(Option.map((x) => x._tag))).toEqual(Option.some('NoEncontrado'))
         }),

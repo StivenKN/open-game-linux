@@ -7,16 +7,16 @@ import { oneRow } from '../rows.ts'
 import { approvedTests } from './game.ts'
 import { protonDbSummaries } from './protondb.ts'
 
-const GameRow = Game.mapFields(Struct.pick(['id', 'titulo'])).mapFields(
-  Struct.assign({ lanzadores: Schema.Array(Launcher.fields.nombre), pendientes: Schema.Int }),
+const GameRow = Game.mapFields(Struct.pick(['id', 'title'])).mapFields(
+  Struct.assign({ launchers: Schema.Array(Launcher.fields.name), pending: Schema.Int }),
 )
 
 const Counters = Schema.Struct({
-  juegos_verificados: Schema.Int,
-  reportes_aprobados: Schema.Int,
-  perfiles_aprobados: Schema.Int,
-  distribuciones_probadas: Schema.Int,
-  arreglos_upstream: Schema.Int,
+  verified_games: Schema.Int,
+  approved_reports: Schema.Int,
+  approved_profiles: Schema.Int,
+  tested_distributions: Schema.Int,
+  upstream_fixes: Schema.Int,
 })
 
 /** ILIKE treats % and _ as wildcards; a title search means them literally. */
@@ -50,17 +50,17 @@ export const catalog = (filter: CatalogFilter) =>
 
     const now = new Date(yield* Clock.currentTimeMillis)
     const allTests = yield* approvedTests(null)
-    const protondb = new Map((yield* protonDbSummaries(null)).map((r) => [r.juego_id, r]))
+    const protondb = new Map((yield* protonDbSummaries(null)).map((r) => [r.game_id, r]))
     const candidates = rows
       .map((j) => {
-        const tests = allTests.filter((p) => p.juego_id === j.id)
+        const tests = allTests.filter((p) => p.game_id === j.id)
         const { status, test_count, no_recent_confirmation, last_tested, failures } = summarize(tests, now)
         const external = protondb.get(j.id)
         return {
           ...j,
           summary: { status, test_count, no_recent_confirmation, last_tested, failures },
-          ejemplo: tests.some((p) => p.ejemplo),
-          protondb: external ? Struct.pick(external, ['recientes', 'recientes_funcionan', 'reportes_total']) : null,
+          demo: tests.some((p) => p.demo),
+          protondb: external ? Struct.pick(external, ['recent', 'recent_working', 'total_reports']) : null,
         }
       })
       .filter((j) => filter.sin_anti_cheat !== true || !j.summary.failures.some((f) => f.code === 'anti_cheat'))
@@ -94,7 +94,7 @@ export const catalog = (filter: CatalogFilter) =>
 
     const launchers = yield* SqlSchema.findAll({
       Request: Schema.Void,
-      Result: Launcher.mapFields(Struct.pick(['id', 'nombre'])),
+      Result: Launcher.mapFields(Struct.pick(['id', 'name'])),
       execute: () => sql`SELECT id, name FROM launcher ORDER BY name`,
     })(undefined)
 

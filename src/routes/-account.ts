@@ -4,7 +4,7 @@ import { User } from '../domain/tables.ts'
 import type { FieldErrors } from '../ui/useAction.ts'
 import { authClient } from './-auth-client.ts'
 
-const email = User.fields.correo.pipe(
+const email = User.fields.email.pipe(
   Schema.check(Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { message: 'Escribe un correo válido.' })),
 )
 // better-auth's defaults; it refuses anything outside them with PASSWORD_TOO_SHORT/LONG.

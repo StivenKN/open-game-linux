@@ -14,40 +14,40 @@ import { visitorDiagnostic } from './game.ts'
 const ProfileRow = Profile.mapFields(
   Struct.pick([
     'id',
-    'titulo',
+    'title',
     'revision',
-    'revisado_en',
-    'arquitectura',
-    'version_juego_objetivo',
+    'reviewed_at',
+    'architecture',
+    'target_game_version',
     'ram_min_mb',
     'vram_min_mb',
-    'requiere_vulkan',
-    'version_vulkan_min',
-    'condicion_cpu',
-    'condicion_gpu',
-    'parametros_lanzamiento',
+    'requires_vulkan',
+    'vulkan_version_min',
+    'cpu_requirement',
+    'gpu_requirement',
+    'launch_options',
   ]),
 ).mapFields(
   Struct.assign({
-    estado_revision: ReviewStatus.pick(activeStatuses),
-    juego_id: Game.fields.id,
-    juego: Game.fields.titulo,
-    lanzador: Schema.String,
-    identificador_externo: GameEdition.fields.identificador_externo,
-    familia: LayerFamily,
-    distribucion: Schema.String,
-    capa: Schema.String,
-    autor: Schema.String,
-    ejemplo: Schema.Boolean,
+    review_status: ReviewStatus.pick(activeStatuses),
+    game_id: Game.fields.id,
+    game: Game.fields.title,
+    launcher: Schema.String,
+    external_id: GameEdition.fields.external_id,
+    family: LayerFamily,
+    distribution: Schema.String,
+    layer: Schema.String,
+    author: Schema.String,
+    demo: Schema.Boolean,
   }),
 )
 
-const FixRow = Schema.Struct({ pr: PrNumber, registrado_en: Schema.Date })
+const FixRow = Schema.Struct({ pr: PrNumber, noted_at: Schema.Date })
 
-const StepRow = ProfileStep.mapFields(Struct.pick(['orden', 'titulo', 'instruccion']))
+const StepRow = ProfileStep.mapFields(Struct.pick(['position', 'title', 'instruction']))
 
-const DependencyRow = ProfileDependency.mapFields(Struct.pick(['version_requerida', 'obligatoria', 'instruccion_instalacion'])).mapFields(
-  Struct.assign(Struct.pick(Dependency.fields, ['nombre', 'gestor', 'descripcion'])),
+const DependencyRow = ProfileDependency.mapFields(Struct.pick(['required_version', 'required', 'install_instruction'])).mapFields(
+  Struct.assign(Struct.pick(Dependency.fields, ['name', 'package_manager', 'description'])),
 )
 
 export const profile = (id: ProfileId) =>
@@ -91,14 +91,14 @@ export const profile = (id: ProfileId) =>
     })(id)
 
     const evaluation =
-      p.estado_revision === 'pendiente'
+      p.review_status === 'pendiente'
         ? ('perfil_en_prueba' as const)
         : Option.match(yield* visitorDiagnostic, {
             onNone: () => 'sin_diagnostico' as const,
             onSome: (d) => evaluate(machineOnLinux(d), requirements(p)),
           })
 
-    const fixExport = p.estado_revision === 'aprobado' ? exportFix({ ...p, profile: { id: p.id, revision: p.revision }, dependencies }) : null
+    const fixExport = p.review_status === 'aprobado' ? exportFix({ ...p, profile: { id: p.id, revision: p.revision }, dependencies }) : null
     const fixes = yield* SqlSchema.findAll({
       Request: ProfileId,
       Result: FixRow,

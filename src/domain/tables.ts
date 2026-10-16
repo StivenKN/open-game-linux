@@ -36,46 +36,46 @@ const NonNegative = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 /** Created by better-auth (server/schema/auth.ts). `image` is better-auth's own unmapped column. */
 export const User = Schema.Struct({
   id: UserId,
-  alias: TextUpTo(maxLengths.usuario.alias),
-  correo: TextUpTo(maxLengths.usuario.correo),
-  correo_verificado: Schema.Boolean,
+  alias: TextUpTo(maxLengths.app_user.alias),
+  email: TextUpTo(maxLengths.app_user.email),
+  email_verified: Schema.Boolean,
   image: Schema.NullOr(Schema.String),
-  creado_en: Schema.Date,
-  actualizado_en: Schema.Date,
-  rol: Role,
-  activo: Schema.Boolean,
+  created_at: Schema.Date,
+  updated_at: Schema.Date,
+  role: Role,
+  active: Schema.Boolean,
 })
 export type User = typeof User.Type
 
 export const Machine = Schema.Struct({
   id: MachineId,
-  usuario_id: UserId,
-  alias: TextUpTo(maxLengths.equipo.alias),
-  creado_en: Schema.Date,
+  user_id: UserId,
+  alias: TextUpTo(maxLengths.machine.alias),
+  created_at: Schema.Date,
 })
 export type Machine = typeof Machine.Type
 
 export const Diagnostic = Schema.Struct({
   id: DiagnosticId,
-  equipo_id: MachineId,
-  capturado_en: Schema.Date,
-  sistema: OperatingSystem,
-  version_sistema: TextUpTo(maxLengths.diagnostico.version_sistema),
-  distribucion_id: Schema.NullOr(DistributionId),
-  arquitectura: TextUpTo(maxLengths.diagnostico.arquitectura),
-  cpu_modelo: TextUpTo(maxLengths.diagnostico.cpu_modelo),
-  gpu_modelo: TextUpTo(maxLengths.diagnostico.gpu_modelo),
+  machine_id: MachineId,
+  captured_at: Schema.Date,
+  operating_system: OperatingSystem,
+  os_version: TextUpTo(maxLengths.diagnostic.os_version),
+  distribution_id: Schema.NullOr(DistributionId),
+  architecture: TextUpTo(maxLengths.diagnostic.architecture),
+  cpu_model: TextUpTo(maxLengths.diagnostic.cpu_model),
+  gpu_model: TextUpTo(maxLengths.diagnostic.gpu_model),
   ram_mb: Positive,
   vram_mb: Schema.NullOr(NonNegative),
-  controlador: Schema.NullOr(TextUpTo(maxLengths.diagnostico.controlador)),
-  version_controlador: Schema.NullOr(TextUpTo(maxLengths.diagnostico.version_controlador)),
-  soporte_vulkan: VulkanSupport,
-  version_vulkan: Schema.NullOr(TextUpTo(maxLengths.diagnostico.version_vulkan)),
+  driver: Schema.NullOr(TextUpTo(maxLengths.diagnostic.driver)),
+  driver_version: Schema.NullOr(TextUpTo(maxLengths.diagnostic.driver_version)),
+  vulkan_support: VulkanSupport,
+  vulkan_version: Schema.NullOr(TextUpTo(maxLengths.diagnostic.vulkan_version)),
   gpu_pci_id: Schema.NullOr(PciId),
-  biblioteca_steam: Schema.NullOr(SteamLibrary),
+  steam_library: Schema.NullOr(SteamLibrary),
   // NULL: not captured (old detectors, Windows, the manual form).
-  nivel_x86: Schema.NullOr(X86Level),
-  arranque_seguro: Schema.NullOr(SecureBoot),
+  x86_level: Schema.NullOr(X86Level),
+  secure_boot: Schema.NullOr(SecureBoot),
   tpm: Schema.NullOr(Tpm),
   zram_mb: Schema.NullOr(NonNegative),
   swap_mb: Schema.NullOr(NonNegative),
@@ -84,178 +84,178 @@ export type Diagnostic = typeof Diagnostic.Type
 
 export const Game = Schema.Struct({
   id: GameId,
-  titulo: TextUpTo(maxLengths.juego.titulo),
-  descripcion: RequiredText,
-  nivel_x86_min: Schema.NullOr(X86Level),
-  actualizado_en: Schema.Date,
+  title: TextUpTo(maxLengths.game.title),
+  description: RequiredText,
+  x86_level_min: Schema.NullOr(X86Level),
+  updated_at: Schema.Date,
 })
 export type Game = typeof Game.Type
 
 /** One row per graphics API the game can render with; no rows means unknown. */
-export const GameApi = Schema.Struct({ juego_id: GameId, api: GraphicsApi })
+export const GameApi = Schema.Struct({ game_id: GameId, api: GraphicsApi })
 export type GameApi = typeof GameApi.Type
 
 export const Launcher = Schema.Struct({
   id: LauncherId,
-  nombre: TextUpTo(maxLengths.lanzador.nombre),
-  url_oficial: Schema.NullOr(TextUpTo(maxLengths.lanzador.url_oficial)),
+  name: TextUpTo(maxLengths.launcher.name),
+  official_url: Schema.NullOr(TextUpTo(maxLengths.launcher.official_url)),
 })
 export type Launcher = typeof Launcher.Type
 
 export const GameEdition = Schema.Struct({
   id: EditionId,
-  juego_id: GameId,
-  lanzador_id: LauncherId,
-  identificador_externo: Schema.NullOr(TextUpTo(maxLengths.edicion_juego.identificador_externo)),
-  actualizado_en: Schema.Date,
+  game_id: GameId,
+  launcher_id: LauncherId,
+  external_id: Schema.NullOr(TextUpTo(maxLengths.game_edition.external_id)),
+  updated_at: Schema.Date,
 })
 export type GameEdition = typeof GameEdition.Type
 
 export const Distribution = Schema.Struct({
   id: DistributionId,
-  nombre: TextUpTo(maxLengths.distribucion.nombre),
-  version: TextUpTo(maxLengths.distribucion.version),
-  url_oficial: Schema.NullOr(TextUpTo(maxLengths.distribucion.url_oficial)),
+  name: TextUpTo(maxLengths.distribution.name),
+  version: TextUpTo(maxLengths.distribution.version),
+  official_url: Schema.NullOr(TextUpTo(maxLengths.distribution.official_url)),
 })
 export type Distribution = typeof Distribution.Type
 
 export const LayerVersion = Schema.Struct({
   id: LayerVersionId,
-  familia: LayerFamily,
-  variante: TextUpTo(maxLengths.version_capa.variante),
-  version: TextUpTo(maxLengths.version_capa.version),
+  family: LayerFamily,
+  variant: TextUpTo(maxLengths.layer_version.variant),
+  version: TextUpTo(maxLengths.layer_version.version),
 })
 export type LayerVersion = typeof LayerVersion.Type
 
 export const ReviewFields = Schema.Struct({
-  estado_revision: ReviewStatus,
-  revisor_id: Schema.NullOr(UserId),
-  revisado_en: Schema.NullOr(Schema.Date),
-  motivo_revision: Schema.NullOr(RequiredText),
-  evidencia_revision: Schema.NullOr(RequiredText),
+  review_status: ReviewStatus,
+  reviewer_id: Schema.NullOr(UserId),
+  reviewed_at: Schema.NullOr(Schema.Date),
+  review_reason: Schema.NullOr(RequiredText),
+  review_evidence: Schema.NullOr(RequiredText),
 })
 export type ReviewFields = typeof ReviewFields.Type
 
 export const Profile = Schema.Struct({
   id: ProfileId,
-  edicion_id: EditionId,
-  distribucion_id: DistributionId,
-  version_capa_id: LayerVersionId,
-  autor_id: UserId,
-  arquitectura: TextUpTo(maxLengths.perfil_configuracion.arquitectura),
+  edition_id: EditionId,
+  distribution_id: DistributionId,
+  layer_version_id: LayerVersionId,
+  author_id: UserId,
+  architecture: TextUpTo(maxLengths.profile.architecture),
   revision: Positive,
-  titulo: TextUpTo(maxLengths.perfil_configuracion.titulo),
-  version_juego_objetivo: Schema.NullOr(TextUpTo(maxLengths.perfil_configuracion.version_juego_objetivo)),
+  title: TextUpTo(maxLengths.profile.title),
+  target_game_version: Schema.NullOr(TextUpTo(maxLengths.profile.target_game_version)),
   ram_min_mb: Schema.NullOr(Positive),
   vram_min_mb: Schema.NullOr(NonNegative),
-  requiere_vulkan: Schema.NullOr(Schema.Boolean),
-  version_vulkan_min: Schema.NullOr(TextUpTo(maxLengths.perfil_configuracion.version_vulkan_min)),
-  condicion_cpu: Schema.NullOr(RequiredText),
-  condicion_gpu: Schema.NullOr(RequiredText),
-  parametros_lanzamiento: Schema.NullOr(RequiredText),
-  creado_en: Schema.Date,
+  requires_vulkan: Schema.NullOr(Schema.Boolean),
+  vulkan_version_min: Schema.NullOr(TextUpTo(maxLengths.profile.vulkan_version_min)),
+  cpu_requirement: Schema.NullOr(RequiredText),
+  gpu_requirement: Schema.NullOr(RequiredText),
+  launch_options: Schema.NullOr(RequiredText),
+  created_at: Schema.Date,
   ...ReviewFields.fields,
 })
 export type Profile = typeof Profile.Type
 
 export const ProfileStep = Schema.Struct({
-  perfil_id: ProfileId,
-  orden: Positive,
-  titulo: TextUpTo(maxLengths.paso_configuracion.titulo),
-  instruccion: RequiredText,
+  profile_id: ProfileId,
+  position: Positive,
+  title: TextUpTo(maxLengths.profile_step.title),
+  instruction: RequiredText,
 })
 export type ProfileStep = typeof ProfileStep.Type
 
 export const Dependency = Schema.Struct({
   id: DependencyId,
-  nombre: TextUpTo(maxLengths.dependencia.nombre),
-  gestor: TextUpTo(maxLengths.dependencia.gestor),
-  descripcion: RequiredText,
+  name: TextUpTo(maxLengths.dependency.name),
+  package_manager: TextUpTo(maxLengths.dependency.package_manager),
+  description: RequiredText,
 })
 export type Dependency = typeof Dependency.Type
 
 export const ProfileDependency = Schema.Struct({
-  perfil_id: ProfileId,
-  dependencia_id: DependencyId,
-  version_requerida: Schema.NullOr(TextUpTo(maxLengths.perfil_dependencia.version_requerida)),
-  obligatoria: Schema.Boolean,
-  instruccion_instalacion: RequiredText,
+  profile_id: ProfileId,
+  dependency_id: DependencyId,
+  required_version: Schema.NullOr(TextUpTo(maxLengths.profile_dependency.required_version)),
+  required: Schema.Boolean,
+  install_instruction: RequiredText,
 })
 export type ProfileDependency = typeof ProfileDependency.Type
 
 export const FailureType = Schema.Struct({
   id: FailureTypeId,
-  codigo: TextUpTo(maxLengths.tipo_fallo.codigo),
-  descripcion: RequiredText,
+  code: TextUpTo(maxLengths.failure_type.code),
+  description: RequiredText,
 })
 export type FailureType = typeof FailureType.Type
 
 export const Report = Schema.Struct({
   id: ReportId,
-  edicion_id: EditionId,
-  diagnostico_id: DiagnosticId,
-  version_capa_id: LayerVersionId,
-  perfil_id: Schema.NullOr(ProfileId),
-  version_juego: TextUpTo(maxLengths.reporte.version_juego),
-  version_lanzador: Schema.NullOr(TextUpTo(maxLengths.reporte.version_lanzador)),
-  fecha_prueba: Schema.Date,
-  resultado: Outcome,
-  fps_promedio: Schema.NullOr(Schema.FiniteFromString), // numeric(7,2) arrives as text (probes.md (c))
-  resolucion: Schema.NullOr(TextUpTo(maxLengths.reporte.resolucion)),
-  calidad_grafica: Schema.NullOr(TextUpTo(maxLengths.reporte.calidad_grafica)),
-  metodo_medicion: Schema.NullOr(RequiredText),
-  observaciones: RequiredText,
-  creado_en: Schema.Date,
+  edition_id: EditionId,
+  diagnostic_id: DiagnosticId,
+  layer_version_id: LayerVersionId,
+  profile_id: Schema.NullOr(ProfileId),
+  game_version: TextUpTo(maxLengths.report.game_version),
+  launcher_version: Schema.NullOr(TextUpTo(maxLengths.report.launcher_version)),
+  tested_at: Schema.Date,
+  outcome: Outcome,
+  avg_fps: Schema.NullOr(Schema.FiniteFromString), // numeric(7,2) arrives as text (probes.md (c))
+  resolution: Schema.NullOr(TextUpTo(maxLengths.report.resolution)),
+  graphics_quality: Schema.NullOr(TextUpTo(maxLengths.report.graphics_quality)),
+  measurement_method: Schema.NullOr(RequiredText),
+  observations: RequiredText,
+  created_at: Schema.Date,
   ...ReviewFields.fields,
 })
 export type Report = typeof Report.Type
 
 export const ReportFailure = Schema.Struct({
-  reporte_id: ReportId,
-  tipo_fallo_id: FailureTypeId,
-  detalle: RequiredText,
+  report_id: ReportId,
+  failure_type_id: FailureTypeId,
+  detail: RequiredText,
 })
 export type ReportFailure = typeof ReportFailure.Type
 
 export const Solution = Schema.Struct({
   id: SolutionId,
-  reporte_id: ReportId,
-  tipo_fallo_id: FailureTypeId,
-  autor_id: UserId,
-  perfil_id: Schema.NullOr(ProfileId),
-  titulo: TextUpTo(maxLengths.solucion.titulo),
-  instrucciones: RequiredText,
-  creado_en: Schema.Date,
+  report_id: ReportId,
+  failure_type_id: FailureTypeId,
+  author_id: UserId,
+  profile_id: Schema.NullOr(ProfileId),
+  title: TextUpTo(maxLengths.solution.title),
+  instructions: RequiredText,
+  created_at: Schema.Date,
   ...ReviewFields.fields,
 })
 export type Solution = typeof Solution.Type
 
 export const AdoptionGuide = Schema.Struct({
   id: GuideId,
-  autor_id: UserId,
-  distribucion_id: Schema.NullOr(DistributionId),
-  tipo: GuideType,
-  titulo: TextUpTo(maxLengths.guia_adopcion.titulo),
-  contenido: RequiredText,
+  author_id: UserId,
+  distribution_id: Schema.NullOr(DistributionId),
+  type: GuideType,
+  title: TextUpTo(maxLengths.adoption_guide.title),
+  content: RequiredText,
   revision: Positive,
-  estado: GuideStatus,
-  creado_en: Schema.Date,
-  actualizado_en: Schema.Date,
+  status: GuideStatus,
+  created_at: Schema.Date,
+  updated_at: Schema.Date,
 })
 export type AdoptionGuide = typeof AdoptionGuide.Type
 
 /** One Steam edition's aggregate of a ProtonDB export. Never individual reports (8.9). */
 export const ProtonDbSummary = Schema.Struct({
-  edicion_id: EditionId,
-  exportado_en: Schema.Date,
-  reportes_total: Positive,
-  recientes: NonNegative,
-  recientes_funcionan: NonNegative,
-  modestos_recientes: NonNegative,
-  modestos_funcionan: NonNegative,
-  ultimo_reporte: Schema.Date,
-  capa_variante: Schema.NullOr(ProtonVariant),
-  capa_version: Schema.NullOr(TextUpTo(maxLengths.protondb_resumen.capa_version)),
-  capa_reportes: NonNegative,
+  edition_id: EditionId,
+  exported_at: Schema.Date,
+  total_reports: Positive,
+  recent: NonNegative,
+  recent_working: NonNegative,
+  modest_recent: NonNegative,
+  modest_working: NonNegative,
+  latest_report: Schema.Date,
+  layer_variant: Schema.NullOr(ProtonVariant),
+  layer_version: Schema.NullOr(TextUpTo(maxLengths.protondb_summary.layer_version)),
+  layer_reports: NonNegative,
 })
 export type ProtonDbSummary = typeof ProtonDbSummary.Type

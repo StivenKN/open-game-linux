@@ -56,7 +56,7 @@ function CatalogPage() {
   const active = [
     filter.q === undefined ? undefined : `«${filter.q}»`,
     filter.estado === undefined ? undefined : compatibilityStatus[filter.estado].text,
-    launchers.find((l) => l.id === filter.lanzador)?.nombre,
+    launchers.find((l) => l.id === filter.lanzador)?.name,
     filter.sin_anti_cheat === true ? 'sin bloqueo anti-cheat' : undefined,
   ].filter((a) => a !== undefined)
 
@@ -95,24 +95,24 @@ function CatalogPage() {
             <p className="sugerencias">
               <span className="tenue">Prueba:</span>
               {featured.map((j) => (
-                <Link key={j.id} to="/" search={{ q: j.titulo }} className="sugerencia">
-                  {j.titulo}
+                <Link key={j.id} to="/" search={{ q: j.title }} className="sugerencia">
+                  {j.title}
                 </Link>
               ))}
             </p>
           )}
           <p className="cifras">
-            Hasta hoy hay <b>{count(counters.reportes_aprobados, 'reporte aprobado', 'reportes aprobados')}</b> sobre{' '}
-            <b>{count(counters.juegos_verificados, 'juego verificado', 'juegos verificados')}</b>, en{' '}
-            <b>{count(counters.distribuciones_probadas, 'distribución', 'distribuciones')}</b>,{' '}
-            <b>{count(counters.perfiles_aprobados, 'perfil de configuración', 'perfiles de configuración')}</b> para copiar y{' '}
-            <b>{count(counters.arreglos_upstream, 'arreglo aceptado', 'arreglos aceptados')}</b> en umu-protonfixes.
+            Hasta hoy hay <b>{count(counters.approved_reports, 'reporte aprobado', 'reportes aprobados')}</b> sobre{' '}
+            <b>{count(counters.verified_games, 'juego verificado', 'juegos verificados')}</b>, en{' '}
+            <b>{count(counters.tested_distributions, 'distribución', 'distribuciones')}</b>,{' '}
+            <b>{count(counters.approved_profiles, 'perfil de configuración', 'perfiles de configuración')}</b> para copiar y{' '}
+            <b>{count(counters.upstream_fixes, 'arreglo aceptado', 'arreglos aceptados')}</b> en umu-protonfixes.
           </p>
         </div>
         <div className="abanico" aria-hidden="true">
           {featured.map((j, i) => (
             <div key={j.id} className="abanico-carta" data-posicion={positions[i]}>
-              <Cover title={j.titulo} status={j.summary.status} sample={j.ejemplo} />
+              <Cover title={j.title} status={j.summary.status} sample={j.demo} />
             </div>
           ))}
         </div>
@@ -154,7 +154,7 @@ function CatalogPage() {
               {launchers.map((l) => (
                 <li key={l.id}>
                   <FilterLink active={filter.lanzador === l.id} search={toggle(filter, 'lanzador', l.id)}>
-                    <span className="opcion-nombre">{l.nombre}</span>
+                    <span className="opcion-nombre">{l.name}</span>
                   </FilterLink>
                 </li>
               ))}
@@ -194,11 +194,11 @@ function CatalogPage() {
               {games.map((j) => (
                 <li key={j.id} className="juego">
                   <Link to="/juegos/$gameId" params={{ gameId: j.id }} className="juego-enlace">
-                    <span className="juego-nombre">{j.titulo}</span>
-                    <Cover title={j.titulo} status={j.summary.status} sample={j.ejemplo} />
+                    <span className="juego-nombre">{j.title}</span>
+                    <Cover title={j.title} status={j.summary.status} sample={j.demo} />
                   </Link>
                   <p className="juego-meta">
-                    <span className="juego-lanzadores">{j.lanzadores.join(', ')}</span>
+                    <span className="juego-lanzadores">{j.launchers.join(', ')}</span>
                     <br />
                     {j.summary.last_tested
                       ? `${count(j.summary.test_count, 'reporte aprobado', 'reportes aprobados')} · última prueba ${date(j.summary.last_tested)}`
@@ -209,10 +209,10 @@ function CatalogPage() {
                         Sin confirmación en el último año
                       </>
                     )}
-                    {j.pendientes > 0 && (
+                    {j.pending > 0 && (
                       <>
                         <br />
-                        {j.pendientes === 1 ? '1 reporte espera revisión y no cuenta' : `${j.pendientes} reportes esperan revisión y no cuentan`}
+                        {j.pending === 1 ? '1 reporte espera revisión y no cuenta' : `${j.pending} reportes esperan revisión y no cuentan`}
                       </>
                     )}
                   </p>

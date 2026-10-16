@@ -19,12 +19,12 @@ type Reviewable = {
   readonly blockers: (id: number) => Read<ReadonlyArray<Blocker>>
 }
 
-const Exists = Schema.Struct({ hay: Schema.Boolean })
-const SolutionStatuses = Schema.Struct({ reporte: ReviewStatus, perfil: Schema.NullOr(ReviewStatus) })
+const Exists = Schema.Struct({ found: Schema.Boolean })
+const SolutionStatuses = Schema.Struct({ report: ReviewStatus, profile: Schema.NullOr(ReviewStatus) })
 const ReportTest = Schema.Struct({
-  ...Report.mapFields(Struct.pick(['edicion_id', 'version_capa_id', 'version_juego', 'perfil_id'])).fields,
-  distribucion_id: DistributionId,
-  arquitectura: Diagnostic.fields.arquitectura,
+  ...Report.mapFields(Struct.pick(['edition_id', 'layer_version_id', 'game_version', 'profile_id'])).fields,
+  distribution_id: DistributionId,
+  architecture: Diagnostic.fields.architecture,
 })
 
 const reviewables = {
@@ -39,7 +39,7 @@ const reviewables = {
           sql`SELECT EXISTS (SELECT 1 FROM report WHERE profile_id = ${id} AND review_status = ${approved}
                 AND outcome IN ${sql.in(WorkingOutcome.literals)} LIMIT 1 FOR SHARE) AS found`,
         )
-        return row?.hay === true ? [] : ['perfil_sin_reporte_funcional_aprobado']
+        return row?.found === true ? [] : ['perfil_sin_reporte_funcional_aprobado']
       }),
   },
   reporte: {
@@ -56,11 +56,11 @@ const reviewables = {
           sql`SELECT r.edition_id, r.layer_version_id, r.game_version, r.profile_id, d.distribution_id, d.architecture
               FROM report r JOIN diagnostic d ON d.id = r.diagnostic_id WHERE r.id = ${id}`,
         )
-        if (test === undefined || test.perfil_id === null) return []
+        if (test === undefined || test.profile_id === null) return []
         const [profile] = yield* rows(
           TargetProfile,
           sql`SELECT edition_id, layer_version_id, distribution_id, architecture, target_game_version
-              FROM profile WHERE id = ${test.perfil_id}`,
+              FROM profile WHERE id = ${test.profile_id}`,
         )
         return profile !== undefined && mismatches(test, profile).length > 0 ? ['reporte_incomparable'] : []
       }),
@@ -80,8 +80,8 @@ const reviewables = {
         )
         if (statuses === undefined) return []
         const blockers: Array<Blocker> = []
-        if (statuses.reporte !== approved) blockers.push('solucion_fallo_origen_no_aprobado')
-        if (statuses.perfil !== null && statuses.perfil !== approved) blockers.push('solucion_perfil_no_aprobado')
+        if (statuses.report !== approved) blockers.push('solucion_fallo_origen_no_aprobado')
+        if (statuses.profile !== null && statuses.profile !== approved) blockers.push('solucion_perfil_no_aprobado')
         return blockers
       }),
   },
@@ -89,7 +89,7 @@ const reviewables = {
 
 export const approvalBlockers = (ref: ContributionRef): Read<ReadonlyArray<Blocker>> => reviewables[ref._tag].blockers(ref.id)
 
-const ReviewableRow = Schema.Struct({ estado_revision: ReviewStatus, autor_id: UserId })
+const ReviewableRow = Schema.Struct({ review_status: ReviewStatus, author_id: UserId })
 
 export const decide = (
   ref: ContributionRef,
@@ -106,12 +106,12 @@ export const decide = (
 
     const [row] = yield* rows(ReviewableRow, reviewable.lock(sql, ref.id))
     if (row === undefined) return yield* Effect.fail(new NotFound())
-    if (row.autor_id === reviewer.id) return yield* Effect.fail(new RuleViolated({ rule: 'autorrevision' }))
+    if (row.author_id === reviewer.id) return yield* Effect.fail(new RuleViolated({ rule: 'autorrevision' }))
 
     const target = targetOf[decision._tag]
-    const plan = planTransition(row.estado_revision, decision)
+    const plan = planTransition(row.review_status, decision)
     if (plan === 'sin_cambios') return { changed: false }
-    if (plan === 'transicion_invalida') return yield* Effect.fail(new InvalidTransition({ from: row.estado_revision, to: target }))
+    if (plan === 'transicion_invalida') return yield* Effect.fail(new InvalidTransition({ from: row.review_status, to: target }))
 
     if (decision._tag === 'Aprobar') {
       const blockers = yield* reviewable.blockers(ref.id)

@@ -17,10 +17,10 @@ export const readPending = (): Option.Option<Input> => Schema.decodeUnknownOptio
 export const Pasted = Schema.Struct({ texto: Schema.String.pipe(Schema.check(Schema.isNonEmpty({ message: 'Pega la salida del detector.' }))) })
 
 const common = {
-  version_sistema: Diagnostic.fields.version_sistema,
-  arquitectura: Diagnostic.fields.arquitectura,
-  cpu_modelo: Diagnostic.fields.cpu_modelo,
-  gpu_modelo: Diagnostic.fields.gpu_modelo,
+  version_sistema: Diagnostic.fields.os_version,
+  arquitectura: Diagnostic.fields.architecture,
+  cpu_modelo: Diagnostic.fields.cpu_model,
+  gpu_modelo: Diagnostic.fields.gpu_model,
   ram_mb: Diagnostic.fields.ram_mb,
   vram_mb: Diagnostic.fields.vram_mb,
 }
@@ -29,9 +29,9 @@ export const ManualForm = Schema.Union([
   Schema.Struct({
     ...common,
     sistema: Schema.Literal('Linux'),
-    distribucion: Schema.Struct({ nombre: Distribution.fields.nombre, version: Distribution.fields.version }),
+    distribucion: Schema.Struct({ nombre: Distribution.fields.name, version: Distribution.fields.version }),
     soporte_vulkan: VulkanSupport,
-    version_vulkan: Diagnostic.fields.version_vulkan,
+    version_vulkan: Diagnostic.fields.vulkan_version,
   }),
   Schema.Struct({ ...common, sistema: Schema.Literal('Windows') }),
 ])
@@ -42,7 +42,7 @@ export const manualInput = (f: typeof ManualForm.Encoded): Input => {
     _tag: 'manual',
     captura:
       f.sistema === 'Linux'
-        ? { ...f, capturado_en, version_vulkan: f.soporte_vulkan === 'si' ? f.version_vulkan : null, controlador: null, version_controlador: null }
-        : { ...f, capturado_en },
+        ? { ...f, captured_at: capturado_en, vulkan_version: f.soporte_vulkan === 'si' ? f.version_vulkan : null, driver: null, driver_version: null }
+        : { ...f, captured_at: capturado_en },
   }
 }

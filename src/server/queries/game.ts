@@ -14,7 +14,7 @@ import { machineOnLinux } from '../gpu/capability.ts'
 import { isDemo, layerLabel, distributionLabel, profileLabel } from './labels.ts'
 import { protonDbSummaries } from './protondb.ts'
 
-const GameTest = Schema.Struct({ ...ApprovedTest.fields, juego_id: GameId, ejemplo: Schema.Boolean })
+const GameTest = Schema.Struct({ ...ApprovedTest.fields, game_id: GameId, demo: Schema.Boolean })
 
 export const approvedTests = (game: GameId | null) =>
   Effect.gen(function* () {
@@ -49,19 +49,19 @@ export const approvedTests = (game: GameId | null) =>
 const MyDiagnostic = Diagnostic.mapFields(
   Struct.pick([
     'id',
-    'capturado_en',
-    'sistema',
-    'distribucion_id',
-    'arquitectura',
+    'captured_at',
+    'operating_system',
+    'distribution_id',
+    'architecture',
     'ram_mb',
     'vram_mb',
-    'soporte_vulkan',
-    'version_vulkan',
-    'controlador',
+    'vulkan_support',
+    'vulkan_version',
+    'driver',
     'gpu_pci_id',
-    'nivel_x86',
+    'x86_level',
   ]),
-).mapFields(Struct.assign({ equipo: Machine.fields.alias, distribucion: Schema.NullOr(Schema.String) }))
+).mapFields(Struct.assign({ machine: Machine.fields.alias, distribution: Schema.NullOr(Schema.String) }))
 
 export const latestDiagnostic = (user: UserId) =>
   Effect.flatMap(SqlClient.SqlClient, (sql) =>
@@ -84,26 +84,26 @@ export const visitorDiagnostic = Effect.flatMap(Visitor, (visitor) =>
   Option.match(visitor, { onNone: () => Effect.succeedNone, onSome: (u) => latestDiagnostic(u.id) }),
 )
 
-const GameRow = Game.mapFields(Struct.pick(['id', 'titulo', 'descripcion', 'nivel_x86_min']))
+const GameRow = Game.mapFields(Struct.pick(['id', 'title', 'description', 'x86_level_min']))
 
-const EditionRow = GameEdition.mapFields(Struct.pick(['id', 'identificador_externo'])).mapFields(
-  Struct.assign({ lanzador: Launcher.fields.nombre }),
+const EditionRow = GameEdition.mapFields(Struct.pick(['id', 'external_id'])).mapFields(
+  Struct.assign({ launcher: Launcher.fields.name }),
 )
 
 const ProfileRow = Profile.mapFields(
-  Struct.pick(['id', 'titulo', 'revision', 'distribucion_id', 'arquitectura', 'ram_min_mb', 'vram_min_mb', 'requiere_vulkan', 'version_vulkan_min']),
+  Struct.pick(['id', 'title', 'revision', 'distribution_id', 'architecture', 'ram_min_mb', 'vram_min_mb', 'requires_vulkan', 'vulkan_version_min']),
 ).mapFields(
   Struct.assign({
-    estado_revision: ReviewStatus.pick(activeStatuses),
-    lanzador: Schema.String,
-    distribucion: Schema.String,
-    capa: Schema.String,
-    ejemplo: Schema.Boolean,
+    review_status: ReviewStatus.pick(activeStatuses),
+    launcher: Schema.String,
+    distribution: Schema.String,
+    layer: Schema.String,
+    demo: Schema.Boolean,
   }),
 )
 
-const SolutionRow = Solution.mapFields(Struct.pick(['id', 'titulo', 'instrucciones'])).mapFields(
-  Struct.assign({ codigo: FailureType.fields.codigo, autor: Schema.String, perfil: Schema.NullOr(Schema.String), ejemplo: Schema.Boolean }),
+const SolutionRow = Solution.mapFields(Struct.pick(['id', 'title', 'instructions'])).mapFields(
+  Struct.assign({ code: FailureType.fields.code, author: Schema.String, profile: Schema.NullOr(Schema.String), demo: Schema.Boolean }),
 )
 
 const Count = Schema.Struct({ n: Schema.Int })
@@ -184,18 +184,18 @@ export const gamePage = (gameId: GameId) =>
     })(gameId)
     const failureTypes = yield* SqlSchema.findAll({
       Request: Schema.Void,
-      Result: FailureType.mapFields(Struct.pick(['id', 'codigo', 'descripcion'])),
+      Result: FailureType.mapFields(Struct.pick(['id', 'code', 'description'])),
       execute: () => sql`SELECT id, code, description FROM failure_type`,
     })(undefined)
-    const typeByCode = new Map(failureTypes.map((t) => [t.codigo, t]))
+    const typeByCode = new Map(failureTypes.map((t) => [t.code, t]))
     const causes = summary.failures.map((f) => {
       const type = typeByCode.get(f.code)
-      const report = tests.find((p) => p.fallos.includes(f.code))
+      const report = tests.find((p) => p.failures.includes(f.code))
       return {
         ...f,
-        descripcion: type?.descripcion ?? null,
-        solutions: solutions.filter((s) => s.codigo === f.code),
-        reply: type && report ? { reporte_id: report.reporte_id, tipo_fallo_id: type.id } : null,
+        description: type?.description ?? null,
+        solutions: solutions.filter((s) => s.code === f.code),
+        reply: type && report ? { report_id: report.report_id, failure_type_id: type.id } : null,
       }
     })
 
@@ -203,24 +203,24 @@ export const gamePage = (gameId: GameId) =>
     const diagnostic = yield* visitorDiagnostic
     const machine = Option.map(diagnostic, machineOnLinux)
 
-    const profiles = profileRows.map(({ ram_min_mb, vram_min_mb, requiere_vulkan, version_vulkan_min, ...p }) => ({
+    const profiles = profileRows.map(({ ram_min_mb, vram_min_mb, requires_vulkan, vulkan_version_min, ...p }) => ({
       ...p,
       evaluation:
-        Option.isSome(machine) && p.estado_revision === 'aprobado'
-          ? evaluate(machine.value, requirements({ ram_min_mb, vram_min_mb, requiere_vulkan, version_vulkan_min }))
+        Option.isSome(machine) && p.review_status === 'aprobado'
+          ? evaluate(machine.value, requirements({ ram_min_mb, vram_min_mb, requires_vulkan, vulkan_version_min }))
           : null,
     }))
 
     const personal = Option.match(Option.all({ d: diagnostic, machine }), {
       onNone: () => null,
       onSome: ({ d, machine }) => ({
-        path: gamePath(machine, d.nivel_x86, { apis, nivel_x86_min: game.value.nivel_x86_min }),
-        nivel_x86_min: game.value.nivel_x86_min,
-        approximate: d.sistema === 'Windows',
+        path: gamePath(machine, d.x86_level, { apis, x86_level_min: game.value.x86_level_min }),
+        x86_level_min: game.value.x86_level_min,
+        approximate: d.operating_system === 'Windows',
         on_my_distribution:
-          d.distribucion_id === null || d.distribucion === null
+          d.distribution_id === null || d.distribution === null
             ? null
-            : { name: d.distribucion, summary: onDistribution(tests, d.distribucion_id, now) },
+            : { name: d.distribution, summary: onDistribution(tests, d.distribution_id, now) },
         profile: suggestProfile(
           profiles.flatMap((p) => (p.evaluation === null ? [] : [{ ...p, evaluation: p.evaluation }])),
           d,
@@ -233,13 +233,13 @@ export const gamePage = (gameId: GameId) =>
       editions,
       summary,
       protondb,
-      ejemplo: tests.some((p) => p.ejemplo),
+      demo: tests.some((p) => p.demo),
       pending: pending.n,
       profiles,
       causes,
       diagnostic: Option.match(diagnostic, {
         onNone: () => null,
-        onSome: (d) => ({ equipo: d.equipo, capturado_en: d.capturado_en, distribucion_id: d.distribucion_id }),
+        onSome: (d) => ({ machine: d.machine, captured_at: d.captured_at, distribution_id: d.distribution_id }),
       }),
       personal,
     }

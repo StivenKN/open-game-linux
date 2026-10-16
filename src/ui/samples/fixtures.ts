@@ -15,29 +15,29 @@ export type Sample = {
 
 export const diagnostic = {
   summary: 'Portátil de ejemplo · Intel Core i5-8250U · Intel UHD 620 · RAM 8 GB · VRAM desconocida · Vulkan 1.3 · Linux Mint 21.3',
-  distribucion_id: DistributionId.make(1),
+  distribution_id: DistributionId.make(1),
 }
 
 const distro = {
-  mint: { distribucion_id: diagnostic.distribucion_id, distribucion: 'Linux Mint 21.3' },
-  fedora: { distribucion_id: DistributionId.make(2), distribucion: 'Fedora 40' },
-  arch: { distribucion_id: DistributionId.make(3), distribucion: 'Arch Linux' },
-  ubuntu: { distribucion_id: DistributionId.make(4), distribucion: 'Ubuntu 24.04' },
-  pop: { distribucion_id: DistributionId.make(5), distribucion: 'Pop!_OS 22.04' },
+  mint: { distribution_id: diagnostic.distribution_id, distribution: 'Linux Mint 21.3' },
+  fedora: { distribution_id: DistributionId.make(2), distribution: 'Fedora 40' },
+  arch: { distribution_id: DistributionId.make(3), distribution: 'Arch Linux' },
+  ubuntu: { distribution_id: DistributionId.make(4), distribution: 'Ubuntu 24.04' },
+  pop: { distribution_id: DistributionId.make(5), distribution: 'Pop!_OS 22.04' },
 }
 const layer = {
-  proton8: { version_capa_id: LayerVersionId.make(1), capa: 'Proton 8.0-5' },
-  proton9: { version_capa_id: LayerVersionId.make(2), capa: 'Proton 9.0-3' },
-  ge94: { version_capa_id: LayerVersionId.make(3), capa: 'GE-Proton 9-4' },
-  wine9: { version_capa_id: LayerVersionId.make(4), capa: 'Wine 9.0' },
+  proton8: { layer_version_id: LayerVersionId.make(1), layer: 'Proton 8.0-5' },
+  proton9: { layer_version_id: LayerVersionId.make(2), layer: 'Proton 9.0-3' },
+  ge94: { layer_version_id: LayerVersionId.make(3), layer: 'GE-Proton 9-4' },
+  wine9: { layer_version_id: LayerVersionId.make(4), layer: 'Wine 9.0' },
 }
-const noProfile = { perfil_id: null, perfil: null }
+const noProfile = { profile_id: null, profile: null }
 const day = (iso: string) => new Date(`${iso}T12:00:00Z`)
 
 const setup = (e: Omit<TestedSetup, 'key' | 'recent_count'>): TestedSetup => ({
   ...e,
   recent_count: e.test_count,
-  key: [e.edicion_id, e.version_juego, e.distribucion_id, e.version_capa_id, e.perfil_id ?? '-'].join('|'),
+  key: [e.edition_id, e.game_version, e.distribution_id, e.layer_version_id, e.profile_id ?? '-'].join('|'),
 })
 
 type Recent = Omit<CompatibilitySummary, 'recent_count' | 'no_recent_confirmation' | 'regressions'> &
@@ -47,13 +47,13 @@ type Recent = Omit<CompatibilitySummary, 'recent_count' | 'no_recent_confirmatio
 const allRecent = (r: Recent): CompatibilitySummary => ({ recent_count: r.test_count, no_recent_confirmation: false, regressions: [], ...r })
 
 const gtaFedora = setup({
-  edicion_id: EditionId.make(1), lanzador: 'Steam', version_juego: '1.0.3258', ...distro.fedora, ...layer.proton9, ...noProfile,
+  edition_id: EditionId.make(1), launcher: 'Steam', game_version: '1.0.3258', ...distro.fedora, ...layer.proton9, ...noProfile,
   status: 'falla_en_ejecucion', test_count: 1, by_outcome: { falla_en_ejecucion: 1 }, last_tested: day('2026-10-02'),
   failures: [{ code: 'lanzador', reports: 1 }], fps: [],
 })
 const gtaMint = setup({
-  edicion_id: EditionId.make(1), lanzador: 'Steam', version_juego: '1.0.3179', ...distro.mint, ...layer.proton8,
-  perfil_id: ProfileId.make(1), perfil: 'GTAV-BAJO r2',
+  edition_id: EditionId.make(1), launcher: 'Steam', game_version: '1.0.3179', ...distro.mint, ...layer.proton8,
+  profile_id: ProfileId.make(1), profile: 'GTAV-BAJO r2',
   status: 'funciona', test_count: 2, by_outcome: { funciona: 2 }, last_tested: day('2026-09-28'), failures: [],
   fps: [
     { resolution: '1280x720', quality: 'Bajo', average: 54, samples: 1 },
@@ -61,7 +61,7 @@ const gtaMint = setup({
   ],
 })
 const gtaArch = setup({
-  edicion_id: EditionId.make(2), lanzador: 'Epic (Heroic)', version_juego: '1.0.3179', ...distro.arch, ...layer.ge94, ...noProfile,
+  edition_id: EditionId.make(2), launcher: 'Epic (Heroic)', game_version: '1.0.3179', ...distro.arch, ...layer.ge94, ...noProfile,
   status: 'funciona_con_ajustes', test_count: 1, by_outcome: { funciona_con_ajustes: 1 }, last_tested: day('2026-09-02'),
   failures: [], fps: [{ resolution: '1920x1080', quality: 'Medio', average: 60, samples: 1 }],
 })
@@ -76,18 +76,18 @@ const gta: Sample = {
     status: 'resultados_variables', test_count: 4, last_tested: day('2026-10-02'),
     setups: [gtaFedora, gtaMint, gtaArch], failures: [{ code: 'lanzador', reports: 1 }],
     regressions: [
-      { edicion_id: EditionId.make(1), lanzador: 'Steam', fecha_prueba: day('2026-10-02'), version_juego: '1.0.3258', capa: 'Proton 9.0-3', resultado: 'falla_en_ejecucion' },
+      { edition_id: EditionId.make(1), launcher: 'Steam', tested_at: day('2026-10-02'), game_version: '1.0.3258', layer: 'Proton 9.0-3', outcome: 'falla_en_ejecucion' },
     ],
   }),
   pending: 1,
   personal: {
-    path: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, approximate: false,
+    path: { status: 'con_ruta', path: 'dxvk_2' }, x86_level_min: null, approximate: false,
     on_my_distribution: {
       name: 'Linux Mint 21.3',
       summary: allRecent({ status: 'funciona', test_count: 2, last_tested: day('2026-09-28'), setups: [gtaMint], failures: [] }),
     },
     profile: {
-      titulo: 'GTAV-BAJO', revision: 2,
+      title: 'GTAV-BAJO', revision: 2,
       evaluation: {
         verdict: 'cumple', advisory_only: false,
         checks: [
@@ -100,12 +100,12 @@ const gta: Sample = {
 }
 
 const valArch = setup({
-  edicion_id: EditionId.make(5), lanzador: 'Riot Client', version_juego: '9.07', ...distro.arch, ...layer.ge94, ...noProfile,
+  edition_id: EditionId.make(5), launcher: 'Riot Client', game_version: '9.07', ...distro.arch, ...layer.ge94, ...noProfile,
   status: 'no_inicia', test_count: 1, by_outcome: { no_inicia: 1 }, last_tested: day('2026-08-03'),
   failures: [{ code: 'anti_cheat', reports: 1 }], fps: [],
 })
 const valMint = setup({
-  edicion_id: EditionId.make(5), lanzador: 'Riot Client', version_juego: '9.07', ...distro.mint, ...layer.wine9, ...noProfile,
+  edition_id: EditionId.make(5), launcher: 'Riot Client', game_version: '9.07', ...distro.mint, ...layer.wine9, ...noProfile,
   status: 'no_inicia', test_count: 1, by_outcome: { no_inicia: 1 }, last_tested: day('2026-07-11'),
   failures: [{ code: 'anti_cheat', reports: 1 }], fps: [],
 })
@@ -122,7 +122,7 @@ const valorant: Sample = {
   }),
   pending: 0,
   personal: {
-    path: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, approximate: false,
+    path: { status: 'con_ruta', path: 'dxvk_2' }, x86_level_min: null, approximate: false,
     on_my_distribution: {
       name: 'Linux Mint 21.3',
       summary: allRecent({ status: 'no_inicia', test_count: 1, last_tested: day('2026-07-11'), setups: [valMint], failures: [{ code: 'anti_cheat', reports: 1 }] }),
@@ -140,7 +140,7 @@ const ets2: Sample = {
   summary: allRecent({ status: 'sin_evidencia', test_count: 0, last_tested: null, setups: [], failures: [] }),
   pending: 2,
   personal: {
-    path: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, approximate: false,
+    path: { status: 'con_ruta', path: 'dxvk_2' }, x86_level_min: null, approximate: false,
     on_my_distribution: {
       name: 'Linux Mint 21.3',
       summary: allRecent({ status: 'sin_evidencia', test_count: 0, last_tested: null, setups: [], failures: [] }),
@@ -150,14 +150,14 @@ const ets2: Sample = {
 }
 
 const erUbuntu = setup({
-  edicion_id: EditionId.make(4), lanzador: 'Steam', version_juego: '1.12', ...distro.ubuntu, ...layer.proton9,
-  perfil_id: ProfileId.make(3), perfil: 'ER-BASE r3',
+  edition_id: EditionId.make(4), launcher: 'Steam', game_version: '1.12', ...distro.ubuntu, ...layer.proton9,
+  profile_id: ProfileId.make(3), profile: 'ER-BASE r3',
   status: 'funciona_con_ajustes', test_count: 1, by_outcome: { funciona_con_ajustes: 1 }, last_tested: day('2026-09-30'),
   failures: [], fps: [],
 })
 const erMint = setup({
-  edicion_id: EditionId.make(4), lanzador: 'Steam', version_juego: '1.12', ...distro.mint, ...layer.proton9,
-  perfil_id: ProfileId.make(3), perfil: 'ER-BASE r3',
+  edition_id: EditionId.make(4), launcher: 'Steam', game_version: '1.12', ...distro.mint, ...layer.proton9,
+  profile_id: ProfileId.make(3), profile: 'ER-BASE r3',
   status: 'funciona_con_ajustes', test_count: 1, by_outcome: { funciona_con_ajustes: 1 }, last_tested: day('2026-09-21'),
   failures: [], fps: [{ resolution: '1600x900', quality: 'Bajo + FSR', average: 38, samples: 1 }],
 })
@@ -171,13 +171,13 @@ const eldenRing: Sample = {
   summary: allRecent({ status: 'funciona_con_ajustes', test_count: 2, last_tested: day('2026-09-30'), setups: [erUbuntu, erMint], failures: [] }),
   pending: 0,
   personal: {
-    path: { status: 'con_ruta', path: 'vkd3d_proton' }, nivel_x86_min: null, approximate: false,
+    path: { status: 'con_ruta', path: 'vkd3d_proton' }, x86_level_min: null, approximate: false,
     on_my_distribution: {
       name: 'Linux Mint 21.3',
       summary: allRecent({ status: 'funciona_con_ajustes', test_count: 1, last_tested: day('2026-09-21'), setups: [erMint], failures: [] }),
     },
     profile: {
-      titulo: 'ER-BASE', revision: 3,
+      title: 'ER-BASE', revision: 3,
       evaluation: {
         verdict: 'no_cumple', advisory_only: false,
         checks: [
@@ -191,12 +191,12 @@ const eldenRing: Sample = {
 }
 
 const twPop = setup({
-  edicion_id: EditionId.make(7), lanzador: 'GOG (Heroic)', version_juego: '4.04', ...distro.pop, ...layer.ge94, ...noProfile,
+  edition_id: EditionId.make(7), launcher: 'GOG (Heroic)', game_version: '4.04', ...distro.pop, ...layer.ge94, ...noProfile,
   status: 'funciona', test_count: 1, by_outcome: { funciona: 1 }, last_tested: day('2026-09-10'), failures: [], fps: [],
 })
 const twMint = setup({
-  edicion_id: EditionId.make(6), lanzador: 'Steam', version_juego: '4.04', ...distro.mint, ...layer.proton8,
-  perfil_id: ProfileId.make(2), perfil: 'TW3-IGPU r1',
+  edition_id: EditionId.make(6), launcher: 'Steam', game_version: '4.04', ...distro.mint, ...layer.proton8,
+  profile_id: ProfileId.make(2), profile: 'TW3-IGPU r1',
   status: 'funciona', test_count: 1, by_outcome: { funciona: 1 }, last_tested: day('2026-08-20'), failures: [],
   fps: [{ resolution: '1280x720', quality: 'Bajo', average: 31, samples: 1 }],
 })
@@ -210,13 +210,13 @@ const witcher: Sample = {
   summary: allRecent({ status: 'funciona', test_count: 2, last_tested: day('2026-09-10'), setups: [twPop, twMint], failures: [] }),
   pending: 0,
   personal: {
-    path: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, approximate: false,
+    path: { status: 'con_ruta', path: 'dxvk_2' }, x86_level_min: null, approximate: false,
     on_my_distribution: {
       name: 'Linux Mint 21.3',
       summary: allRecent({ status: 'funciona', test_count: 1, last_tested: day('2026-08-20'), setups: [twMint], failures: [] }),
     },
     profile: {
-      titulo: 'TW3-IGPU', revision: 1,
+      title: 'TW3-IGPU', revision: 1,
       evaluation: {
         verdict: 'informacion_insuficiente', advisory_only: false,
         checks: [

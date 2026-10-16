@@ -22,7 +22,7 @@ import { Diagnostic, Distribution, Machine, Game, Profile, Report, Solution, Tex
 
 export const LayerVersionRef = Schema.Union([
   Schema.TaggedStruct('existente', { id: LayerVersionId }),
-  Schema.TaggedStruct('nueva', { familia: LayerFamily, variante: LayerVersion.fields.variante, version: LayerVersion.fields.version }),
+  Schema.TaggedStruct('nueva', { familia: LayerFamily, variante: LayerVersion.fields.variant, version: LayerVersion.fields.version }),
 ])
 
 export const TargetMachine = Schema.Union([
@@ -32,8 +32,8 @@ export const TargetMachine = Schema.Union([
 
 export const FpsMeasurement = Schema.Struct({
   fps_promedio: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 99999.99 }, { message: 'Escribe un promedio de FPS entre 0 y 99999.99.' })),
-  resolucion: TextUpTo(maxLengths.reporte.resolucion),
-  calidad_grafica: TextUpTo(maxLengths.reporte.calidad_grafica),
+  resolucion: TextUpTo(maxLengths.report.resolution),
+  calidad_grafica: TextUpTo(maxLengths.report.graphics_quality),
   metodo_medicion: RequiredText,
 })
 
@@ -53,8 +53,8 @@ const reportFields = {
   diagnostico_id: DiagnosticId,
   version_capa: LayerVersionRef,
   perfil_id: Schema.NullOr(ProfileId),
-  version_juego: Report.fields.version_juego,
-  version_lanzador: OptionalTextUpTo(maxLengths.reporte.version_lanzador),
+  version_juego: Report.fields.game_version,
+  version_lanzador: OptionalTextUpTo(maxLengths.report.launcher_version),
   fecha_prueba: Schema.DateFromString, // the form's datetime-local value, read in the browser's own zone
   medicion: Schema.NullOr(FpsMeasurement),
   observaciones: RequiredText,
@@ -74,51 +74,51 @@ export const NewSolution = Schema.Struct({
   reporte_id: ReportId,
   tipo_fallo_id: FailureTypeId,
   perfil_id: Schema.NullOr(ProfileId),
-  titulo: Solution.fields.titulo,
+  titulo: Solution.fields.title,
   instrucciones: RequiredText,
 })
 export type NewSolution = typeof NewSolution.Type
 
 export const NewGame = Schema.Struct({
-  titulo: Game.fields.titulo,
+  titulo: Game.fields.title,
   descripcion: RequiredText,
   ediciones: Schema.NonEmptyArray(
-    Schema.Struct({ lanzador_id: LauncherId, identificador_externo: OptionalTextUpTo(maxLengths.edicion_juego.identificador_externo) }),
+    Schema.Struct({ lanzador_id: LauncherId, identificador_externo: OptionalTextUpTo(maxLengths.game_edition.external_id) }),
   ),
   // Checkboxes named `apis[]`; with none checked the form posts no `apis` key at all.
   apis: Schema.Array(GraphicsApi).pipe(
     Schema.refine(Arr.isReadonlyArrayNonEmpty, { message: 'Marca al menos una API gráfica.' }),
     Schema.withDecodingDefaultKey(Effect.succeed([])),
   ),
-  nivel_x86_min: Game.fields.nivel_x86_min,
+  nivel_x86_min: Game.fields.x86_level_min,
 })
 export type NewGame = typeof NewGame.Type
 
 const captureFields = {
-  capturado_en: Schema.DateFromString,
-  version_sistema: Diagnostic.fields.version_sistema,
-  arquitectura: Diagnostic.fields.arquitectura,
-  cpu_modelo: Diagnostic.fields.cpu_modelo,
-  gpu_modelo: Diagnostic.fields.gpu_modelo,
+  captured_at: Schema.DateFromString,
+  os_version: Diagnostic.fields.os_version,
+  architecture: Diagnostic.fields.architecture,
+  cpu_model: Diagnostic.fields.cpu_model,
+  gpu_model: Diagnostic.fields.gpu_model,
   ram_mb: Diagnostic.fields.ram_mb,
   vram_mb: Diagnostic.fields.vram_mb,
 }
 
 const linuxFields = {
-  sistema: Schema.Literal('Linux'),
-  distribucion: Schema.Struct({ nombre: Distribution.fields.nombre, version: Distribution.fields.version }),
-  controlador: OptionalTextUpTo(maxLengths.diagnostico.controlador),
-  version_controlador: OptionalTextUpTo(maxLengths.diagnostico.version_controlador),
-  soporte_vulkan: VulkanSupport,
-  version_vulkan: OptionalTextUpTo(maxLengths.diagnostico.version_vulkan),
+  operating_system: Schema.Literal('Linux'),
+  distribution: Schema.Struct({ name: Distribution.fields.name, version: Distribution.fields.version }),
+  driver: OptionalTextUpTo(maxLengths.diagnostic.driver),
+  driver_version: OptionalTextUpTo(maxLengths.diagnostic.driver_version),
+  vulkan_support: VulkanSupport,
+  vulkan_version: OptionalTextUpTo(maxLengths.diagnostic.vulkan_version),
 }
 
 const detectedFields = {
   gpu_pci_id: Diagnostic.fields.gpu_pci_id,
-  biblioteca_steam: Diagnostic.fields.biblioteca_steam,
+  steam_library: Diagnostic.fields.steam_library,
   // Only the Linux detector reads these; the Windows detector and older payloads omit them.
-  nivel_x86: Diagnostic.fields.nivel_x86.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
-  arranque_seguro: Diagnostic.fields.arranque_seguro.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  x86_level: Diagnostic.fields.x86_level.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  secure_boot: Diagnostic.fields.secure_boot.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
   tpm: Diagnostic.fields.tpm.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
   zram_mb: Diagnostic.fields.zram_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
   swap_mb: Diagnostic.fields.swap_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
@@ -130,7 +130,7 @@ const vulkanNeedsSupport = Schema.makeFilter((c: { readonly soporte_vulkan: Vulk
 
 export const Capture = Schema.Union([
   Schema.Struct({ ...captureFields, ...detectedFields, ...linuxFields }).check(vulkanNeedsSupport),
-  Schema.Struct({ ...captureFields, ...detectedFields, sistema: Schema.Literal('Windows') }),
+  Schema.Struct({ ...captureFields, ...detectedFields, operating_system: Schema.Literal('Windows') }),
 ])
 export type Capture = typeof Capture.Type
 
@@ -141,7 +141,7 @@ export const ManualCapture = Schema.Union([
 
 // About 30 characters of JSON around each name, then ×2 for base64url (4/3) and the hardware fields.
 // PowerShell writes non-ASCII as \uXXXX, so a full library of long non-ASCII names can still exceed it.
-const MAX_DETECTOR_TEXT = MAX_LIBRARY_GAMES * (30 + maxLengths.biblioteca.nombre) * 2
+const MAX_DETECTOR_TEXT = MAX_LIBRARY_GAMES * (30 + maxLengths.biblioteca.name) * 2
 
 export const DiagnosticInput = Schema.Union([
   Schema.TaggedStruct('detector', { texto: Schema.String.pipe(Schema.check(Schema.isMaxLength(MAX_DETECTOR_TEXT))) }),
@@ -160,29 +160,29 @@ export const CatalogFilter = Schema.Struct({
 export type CatalogFilter = typeof CatalogFilter.Type
 
 export type TestContext = {
-  readonly edicion_id: EditionId
-  readonly version_capa_id: LayerVersionId
-  readonly distribucion_id: DistributionId
-  readonly arquitectura: string
-  readonly version_juego: string
+  readonly edition_id: EditionId
+  readonly layer_version_id: LayerVersionId
+  readonly distribution_id: DistributionId
+  readonly architecture: string
+  readonly game_version: string
 }
 
 export const TargetProfile = Profile.mapFields(
-  Struct.pick(['edicion_id', 'version_capa_id', 'distribucion_id', 'arquitectura', 'version_juego_objetivo']),
+  Struct.pick(['edition_id', 'layer_version_id', 'distribution_id', 'architecture', 'target_game_version']),
 )
 export type TargetProfile = typeof TargetProfile.Type
 
 export const mismatches = (test: TestContext, profile: TargetProfile): ReadonlyArray<Mismatch> => {
   const found: Array<Mismatch> = []
-  if (test.edicion_id !== profile.edicion_id)
-    found.push({ aspect: 'edicion', expected: profile.edicion_id, actual: test.edicion_id })
-  if (test.version_capa_id !== profile.version_capa_id)
-    found.push({ aspect: 'capa', expected: profile.version_capa_id, actual: test.version_capa_id })
-  if (test.distribucion_id !== profile.distribucion_id)
-    found.push({ aspect: 'distribucion', expected: profile.distribucion_id, actual: test.distribucion_id })
-  if (test.arquitectura !== profile.arquitectura)
-    found.push({ aspect: 'arquitectura', expected: profile.arquitectura, actual: test.arquitectura })
-  if (profile.version_juego_objetivo !== null && test.version_juego !== profile.version_juego_objetivo)
-    found.push({ aspect: 'version_juego', expected: profile.version_juego_objetivo, actual: test.version_juego })
+  if (test.edition_id !== profile.edition_id)
+    found.push({ aspect: 'edicion', expected: profile.edition_id, actual: test.edition_id })
+  if (test.layer_version_id !== profile.layer_version_id)
+    found.push({ aspect: 'capa', expected: profile.layer_version_id, actual: test.layer_version_id })
+  if (test.distribution_id !== profile.distribution_id)
+    found.push({ aspect: 'distribucion', expected: profile.distribution_id, actual: test.distribution_id })
+  if (test.architecture !== profile.architecture)
+    found.push({ aspect: 'arquitectura', expected: profile.architecture, actual: test.architecture })
+  if (profile.target_game_version !== null && test.game_version !== profile.target_game_version)
+    found.push({ aspect: 'version_juego', expected: profile.target_game_version, actual: test.game_version })
   return found
 }

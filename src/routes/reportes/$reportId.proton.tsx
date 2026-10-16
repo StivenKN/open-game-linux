@@ -15,21 +15,21 @@ export const Route = createFileRoute('/reportes/$reportId/proton')({
     if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
   },
   loader: ({ params }) => protonReportFn({ data: { reportId: params.reportId } }),
-  head: ({ loaderData }) => ({ meta: [{ title: `Informe para Valve · ${loaderData?.report.juego ?? 'OpenGame Linux'}` }] }),
+  head: ({ loaderData }) => ({ meta: [{ title: `Informe para Valve · ${loaderData?.report.game ?? 'OpenGame Linux'}` }] }),
   component: ValveReportPage,
 })
 
 function ValveReportPage() {
   const { report, protonReport: x } = Route.useLoaderData()
   const backLink = (
-    <Link to="/juegos/$gameId" params={{ gameId: report.juego_id }}>
+    <Link to="/juegos/$gameId" params={{ gameId: report.game_id }}>
       Volver a la ficha del juego
     </Link>
   )
   return (
     <main className="envoltura estrecha-lectura pila">
       <p className="rotulo">Informe para Valve</p>
-      <h1>{report.juego}</h1>
+      <h1>{report.game}</h1>
       {x._tag === 'no_aplica' ? (
         <section className="tarjeta pila">
           <p>{noReportReason[x.reason]}</p>

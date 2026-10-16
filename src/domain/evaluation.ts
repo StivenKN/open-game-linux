@@ -32,7 +32,7 @@ export type MachineVulkan =
   | { readonly support: 'desconocido' }
 
 export type Capabilities = {
-  readonly sistema: OperatingSystem
+  readonly operating_system: OperatingSystem
   readonly ram_mb: number
   readonly vram_mb: number | null
   readonly vulkan: MachineVulkan
@@ -41,8 +41,8 @@ export type Capabilities = {
 export type KnownRequirements = {
   readonly ram_min_mb: number | null
   readonly vram_min_mb: number | null
-  readonly requiere_vulkan: boolean | null
-  readonly version_vulkan_min: VulkanVersion | null
+  readonly requires_vulkan: boolean | null
+  readonly vulkan_version_min: VulkanVersion | null
 }
 
 export const RequirementsVerdict = Schema.Literals(['no_cumple', 'informacion_insuficiente', 'cumple'])
@@ -77,11 +77,11 @@ export const evaluate = (machine: Capabilities, profile: KnownRequirements): Eva
       required: String(profile.vram_min_mb),
       detected: machine.vram_mb === null ? null : { value: String(machine.vram_mb), origin: 'medido' },
     })
-  if (profile.requiere_vulkan === true)
+  if (profile.requires_vulkan === true)
     checks.push({
       requirement: 'vulkan',
-      status: vulkanStatus(machine.vulkan, profile.version_vulkan_min),
-      required: profile.version_vulkan_min?.text ?? 'si',
+      status: vulkanStatus(machine.vulkan, profile.vulkan_version_min),
+      required: profile.vulkan_version_min?.text ?? 'si',
       detected: machine.vulkan.support === 'desconocido' ? null : { value: vulkanValue(machine.vulkan), origin: machine.vulkan.origin },
     })
   const verdict: RequirementsVerdict = checks.some((c) => c.status === 'no_cumple')
@@ -89,7 +89,7 @@ export const evaluate = (machine: Capabilities, profile: KnownRequirements): Eva
     : checks.length === 0 || checks.some((c) => c.status === 'desconocido')
       ? 'informacion_insuficiente'
       : 'cumple'
-  return { verdict, checks, advisory_only: machine.sistema === 'Windows' }
+  return { verdict, checks, advisory_only: machine.operating_system === 'Windows' }
 }
 
 export const vulkanStatus = (vulkan: MachineVulkan, minimum: VulkanVersion | null): RequirementCheck['status'] => {
@@ -109,22 +109,22 @@ export const vulkanRangeText = (r: VulkanRange): string =>
 export type RequirementColumns = {
   readonly ram_min_mb: number | null
   readonly vram_min_mb: number | null
-  readonly requiere_vulkan: boolean | null
-  readonly version_vulkan_min: string | null
+  readonly requires_vulkan: boolean | null
+  readonly vulkan_version_min: string | null
 }
 
 export const requirements = (p: RequirementColumns): KnownRequirements => ({
   ram_min_mb: p.ram_min_mb,
   vram_min_mb: p.vram_min_mb,
-  requiere_vulkan: p.requiere_vulkan,
-  version_vulkan_min: vulkanVersion(p.version_vulkan_min),
+  requires_vulkan: p.requires_vulkan,
+  vulkan_version_min: vulkanVersion(p.vulkan_version_min),
 })
 
-export const suggestProfile = <P extends { readonly distribucion_id: number; readonly arquitectura: string; readonly revision: number; readonly evaluation: Evaluation | null }>(
+export const suggestProfile = <P extends { readonly distribution_id: number; readonly architecture: string; readonly revision: number; readonly evaluation: Evaluation | null }>(
   profiles: ReadonlyArray<P>,
-  diagnostic: { readonly distribucion_id: number | null; readonly arquitectura: string },
+  diagnostic: { readonly distribution_id: number | null; readonly architecture: string },
 ): P | null => {
-  const differs = (p: P) => (p.distribucion_id === diagnostic.distribucion_id && p.arquitectura === diagnostic.arquitectura ? 0 : 1)
+  const differs = (p: P) => (p.distribution_id === diagnostic.distribution_id && p.architecture === diagnostic.architecture ? 0 : 1)
   const rankOf = (p: P) => verdictRank[p.evaluation?.verdict ?? 'informacion_insuficiente']
   const compare = (a: P, b: P) => differs(a) - differs(b) || rankOf(a) - rankOf(b) || b.revision - a.revision
   return profiles.reduce<P | null>((best, p) => (best === null || compare(p, best) < 0 ? p : best), null)

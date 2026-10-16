@@ -7,15 +7,15 @@ import type { X86Level } from './platform.ts'
 import { type GamePath, gamePath } from './graphics-path.ts'
 
 const pci = (id: string | null) => (id === null ? null : Schema.decodeSync(PciId)(id))
-const windows = (id: string | null): MachineColumns => ({ sistema: 'Windows', ram_mb: 8192, vram_mb: 2048, gpu_pci_id: pci(id) })
+const windows = (id: string | null): MachineColumns => ({ operating_system: 'Windows', ram_mb: 8192, vram_mb: 2048, gpu_pci_id: pci(id) })
 const linux = (id: string | null, vulkan: string | null): MachineColumns => ({
-  sistema: 'Linux',
+  operating_system: 'Linux',
   ram_mb: 8192,
   vram_mb: 2048,
   gpu_pci_id: pci(id),
-  controlador: null,
-  soporte_vulkan: vulkan === null ? 'desconocido' : 'si',
-  version_vulkan: vulkan,
+  driver: null,
+  vulkan_support: vulkan === null ? 'desconocido' : 'si',
+  vulkan_version: vulkan,
 })
 
 const haswell = linux('8086:0412', null) // HD 4600, projected Vulkan 1.0–1.1
@@ -23,7 +23,7 @@ const kepler = windows('10de:128b') // GT 710, projected Vulkan 1.2
 const rtx = linux('10de:2504', '1.4.318') // RTX 3060, measured
 const noPci = linux(null, null)
 
-const game = (apis: ReadonlyArray<GraphicsApi>, nivel_x86_min: X86Level | null = null) => ({ apis, nivel_x86_min })
+const game = (apis: ReadonlyArray<GraphicsApi>, x86_level_min: X86Level | null = null) => ({ apis, x86_level_min })
 const eldenRing = game(['d3d12'])
 const witcher3 = game(['d3d11', 'd3d12'])
 const cs2 = game(['vulkan', 'd3d11'], 'v2')

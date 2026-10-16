@@ -31,7 +31,7 @@ function SavedDiagnosticPage() {
       <p className="tenue">Solo tú ves este diagnóstico. Los reportes que publiques mostrarán su contexto técnico, no tu correo.</p>
       <CaptureSummary capture={d.capture} />
       <GraphicsCardOnLinux machine={d.machine} pci={d.capture.gpu_pci_id} />
-      <MachineGames rows={d.matrix} library={d.library} approximate={d.capture.sistema === 'Windows'} />
+      <MachineGames rows={d.matrix} library={d.library} approximate={d.capture.operating_system === 'Windows'} />
       <Distributions {...d.distributions} />
     </main>
   )

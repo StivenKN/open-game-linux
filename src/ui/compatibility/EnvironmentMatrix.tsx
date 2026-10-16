@@ -15,17 +15,17 @@ export function EnvironmentMatrix({ setups, myDistribution }: { setups: Readonly
   return (
     <ul className="entornos" aria-label="Entornos probados con reportes aprobados">
       {setups.map((e) => {
-        const mine = e.distribucion_id === myDistribution
+        const mine = e.distribution_id === myDistribution
         const status = compatibilityStatus[e.status]
         return (
           <li key={e.key} className="entorno" data-mia={mine || undefined}>
             <span className="entorno-franja" data-tono={status.tone} data-forma="relleno" data-estado={e.status} />
             <span className="entorno-inicial" aria-hidden="true">
-              {initial(e.distribucion)}
+              {initial(e.distribution)}
             </span>
             <div className="entorno-que">
               <h3>
-                {e.distribucion}
+                {e.distribution}
                 {mine && (
                   <Chip tone="azul" shape="punteado">
                     tu distro
@@ -33,13 +33,13 @@ export function EnvironmentMatrix({ setups, myDistribution }: { setups: Readonly
                 )}
               </h3>
               <p>
-                {e.capa} · {e.lanzador} · versión {e.version_juego}
+                {e.layer} · {e.launcher} · versión {e.game_version}
               </p>
             </div>
             <dl className="entorno-datos">
               <div>
                 <dt>Perfil</dt>
-                <dd>{e.perfil ?? <span className="tenue">sin perfil</span>}</dd>
+                <dd>{e.profile ?? <span className="tenue">sin perfil</span>}</dd>
               </div>
               <div>
                 <dt>FPS medido por la comunidad</dt>

@@ -62,7 +62,7 @@ function SampleCard({ sample, number }: { sample: Sample; number: number }) {
         <VerdictForMe personal={sample.personal} />
       </div>
       <h4 className="titulo-seccion">Entornos probados</h4>
-      <EnvironmentMatrix setups={sample.summary.setups} myDistribution={diagnostic.distribucion_id} />
+      <EnvironmentMatrix setups={sample.summary.setups} myDistribution={diagnostic.distribution_id} />
     </article>
   )
 }

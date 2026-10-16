@@ -27,25 +27,25 @@ export const statusOf = (outcomes: Iterable<Outcome>): CompatibilityStatus => {
 }
 
 export const ApprovedTest = Schema.Struct({
-  reporte_id: ReportId,
-  estado_revision: Schema.Literal('aprobado'),
-  edicion_id: EditionId,
-  lanzador: Schema.String,
-  version_juego: Schema.String,
-  distribucion_id: DistributionId,
-  distribucion: Schema.String,
-  version_capa_id: LayerVersionId,
-  capa: Schema.String,
-  perfil_id: Schema.NullOr(ProfileId),
-  perfil: Schema.NullOr(Schema.String),
-  resultado: Outcome,
-  fecha_prueba: Schema.Date,
+  report_id: ReportId,
+  review_status: Schema.Literal('aprobado'),
+  edition_id: EditionId,
+  launcher: Schema.String,
+  game_version: Schema.String,
+  distribution_id: DistributionId,
+  distribution: Schema.String,
+  layer_version_id: LayerVersionId,
+  layer: Schema.String,
+  profile_id: Schema.NullOr(ProfileId),
+  profile: Schema.NullOr(Schema.String),
+  outcome: Outcome,
+  tested_at: Schema.Date,
   // numeric(7,2) arrives as text from the driver (probe c).
-  fps_promedio: Schema.NullOr(Schema.FiniteFromString),
-  resolucion: Schema.NullOr(Schema.String),
-  calidad_grafica: Schema.NullOr(Schema.String),
-  metodo_medicion: Schema.NullOr(Schema.String),
-  fallos: Schema.Array(Schema.String),
+  avg_fps: Schema.NullOr(Schema.FiniteFromString),
+  resolution: Schema.NullOr(Schema.String),
+  graphics_quality: Schema.NullOr(Schema.String),
+  measurement_method: Schema.NullOr(Schema.String),
+  failures: Schema.Array(Schema.String),
 })
 export type ApprovedTest = typeof ApprovedTest.Type
 
@@ -59,7 +59,7 @@ export type MeasuredFps = {
 
 export type TestedSetup = Pick<
   ApprovedTest,
-  'edicion_id' | 'lanzador' | 'version_juego' | 'distribucion_id' | 'distribucion' | 'version_capa_id' | 'capa' | 'perfil_id' | 'perfil'
+  'edition_id' | 'launcher' | 'game_version' | 'distribution_id' | 'distribution' | 'layer_version_id' | 'layer' | 'profile_id' | 'profile'
 > & {
   readonly key: string
   readonly status: CompatibilityStatus
@@ -72,8 +72,8 @@ export type TestedSetup = Pick<
 }
 
 /** An edition whose newest approved test fails after an earlier one worked. */
-export type Regression = Pick<ApprovedTest, 'edicion_id' | 'lanzador' | 'fecha_prueba' | 'version_juego' | 'capa'> & {
-  readonly resultado: FailingOutcome
+export type Regression = Pick<ApprovedTest, 'edition_id' | 'launcher' | 'tested_at' | 'game_version' | 'layer'> & {
+  readonly outcome: FailingOutcome
 }
 
 export type CompatibilitySummary = {
@@ -98,55 +98,55 @@ export const summarize = (tests: ReadonlyArray<ApprovedTest>, now: Date): Compat
     .map((group) => testedSetup(group, now))
     .sort((a, b) => b.last_tested.getTime() - a.last_tested.getTime() || a.key.localeCompare(b.key))
   return {
-    status: statusOf(base.map((p) => p.resultado)),
+    status: statusOf(base.map((p) => p.outcome)),
     test_count: tests.length,
     recent_count: recent.length,
     no_recent_confirmation: tests.length > 0 && recent.length === 0,
     last_tested: setups[0]?.last_tested ?? null,
     setups,
     failures: countFailures(base),
-    regressions: groupBy(tests, (p) => String(p.edicion_id))
+    regressions: groupBy(tests, (p) => String(p.edition_id))
       .flatMap(regressionOf)
-      .sort((a, b) => b.fecha_prueba.getTime() - a.fecha_prueba.getTime()),
+      .sort((a, b) => b.tested_at.getTime() - a.tested_at.getTime()),
   }
 }
 
 export const onDistribution = (tests: ReadonlyArray<ApprovedTest>, distribution: DistributionId, now: Date): CompatibilitySummary =>
-  summarize(tests.filter((p) => p.distribucion_id === distribution), now)
+  summarize(tests.filter((p) => p.distribution_id === distribution), now)
 
 const baseOf = (tests: ReadonlyArray<ApprovedTest>, now: Date) => {
-  const recent = tests.filter((p) => isRecent(p.fecha_prueba, now))
+  const recent = tests.filter((p) => isRecent(p.tested_at, now))
   return { recent, base: recent.length > 0 ? recent : tests }
 }
 
 // Tests at the same instant are ordered by id, the order they were registered in.
 const newest = (tests: readonly [ApprovedTest, ...ApprovedTest[]]): ApprovedTest =>
-  tests.reduce((a, b) => ((b.fecha_prueba.getTime() - a.fecha_prueba.getTime() || b.reporte_id - a.reporte_id) > 0 ? b : a))
+  tests.reduce((a, b) => ((b.tested_at.getTime() - a.tested_at.getTime() || b.report_id - a.report_id) > 0 ? b : a))
 
 const keyOf = (p: ApprovedTest): string =>
-  JSON.stringify([p.edicion_id, p.version_juego, p.distribucion_id, p.version_capa_id, p.perfil_id])
+  JSON.stringify([p.edition_id, p.game_version, p.distribution_id, p.layer_version_id, p.profile_id])
 
 const testedSetup = (tests: readonly [ApprovedTest, ...ApprovedTest[]], now: Date): TestedSetup => {
   const [p] = tests
   const { recent, base } = baseOf(tests, now)
   const by_outcome: Partial<Record<Outcome, number>> = {}
-  for (const { resultado } of base) by_outcome[resultado] = (by_outcome[resultado] ?? 0) + 1
+  for (const { outcome } of base) by_outcome[outcome] = (by_outcome[outcome] ?? 0) + 1
   return {
     key: keyOf(p),
-    edicion_id: p.edicion_id,
-    lanzador: p.lanzador,
-    version_juego: p.version_juego,
-    distribucion_id: p.distribucion_id,
-    distribucion: p.distribucion,
-    version_capa_id: p.version_capa_id,
-    capa: p.capa,
-    perfil_id: p.perfil_id,
-    perfil: p.perfil,
-    status: statusOf(base.map((x) => x.resultado)),
+    edition_id: p.edition_id,
+    launcher: p.launcher,
+    game_version: p.game_version,
+    distribution_id: p.distribution_id,
+    distribution: p.distribution,
+    layer_version_id: p.layer_version_id,
+    layer: p.layer,
+    profile_id: p.profile_id,
+    profile: p.profile,
+    status: statusOf(base.map((x) => x.outcome)),
     test_count: tests.length,
     recent_count: recent.length,
     by_outcome,
-    last_tested: newest(tests).fecha_prueba,
+    last_tested: newest(tests).tested_at,
     failures: countFailures(base),
     fps: fpsBySetting(tests),
   }
@@ -157,23 +157,23 @@ const isWorking = Schema.is(WorkingOutcome)
 
 const regressionOf = (tests: readonly [ApprovedTest, ...ApprovedTest[]]): ReadonlyArray<Regression> => {
   const latest = newest(tests)
-  const { resultado } = latest
-  if (!isFailing(resultado) || !tests.some((p) => p !== latest && isWorking(p.resultado))) return []
-  const { edicion_id, lanzador, fecha_prueba, version_juego, capa } = latest
-  return [{ edicion_id, lanzador, fecha_prueba, version_juego, capa, resultado }]
+  const { outcome } = latest
+  if (!isFailing(outcome) || !tests.some((p) => p !== latest && isWorking(p.outcome))) return []
+  const { edition_id, launcher, tested_at, game_version, layer } = latest
+  return [{ edition_id, launcher, tested_at, game_version, layer, outcome }]
 }
 
 const countFailures = (tests: ReadonlyArray<ApprovedTest>): ReadonlyArray<FailureCount> =>
-  groupBy(tests.flatMap((p) => p.fallos), (code) => code)
+  groupBy(tests.flatMap((p) => p.failures), (code) => code)
     .map((group) => ({ code: group[0], reports: group.length }))
     .sort((a, b) => b.reports - a.reports || a.code.localeCompare(b.code))
 
 const fpsBySetting = (tests: ReadonlyArray<ApprovedTest>): ReadonlyArray<MeasuredFps> =>
   groupBy(
-    tests.flatMap(({ fps_promedio, resolucion, calidad_grafica }) =>
-      fps_promedio === null || resolucion === null || calidad_grafica === null
+    tests.flatMap(({ avg_fps, resolution: resolucion, graphics_quality }) =>
+      avg_fps === null || resolucion === null || graphics_quality === null
         ? []
-        : [{ fps: fps_promedio, resolucion, quality: calidad_grafica }],
+        : [{ fps: avg_fps, resolucion, quality: graphics_quality }],
     ),
     (m) => JSON.stringify([m.resolucion, m.quality]),
   ).map((group) => ({

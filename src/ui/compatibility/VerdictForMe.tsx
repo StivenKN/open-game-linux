@@ -12,7 +12,7 @@ export type Personal = {
   readonly on_my_distribution: { readonly name: string; readonly summary: CompatibilitySummary } | null
   readonly profile: EvaluatedProfile | null
   readonly path: GamePath
-  readonly nivel_x86_min: X86Level | null
+  readonly x86_level_min: X86Level | null
   readonly approximate: boolean
 }
 
@@ -60,7 +60,7 @@ export function VerdictForMe({ personal, children }: { personal: Personal | null
             </p>
           )}
           <hr />
-          <GraphicsPath path={personal.path} minX86Level={personal.nivel_x86_min} approximate={personal.approximate} />
+          <GraphicsPath path={personal.path} minX86Level={personal.x86_level_min} approximate={personal.approximate} />
           <hr />
           <EvaluationChecklist profile={personal.profile} />
         </>

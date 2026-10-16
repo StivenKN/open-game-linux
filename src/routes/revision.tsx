@@ -15,7 +15,7 @@ export const Route = createFileRoute('/revision')({
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipo: Schema.optionalKey(ContributionType) })),
   beforeLoad: ({ context, location }) => {
     if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
-    if (context.visitor.rol === 'usuario') throw notFound()
+    if (context.visitor.role === 'usuario') throw notFound()
   },
   loaderDeps: ({ search }) => ({ tipo: search.tipo ?? 'reporte' }),
   loader: ({ deps }) => queueFn({ data: deps }),
@@ -30,7 +30,7 @@ type ItemOf<T extends ReviewQueue['type']> = Extract<ReviewQueue, { type: T }>['
 
 function ReviewPage() {
   const queue = Route.useLoaderData()
-  const pendingCount = queue.items.filter((e) => e.estado_revision === 'pendiente').length
+  const pendingCount = queue.items.filter((e) => e.review_status === 'pendiente').length
   return (
     <main className="envoltura">
       <h1>Revisión de aportes</h1>
@@ -50,19 +50,19 @@ function ReviewPage() {
       <div className="pila">
         {queue.type === 'reporte' &&
           queue.items.map((e) => (
-            <ReviewItem key={`${e.id}-${e.estado_revision}`} contributionRef={{ _tag: 'reporte', id: e.id }} item={e}>
+            <ReviewItem key={`${e.id}-${e.review_status}`} contributionRef={{ _tag: 'reporte', id: e.id }} item={e}>
               <ReportDetail e={e} />
             </ReviewItem>
           ))}
         {queue.type === 'perfil' &&
           queue.items.map((e) => (
-            <ReviewItem key={`${e.id}-${e.estado_revision}`} contributionRef={{ _tag: 'perfil', id: e.id }} item={e}>
+            <ReviewItem key={`${e.id}-${e.review_status}`} contributionRef={{ _tag: 'perfil', id: e.id }} item={e}>
               <ProfileDetail e={e} />
             </ReviewItem>
           ))}
         {queue.type === 'solucion' &&
           queue.items.map((e) => (
-            <ReviewItem key={`${e.id}-${e.estado_revision}`} contributionRef={{ _tag: 'solucion', id: e.id }} item={e}>
+            <ReviewItem key={`${e.id}-${e.review_status}`} contributionRef={{ _tag: 'solucion', id: e.id }} item={e}>
               <SolutionDetail e={e} />
             </ReviewItem>
           ))}
@@ -88,17 +88,17 @@ function ReviewItem({ contributionRef, item, children }: { contributionRef: Cont
     },
     onComplete: () => router.invalidate(),
   })
-  const pending = item.estado_revision === 'pendiente'
+  const pending = item.review_status === 'pendiente'
   const headingId = `${contributionRef._tag}-${contributionRef.id}`
 
   return (
     <article className="tarjeta pila" aria-labelledby={headingId}>
       <header className="fila">
-        <Badge label={reviewStatus[item.estado_revision]} />
-        <strong id={headingId}>{item.juego}</strong>
-        <span className="dato tenue">{item.lanzador}</span>
+        <Badge label={reviewStatus[item.review_status]} />
+        <strong id={headingId}>{item.game}</strong>
+        <span className="dato tenue">{item.launcher}</span>
         <span className="pequeno tenue">
-          por {item.autor} · {date(item.creado_en)}
+          por {item.author} · {date(item.created_at)}
         </span>
         {item.demo && <span className="sello">Datos de ejemplo</span>}
       </header>
@@ -110,7 +110,7 @@ function ReviewItem({ contributionRef, item, children }: { contributionRef: Cont
           ))}
         </ul>
       )}
-      {item.es_propio ? (
+      {item.is_own ? (
         <p className="pequeno tenue">Es tu aporte: otro revisor debe decidir sobre él.</p>
       ) : (
         <form className="formulario decision" {...r.form}>
@@ -163,27 +163,27 @@ function ReportDetail({ e }: { e: ItemOf<'reporte'> }) {
   return (
     <>
       <p className="fila">
-        <Badge label={outcome[e.resultado]} />
+        <Badge label={outcome[e.outcome]} />
         <span className="dato">
-          {e.distribucion} · {e.arquitectura} · {e.capa} · versión {e.version_juego} · probado el {dateTime(e.fecha_prueba)}
+          {e.distribution} · {e.architecture} · {e.layer} · versión {e.game_version} · probado el {dateTime(e.tested_at)}
         </span>
       </p>
-      <p className="pequeno">{e.perfil === null ? 'Sin perfil.' : `Siguió el perfil «${e.perfil}».`}</p>
-      {e.fps_promedio !== null && (
+      <p className="pequeno">{e.profile === null ? 'Sin perfil.' : `Siguió el perfil «${e.profile}».`}</p>
+      {e.avg_fps !== null && (
         <p className="pequeno">
-          <span className="fps">{fps(e.fps_promedio)} FPS</span> · {e.resolucion} · {e.calidad_grafica} · {e.metodo_medicion}
+          <span className="fps">{fps(e.avg_fps)} FPS</span> · {e.resolution} · {e.graphics_quality} · {e.measurement_method}
         </p>
       )}
-      {e.fallos.length > 0 && (
+      {e.failures.length > 0 && (
         <ul className="pequeno">
-          {e.fallos.map((f) => (
-            <li key={f.codigo}>
-              <Chip tone={failureType(f.codigo).tone}>{failureType(f.codigo).text}</Chip> {f.detalle}
+          {e.failures.map((f) => (
+            <li key={f.code}>
+              <Chip tone={failureType(f.code).tone}>{failureType(f.code).text}</Chip> {f.detail}
             </li>
           ))}
         </ul>
       )}
-      <p>{e.observaciones}</p>
+      <p>{e.observations}</p>
     </>
   )
 }
@@ -192,16 +192,16 @@ function ProfileDetail({ e }: { e: ItemOf<'perfil'> }) {
   return (
     <>
       <p>
-        <strong>{e.titulo}</strong> <span className="dato tenue">r{e.revision}</span>
+        <strong>{e.title}</strong> <span className="dato tenue">r{e.revision}</span>
       </p>
       <p className="dato">
-        {e.distribucion} · {e.arquitectura} · {e.capa}
-        {e.version_juego_objetivo !== null && ` · versión ${e.version_juego_objetivo}`}
+        {e.distribution} · {e.architecture} · {e.layer}
+        {e.target_game_version !== null && ` · versión ${e.target_game_version}`}
       </p>
       <p className="pequeno">
-        {count(e.pasos, 'paso', 'pasos')} · {count(e.reportes_funcionales, 'reporte funcional aprobado', 'reportes funcionales aprobados')}
+        {count(e.steps, 'paso', 'pasos')} · {count(e.working_reports, 'reporte funcional aprobado', 'reportes funcionales aprobados')}
       </p>
-      {e.parametros_lanzamiento !== null && <pre className="dato">{e.parametros_lanzamiento}</pre>}
+      {e.launch_options !== null && <pre className="dato">{e.launch_options}</pre>}
     </>
   )
 }
@@ -210,14 +210,14 @@ function SolutionDetail({ e }: { e: ItemOf<'solucion'> }) {
   return (
     <>
       <p>
-        <strong>{e.titulo}</strong>
+        <strong>{e.title}</strong>
       </p>
       <p className="pequeno">
-        Responde a <Chip tone={failureType(e.tipo_fallo).tone}>{failureType(e.tipo_fallo).text}</Chip> «{e.fallo}» del reporte #{e.reporte_id} (
-        {reviewStatus[e.estado_reporte].text.toLowerCase()}).
+        Responde a <Chip tone={failureType(e.failure_type).tone}>{failureType(e.failure_type).text}</Chip> «{e.failure}» del reporte #{e.report_id} (
+        {reviewStatus[e.report_status].text.toLowerCase()}).
       </p>
-      <p className="pequeno">{e.perfil === null ? 'No recomienda un perfil.' : `Recomienda el perfil «${e.perfil}».`}</p>
-      <p className="instrucciones">{e.instrucciones}</p>
+      <p className="pequeno">{e.profile === null ? 'No recomienda un perfil.' : `Recomienda el perfil «${e.profile}».`}</p>
+      <p className="instrucciones">{e.instructions}</p>
     </>
   )
 }

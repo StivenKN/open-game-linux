@@ -22,7 +22,7 @@ export const Route = createFileRoute('/reportes/$reportId/solucion')({
     if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
   },
   loader: ({ params }) => solutionOptionsFn({ data: { reportId: params.reportId } }),
-  head: ({ loaderData }) => ({ meta: [{ title: `Proponer solución · ${loaderData?.report.juego ?? 'OpenGame Linux'}` }] }),
+  head: ({ loaderData }) => ({ meta: [{ title: `Proponer solución · ${loaderData?.report.game ?? 'OpenGame Linux'}` }] }),
   component: ProposeSolutionPage,
 })
 
@@ -35,16 +35,16 @@ function ProposeSolutionPage() {
   return (
     <main className="envoltura">
       <p className="rotulo">Proponer solución</p>
-      <h1>{report.juego}</h1>
+      <h1>{report.game}</h1>
       <section className="tarjeta pila">
         <p className="fila">
-          <Badge label={outcome[report.resultado]} />
-          <Badge label={reviewStatus[report.estado_revision]} />
+          <Badge label={outcome[report.outcome]} />
+          <Badge label={reviewStatus[report.review_status]} />
           <span className="dato">
-            {report.lanzador} · {report.distribucion} · {report.capa} · versión {report.version_juego} · {dateTime(report.fecha_prueba)}
+            {report.launcher} · {report.distribution} · {report.layer} · versión {report.game_version} · {dateTime(report.tested_at)}
           </span>
         </p>
-        <p>{report.observaciones}</p>
+        <p>{report.observations}</p>
       </section>
 
       {submitted ? (
@@ -54,7 +54,7 @@ function ProposeSolutionPage() {
             Queda <strong>pendiente de revisión</strong>. Para publicarla, un revisor necesita evidencia de que resuelve el fallo, no solo que el fallo existe.
           </p>
           <p>
-            <Link to="/juegos/$gameId" params={{ gameId: report.juego_id }}>
+            <Link to="/juegos/$gameId" params={{ gameId: report.game_id }}>
               Volver a la ficha del juego
             </Link>
           </p>
@@ -64,10 +64,10 @@ function ProposeSolutionPage() {
           <FieldError errors={r.errors} field="formulario" />
           <input type="hidden" name="reporte_id" value={report.id} />
           <Field errors={r.errors} name="tipo_fallo_id" label="Fallo que resuelve">
-            <select {...fieldProps(r.errors, 'tipo_fallo_id')} defaultValue={failures.find((f) => f.tipo_fallo_id === preselected)?.tipo_fallo_id}>
+            <select {...fieldProps(r.errors, 'tipo_fallo_id')} defaultValue={failures.find((f) => f.failure_type_id === preselected)?.failure_type_id}>
               {failures.map((f) => (
-                <option key={f.tipo_fallo_id} value={f.tipo_fallo_id}>
-                  {failureType(f.codigo).text}: {f.detalle}
+                <option key={f.failure_type_id} value={f.failure_type_id}>
+                  {failureType(f.code).text}: {f.detail}
                 </option>
               ))}
             </select>
@@ -82,7 +82,7 @@ function ProposeSolutionPage() {
               <option value={nullText}>Ninguno: describo otra acción</option>
               {profiles.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.titulo} (r{p.revision}, {reviewStatus[p.estado_revision].text.toLowerCase()})
+                  {p.title} (r{p.revision}, {reviewStatus[p.review_status].text.toLowerCase()})
                 </option>
               ))}
             </select>

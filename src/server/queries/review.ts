@@ -12,49 +12,49 @@ import { isDemo, layerLabel, distributionLabel, profileLabel } from './labels.ts
 const Name = Schema.String
 
 const Common = {
-  creado_en: Schema.Date,
-  estado_revision: Profile.fields.estado_revision,
-  autor: User.fields.alias,
+  created_at: Schema.Date,
+  review_status: Profile.fields.review_status,
+  author: User.fields.alias,
   demo: Schema.Boolean,
-  es_propio: Schema.Boolean,
-  juego: Game.fields.titulo,
-  lanzador: Launcher.fields.nombre,
+  is_own: Schema.Boolean,
+  game: Game.fields.title,
+  launcher: Launcher.fields.name,
 }
 
 const ProfileQueueItem = Schema.Struct({
   ...Common,
-  ...Profile.mapFields(Struct.pick(['id', 'titulo', 'revision', 'arquitectura', 'version_juego_objetivo', 'parametros_lanzamiento'])).fields,
-  distribucion: Name,
-  capa: Name,
-  pasos: Schema.Int,
-  reportes_funcionales: Schema.Int,
+  ...Profile.mapFields(Struct.pick(['id', 'title', 'revision', 'architecture', 'target_game_version', 'launch_options'])).fields,
+  distribution: Name,
+  layer: Name,
+  steps: Schema.Int,
+  working_reports: Schema.Int,
 })
 
 const ReportQueueItem = Schema.Struct({
   ...Common,
   ...Report.mapFields(
-    Struct.pick(['id', 'resultado', 'version_juego', 'fecha_prueba', 'fps_promedio', 'resolucion', 'calidad_grafica', 'metodo_medicion', 'observaciones']),
+    Struct.pick(['id', 'outcome', 'game_version', 'tested_at', 'avg_fps', 'resolution', 'graphics_quality', 'measurement_method', 'observations']),
   ).fields,
-  distribucion: Name,
-  distribucion_id: DistributionId,
-  arquitectura: Diagnostic.fields.arquitectura,
-  capa: Name,
-  perfil: Schema.NullOr(Name),
-  fallos: Schema.Array(Schema.Struct({ codigo: FailureType.fields.codigo, detalle: Schema.String })),
+  distribution: Name,
+  distribution_id: DistributionId,
+  architecture: Diagnostic.fields.architecture,
+  layer: Name,
+  profile: Schema.NullOr(Name),
+  failures: Schema.Array(Schema.Struct({ code: FailureType.fields.code, detail: Schema.String })),
 })
 
 const SolutionQueueItem = Schema.Struct({
   ...Common,
-  ...Solution.mapFields(Struct.pick(['id', 'titulo', 'instrucciones', 'reporte_id'])).fields,
-  tipo_fallo: FailureType.fields.codigo,
-  fallo: Schema.String,
-  estado_reporte: Report.fields.estado_revision,
-  perfil: Schema.NullOr(Name),
+  ...Solution.mapFields(Struct.pick(['id', 'title', 'instructions', 'report_id'])).fields,
+  failure_type: FailureType.fields.code,
+  failure: Schema.String,
+  report_status: Report.fields.review_status,
+  profile: Schema.NullOr(Name),
 })
 
-const withBlockers = <A extends { readonly estado_revision: string }>(items: ReadonlyArray<A>, refOf: (a: A) => ContributionRef) =>
+const withBlockers = <A extends { readonly review_status: string }>(items: ReadonlyArray<A>, refOf: (a: A) => ContributionRef) =>
   Effect.forEach(items, (e) =>
-    Effect.map(e.estado_revision === 'pendiente' ? approvalBlockers(refOf(e)) : Effect.succeed([]), (blockers: ReadonlyArray<Blocker>) => ({ ...e, blockers })),
+    Effect.map(e.review_status === 'pendiente' ? approvalBlockers(refOf(e)) : Effect.succeed([]), (blockers: ReadonlyArray<Blocker>) => ({ ...e, blockers })),
   )
 
 export const queue = (type: ContributionType) =>

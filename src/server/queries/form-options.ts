@@ -9,22 +9,22 @@ import { requireReviewer, requireUser } from '../auth.ts'
 import { rows } from '../rows.ts'
 import { layerLabel, distributionLabel } from './labels.ts'
 
-const GameRow = Game.mapFields(Struct.pick(['id', 'titulo']))
-const EditionRow = Schema.Struct({ id: EditionId, lanzador: Launcher.fields.nombre })
+const GameRow = Game.mapFields(Struct.pick(['id', 'title']))
+const EditionRow = Schema.Struct({ id: EditionId, launcher: Launcher.fields.name })
 const Name = Schema.String
 
 const DiagnosticRow = Schema.Struct({
   id: DiagnosticId,
-  equipo: Machine.fields.alias,
-  distribucion: Name,
-  distribucion_id: DistributionId,
-  ...Diagnostic.mapFields(Struct.pick(['arquitectura', 'capturado_en'])).fields,
+  machine: Machine.fields.alias,
+  distribution: Name,
+  distribution_id: DistributionId,
+  ...Diagnostic.mapFields(Struct.pick(['architecture', 'captured_at'])).fields,
 })
 
 const ProfileRow = Schema.Struct({
-  ...Profile.mapFields(Struct.pick(['id', 'titulo', 'revision', 'estado_revision'])).fields,
+  ...Profile.mapFields(Struct.pick(['id', 'title', 'revision', 'review_status'])).fields,
   ...TargetProfile.fields,
-  distribucion: Name,
+  distribution: Name,
 })
 
 export const reportOptions = (gameId: GameId, profile: ProfileId | null) =>
@@ -58,15 +58,15 @@ export const reportOptions = (gameId: GameId, profile: ProfileId | null) =>
   })
 
 const SourceReport = Schema.Struct({
-  ...Report.mapFields(Struct.pick(['id', 'edicion_id', 'resultado', 'version_juego', 'fecha_prueba', 'observaciones', 'estado_revision'])).fields,
-  juego_id: Game.fields.id,
-  juego: Game.fields.titulo,
-  lanzador: Launcher.fields.nombre,
-  distribucion: Name,
-  capa: Name,
+  ...Report.mapFields(Struct.pick(['id', 'edition_id', 'outcome', 'game_version', 'tested_at', 'observations', 'review_status'])).fields,
+  game_id: Game.fields.id,
+  game: Game.fields.title,
+  launcher: Launcher.fields.name,
+  distribution: Name,
+  layer: Name,
 })
-const SourceFailure = Schema.Struct({ tipo_fallo_id: FailureType.fields.id, codigo: FailureType.fields.codigo, detalle: Schema.String })
-const EditionProfile = Profile.mapFields(Struct.pick(['id', 'titulo', 'revision', 'estado_revision']))
+const SourceFailure = Schema.Struct({ failure_type_id: FailureType.fields.id, code: FailureType.fields.code, detail: Schema.String })
+const EditionProfile = Profile.mapFields(Struct.pick(['id', 'title', 'revision', 'review_status']))
 
 export const solutionOptions = (reportId: ReportId) =>
   Effect.gen(function* () {
@@ -92,12 +92,12 @@ export const solutionOptions = (reportId: ReportId) =>
     const profiles = yield* rows(
       EditionProfile,
       sql`SELECT id, title, revision, review_status FROM profile
-          WHERE edition_id = ${report.edicion_id} AND review_status IN ${sql.in(activeStatuses)} ORDER BY title, revision`,
+          WHERE edition_id = ${report.edition_id} AND review_status IN ${sql.in(activeStatuses)} ORDER BY title, revision`,
     )
     return { report, failures, profiles }
   })
 
-const LauncherRow = Launcher.mapFields(Struct.pick(['id', 'nombre']))
+const LauncherRow = Launcher.mapFields(Struct.pick(['id', 'name']))
 
 export const gameOptions = Effect.gen(function* () {
   yield* requireReviewer

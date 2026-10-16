@@ -104,55 +104,55 @@ describe.skipIf(motor === null)(`opengame-detect.ps1 under ${motor ?? `pwsh (ski
     expect(salida).toMatch(/^[\x20-\x7e]+$/)
     const leida = captura(salida)
     expect(leida).toEqual({
-      capturado_en: expect.any(Date),
-      sistema: 'Windows',
-      version_sistema: 'Windows 10 Home 22H2 (19045)',
-      arquitectura: 'x86_64',
-      cpu_modelo: 'Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz',
-      gpu_modelo: 'NVIDIA GeForce GTX 750 Ti',
+      captured_at: expect.any(Date),
+      operating_system: 'Windows',
+      os_version: 'Windows 10 Home 22H2 (19045)',
+      architecture: 'x86_64',
+      cpu_model: 'Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz',
+      gpu_model: 'NVIDIA GeForce GTX 750 Ti',
       gpu_pci_id: '10de:1380',
       ram_mb: 8192,
       vram_mb: 2048,
-      nivel_x86: null,
-      arranque_seguro: null,
+      x86_level: null,
+      secure_boot: null,
       tpm: null,
       zram_mb: null,
       swap_mb: null,
-      biblioteca_steam: bibliotecaNuevo.filter((j) => j.nombre !== 'Proton 9.0'),
+      steam_library: bibliotecaNuevo.filter((j) => j.nombre !== 'Proton 9.0'),
     })
-    expect({ ...captura(powershell({ OPENGAME_DRY: '1' })), capturado_en: leida.capturado_en }).toEqual(leida)
+    expect({ ...captura(powershell({ OPENGAME_DRY: '1' })), capturado_en: leida.captured_at }).toEqual(leida)
   })
 
   it('picks the GeForce over a Ryzen iGPU listed first: the adapter with the most VRAM runs the games', () => {
     expect(captura(powershell({ OPENGAME_PRUEBA_EQUIPO: 'ryzen', OPENGAME_IMPRIMIR: '1' }))).toMatchObject({
-      gpu_modelo: 'NVIDIA GeForce GTX 1650',
+      gpu_model: 'NVIDIA GeForce GTX 1650',
       gpu_pci_id: '10de:1f91',
       vram_mb: 4096,
     })
   })
 
   it('names the architecture from the OS bitness when the shell has no PROCESSOR_ARCHITECTURE', () => {
-    expect(captura(powershell({ OPENGAME_IMPRIMIR: '1', PROCESSOR_ARCHITECTURE: '' })).arquitectura).toBe('x86_64')
+    expect(captura(powershell({ OPENGAME_IMPRIMIR: '1', PROCESSOR_ARCHITECTURE: '' })).architecture).toBe('x86_64')
   })
 
   it('sends nulls for a GPU without driver and a PC without Steam', () => {
     const env = { OPENGAME_PRUEBA_EQUIPO: 'basico', PROCESSOR_ARCHITECTURE: 'x86', PROCESSOR_ARCHITEW6432: 'AMD64', OPENGAME_IMPRIMIR: '1' }
     expect(captura(powershell(env))).toEqual({
-      capturado_en: expect.any(Date),
-      sistema: 'Windows',
-      version_sistema: 'Windows 11 Pro 23H2 (22631)',
-      arquitectura: 'x86_64',
-      cpu_modelo: 'Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz',
-      gpu_modelo: 'NVIDIA GPU [10de:1380]',
+      captured_at: expect.any(Date),
+      operating_system: 'Windows',
+      os_version: 'Windows 11 Pro 23H2 (22631)',
+      architecture: 'x86_64',
+      cpu_model: 'Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz',
+      gpu_model: 'NVIDIA GPU [10de:1380]',
       gpu_pci_id: '10de:1380',
       ram_mb: 8078,
       vram_mb: null,
-      nivel_x86: null,
-      arranque_seguro: null,
+      x86_level: null,
+      secure_boot: null,
       tpm: null,
       zram_mb: null,
       swap_mb: null,
-      biblioteca_steam: null,
+      steam_library: null,
     })
   })
 

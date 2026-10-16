@@ -34,8 +34,8 @@ const PayloadV1 = {
     soporte_vulkan: VulkanSupport,
     version_vulkan: Schema.NullOr(Schema.String),
     // Added after version 1 shipped without a bump: older detectors omit them.
-    nivel_x86: Schema.optionalKey(Diagnostic.fields.nivel_x86),
-    arranque_seguro: Schema.optionalKey(Diagnostic.fields.arranque_seguro),
+    nivel_x86: Schema.optionalKey(Diagnostic.fields.x86_level),
+    arranque_seguro: Schema.optionalKey(Diagnostic.fields.secure_boot),
     tpm: Schema.optionalKey(Diagnostic.fields.tpm),
     zram_mb: Schema.optionalKey(Diagnostic.fields.zram_mb),
     swap_mb: Schema.optionalKey(Diagnostic.fields.swap_mb),
@@ -56,33 +56,33 @@ export const parsePayload = (text: string): Result.Result<Capture, InvalidPayloa
     const p = yield* Result.mapError(Schema.decodeUnknownResult(PayloadV1[value.sistema])(value), invalidField)
     const pci = pciId(p.gpu_pci_id)
     const common = {
-      capturado_en: p.capturado_en,
-      version_sistema: p.version_sistema,
-      arquitectura: p.arquitectura,
-      cpu_modelo: p.cpu_modelo ?? 'CPU no detectada',
-      gpu_modelo: p.gpu_modelo ?? (pci === null ? 'GPU no detectada' : pciLabel(pci)),
+      captured_at: p.capturado_en,
+      os_version: p.version_sistema,
+      architecture: p.arquitectura,
+      cpu_model: p.cpu_modelo ?? 'CPU no detectada',
+      gpu_model: p.gpu_modelo ?? (pci === null ? 'GPU no detectada' : pciLabel(pci)),
       gpu_pci_id: pci,
       ram_mb: p.ram_mb,
       vram_mb: p.vram_mb,
-      biblioteca_steam: p.biblioteca_steam === undefined || p.biblioteca_steam === null ? null : libraryOf(p.biblioteca_steam),
+      steam_library: p.biblioteca_steam === undefined || p.biblioteca_steam === null ? null : libraryOf(p.biblioteca_steam),
     }
     const candidate: typeof Capture.Encoded =
       p.sistema === 'Linux'
         ? {
             ...common,
-            sistema: 'Linux',
-            distribucion: { nombre: p.distribucion.nombre, version: distributionVersion(p.distribucion.version) },
-            controlador: p.controlador,
-            version_controlador: p.version_controlador,
-            soporte_vulkan: p.soporte_vulkan,
-            version_vulkan: p.soporte_vulkan === 'si' ? p.version_vulkan : null,
-            nivel_x86: p.nivel_x86 ?? null,
-            arranque_seguro: p.arranque_seguro ?? null,
+            operating_system: 'Linux',
+            distribution: { name: p.distribucion.nombre, version: distributionVersion(p.distribucion.version) },
+            driver: p.controlador,
+            driver_version: p.version_controlador,
+            vulkan_support: p.soporte_vulkan,
+            vulkan_version: p.soporte_vulkan === 'si' ? p.version_vulkan : null,
+            x86_level: p.nivel_x86 ?? null,
+            secure_boot: p.arranque_seguro ?? null,
             tpm: p.tpm ?? null,
             zram_mb: p.zram_mb ?? null,
             swap_mb: p.swap_mb ?? null,
           }
-        : { ...common, sistema: 'Windows' }
+        : { ...common, operating_system: 'Windows' }
     return yield* fitsColumns(yield* Result.mapError(Schema.decodeResult(Capture)(candidate), invalidField))
   })
 
@@ -92,7 +92,7 @@ const libraryOf = (games: ReadonlyArray<typeof SentGame.Type>): typeof SteamLibr
   return games
     .flatMap(({ app_id, nombre }) => {
       const readable = nombre.toWellFormed().replace(/\p{Cc}/gu, '').trim()
-      const cleaned = readable.slice(0, maxLengths.biblioteca.nombre).replace(/[\uD800-\uDBFF]$/, '').trim()
+      const cleaned = readable.slice(0, maxLengths.biblioteca.name).replace(/[\uD800-\uDBFF]$/, '').trim()
       if (cleaned === '' || isSteamTool(cleaned) || !Number.isSafeInteger(app_id) || app_id <= 0 || seen.has(app_id)) return []
       seen.add(app_id)
       return [{ app_id, nombre: cleaned }]
@@ -103,19 +103,19 @@ const libraryOf = (games: ReadonlyArray<typeof SentGame.Type>): typeof SteamLibr
 export const captureOf = (input: DiagnosticInput): Effect.Effect<Capture, InvalidPayload> =>
   Effect.fromResult(
     input._tag === 'manual'
-      ? fitsColumns({ ...input.captura, gpu_pci_id: null, biblioteca_steam: null, nivel_x86: null, arranque_seguro: null, tpm: null, zram_mb: null, swap_mb: null })
+      ? fitsColumns({ ...input.captura, gpu_pci_id: null, steam_library: null, x86_level: null, secure_boot: null, tpm: null, zram_mb: null, swap_mb: null })
       : parsePayload(input.texto),
   )
 
 const Columns = Schema.Struct({
-  version_sistema: Diagnostic.fields.version_sistema,
-  arquitectura: Diagnostic.fields.arquitectura,
-  cpu_modelo: Diagnostic.fields.cpu_modelo,
-  gpu_modelo: Diagnostic.fields.gpu_modelo,
-  controlador: Schema.optionalKey(Diagnostic.fields.controlador),
-  version_controlador: Schema.optionalKey(Diagnostic.fields.version_controlador),
-  version_vulkan: Schema.optionalKey(Diagnostic.fields.version_vulkan),
-  distribucion: Schema.optionalKey(Schema.Struct({ nombre: Distribution.fields.nombre, version: Distribution.fields.version })),
+  os_version: Diagnostic.fields.os_version,
+  architecture: Diagnostic.fields.architecture,
+  cpu_model: Diagnostic.fields.cpu_model,
+  gpu_model: Diagnostic.fields.gpu_model,
+  driver: Schema.optionalKey(Diagnostic.fields.driver),
+  driver_version: Schema.optionalKey(Diagnostic.fields.driver_version),
+  vulkan_version: Schema.optionalKey(Diagnostic.fields.vulkan_version),
+  distribution: Schema.optionalKey(Schema.Struct({ name: Distribution.fields.name, version: Distribution.fields.version })),
 })
 
 const fitsColumns = (capture: Capture): Result.Result<Capture, InvalidPayload> =>

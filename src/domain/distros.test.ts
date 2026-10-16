@@ -5,7 +5,7 @@ import { type DistroKey, screenDistros, type EvaluatedDistro } from './distros.t
 import { PciId } from './gpu.ts'
 
 const machine = (pci: string | null) =>
-  machineOnLinux({ sistema: 'Windows', ram_mb: 8192, vram_mb: 2048, gpu_pci_id: pci === null ? null : Schema.decodeSync(PciId)(pci) })
+  machineOnLinux({ operating_system: 'Windows', ram_mb: 8192, vram_mb: 2048, gpu_pci_id: pci === null ? null : Schema.decodeSync(PciId)(pci) })
 
 const summary = (pci: string | null, architecture = 'x86_64') =>
   screenDistros(machine(pci), architecture).map((d): [DistroKey, EvaluatedDistro['verdict'], EvaluatedDistro['objections']] => [d.key, d.verdict, d.objections])

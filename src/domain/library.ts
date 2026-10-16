@@ -9,7 +9,7 @@ export const MAX_LIBRARY_GAMES = 1000
 export const SteamAppId = Schema.Int.pipe(Schema.check(Schema.isGreaterThan(0)), Schema.brand('AppIdSteam'))
 export type SteamAppId = typeof SteamAppId.Type
 
-export const LibraryGame = Schema.Struct({ app_id: SteamAppId, nombre: RequiredText.pipe(Schema.check(Schema.isMaxLength(maxLengths.biblioteca.nombre))) })
+export const LibraryGame = Schema.Struct({ app_id: SteamAppId, nombre: RequiredText.pipe(Schema.check(Schema.isMaxLength(maxLengths.biblioteca.name))) })
 export type LibraryGame = typeof LibraryGame.Type
 
 export const SteamLibrary = Schema.Array(LibraryGame).pipe(Schema.check(Schema.isMaxLength(MAX_LIBRARY_GAMES)))

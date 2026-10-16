@@ -37,7 +37,7 @@ export const auth = betterAuth({
   plugins: [tanstackStartCookies()],
 })
 
-export type SignedInUser = Pick<User, 'id' | 'alias' | 'rol'>
+export type SignedInUser = Pick<User, 'id' | 'alias' | 'role'>
 
 export class Visitor extends Context.Service<Visitor, Option.Option<SignedInUser>>()('Visitante') {}
 
@@ -45,8 +45,8 @@ export class Visitor extends Context.Service<Visitor, Option.Option<SignedInUser
 const SessionUser = Schema.Struct({
   id: User.fields.id,
   name: User.fields.alias,
-  rol: User.fields.rol,
-  activo: User.fields.activo,
+  rol: User.fields.role,
+  activo: User.fields.active,
 })
 
 export const visitorOf = (headers: Headers): Effect.Effect<Option.Option<SignedInUser>> =>
@@ -54,7 +54,7 @@ export const visitorOf = (headers: Headers): Effect.Effect<Option.Option<SignedI
     const session = yield* Effect.promise(() => auth.api.getSession({ headers }))
     if (session === null) return Option.none()
     const u = yield* Effect.orDie(Schema.decodeUnknownEffect(SessionUser)(session.user))
-    return u.activo ? Option.some({ id: u.id, alias: u.name, rol: u.rol }) : Option.none()
+    return u.activo ? Option.some({ id: u.id, alias: u.name, role: u.rol }) : Option.none()
   })
 
 export const requireUser: Effect.Effect<SignedInUser, Unauthenticated, Visitor> = Effect.flatMap(Visitor, (visitor) =>
@@ -66,10 +66,10 @@ const reviewer: unique symbol = Symbol('Revisor')
 export type Reviewer = SignedInUser & { readonly [reviewer]: true }
 
 export const requireReviewer: Effect.Effect<Reviewer, Unauthenticated | Forbidden, Visitor> = Effect.flatMap(requireUser, (u) =>
-  canReview[u.rol] ? Effect.succeed({ ...u, [reviewer]: true as const }) : Effect.fail(new Forbidden()),
+  canReview[u.role] ? Effect.succeed({ ...u, [reviewer]: true as const }) : Effect.fail(new Forbidden()),
 )
 
-const RoleChange = Schema.Struct({ alias: User.fields.alias, antes: User.fields.rol })
+const RoleChange = Schema.Struct({ alias: User.fields.alias, before: User.fields.role })
 
 export const assignRole = (email: string, role: Role) =>
   Effect.gen(function* () {
@@ -82,5 +82,5 @@ export const assignRole = (email: string, role: Role) =>
       SELECT alias, before FROM previous`,
     )
     if (row === undefined) return yield* Effect.fail(new NotFound())
-    return { alias: row.alias, role, changed: row.antes !== role }
+    return { alias: row.alias, role, changed: row.before !== role }
   })

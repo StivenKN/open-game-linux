@@ -15,17 +15,17 @@ import {
 } from './upstream.ts'
 
 const witcher: FixInput = {
-  lanzador: 'Steam',
-  identificador_externo: '292030',
-  familia: 'Proton',
-  juego: 'The Witcher 3: Wild Hunt',
+  launcher: 'Steam',
+  external_id: '292030',
+  family: 'Proton',
+  game: 'The Witcher 3: Wild Hunt',
   profile: { id: ProfileId.make(12), revision: 1 },
-  parametros_lanzamiento: 'DXVK_FRAME_RATE=60 gamemoderun %command% --launcher-skip',
+  launch_options: 'DXVK_FRAME_RATE=60 gamemoderun %command% --launcher-skip',
   dependencies: [
-    { nombre: 'd3dcompiler_47', gestor: 'winetricks', obligatoria: true },
-    { nombre: 'gamemode', gestor: 'apt', obligatoria: false },
+    { name: 'd3dcompiler_47', package_manager: 'winetricks', required: true },
+    { name: 'gamemode', package_manager: 'apt', required: false },
   ],
-  ejemplo: false,
+  demo: false,
 }
 
 const witcherFile = `"""Game fix for The Witcher 3: Wild Hunt"""
@@ -76,14 +76,14 @@ describe('exportFix', () => {
   })
 
   it('demo content gets the file but no GitHub link', () => {
-    const x = exportFix({ ...witcher, ejemplo: true })
+    const x = exportFix({ ...witcher, demo: true })
     expect(x._tag === 'archivo' && x.propose).toEqual({ _tag: 'datos_de_ejemplo' })
   })
 
   const cases: ReadonlyArray<readonly [string, Partial<FixInput>, ReturnType<typeof parts>]> = [
     [
       'injection: quotes in the title and a quote in a value',
-      { juego: `Assassin's "Creed"`, parametros_lanzamiento: "FOO=it's %command% -dx11", dependencies: [] },
+      { game: `Assassin's "Creed"`, launch_options: "FOO=it's %command% -dx11", dependencies: [] },
       {
         header: `"""Game fix for Assassin's \\"Creed\\""""`,
         lines: ["    util.append_argument('-dx11')"],
@@ -92,7 +92,7 @@ describe('exportFix', () => {
     ],
     [
       'injection: a trailing backslash in the title and in a token',
-      { juego: 'Foo\\', parametros_lanzamiento: '%command% -path=C:\\ -windowed', dependencies: [] },
+      { game: 'Foo\\', launch_options: '%command% -path=C:\\ -windowed', dependencies: [] },
       {
         header: '"""Game fix for Foo\\\\"""',
         lines: ["    util.append_argument('-windowed')"],
@@ -101,17 +101,17 @@ describe('exportFix', () => {
     ],
     [
       'injection: """ in the title',
-      { juego: 'Evil"""; import os', parametros_lanzamiento: '%command% -dx11', dependencies: [] },
+      { game: 'Evil"""; import os', launch_options: '%command% -dx11', dependencies: [] },
       { header: '"""Game fix for Evil\\"\\"\\"; import os"""', lines: ["    util.append_argument('-dx11')"], skipped: [] },
     ],
     [
       'injection: control characters in the title, a value, an argument and a verb',
       {
-        juego: 'A\nimport os\u0007',
-        parametros_lanzamiento: 'FOO=a\u0001b BAR=1 %command% -x\u001b[2J -ok',
+        game: 'A\nimport os\u0007',
+        launch_options: 'FOO=a\u0001b BAR=1 %command% -x\u001b[2J -ok',
         dependencies: [
-          { nombre: 'vcrun\u0007', gestor: 'winetricks', obligatoria: true },
-          { nombre: 'vcrun2022', gestor: 'winetricks', obligatoria: true },
+          { name: 'vcrun\u0007', package_manager: 'winetricks', required: true },
+          { name: 'vcrun2022', package_manager: 'winetricks', required: true },
         ],
       },
       {
@@ -127,8 +127,8 @@ describe('exportFix', () => {
     [
       "injection: '); import os; (' as launch options and as a dependency",
       {
-        parametros_lanzamiento: "'); import os; ('",
-        dependencies: [{ nombre: "'); import os; ('", gestor: 'winetricks', obligatoria: true }],
+        launch_options: "'); import os; ('",
+        dependencies: [{ name: "'); import os; ('", package_manager: 'winetricks', required: true }],
       },
       {
         header: '"""Game fix for The Witcher 3: Wild Hunt"""',
@@ -144,7 +144,7 @@ describe('exportFix', () => {
     [
       'deny-list: logging and overlay variables are personal settings',
       {
-        parametros_lanzamiento: 'PROTON_LOG=1 PROTON_LOG_DIR=/tmp WINEDEBUG=-all DXVK_HUD=fps DXVK_LOG_LEVEL=none VKD3D_DEBUG=none MANGOHUD=1 MANGOHUD_CONFIG=fps DXVK_ASYNC=1 %command%',
+        launch_options: 'PROTON_LOG=1 PROTON_LOG_DIR=/tmp WINEDEBUG=-all DXVK_HUD=fps DXVK_LOG_LEVEL=none VKD3D_DEBUG=none MANGOHUD=1 MANGOHUD_CONFIG=fps DXVK_ASYNC=1 %command%',
         dependencies: [],
       },
       {
@@ -157,7 +157,7 @@ describe('exportFix', () => {
     ],
     [
       'no %command%: Steam appends everything, so NAME=value is an argument too',
-      { parametros_lanzamiento: '-dx11 FOO=1', dependencies: [] },
+      { launch_options: '-dx11 FOO=1', dependencies: [] },
       {
         header: '"""Game fix for The Witcher 3: Wild Hunt"""',
         lines: ["    util.append_argument('-dx11')", "    util.append_argument('FOO=1')"],
@@ -166,7 +166,7 @@ describe('exportFix', () => {
     ],
     [
       "a wrapper's flags and a NAME=value after it belong to the wrapper; -pf_ options and a second %command% stay out",
-      { parametros_lanzamiento: 'A=1 gamescope -w 1280 B=2 -- %command% -pf_tricks=vcrun2019 %command% -skip', dependencies: [] },
+      { launch_options: 'A=1 gamescope -w 1280 B=2 -- %command% -pf_tricks=vcrun2019 %command% -skip', dependencies: [] },
       {
         header: '"""Game fix for The Witcher 3: Wild Hunt"""',
         lines: ["    util.set_environment('A', '1')", "    util.append_argument('-skip')"],
@@ -179,7 +179,7 @@ describe('exportFix', () => {
     ],
     [
       'an optional winetricks verb would become mandatory in a fix file',
-      { parametros_lanzamiento: '%command% -dx11', dependencies: [{ nombre: 'vcrun2019', gestor: 'winetricks', obligatoria: false }] },
+      { launch_options: '%command% -dx11', dependencies: [{ name: 'vcrun2019', package_manager: 'winetricks', required: false }] },
       {
         header: '"""Game fix for The Witcher 3: Wild Hunt"""',
         lines: ["    util.append_argument('-dx11')"],
@@ -188,7 +188,7 @@ describe('exportFix', () => {
     ],
     [
       'GTA V seed profile: nothing translates',
-      { parametros_lanzamiento: 'gamemoderun %command%', dependencies: [{ nombre: 'gamemode', gestor: 'apt', obligatoria: false }] },
+      { launch_options: 'gamemoderun %command%', dependencies: [{ name: 'gamemode', package_manager: 'apt', required: false }] },
       {
         _tag: 'nada_traducible',
         skipped: [
@@ -197,11 +197,11 @@ describe('exportFix', () => {
         ],
       },
     ],
-    ['no launch options and no dependencies', { parametros_lanzamiento: null, dependencies: [] }, { _tag: 'nada_traducible', skipped: [] }],
-    ['a Wine layer never runs protonfixes', { familia: 'Wine' }, { _tag: 'no_exportable', reason: 'capa_sin_protonfixes' }],
-    ['a native game never runs protonfixes', { familia: 'Nativo' }, { _tag: 'no_exportable', reason: 'capa_sin_protonfixes' }],
-    ['GOG has no gamefixes-steam file', { lanzador: 'GOG', identificador_externo: null }, { _tag: 'no_exportable', reason: 'no_es_steam' }],
-    ['a Steam edition without an AppID', { identificador_externo: null }, { _tag: 'no_exportable', reason: 'sin_appid' }],
+    ['no launch options and no dependencies', { launch_options: null, dependencies: [] }, { _tag: 'nada_traducible', skipped: [] }],
+    ['a Wine layer never runs protonfixes', { family: 'Wine' }, { _tag: 'no_exportable', reason: 'capa_sin_protonfixes' }],
+    ['a native game never runs protonfixes', { family: 'Nativo' }, { _tag: 'no_exportable', reason: 'capa_sin_protonfixes' }],
+    ['GOG has no gamefixes-steam file', { launcher: 'GOG', external_id: null }, { _tag: 'no_exportable', reason: 'no_es_steam' }],
+    ['a Steam edition without an AppID', { external_id: null }, { _tag: 'no_exportable', reason: 'sin_appid' }],
   ]
   it.each(cases)('%s', (_, changes, expected) => {
     expect(parts(exportFix({ ...witcher, ...changes }))).toEqual(expected)
@@ -244,29 +244,29 @@ describe('ProtonfixesPr', () => {
 
   it('a reviewer note decodes the pasted URL to the PR number', () => {
     expect(
-      Schema.decodeUnknownSync(FixNote)({ _tag: 'Aceptado', perfil_id: 12, pr: 'https://github.com/Open-Wine-Components/umu-protonfixes/pull/512/files' }),
-    ).toEqual({ _tag: 'Aceptado', perfil_id: 12, pr: 512 })
+      Schema.decodeUnknownSync(FixNote)({ _tag: 'Aceptado', profile_id: 12, pr: 'https://github.com/Open-Wine-Components/umu-protonfixes/pull/512/files' }),
+    ).toEqual({ _tag: 'Aceptado', profile_id: 12, pr: 512 })
   })
 })
 
 const report3: ReportInput = {
-  lanzador: 'Steam',
-  identificador_externo: '271590',
-  familia: 'Proton',
-  variante: 'Valve',
+  launcher: 'Steam',
+  external_id: '271590',
+  family: 'Proton',
+  variant: 'Valve',
   version: '9.0-3',
-  resultado: 'falla_en_ejecucion',
-  version_juego: '1.0.3258',
-  fecha_prueba: new Date('2026-10-02T19:00:00Z'),
-  observaciones: 'Tras la actualización 1.0.3258 el lanzador corta la partida a los pocos minutos.',
-  gpu_modelo: 'AMD Radeon RX 6600',
-  controlador: 'amdgpu',
-  version_controlador: 'Mesa 24.1.7',
-  version_sistema: '6.10.6-200.fc40.x86_64',
-  juego: 'Grand Theft Auto V',
-  distribucion: 'Fedora 40',
+  outcome: 'falla_en_ejecucion',
+  game_version: '1.0.3258',
+  tested_at: new Date('2026-10-02T19:00:00Z'),
+  observations: 'Tras la actualización 1.0.3258 el lanzador corta la partida a los pocos minutos.',
+  gpu_model: 'AMD Radeon RX 6600',
+  driver: 'amdgpu',
+  driver_version: 'Mesa 24.1.7',
+  os_version: '6.10.6-200.fc40.x86_64',
+  game: 'Grand Theft Auto V',
+  distribution: 'Fedora 40',
   failures: ['El Rockstar Games Launcher se queda en «Actualizando» y se cierra tras unos minutos de juego.'],
-  ejemplo: false,
+  demo: false,
 }
 
 const body3 = `# Compatibility Report
@@ -321,7 +321,7 @@ describe('protonReport', () => {
   })
 
   it('past the URL limit the link carries only the title; the body stays whole for the copy box', () => {
-    const oversized = protonReport({ ...report3, observaciones: 'x'.repeat(8000) })
+    const oversized = protonReport({ ...report3, observations: 'x'.repeat(8000) })
     expect(oversized._tag === 'informe' && { abrir: oversized.open, cuerpo_en_enlace: oversized.body_in_link, cabe: oversized.body.includes('x'.repeat(8000)) }).toEqual({
       abrir: { _tag: 'enlace', url: newIssue },
       cuerpo_en_enlace: false,
@@ -330,7 +330,7 @@ describe('protonReport', () => {
   })
 
   it('demo content gets the body but no GitHub link', () => {
-    const x = protonReport({ ...report3, ejemplo: true })
+    const x = protonReport({ ...report3, demo: true })
     expect(x._tag === 'informe' && x.open).toEqual({ _tag: 'datos_de_ejemplo' })
   })
 
@@ -340,39 +340,39 @@ describe('protonReport', () => {
     ['amdgpu', null, '- Video driver version: amdgpu'],
     [null, null, '- Video driver version: unknown'],
   ]
-  it.each(driver)('driver %s / %s -> %s', (driverName, version_controlador, expected) => {
-    const x = protonReport({ ...report3, controlador: driverName, version_controlador })
+  it.each(driver)('driver %s / %s -> %s', (driverName, driver_version, expected) => {
+    const x = protonReport({ ...report3, driver: driverName, driver_version })
     expect(x._tag === 'informe' && x.body.split('\n')[6]).toBe(expected)
   })
 
   it('empty symptoms keep a prompt for the user', () => {
-    const x = protonReport({ ...report3, failures: [], observaciones: '  ' })
+    const x = protonReport({ ...report3, failures: [], observations: '  ' })
     expect(x._tag === 'informe' && x.body.split('\n').slice(20, 22)).toEqual(["## Symptoms <!-- What's the problem? -->", '<!-- Describe what goes wrong. -->'])
   })
 
   const notApplicable: ReadonlyArray<readonly [string, Partial<ReportInput>, ReturnType<typeof protonReport>]> = [
-    ['a working game has nothing to report', { resultado: 'funciona' }, { _tag: 'no_aplica', reason: 'funciona' }],
-    ['GE-Proton is not Valve', { variante: 'GE', version: '9-4' }, { _tag: 'no_aplica', reason: 'capa_no_valve' }],
-    ['Wine is not Proton', { familia: 'Wine', variante: 'estable' }, { _tag: 'no_aplica', reason: 'capa_no_valve' }],
-    ['not a Steam edition', { lanzador: 'Epic Games Store', identificador_externo: null }, { _tag: 'no_aplica', reason: 'no_es_steam' }],
-    ['a Steam edition without an AppID', { identificador_externo: null }, { _tag: 'no_aplica', reason: 'sin_appid' }],
+    ['a working game has nothing to report', { outcome: 'funciona' }, { _tag: 'no_aplica', reason: 'funciona' }],
+    ['GE-Proton is not Valve', { variant: 'GE', version: '9-4' }, { _tag: 'no_aplica', reason: 'capa_no_valve' }],
+    ['Wine is not Proton', { family: 'Wine', variant: 'estable' }, { _tag: 'no_aplica', reason: 'capa_no_valve' }],
+    ['not a Steam edition', { launcher: 'Epic Games Store', external_id: null }, { _tag: 'no_aplica', reason: 'no_es_steam' }],
+    ['a Steam edition without an AppID', { external_id: null }, { _tag: 'no_aplica', reason: 'sin_appid' }],
   ]
   it.each(notApplicable)('%s', (_, changes, expected) => {
     expect(protonReport({ ...report3, ...changes })).toEqual(expected)
   })
 
   it('works with tweaks still qualifies: the tweak is what Valve fixes', () => {
-    expect(protonReport({ ...report3, resultado: 'funciona_con_ajustes' })._tag).toBe('informe')
+    expect(protonReport({ ...report3, outcome: 'funciona_con_ajustes' })._tag).toBe('informe')
   })
 })
 
 describe('protonReportPossible', () => {
   const cases: ReadonlyArray<readonly [Parameters<typeof protonReportPossible>[0], boolean]> = [
-    [{ lanzador: 'Steam', familia: 'Proton', variante: 'Valve', resultado: 'no_inicia' }, true],
-    [{ lanzador: 'Steam', familia: 'Proton', variante: 'Valve', resultado: 'funciona_con_ajustes' }, true],
-    [{ lanzador: 'Steam', familia: 'Proton', variante: 'Valve', resultado: 'funciona' }, false],
-    [{ lanzador: 'Steam', familia: 'Proton', variante: 'GE', resultado: 'no_inicia' }, false],
-    [{ lanzador: 'GOG', familia: 'Proton', variante: 'Valve', resultado: 'no_inicia' }, false],
+    [{ launcher: 'Steam', family: 'Proton', variant: 'Valve', outcome: 'no_inicia' }, true],
+    [{ launcher: 'Steam', family: 'Proton', variant: 'Valve', outcome: 'funciona_con_ajustes' }, true],
+    [{ launcher: 'Steam', family: 'Proton', variant: 'Valve', outcome: 'funciona' }, false],
+    [{ launcher: 'Steam', family: 'Proton', variant: 'GE', outcome: 'no_inicia' }, false],
+    [{ launcher: 'GOG', family: 'Proton', variant: 'Valve', outcome: 'no_inicia' }, false],
   ]
   it.each(cases)('%o -> %s', (r, expected) => {
     expect(protonReportPossible(r)).toBe(expected)

@@ -18,26 +18,26 @@ import { machineOnLinux } from '../gpu/capability.ts'
 import { rows, type Infra } from '../rows.ts'
 import { layerLabel, distributionLabel } from './labels.ts'
 
-const GameRow = Schema.Struct({ id: Game.fields.id, titulo: Game.fields.titulo, nivel_x86_min: Game.fields.nivel_x86_min, apis: Schema.Array(GraphicsApi) })
-const ApprovedOutcome = Schema.Struct({ juego_id: Game.fields.id, resultado: Outcome })
+const GameRow = Schema.Struct({ id: Game.fields.id, title: Game.fields.title, x86_level_min: Game.fields.x86_level_min, apis: Schema.Array(GraphicsApi) })
+const ApprovedOutcome = Schema.Struct({ game_id: Game.fields.id, outcome: Outcome })
 
 const ApprovedProfile = Schema.Struct({
   id: Profile.fields.id,
-  juego_id: Game.fields.id,
-  titulo: Profile.fields.titulo,
+  game_id: Game.fields.id,
+  title: Profile.fields.title,
   revision: Profile.fields.revision,
-  distribucion_id: Profile.fields.distribucion_id,
-  arquitectura: Profile.fields.arquitectura,
+  distribution_id: Profile.fields.distribution_id,
+  architecture: Profile.fields.architecture,
   ram_min_mb: Profile.fields.ram_min_mb,
   vram_min_mb: Profile.fields.vram_min_mb,
-  requiere_vulkan: Profile.fields.requiere_vulkan,
-  version_vulkan_min: Profile.fields.version_vulkan_min,
-  capa: Schema.String,
-  distribucion: Schema.String,
+  requires_vulkan: Profile.fields.requires_vulkan,
+  vulkan_version_min: Profile.fields.vulkan_version_min,
+  layer: Schema.String,
+  distribution: Schema.String,
 })
 
 /** The capture facts beyond the GPU that the verdicts read. */
-type Setup = { readonly distribucion_id: typeof Distribution.Type.id | null; readonly arquitectura: string; readonly nivel_x86: X86Level | null }
+type Setup = { readonly distribution_id: typeof Distribution.Type.id | null; readonly architecture: string; readonly x86_level: X86Level | null }
 
 const matrix = (machine: MachineOnLinux, setup: Setup, inLibrary: ReadonlySet<GameId>) =>
   Effect.gen(function* () {
@@ -70,28 +70,28 @@ const matrix = (machine: MachineOnLinux, setup: Setup, inLibrary: ReadonlySet<Ga
         ORDER BY p.id`,
     )
     return games.map((game) => {
-      const approved = outcomes.filter((r) => r.juego_id === game.id).map((r) => r.resultado)
-      const evaluated = profiles.filter((p) => p.juego_id === game.id).map((p) => ({ ...p, evaluation: evaluate(machine, requirements(p)) }))
+      const approved = outcomes.filter((r) => r.game_id === game.id).map((r) => r.outcome)
+      const evaluated = profiles.filter((p) => p.game_id === game.id).map((p) => ({ ...p, evaluation: evaluate(machine, requirements(p)) }))
       const profile = suggestProfile(evaluated, setup)
       return {
-        juego_id: game.id,
-        titulo: game.titulo,
+        game_id: game.id,
+        title: game.title,
         in_library: inLibrary.has(game.id),
         status: statusOf(approved),
         test_count: approved.length,
-        nivel_x86_min: game.nivel_x86_min,
-        path: gamePath(machine, setup.nivel_x86, game),
+        x86_level_min: game.x86_level_min,
+        path: gamePath(machine, setup.x86_level, game),
         profile:
           profile === null
             ? null
-            : { id: profile.id, titulo: profile.titulo, revision: profile.revision, capa: profile.capa, distribucion: profile.distribucion, evaluation: profile.evaluation },
+            : { id: profile.id, title: profile.title, revision: profile.revision, layer: profile.layer, distribution: profile.distribution, evaluation: profile.evaluation },
       }
     })
   })
 
 export type MatrixRow = Effect.Success<ReturnType<typeof matrix>>[number]
 
-const SteamEdition = Schema.Struct({ app_id: Schema.String, juego_id: Game.fields.id })
+const SteamEdition = Schema.Struct({ app_id: Schema.String, game_id: Game.fields.id })
 
 const splitLibrary = (games: SteamLibrary) =>
   Effect.gen(function* () {
@@ -107,7 +107,7 @@ const splitLibrary = (games: SteamLibrary) =>
           )
     const known = new Set(editions.map((e) => e.app_id))
     return {
-      inCatalog: new Set(editions.map((e) => e.juego_id)),
+      inCatalog: new Set(editions.map((e) => e.game_id)),
       library: { total: games.length, unknown: games.filter((j) => !known.has(String(j.app_id))) },
     }
   })
@@ -125,7 +125,7 @@ const evaluateMachine = (machine: MachineOnLinux, setup: Setup, games: SteamLibr
     return {
       matrix: yield* matrix(machine, setup, split?.inCatalog ?? new Set()),
       library: split?.library ?? null,
-      distributions: { guide: guide?.id ?? null, evaluated: screenDistros(machine, setup.arquitectura) },
+      distributions: { guide: guide?.id ?? null, evaluated: screenDistros(machine, setup.architecture) },
     }
   })
 
@@ -146,50 +146,50 @@ export const evaluateWithoutSaving = (
     const capture = yield* captureOf(input)
     const sql = yield* SqlClient.SqlClient
     const [distribution] =
-      capture.sistema === 'Linux'
+      capture.operating_system === 'Linux'
         ? yield* rows(
             Schema.Struct({ id: Distribution.fields.id }),
-            sql`SELECT id FROM distribution WHERE name = ${capture.distribucion.nombre} AND version = ${capture.distribucion.version}`,
+            sql`SELECT id FROM distribution WHERE name = ${capture.distribution.name} AND version = ${capture.distribution.version}`,
           )
         : []
     const machine = machineOnLinux(capture)
-    const setup = { distribucion_id: distribution?.id ?? null, arquitectura: capture.arquitectura, nivel_x86: capture.nivel_x86 }
-    return { capture, machine, ...(yield* evaluateMachine(machine, setup, capture.biblioteca_steam)) }
+    const setup = { distribution_id: distribution?.id ?? null, architecture: capture.architecture, x86_level: capture.x86_level }
+    return { capture, machine, ...(yield* evaluateMachine(machine, setup, capture.steam_library)) }
   })
 
 const SavedDiagnostic = Schema.Struct({
   ...Diagnostic.fields,
   alias: Machine.fields.alias,
-  distribucion: Schema.NullOr(Schema.Struct({ nombre: Distribution.fields.nombre, version: Distribution.fields.version })),
+  distribution: Schema.NullOr(Schema.Struct({ name: Distribution.fields.name, version: Distribution.fields.version })),
 })
 
 const savedCapture = (d: typeof SavedDiagnostic.Type): Effect.Effect<Capture> => {
   const common = {
-    capturado_en: d.capturado_en,
-    version_sistema: d.version_sistema,
-    arquitectura: d.arquitectura,
-    cpu_modelo: d.cpu_modelo,
-    gpu_modelo: d.gpu_modelo,
+    captured_at: d.captured_at,
+    os_version: d.os_version,
+    architecture: d.architecture,
+    cpu_model: d.cpu_model,
+    gpu_model: d.gpu_model,
     ram_mb: d.ram_mb,
     vram_mb: d.vram_mb,
-    nivel_x86: d.nivel_x86,
-    arranque_seguro: d.arranque_seguro,
+    x86_level: d.x86_level,
+    secure_boot: d.secure_boot,
     tpm: d.tpm,
     zram_mb: d.zram_mb,
     swap_mb: d.swap_mb,
     gpu_pci_id: d.gpu_pci_id,
-    biblioteca_steam: d.biblioteca_steam,
+    steam_library: d.steam_library,
   }
-  if (d.sistema === 'Windows') return Effect.succeed({ ...common, sistema: 'Windows' })
-  if (d.distribucion === null) return Effect.die(`diagnostic ${d.id}: Linux without a distribution`)
+  if (d.operating_system === 'Windows') return Effect.succeed({ ...common, operating_system: 'Windows' })
+  if (d.distribution === null) return Effect.die(`diagnostic ${d.id}: Linux without a distribution`)
   return Effect.succeed({
     ...common,
-    sistema: 'Linux',
-    distribucion: d.distribucion,
-    controlador: d.controlador,
-    version_controlador: d.version_controlador,
-    soporte_vulkan: d.soporte_vulkan,
-    version_vulkan: d.version_vulkan,
+    operating_system: 'Linux',
+    distribution: d.distribution,
+    driver: d.driver,
+    driver_version: d.driver_version,
+    vulkan_support: d.vulkan_support,
+    vulkan_version: d.vulkan_version,
   })
 }
 
@@ -209,18 +209,18 @@ export const myDiagnostic = (id: DiagnosticId) =>
     )
     if (d === undefined) return yield* Effect.fail(new NotFound())
     const machine = machineOnLinux(d)
-    return { id: d.id, alias: d.alias, capture: yield* savedCapture(d), machine, ...(yield* evaluateMachine(machine, d, d.biblioteca_steam)) }
+    return { id: d.id, alias: d.alias, capture: yield* savedCapture(d), machine, ...(yield* evaluateMachine(machine, d, d.steam_library)) }
   })
 
 const MachineRow = Schema.Struct({ id: Machine.fields.id, alias: Machine.fields.alias })
 const CaptureSummary = Schema.Struct({
   id: Diagnostic.fields.id,
-  equipo_id: Diagnostic.fields.equipo_id,
-  capturado_en: Diagnostic.fields.capturado_en,
-  sistema: Diagnostic.fields.sistema,
-  gpu_modelo: Diagnostic.fields.gpu_modelo,
+  machine_id: Diagnostic.fields.machine_id,
+  captured_at: Diagnostic.fields.captured_at,
+  operating_system: Diagnostic.fields.operating_system,
+  gpu_model: Diagnostic.fields.gpu_model,
   ram_mb: Diagnostic.fields.ram_mb,
-  distribucion: Schema.NullOr(Schema.String),
+  distribution: Schema.NullOr(Schema.String),
 })
 
 export const myMachines = () =>
@@ -242,5 +242,5 @@ export const myMachines = () =>
         WHERE e.user_id = ${visitor.value.id}
         ORDER BY d.captured_at DESC, d.id DESC`,
     )
-    return machines.map((e) => ({ ...e, diagnostics: captures.filter((c) => c.equipo_id === e.id) }))
+    return machines.map((e) => ({ ...e, diagnostics: captures.filter((c) => c.machine_id === e.id) }))
   })

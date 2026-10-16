@@ -41,9 +41,9 @@ export function GameStatus({ summary, pending }: { summary: CompatibilitySummary
         </p>
       )}
       {summary.regressions.map((r) => (
-        <p key={r.edicion_id} className="nota pequeno" data-tono="rojo">
-          <b>Dejó de funcionar</b> en {r.lanzador}: la prueba más reciente ({date(r.fecha_prueba)}, versión {r.version_juego},{' '}
-          {r.capa}) dio «{outcome[r.resultado].text}» después de reportes que funcionaban.
+        <p key={r.edition_id} className="nota pequeno" data-tono="rojo">
+          <b>Dejó de funcionar</b> en {r.launcher}: la prueba más reciente ({date(r.tested_at)}, versión {r.game_version},{' '}
+          {r.layer}) dio «{outcome[r.outcome].text}» después de reportes que funcionaban.
         </p>
       ))}
       {breakdown.length > 0 && (

@@ -51,7 +51,7 @@ const isModest = (ram: string | null | undefined, gpu: string | null | undefined
 // A version longer than the column is junk, not something to truncate into a real one.
 const versionOf = (...candidates: ReadonlyArray<string | null | undefined>): string | null => {
   const version = candidates.map((v) => v?.trim()).find((v) => v !== undefined && v !== '')
-  return version === undefined || version.length > maxLengths.protondb_resumen.capa_version ? null : version
+  return version === undefined || version.length > maxLengths.protondb_summary.layer_version ? null : version
 }
 
 /** One element of the export's top-level array, as JSON text. None when it is not a usable report. */
@@ -70,27 +70,27 @@ export const parseReport = (text: string): Option.Option<ProtonDbReport> =>
  * the numbers stay what that export said however long ago it was imported.
  */
 export const summarizeProtonDb = (
-  edicion_id: EditionId,
+  edition_id: EditionId,
   reports: readonly [ProtonDbReport, ...ProtonDbReport[]],
-  exportado_en: Date,
+  exported_at: Date,
 ): ProtonDbSummary => {
   const unique = [...new Map(reports.map((r) => [r.fingerprint, r])).values()]
-  const recent = unique.filter((r) => isRecent(r.reported_at, exportado_en))
+  const recent = unique.filter((r) => isRecent(r.reported_at, exported_at))
   const working = recent.filter((r) => r.works)
   const modest = recent.filter((r) => r.modest_machine)
   const layer = mostUsedLayer(working)
   return {
-    edicion_id,
-    exportado_en,
-    reportes_total: unique.length,
-    recientes: recent.length,
-    recientes_funcionan: working.length,
-    modestos_recientes: modest.length,
-    modestos_funcionan: modest.filter((r) => r.works).length,
-    ultimo_reporte: new Date(unique.reduce((n, r) => Math.max(n, r.reported_at.getTime()), 0)),
-    capa_variante: layer?.variant ?? null,
-    capa_version: layer?.version ?? null,
-    capa_reportes: layer?.reports ?? 0,
+    edition_id,
+    exported_at,
+    total_reports: unique.length,
+    recent: recent.length,
+    recent_working: working.length,
+    modest_recent: modest.length,
+    modest_working: modest.filter((r) => r.works).length,
+    latest_report: new Date(unique.reduce((n, r) => Math.max(n, r.reported_at.getTime()), 0)),
+    layer_variant: layer?.variant ?? null,
+    layer_version: layer?.version ?? null,
+    layer_reports: layer?.reports ?? 0,
   }
 }
 

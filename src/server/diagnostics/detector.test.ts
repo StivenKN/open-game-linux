@@ -31,7 +31,7 @@ describe.skipIf(process.platform !== 'linux')('opengame-detect.sh', () => {
     const output = runScript()
     const sent = Schema.decodeUnknownSync(Schema.fromJsonString(Facts))(output)
     if (existsSync('/proc/swaps')) expect([typeof sent.zram_mb, typeof sent.swap_mb]).toEqual(['number', 'number'])
-    if (!existsSync('/sys/firmware/efi')) expect(sent.arranque_seguro).toBe('bios')
+    if (!existsSync('/sys/firmware/efi')) expect(sent.secure_boot).toBe('bios')
     expect(Result.map(parsePayload(output), Struct.pick(facts))).toEqual(Result.succeed(sent))
   })
 })
@@ -96,8 +96,8 @@ const detect = (machine: Machine) => {
     stdio: ['ignore', 'pipe', 'ignore'],
   })
   const capture = Result.getOrThrow(parsePayload(output))
-  if (capture.sistema !== 'Linux') throw new Error(`the bash detector reported ${capture.sistema}`)
-  const { gpu_pci_id, controlador, vram_mb, gpu_modelo, soporte_vulkan, version_vulkan } = capture
+  if (capture.operating_system !== 'Linux') throw new Error(`the bash detector reported ${capture.operating_system}`)
+  const { gpu_pci_id, driver: controlador, vram_mb, gpu_model: gpu_modelo, vulkan_support: soporte_vulkan, vulkan_version: version_vulkan } = capture
   return { gpu_pci_id, controlador, vram_mb, gpu_modelo, soporte_vulkan, version_vulkan }
 }
 

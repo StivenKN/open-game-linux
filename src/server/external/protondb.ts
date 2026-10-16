@@ -152,7 +152,7 @@ const readExport = async (chunks: AsyncIterable<string>, editions: ReadonlyMap<s
   return { read, discarded, matched, exported, byEdition }
 }
 
-const Previous = Schema.Struct({ exportado_en: Schema.NullOr(Schema.Date) })
+const Previous = Schema.Struct({ exported_at: Schema.NullOr(Schema.Date) })
 
 /**
  * Stores one aggregate per catalog Steam edition from a ProtonDB export, replacing the last import.
@@ -178,7 +178,7 @@ export const importProtonDb = (chunks: AsyncIterable<string>) =>
       Effect.gen(function* () {
         yield* sql`LOCK TABLE protondb_summary IN EXCLUSIVE MODE`
         const previous = yield* oneRow(Previous, sql`SELECT max(exported_at) AS exported_at FROM protondb_summary`)
-        if (previous.exportado_en !== null && previous.exportado_en > exported_at)
+        if (previous.exported_at !== null && previous.exported_at > exported_at)
           return yield* new InvalidExport({ reason: 'exportación más antigua que la importada' })
         yield* sql`DELETE FROM protondb_summary`
         for (const batch of Arr.chunksOf(summaries, 500)) yield* sql`INSERT INTO protondb_summary ${sql.insert(batch)}`

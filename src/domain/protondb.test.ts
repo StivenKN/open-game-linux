@@ -70,7 +70,7 @@ describe('parseReport', () => {
 })
 
 describe('summarizeProtonDb', () => {
-  const exportado_en = new Date('2026-10-01T00:00:00Z')
+  const exported_at = new Date('2026-10-01T00:00:00Z')
   const report = (fingerprint: string, date: string, works: boolean, modest_machine: boolean, layer: ProtonDbReport['layer']): ProtonDbReport => ({
     app_id: '1000',
     reported_at: new Date(date),
@@ -95,20 +95,20 @@ describe('summarizeProtonDb', () => {
         report('e', '2025-09-30T23:59:59Z', true, false, official),
         report('f', '2024-01-01T00:00:00Z', false, false, null),
       ],
-      exportado_en,
+      exported_at,
     )
     expect(r).toEqual({
-      edicion_id: EditionId.make(7),
-      exportado_en,
-      reportes_total: 6,
-      recientes: 4,
-      recientes_funcionan: 3,
-      modestos_recientes: 3,
-      modestos_funcionan: 2,
-      ultimo_reporte: new Date('2026-09-01T00:00:00Z'),
-      capa_variante: 'ge',
-      capa_version: 'GE-Proton10-34',
-      capa_reportes: 2,
+      edition_id: EditionId.make(7),
+      exported_at,
+      total_reports: 6,
+      recent: 4,
+      recent_working: 3,
+      modest_recent: 3,
+      modest_working: 2,
+      latest_report: new Date('2026-09-01T00:00:00Z'),
+      layer_variant: 'ge',
+      layer_version: 'GE-Proton10-34',
+      layer_reports: 2,
     })
   })
 
@@ -116,13 +116,13 @@ describe('summarizeProtonDb', () => {
     const r = summarizeProtonDb(
       EditionId.make(7),
       [report('a', '2026-09-01T00:00:00Z', true, false, official), report('b', '2026-09-02T00:00:00Z', true, false, { variant: 'experimental', version: null })],
-      exportado_en,
+      exported_at,
     )
-    expect([r.capa_variante, r.capa_version, r.capa_reportes]).toEqual(['experimental', null, 1])
+    expect([r.layer_variant, r.layer_version, r.layer_reports]).toEqual(['experimental', null, 1])
   })
 
   it('with no working report in the year there is no layer to name', () => {
-    const r = summarizeProtonDb(EditionId.make(7), [report('a', '2026-09-01T00:00:00Z', false, false, ge), report('b', '2023-01-01T00:00:00Z', true, false, ge)], exportado_en)
-    expect(r).toMatchObject({ reportes_total: 2, recientes: 1, recientes_funcionan: 0, capa_variante: null, capa_version: null, capa_reportes: 0 })
+    const r = summarizeProtonDb(EditionId.make(7), [report('a', '2026-09-01T00:00:00Z', false, false, ge), report('b', '2023-01-01T00:00:00Z', true, false, ge)], exported_at)
+    expect(r).toMatchObject({ total_reports: 2, recent: 1, recent_working: 0, layer_variant: null, layer_version: null, layer_reports: 0 })
   })
 })

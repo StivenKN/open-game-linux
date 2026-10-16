@@ -5,23 +5,23 @@ import { DistributionId, EditionId, LayerVersionId } from './ids.ts'
 
 describe('mismatches (8.7 comparability)', () => {
   const profile: TargetProfile = {
-    edicion_id: EditionId.make(1),
-    version_capa_id: LayerVersionId.make(1),
-    distribucion_id: DistributionId.make(1),
-    arquitectura: 'x86_64',
-    version_juego_objetivo: null,
+    edition_id: EditionId.make(1),
+    layer_version_id: LayerVersionId.make(1),
+    distribution_id: DistributionId.make(1),
+    architecture: 'x86_64',
+    target_game_version: null,
   }
-  const context: TestContext = { ...profile, version_juego: '1.0.3179' }
+  const context: TestContext = { ...profile, game_version: '1.0.3179' }
 
   it('a test in the profile environment is comparable', () => {
     expect(mismatches(context, profile)).toEqual([])
   })
 
   it.each([
-    [{ ...context, edicion_id: EditionId.make(2) }, { aspect: 'edicion', expected: 1, actual: 2 }],
-    [{ ...context, version_capa_id: LayerVersionId.make(3) }, { aspect: 'capa', expected: 1, actual: 3 }],
-    [{ ...context, distribucion_id: DistributionId.make(4) }, { aspect: 'distribucion', expected: 1, actual: 4 }],
-    [{ ...context, arquitectura: 'aarch64' }, { aspect: 'arquitectura', expected: 'x86_64', actual: 'aarch64' }],
+    [{ ...context, edition_id: EditionId.make(2) }, { aspect: 'edicion', expected: 1, actual: 2 }],
+    [{ ...context, layer_version_id: LayerVersionId.make(3) }, { aspect: 'capa', expected: 1, actual: 3 }],
+    [{ ...context, distribution_id: DistributionId.make(4) }, { aspect: 'distribucion', expected: 1, actual: 4 }],
+    [{ ...context, architecture: 'aarch64' }, { aspect: 'arquitectura', expected: 'x86_64', actual: 'aarch64' }],
   ])('names the mismatching side: %o', (other, mismatch) => {
     expect(mismatches(other, profile)).toEqual([mismatch])
   })
@@ -29,7 +29,7 @@ describe('mismatches (8.7 comparability)', () => {
   it('checks the game version only when the profile limits it, as exact text', () => {
     const pinned = { ...profile, version_juego_objetivo: '1.0.3179' }
     expect(mismatches(context, pinned)).toEqual([])
-    expect(mismatches({ ...context, version_juego: '1.0.3179.0' }, pinned)).toEqual([
+    expect(mismatches({ ...context, game_version: '1.0.3179.0' }, pinned)).toEqual([
       { aspect: 'version_juego', expected: '1.0.3179', actual: '1.0.3179.0' },
     ])
   })
@@ -132,7 +132,7 @@ describe('ManualCapture from the manual form', () => {
   it('a Linux capture requires its distribution', () => {
     expect(Result.isFailure(decode({ ...common, sistema: 'Linux', soporte_vulkan: 'desconocido' }))).toBe(true)
     const r = decode(linux)
-    expect(Result.isSuccess(r) && r.success).toMatchObject({ sistema: 'Linux', distribucion: { nombre: 'Ubuntu', version: '24.04' }, controlador: null })
+    expect(Result.isSuccess(r) && r.success).toMatchObject({ sistema: 'Linux', distribution: { name: 'Ubuntu', version: '24.04' }, driver: null })
   })
 
   it('a Vulkan version without support si is rejected', () => {

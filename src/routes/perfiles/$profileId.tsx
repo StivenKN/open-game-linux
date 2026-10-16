@@ -18,7 +18,7 @@ const profileId = routeIdParser(ProfileId)
 export const Route = createFileRoute('/perfiles/$profileId')({
   params: { parse: (p) => ({ profileId: profileId(p.profileId) }), stringify: (p) => ({ profileId: String(p.profileId) }) },
   loader: ({ params }) => profileFn({ data: params }),
-  head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.profile.titulo} · OpenGame Linux` : 'OpenGame Linux' }] }),
+  head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.profile.title} · OpenGame Linux` : 'OpenGame Linux' }] }),
   component: ProfilePage,
 })
 
@@ -32,29 +32,29 @@ const noEvaluationReason = {
 function ProfilePage() {
   const { profile: p, steps, dependencies, evaluation, fixExport, fixes } = Route.useLoaderData()
   const { visitor } = Route.useRouteContext()
-  const approved = p.estado_revision === 'aprobado'
+  const approved = p.review_status === 'aprobado'
   return (
     <main className="envoltura">
       <header className="pila">
         <div className="migas">
-          <Link to="/">Catálogo</Link> / <Link to="/juegos/$gameId" params={{ gameId: p.juego_id }}>{p.juego}</Link> / Perfil
+          <Link to="/">Catálogo</Link> / <Link to="/juegos/$gameId" params={{ gameId: p.game_id }}>{p.game}</Link> / Perfil
         </div>
         <h1 className="titulo-juego">
-          {p.titulo} <span className="tenue">r{p.revision}</span>
+          {p.title} <span className="tenue">r{p.revision}</span>
         </h1>
         <div className="fila">
           {approved ? <Badge label={reviewStatus.aprobado} /> : <Chip tone="gris">en prueba</Chip>}
           <span className="pequeno tenue">
-            {approved && p.revisado_en ? `Aprobado el ${date(p.revisado_en)}` : 'Pendiente de revisión'} · autor {p.autor}
+            {approved && p.reviewed_at ? `Aprobado el ${date(p.reviewed_at)}` : 'Pendiente de revisión'} · autor {p.author}
           </span>
-          {p.ejemplo && <DemoStamp />}
+          {p.demo && <DemoStamp />}
         </div>
         <div className="fila-chips">
-          <span className="chip">{p.lanzador}</span>
-          <span className="chip">{p.distribucion}</span>
-          <span className="chip">{p.capa}</span>
-          <span className="chip">{p.arquitectura}</span>
-          {p.version_juego_objetivo && <span className="chip">versión del juego {p.version_juego_objetivo}</span>}
+          <span className="chip">{p.launcher}</span>
+          <span className="chip">{p.distribution}</span>
+          <span className="chip">{p.layer}</span>
+          <span className="chip">{p.architecture}</span>
+          {p.target_game_version && <span className="chip">versión del juego {p.target_game_version}</span>}
         </div>
         {!approved && (
           <p className="pequeno nota" data-tono="amarillo">
@@ -66,7 +66,7 @@ function ProfilePage() {
           OpenGame no descarga ni ejecuta nada. Sigue los pasos tú mismo; los comandos se copian tal cual.
         </p>
         <p>
-          <Link to="/juegos/$gameId/reportar" params={{ gameId: p.juego_id }} search={{ perfil: p.id }} className="boton">
+          <Link to="/juegos/$gameId/reportar" params={{ gameId: p.game_id }} search={{ perfil: p.id }} className="boton">
             Reportar resultado con este perfil
           </Link>
         </p>
@@ -80,9 +80,9 @@ function ProfilePage() {
           ) : (
             <StepList storageKey={`opengame:perfil:${p.id}:r${p.revision}:pasos`} steps={steps} />
           )}
-          {p.parametros_lanzamiento && (
+          {p.launch_options && (
             <div className="bloque">
-              <CopyBox label="Parámetros de lanzamiento" text={p.parametros_lanzamiento} />
+              <CopyBox label="Parámetros de lanzamiento" text={p.launch_options} />
             </div>
           )}
           <h2 className="titulo-seccion">Dependencias</h2>
@@ -91,15 +91,15 @@ function ProfilePage() {
           ) : (
             <ul className="lista-tarjetas">
               {dependencies.map((d) => (
-                <li key={`${d.gestor}/${d.nombre}`} className="tarjeta pila">
+                <li key={`${d.package_manager}/${d.name}`} className="tarjeta pila">
                   <div className="fila">
-                    <b className="dato">{d.nombre}</b>
-                    <span className="chip">{d.gestor}</span>
-                    <Chip tone={d.obligatoria ? 'amarillo' : 'gris'}>{d.obligatoria ? 'obligatoria' : 'opcional'}</Chip>
-                    {d.version_requerida && <span className="chip">versión {d.version_requerida}</span>}
+                    <b className="dato">{d.name}</b>
+                    <span className="chip">{d.package_manager}</span>
+                    <Chip tone={d.required ? 'amarillo' : 'gris'}>{d.required ? 'obligatoria' : 'opcional'}</Chip>
+                    {d.required_version && <span className="chip">versión {d.required_version}</span>}
                   </div>
-                  <p className="pequeno tenue">{d.descripcion}</p>
-                  <CopyBox label={`Instalar ${d.nombre}`} text={d.instruccion_instalacion} />
+                  <p className="pequeno tenue">{d.description}</p>
+                  <CopyBox label={`Instalar ${d.name}`} text={d.install_instruction} />
                 </li>
               ))}
             </ul>
@@ -123,20 +123,20 @@ function ProfilePage() {
                 <tr>
                   <th scope="row">Vulkan</th>
                   <td>
-                    {p.requiere_vulkan === null
+                    {p.requires_vulkan === null
                       ? undeclared
-                      : p.requiere_vulkan
-                        ? `obligatorio${p.version_vulkan_min ? `, ${p.version_vulkan_min} o superior` : ''}`
+                      : p.requires_vulkan
+                        ? `obligatorio${p.vulkan_version_min ? `, ${p.vulkan_version_min} o superior` : ''}`
                         : 'no lo necesita'}
                   </td>
                 </tr>
                 <tr>
                   <th scope="row">CPU</th>
-                  <td>{p.condicion_cpu ?? undeclared}</td>
+                  <td>{p.cpu_requirement ?? undeclared}</td>
                 </tr>
                 <tr>
                   <th scope="row">GPU</th>
-                  <td>{p.condicion_gpu ?? undeclared}</td>
+                  <td>{p.gpu_requirement ?? undeclared}</td>
                 </tr>
               </tbody>
             </table>
@@ -146,7 +146,7 @@ function ProfilePage() {
               {typeof evaluation === 'string' ? (
                 <p className="pequeno tenue">{noEvaluationReason[evaluation]}</p>
               ) : (
-                <EvaluationChecklist profile={{ titulo: p.titulo, revision: p.revision, evaluation }} />
+                <EvaluationChecklist profile={{ title: p.title, revision: p.revision, evaluation }} />
               )}
             </MachinePanel>
           </div>
@@ -158,7 +158,7 @@ function ProfilePage() {
           profileId={p.id}
           fixExport={fixExport}
           fixes={fixes}
-          reviewer={visitor !== null && canReview[visitor.rol]}
+          reviewer={visitor !== null && canReview[visitor.role]}
         />
       )}
     </main>
@@ -169,7 +169,7 @@ type Step = Awaited<ReturnType<typeof profileFn>>['steps'][number]
 
 function StepList({ storageKey, steps }: { storageKey: string; steps: ReadonlyArray<Step> }) {
   const { done, toggle, reset } = useProgress(storageKey)
-  const doneCount = steps.filter((s) => done.includes(s.orden)).length
+  const doneCount = steps.filter((s) => done.includes(s.position)).length
   return (
     <>
       <div className="fila pequeno">
@@ -184,11 +184,11 @@ function StepList({ storageKey, steps }: { storageKey: string; steps: ReadonlyAr
       </div>
       <ol className="pasos">
         {steps.map((s) => (
-          <li key={s.orden} className="tarjeta pila" data-hecho={done.includes(s.orden) || undefined}>
-            <b>{s.titulo}</b>
-            <p className="texto-largo">{s.instruccion}</p>
+          <li key={s.position} className="tarjeta pila" data-hecho={done.includes(s.position) || undefined}>
+            <b>{s.title}</b>
+            <p className="texto-largo">{s.instruction}</p>
             <label className="casilla pequeno">
-              <input type="checkbox" checked={done.includes(s.orden)} onChange={() => toggle(s.orden)} />
+              <input type="checkbox" checked={done.includes(s.position)} onChange={() => toggle(s.position)} />
               Hecho
             </label>
           </li>

@@ -9,11 +9,11 @@ import { rows, oneRow } from '../rows.ts'
 import type { Write } from './contributions.ts'
 
 const MachineIdRow = Schema.Struct({ id: Machine.fields.id })
-const Saved = Schema.Struct({ id: Diagnostic.fields.id, nuevo: Schema.Boolean })
+const Saved = Schema.Struct({ id: Diagnostic.fields.id, inserted: Schema.Boolean })
 
 export const submitDiagnostic = (
   g: typeof SaveDiagnostic.Type,
-): Write<{ readonly id: typeof Diagnostic.Type.id; readonly nuevo: boolean }, RuleViolated | InvalidPayload> =>
+): Write<{ readonly id: typeof Diagnostic.Type.id; readonly inserted: boolean }, RuleViolated | InvalidPayload> =>
   Effect.gen(function* () {
     const user = yield* requireUser
     const capture = yield* captureOf(g.entrada)
@@ -33,34 +33,34 @@ export const submitDiagnostic = (
     if (machine === undefined) return yield* Effect.fail(new RuleViolated({ rule: 'equipo_ajeno' }))
 
     const linuxOnly =
-      capture.sistema === 'Linux'
+      capture.operating_system === 'Linux'
         ? {
-            distribucion_id: yield* distributionIdOf(capture.distribucion),
-            controlador: capture.controlador,
-            version_controlador: capture.version_controlador,
-            soporte_vulkan: capture.soporte_vulkan,
-            version_vulkan: capture.version_vulkan,
+            distribution_id: yield* distributionIdOf(capture.distribution),
+            driver: capture.driver,
+            driver_version: capture.driver_version,
+            vulkan_support: capture.vulkan_support,
+            vulkan_version: capture.vulkan_version,
           }
-        : { distribucion_id: null, controlador: null, version_controlador: null, soporte_vulkan: 'desconocido', version_vulkan: null }
+        : { distribution_id: null, driver: null, driver_version: null, vulkan_support: 'desconocido', vulkan_version: null }
     const row = {
-      equipo_id: machine.id,
-      capturado_en: capture.capturado_en,
-      sistema: capture.sistema,
-      version_sistema: capture.version_sistema,
-      arquitectura: capture.arquitectura,
-      cpu_modelo: capture.cpu_modelo,
-      gpu_modelo: capture.gpu_modelo,
+      machine_id: machine.id,
+      captured_at: capture.captured_at,
+      operating_system: capture.operating_system,
+      os_version: capture.os_version,
+      architecture: capture.architecture,
+      cpu_model: capture.cpu_model,
+      gpu_model: capture.gpu_model,
       ram_mb: capture.ram_mb,
       vram_mb: capture.vram_mb,
-      nivel_x86: capture.nivel_x86,
-      arranque_seguro: capture.arranque_seguro,
+      x86_level: capture.x86_level,
+      secure_boot: capture.secure_boot,
       tpm: capture.tpm,
       zram_mb: capture.zram_mb,
       swap_mb: capture.swap_mb,
       ...linuxOnly,
       gpu_pci_id: capture.gpu_pci_id,
       // Sent as JSON text: the untyped parameter takes the jsonb column's type.
-      biblioteca_steam: g.con_biblioteca && capture.biblioteca_steam !== null ? JSON.stringify(capture.biblioteca_steam) : null,
+      steam_library: g.con_biblioteca && capture.steam_library !== null ? JSON.stringify(capture.steam_library) : null,
     }
     return yield* oneRow(
       Saved,
@@ -68,11 +68,11 @@ export const submitDiagnostic = (
         WITH inserted AS (INSERT INTO diagnostic ${sql.insert(row)} ON CONFLICT (machine_id, captured_at) DO NOTHING RETURNING id)
         SELECT id, true AS inserted FROM inserted
         UNION ALL
-        SELECT id, false AS inserted FROM diagnostic WHERE machine_id = ${machine.id} AND captured_at = ${capture.capturado_en}`,
+        SELECT id, false AS inserted FROM diagnostic WHERE machine_id = ${machine.id} AND captured_at = ${capture.captured_at}`,
     )
   })
 
-type CapturedDistribution = Extract<Capture, { readonly sistema: 'Linux' }>['distribucion']
+type CapturedDistribution = Extract<Capture, { readonly operating_system: 'Linux' }>['distribution']
 
 /**
  * The distribucion row for a captured (nombre, version), created on first sight. Two statements on
@@ -82,7 +82,7 @@ type CapturedDistribution = Extract<Capture, { readonly sistema: 'Linux' }>['dis
 const distributionIdOf = (d: CapturedDistribution) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    yield* sql`INSERT INTO distribution (name, version) VALUES (${d.nombre}, ${d.version}) ON CONFLICT (name, version) DO NOTHING`
-    const row = yield* oneRow(Schema.Struct({ id: Distribution.fields.id }), sql`SELECT id FROM distribution WHERE name = ${d.nombre} AND version = ${d.version}`)
+    yield* sql`INSERT INTO distribution (name, version) VALUES (${d.name}, ${d.version}) ON CONFLICT (name, version) DO NOTHING`
+    const row = yield* oneRow(Schema.Struct({ id: Distribution.fields.id }), sql`SELECT id FROM distribution WHERE name = ${d.name} AND version = ${d.version}`)
     return row.id
   })

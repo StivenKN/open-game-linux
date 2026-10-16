@@ -11,14 +11,14 @@ import { rows } from '../rows.ts'
 import type { Write } from './contributions.ts'
 
 const ExportableProfile = Schema.Struct({
-  estado_revision: ReviewStatus,
-  lanzador: Launcher.fields.nombre,
-  identificador_externo: GameEdition.fields.identificador_externo,
-  familia: LayerFamily,
-  ejemplo: Schema.Boolean,
+  review_status: ReviewStatus,
+  launcher: Launcher.fields.name,
+  external_id: GameEdition.fields.external_id,
+  family: LayerFamily,
+  demo: Schema.Boolean,
 })
 const IdRow = Schema.Struct({ id: Schema.Int })
-const PrOwner = Schema.Struct({ perfil_id: Schema.Int })
+const PrOwner = Schema.Struct({ profile_id: Schema.Int })
 
 /**
  * The single writer of arreglo_upstream. Idempotent: recording a PR twice, or annulling a PR that is not
@@ -44,17 +44,17 @@ export const noteFix = (note: FixNote): Write<{ readonly changed: boolean }, Rul
           WHERE p.id = ${note.perfil_id}
           FOR SHARE OF p`,
     )
-    if (profile === undefined || profile.estado_revision !== 'aprobado' || exportableAppId(profile)._tag === 'no_exportable')
+    if (profile === undefined || profile.review_status !== 'aprobado' || exportableAppId(profile)._tag === 'no_exportable')
       return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_no_exportable' }))
-    if (profile.ejemplo) return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_datos_de_ejemplo' }))
+    if (profile.demo) return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_datos_de_ejemplo' }))
 
     const created = yield* rows(
       IdRow,
-      sql`INSERT INTO upstream_fix ${sql.insert({ pr: note.pr, perfil_id: note.perfil_id, registrado_por: reviewer.id })}
+      sql`INSERT INTO upstream_fix ${sql.insert({ pr: note.pr, profile_id: note.perfil_id, noted_by: reviewer.id })}
           ON CONFLICT ON CONSTRAINT upstream_fix_pr_uq DO NOTHING RETURNING id`,
     )
     if (created.length > 0) return { changed: true }
     const [existing] = yield* rows(PrOwner, sql`SELECT profile_id FROM upstream_fix WHERE pr = ${note.pr}`)
-    if (existing?.perfil_id !== note.perfil_id) return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_pr_de_otro_perfil' }))
+    if (existing?.profile_id !== note.perfil_id) return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_pr_de_otro_perfil' }))
     return { changed: false }
   })

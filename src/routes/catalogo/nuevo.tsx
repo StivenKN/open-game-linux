@@ -16,7 +16,7 @@ const minimumLevels = ['v2', 'v3', 'v4'] as const satisfies ReadonlyArray<X86Lev
 export const Route = createFileRoute('/catalogo/nuevo')({
   beforeLoad: ({ context, location }) => {
     if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
-    if (context.visitor.rol === 'usuario') throw notFound()
+    if (context.visitor.role === 'usuario') throw notFound()
   },
   loader: () => gameOptionsFn(),
   head: () => ({ meta: [{ title: 'Nuevo juego · OpenGame Linux' }] }),
@@ -61,7 +61,7 @@ function NewGamePage() {
                 <select {...fieldProps(r.errors, `ediciones[${i}][lanzador_id]`)} defaultValue={launchers[i % launchers.length]?.id}>
                   {launchers.map((l) => (
                     <option key={l.id} value={l.id}>
-                      {l.nombre}
+                      {l.name}
                     </option>
                   ))}
                 </select>

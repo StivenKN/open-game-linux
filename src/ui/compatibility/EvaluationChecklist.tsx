@@ -3,7 +3,7 @@ import { memory } from '../format.ts'
 import { Badge } from '../Badge.tsx'
 import { checkStatus, vulkanOrigin, requirement, requirementsVerdict } from '../vocabulary.ts'
 
-export type EvaluatedProfile = { readonly titulo: string; readonly revision: number; readonly evaluation: Evaluation }
+export type EvaluatedProfile = { readonly title: string; readonly revision: number; readonly evaluation: Evaluation }
 
 const displayValue = (c: RequirementCheck, v: string) => (c.requirement === 'vulkan' ? v : memory(Number(v)))
 
@@ -36,7 +36,7 @@ export function EvaluationChecklist({ profile }: { profile: EvaluatedProfile | n
     <div className="pila">
       <div className="fila">
         <Badge label={requirementsVerdict[evaluation?.verdict ?? 'informacion_insuficiente']} shape="punteado" />
-        <span className="dato">{profile ? `perfil ${profile.titulo} r${profile.revision}` : 'sin perfil aprobado'}</span>
+        <span className="dato">{profile ? `perfil ${profile.title} r${profile.revision}` : 'sin perfil aprobado'}</span>
       </div>
       {evaluation && evaluation.checks.length > 0 && (
         <table className="checklist">

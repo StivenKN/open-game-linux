@@ -5,18 +5,18 @@ import { PciId } from '../../domain/gpu.ts'
 import type { Diagnostic } from '../../domain/tables.ts'
 import { machineOnLinux } from './capability.ts'
 
-type Row = Pick<Diagnostic, 'sistema' | 'ram_mb' | 'vram_mb' | 'soporte_vulkan' | 'version_vulkan' | 'controlador' | 'gpu_pci_id'>
+type Row = Pick<Diagnostic, 'operating_system' | 'ram_mb' | 'vram_mb' | 'vulkan_support' | 'vulkan_version' | 'driver' | 'gpu_pci_id'>
 
 const windows = (pci: string | null): Row => ({
-  sistema: 'Windows',
+  operating_system: 'Windows',
   ram_mb: 8192,
   vram_mb: 2048,
-  soporte_vulkan: 'desconocido',
-  version_vulkan: null,
-  controlador: null,
+  vulkan_support: 'desconocido',
+  vulkan_version: null,
+  driver: null,
   gpu_pci_id: pci === null ? null : Schema.decodeSync(PciId)(pci),
 })
-const linux = (pci: string | null, overrides: Partial<Row> = {}): Row => ({ ...windows(pci), sistema: 'Linux', ...overrides })
+const linux = (pci: string | null, overrides: Partial<Row> = {}): Row => ({ ...windows(pci), operating_system: 'Linux', ...overrides })
 
 const v = (text: string) => {
   const version = vulkanVersion(text)
@@ -40,7 +40,7 @@ describe('machineOnLinux: golden GPUs (Windows capture, nothing measured)', () =
     ['HD 5450 (TeraScale)', '1002:68f9', 'amd_terascale_o_anterior', 'radeon', { support: 'no', origin: 'proyectado' }, { d3d9_11: 'wined3d', d3d12: false }, []],
   ])('%s %s -> %s', (_, pci, family, driver, vulkan, paths, warnings) => {
     expect(machineOnLinux(windows(pci))).toEqual({
-      sistema: 'Windows',
+      operating_system: 'Windows',
       ram_mb: 8192,
       vram_mb: 2048,
       vulkan,
@@ -64,7 +64,7 @@ describe('machineOnLinux: golden GPUs (Windows capture, nothing measured)', () =
 
 describe('machineOnLinux: measured Linux Vulkan wins over the projection', () => {
   it('vulkaninfo 1.3.275 on a Kepler card is used as measured', () => {
-    expect(machineOnLinux(linux('10de:128b', { soporte_vulkan: 'si', version_vulkan: '1.3.275', controlador: 'nouveau' }))).toMatchObject({
+    expect(machineOnLinux(linux('10de:128b', { vulkan_support: 'si', vulkan_version: '1.3.275', driver: 'nouveau' }))).toMatchObject({
       vulkan: { support: 'si', origin: 'medido', range: { from: v('1.3.275'), to: v('1.3.275') } },
       paths: { d3d9_11: 'dxvk_2', d3d12: true },
     })
@@ -73,28 +73,28 @@ describe('machineOnLinux: measured Linux Vulkan wins over the projection', () =>
     expect(machineOnLinux(linux('10de:1380')).vulkan).toEqual(projected('1.4', '1.4'))
   })
   it("a Windows capture's stored Vulkan is ignored", () => {
-    expect(machineOnLinux({ ...windows('10de:0de1'), soporte_vulkan: 'si', version_vulkan: '1.4' }).vulkan).toEqual({ support: 'no', origin: 'proyectado' })
+    expect(machineOnLinux({ ...windows('10de:0de1'), vulkan_support: 'si', vulkan_version: '1.4' }).vulkan).toEqual({ support: 'no', origin: 'proyectado' })
   })
   it('measured Vulkan support without a version leaves the path unknown', () => {
-    expect(machineOnLinux(linux('1002:67df', { soporte_vulkan: 'si' }))).toMatchObject({ vulkan: { support: 'si', origin: 'medido', range: null }, paths: null })
+    expect(machineOnLinux(linux('1002:67df', { vulkan_support: 'si' }))).toMatchObject({ vulkan: { support: 'si', origin: 'medido', range: null }, paths: null })
   })
   it('measured no Vulkan on a GPU that has it warns that drivers are missing', () => {
-    expect(machineOnLinux(linux('8086:1912', { soporte_vulkan: 'no', controlador: 'i915' }))).toMatchObject({
+    expect(machineOnLinux(linux('8086:1912', { vulkan_support: 'no', driver: 'i915' }))).toMatchObject({
       vulkan: { support: 'no', origin: 'medido' },
       gpu: { warnings: ['vulkan_no_detectado'] },
       paths: { d3d9_11: 'wined3d', d3d12: false },
     })
   })
   it('measured Linux Vulkan still counts without a PCI id', () => {
-    expect(machineOnLinux(linux(null, { soporte_vulkan: 'si', version_vulkan: '1.3' }))).toMatchObject({ gpu: null, paths: { d3d9_11: 'dxvk_2', d3d12: true } })
+    expect(machineOnLinux(linux(null, { vulkan_support: 'si', vulkan_version: '1.3' }))).toMatchObject({ gpu: null, paths: { d3d9_11: 'dxvk_2', d3d12: true } })
   })
 })
 
 describe('machineOnLinux: unless_driver', () => {
   it.each([
     ['Windows (no Linux driver measured)', windows('1002:6798'), ['gcn_usar_amdgpu']],
-    ['Linux on radeon', linux('1002:6798', { controlador: 'radeon' }), ['gcn_usar_amdgpu']],
-    ['Linux already on amdgpu', linux('1002:6798', { controlador: 'amdgpu' }), []],
+    ['Linux on radeon', linux('1002:6798', { driver: 'radeon' }), ['gcn_usar_amdgpu']],
+    ['Linux already on amdgpu', linux('1002:6798', { driver: 'amdgpu' }), []],
   ])('GCN 1 on %s', (_, columns, warnings) => {
     expect(machineOnLinux(columns).gpu?.warnings).toEqual(warnings)
   })

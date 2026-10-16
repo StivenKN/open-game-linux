@@ -5,12 +5,12 @@ import { GuideId } from '../../domain/ids.ts'
 import { AdoptionGuide } from '../../domain/tables.ts'
 import { isDemo, distributionLabel } from './labels.ts'
 
-const extra = { distribucion: Schema.NullOr(Schema.String), ejemplo: Schema.Boolean }
+const extra = { distribution: Schema.NullOr(Schema.String), demo: Schema.Boolean }
 
-const GuideRow = AdoptionGuide.mapFields(Struct.pick(['id', 'tipo', 'titulo', 'actualizado_en'])).mapFields(Struct.assign(extra))
+const GuideRow = AdoptionGuide.mapFields(Struct.pick(['id', 'type', 'title', 'updated_at'])).mapFields(Struct.assign(extra))
 
-const GuideDetail = AdoptionGuide.mapFields(Struct.pick(['id', 'tipo', 'titulo', 'contenido', 'revision', 'actualizado_en'])).mapFields(
-  Struct.assign({ ...extra, autor: Schema.String }),
+const GuideDetail = AdoptionGuide.mapFields(Struct.pick(['id', 'type', 'title', 'content', 'revision', 'updated_at'])).mapFields(
+  Struct.assign({ ...extra, author: Schema.String }),
 )
 
 export const guides = Effect.flatMap(SqlClient.SqlClient, (sql) =>

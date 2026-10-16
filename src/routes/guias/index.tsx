@@ -24,14 +24,14 @@ function GuidesPage() {
             <li key={g.id} className="tarjeta pila">
               <div className="fila">
                 <Link to="/guias/$guideId" params={{ guideId: g.id }} className="nombre-juego">
-                  {g.titulo}
+                  {g.title}
                 </Link>
-                {g.ejemplo && <DemoStamp />}
+                {g.demo && <DemoStamp />}
               </div>
               <div className="fila-chips">
-                <span className="chip">{guideType[g.tipo]}</span>
-                <span className="chip">{g.distribucion ?? 'cualquier distribución'}</span>
-                <span className="pequeno tenue">actualizada el {date(g.actualizado_en)}</span>
+                <span className="chip">{guideType[g.type]}</span>
+                <span className="chip">{g.distribution ?? 'cualquier distribución'}</span>
+                <span className="pequeno tenue">actualizada el {date(g.updated_at)}</span>
               </div>
             </li>
           ))}

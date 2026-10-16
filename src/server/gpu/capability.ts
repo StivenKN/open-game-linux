@@ -5,7 +5,7 @@ import { gpuTable } from './families.generated.ts'
 import { decodeSpans } from './ranges.ts'
 
 export type MachineColumns = Pick<Diagnostic, 'ram_mb' | 'vram_mb' | 'gpu_pci_id'> &
-  ({ readonly sistema: 'Linux' } & Pick<Diagnostic, 'soporte_vulkan' | 'version_vulkan' | 'controlador'> | { readonly sistema: 'Windows' })
+  ({ readonly operating_system: 'Linux' } & Pick<Diagnostic, 'vulkan_support' | 'vulkan_version' | 'driver'> | { readonly operating_system: 'Windows' })
 
 const v = (major: number, minor: number): VulkanVersion => ({ text: `${major}.${minor}`, parts: [major, minor] })
 
@@ -49,11 +49,11 @@ const identify = (pci: PciId | null): { readonly family: GpuFamily; readonly pol
 }
 
 const vulkanOnLinux = (c: MachineColumns, policy: Policy | null): MachineVulkan => {
-  if (c.sistema === 'Linux' && c.soporte_vulkan === 'si') {
-    const version = vulkanVersion(c.version_vulkan)
+  if (c.operating_system === 'Linux' && c.vulkan_support === 'si') {
+    const version = vulkanVersion(c.vulkan_version)
     return { support: 'si', origin: 'medido', range: version === null ? null : { from: version, to: version } }
   }
-  if (c.sistema === 'Linux' && c.soporte_vulkan === 'no') return { support: 'no', origin: 'medido' }
+  if (c.operating_system === 'Linux' && c.vulkan_support === 'no') return { support: 'no', origin: 'medido' }
   if (policy === null) return { support: 'desconocido' }
   return policy.vulkan === null ? { support: 'no', origin: 'proyectado' } : { support: 'si', origin: 'proyectado', range: policy.vulkan }
 }
@@ -72,7 +72,7 @@ const pathsOf = (vulkan: MachineVulkan): LinuxPaths | null => {
 }
 
 const warningsOf = (c: MachineColumns, policy: Policy, vulkan: MachineVulkan): ReadonlyArray<GpuWarning> => {
-  const measuredDriver = c.sistema === 'Linux' ? c.controlador : null
+  const measuredDriver = c.operating_system === 'Linux' ? c.driver : null
   const missingVulkan = vulkan.support === 'no' && vulkan.origin === 'medido' && policy.vulkan !== null
   return [
     ...policy.warnings.filter((a) => a.unless_driver === null || a.unless_driver !== measuredDriver).map((a) => a.warning),
@@ -84,7 +84,7 @@ export const machineOnLinux = (c: MachineColumns): MachineOnLinux => {
   const gpu = identify(c.gpu_pci_id)
   const vulkan = vulkanOnLinux(c, gpu?.policy ?? null)
   return {
-    sistema: c.sistema,
+    operating_system: c.operating_system,
     ram_mb: c.ram_mb,
     vram_mb: c.vram_mb,
     vulkan,
