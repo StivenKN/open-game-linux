@@ -213,8 +213,8 @@ export const gamePage = (gameId: GameId) =>
 
     const personal = Option.match(Option.all({ d: diagnostic, machine }), {
       onNone: () => null,
-      onSome: ({ d, machine: equipo }) => ({
-        path: gamePath(equipo, d.nivel_x86, { apis, nivel_x86_min: game.value.nivel_x86_min }),
+      onSome: ({ d, machine }) => ({
+        path: gamePath(machine, d.nivel_x86, { apis, nivel_x86_min: game.value.nivel_x86_min }),
         nivel_x86_min: game.value.nivel_x86_min,
         approximate: d.sistema === 'Windows',
         on_my_distribution:

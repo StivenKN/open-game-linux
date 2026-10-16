@@ -7,4 +7,4 @@ export const rows = <A, I>(row: Schema.Codec<A, I>, query: Effect.Effect<Readonl
   Effect.flatMap(query, Schema.decodeUnknownEffect(Schema.Array(row)))
 
 export const oneRow = <A, I>(row: Schema.Codec<A, I>, query: Effect.Effect<ReadonlyArray<unknown>, SqlError.SqlError>) =>
-  Effect.flatMap(rows(row, query), ([first]) => (first === undefined ? Effect.die('la sentencia no devolvió ninguna fila') : Effect.succeed(first)))
+  Effect.flatMap(rows(row, query), ([first]) => (first === undefined ? Effect.die('the statement returned no row') : Effect.succeed(first)))

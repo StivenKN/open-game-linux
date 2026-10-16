@@ -397,11 +397,10 @@ export const migrations = {
 
 export const migrate = PgMigrator.run({ loader: Migrator.fromRecord(migrations) })
 
-/** Drops every table, and only when `base` names the database the client is connected to. */
 export const dropSchema = (expectedDatabase: string) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     const { nombre: name } = yield* oneRow(Schema.Struct({ nombre: Schema.String }), sql`SELECT current_database() AS nombre`)
-    if (name !== expectedDatabase) return yield* Effect.die(`vaciarEsquema: la conexión llega a «${name}», no a «${expectedDatabase}»; no se borró nada`)
+    if (name !== expectedDatabase) return yield* Effect.die(`dropSchema: connected to «${name}», not «${expectedDatabase}»; nothing was dropped`)
     yield* runStatements(['DROP SCHEMA public CASCADE', 'CREATE SCHEMA public'])
   })

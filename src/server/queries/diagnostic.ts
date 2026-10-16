@@ -181,7 +181,7 @@ const savedCapture = (d: typeof SavedDiagnostic.Type): Effect.Effect<Capture> =>
     biblioteca_steam: d.biblioteca_steam,
   }
   if (d.sistema === 'Windows') return Effect.succeed({ ...common, sistema: 'Windows' })
-  if (d.distribucion === null) return Effect.die(`diagnostico ${d.id}: Linux sin distribucion`)
+  if (d.distribucion === null) return Effect.die(`diagnostic ${d.id}: Linux without a distribution`)
   return Effect.succeed({
     ...common,
     sistema: 'Linux',

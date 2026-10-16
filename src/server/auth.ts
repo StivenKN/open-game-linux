@@ -8,13 +8,13 @@ import { SqlClient } from 'effect/sql'
 import { Pool } from 'pg'
 import { Unauthenticated, NotFound, Forbidden } from '../domain/errors.ts'
 import { canReview, type Role } from '../domain/review.ts'
-import { User as FilaUsuario } from '../domain/tables.ts'
+import { User } from '../domain/tables.ts'
 import { authSchema } from './schema/auth.ts'
 import { rows } from './rows.ts'
 
 const url = process.env.DATABASE_URL
 // Without this, pg silently falls back to PGHOST/localhost:5432 and auth talks to some other database.
-if (url === undefined || url === '') throw new Error('DATABASE_URL no está definida')
+if (url === undefined || url === '') throw new Error('DATABASE_URL is not set')
 
 // Queries label content "Datos de ejemplo" when its author's correo is in this domain (queries/labels.ts).
 export const demoDomain = 'demo.opengame.test'
@@ -37,16 +37,16 @@ export const auth = betterAuth({
   plugins: [tanstackStartCookies()],
 })
 
-export type SignedInUser = Pick<FilaUsuario, 'id' | 'alias' | 'rol'>
+export type SignedInUser = Pick<User, 'id' | 'alias' | 'rol'>
 
 export class Visitor extends Context.Service<Visitor, Option.Option<SignedInUser>>()('Visitante') {}
 
 // better-auth's JS API keeps its own names (`name`), while the column is `alias`.
 const SessionUser = Schema.Struct({
-  id: FilaUsuario.fields.id,
-  name: FilaUsuario.fields.alias,
-  rol: FilaUsuario.fields.rol,
-  activo: FilaUsuario.fields.activo,
+  id: User.fields.id,
+  name: User.fields.alias,
+  rol: User.fields.rol,
+  activo: User.fields.activo,
 })
 
 export const visitorOf = (headers: Headers): Effect.Effect<Option.Option<SignedInUser>> =>
@@ -69,7 +69,7 @@ export const requireReviewer: Effect.Effect<Reviewer, Unauthenticated | Forbidde
   canReview[u.rol] ? Effect.succeed({ ...u, [reviewer]: true as const }) : Effect.fail(new Forbidden()),
 )
 
-const RoleChange = Schema.Struct({ alias: FilaUsuario.fields.alias, antes: FilaUsuario.fields.rol })
+const RoleChange = Schema.Struct({ alias: User.fields.alias, antes: User.fields.rol })
 
 export const assignRole = (email: string, role: Role) =>
   Effect.gen(function* () {

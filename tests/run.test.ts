@@ -37,12 +37,12 @@ const sessionCookie = async (role: Role, active = true) => {
   })
   await sql((s) => s`UPDATE usuario SET rol = ${role}, activo = ${active} WHERE correo = ${email}`)
   const [cookie] = headers.getSetCookie()
-  if (cookie === undefined) throw new Error('better-auth no devolvió la cookie de sesión')
+  if (cookie === undefined) throw new Error('better-auth returned no session cookie')
   return cookie.split(';')[0] ?? ''
 }
 
-describe('leer', () => {
-  it('sin sesión, exigirRevisor redirige a /entrar', async () => {
+describe('runRead', () => {
+  it('without a session, requireReviewer redirects to /entrar', async () => {
     const d = await inRequest(null, () => runRead(requireReviewer))
     const e = thrownOf(d)
     expect(isRedirect(e) && e.options.to).toBe('/entrar')
@@ -64,7 +64,7 @@ describe('leer', () => {
   })
 })
 
-describe('accion', () => {
+describe('runAction', () => {
   const countLaunchers = (name: string) =>
     sql((s) => s`SELECT count(*)::int AS n FROM lanzador WHERE nombre = ${name}`).then(
       Schema.decodeUnknownSync(Schema.Tuple([Schema.Struct({ n: Schema.Int })])),
