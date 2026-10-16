@@ -4,7 +4,7 @@
 import { getMigrations } from 'better-auth/db/migration'
 import { Schema } from 'effect'
 import { Pool } from 'pg'
-import { esquemaAuth } from '../src/server/schema/auth.ts'
+import { authSchema } from '../src/server/schema/auth.ts'
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL_TEST, max: 1 })
 try {
@@ -13,7 +13,7 @@ try {
   if (!nombre.endsWith('_test')) throw new Error(`DATABASE_URL_TEST apunta a ${nombre}; este script solo borra bases *_test`)
   await pool.query('DROP SCHEMA public CASCADE')
   await pool.query('CREATE SCHEMA public')
-  const { compileMigrations } = await getMigrations({ ...esquemaAuth, database: pool })
+  const { compileMigrations } = await getMigrations({ ...authSchema, database: pool })
   console.log(await compileMigrations())
 } finally {
   await pool.end()

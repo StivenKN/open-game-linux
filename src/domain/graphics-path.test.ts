@@ -1,14 +1,14 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Schema } from 'effect'
-import { type ColumnasEquipo, equipoEnLinux } from '../server/gpu/capability.ts'
+import { type MachineColumns, machineOnLinux } from '../server/gpu/capability.ts'
 import { PciId } from './gpu.ts'
 import type { GraphicsApi } from './literals.ts'
 import type { X86Level } from './platform.ts'
 import { type GamePath, gamePath } from './graphics-path.ts'
 
 const pci = (id: string | null) => (id === null ? null : Schema.decodeSync(PciId)(id))
-const windows = (id: string | null): ColumnasEquipo => ({ sistema: 'Windows', ram_mb: 8192, vram_mb: 2048, gpu_pci_id: pci(id) })
-const linux = (id: string | null, vulkan: string | null): ColumnasEquipo => ({
+const windows = (id: string | null): MachineColumns => ({ sistema: 'Windows', ram_mb: 8192, vram_mb: 2048, gpu_pci_id: pci(id) })
+const linux = (id: string | null, vulkan: string | null): MachineColumns => ({
   sistema: 'Linux',
   ram_mb: 8192,
   vram_mb: 2048,
@@ -29,7 +29,7 @@ const witcher3 = game(['d3d11', 'd3d12'])
 const cs2 = game(['vulkan', 'd3d11'], 'v2')
 
 describe('gamePath', () => {
-  it.each<[string, ColumnasEquipo, X86Level | null, ReturnType<typeof game>, GamePath]>([
+  it.each<[string, MachineColumns, X86Level | null, ReturnType<typeof game>, GamePath]>([
     ['a D3D12 game on Haswell', haswell, 'v3', eldenRing, { status: 'sin_ruta', reason: 'grafica' }],
     ['a {D3D11, D3D12} game on Vulkan 1.2', kepler, null, witcher3, { status: 'con_ruta', path: 'dxvk_sarek' }],
     ['a D3D11 game with no PCI id and unknown Vulkan', noPci, 'v3', game(['d3d11']), { status: 'sin_datos', missing: ['grafica'], at_least: 'wined3d' }],
@@ -48,6 +48,6 @@ describe('gamePath', () => {
     ['a {Vulkan, D3D9} game on Fermi', windows('10de:0de1'), null, game(['vulkan', 'd3d9']), { status: 'con_ruta', path: 'wined3d' }],
     ['a Vulkan game when Vulkan is unknown', noPci, null, game(['vulkan']), { status: 'sin_datos', missing: ['grafica'], at_least: null }],
   ])('%s', (_, columns, cpu, j, expected) => {
-    expect(gamePath(equipoEnLinux(columns), cpu, j)).toEqual(expected)
+    expect(gamePath(machineOnLinux(columns), cpu, j)).toEqual(expected)
   })
 })

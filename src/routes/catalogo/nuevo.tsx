@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { NewGame } from '../../domain/contributions.ts'
 import { GraphicsApi } from '../../domain/literals.ts'
 import type { X86Level } from '../../domain/platform.ts'
-import { crearJuegoFn, opcionesJuegoFn } from '../../fns/contributions.ts'
+import { createGameFn, gameOptionsFn } from '../../fns/contributions.ts'
 import { ErrorCampo } from '../../ui/FieldError.tsx'
 import { Campo, campo, nulo } from '../../ui/form.tsx'
 import { erroresDeRegla, useAccion } from '../../ui/useAction.ts'
@@ -18,18 +18,18 @@ export const Route = createFileRoute('/catalogo/nuevo')({
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
     if (context.visitante.rol === 'usuario') throw notFound()
   },
-  loader: () => opcionesJuegoFn(),
+  loader: () => gameOptionsFn(),
   head: () => ({ meta: [{ title: 'Nuevo juego · OpenGame Linux' }] }),
   component: NuevoJuegoPagina,
 })
 
 function NuevoJuegoPagina() {
-  const { lanzadores } = Route.useLoaderData()
+  const { launchers: lanzadores } = Route.useLoaderData()
   const navegar = useNavigate()
   // Row keys, not indexes: removing a middle edition must not shift what the other rows show.
   const [ediciones, setEdiciones] = useState<ReadonlyArray<number>>([0])
   const [siguiente, setSiguiente] = useState(1)
-  const r = useAccion(NewGame, crearJuegoFn, {
+  const r = useAccion(NewGame, createGameFn, {
     alFallar: erroresDeRegla,
     alCompletar: ({ id }) => void navegar({ to: '/juegos/$juegoId', params: { juegoId: id } }),
   })

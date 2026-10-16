@@ -2,7 +2,7 @@
 // `tar -xzOf reports_oct1_2026.tar.gz | pnpm db:protondb -`. Run it again after adding Steam games.
 import { createReadStream } from 'node:fs'
 import { Effect } from 'effect'
-import { importarProtonDb, resumenImportacion } from '../src/server/external/protondb.ts'
+import { importProtonDb, importSummary } from '../src/server/external/protondb.ts'
 import { PgLive } from '../src/server/runtime.ts'
 
 const ruta = process.argv[2]
@@ -16,9 +16,9 @@ async function* trozos(origen: string): AsyncGenerator<string> {
   yield* origen === '-' ? process.stdin.setEncoding('utf8') : createReadStream(origen, { encoding: 'utf8' })
 }
 
-const programa = importarProtonDb(trozos(ruta)).pipe(
-  Effect.catchTag('ExportacionInvalida', (e) => Effect.die(`ProtonDB: ${e.motivo}. No se cambió nada.`)),
-  Effect.flatMap((r) => Effect.log(resumenImportacion(r))),
+const programa = importProtonDb(trozos(ruta)).pipe(
+  Effect.catchTag('ExportacionInvalida', (e) => Effect.die(`ProtonDB: ${e.reason}. No se cambió nada.`)),
+  Effect.flatMap((r) => Effect.log(importSummary(r))),
   Effect.provide(PgLive),
 )
 

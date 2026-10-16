@@ -127,7 +127,7 @@ describe('suggestProfile', () => {
     distribucion_id,
     arquitectura,
     revision,
-    evaluacion: verdict === null ? null : evaluation(verdict),
+    evaluation: verdict === null ? null : evaluation(verdict),
   })
   const mint = { distribucion_id: 1, arquitectura: 'x86_64' }
 

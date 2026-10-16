@@ -4,7 +4,7 @@ import { Effect, Option, Record, Schema } from 'effect'
 import { SqlError } from 'effect/sql'
 import { RuleViolated, type Rule } from '../../domain/errors.ts'
 
-export const reglaDeRestriccion = {
+export const ruleByConstraint = {
   reporte_fallo_pkey: 'fallo_duplicado',
   version_capa_version_exacta: 'version_capa_no_exacta',
   og_solo_revision: 'contenido_inmutable',
@@ -12,21 +12,21 @@ export const reglaDeRestriccion = {
   edicion_juego_externo_uq: 'identificador_en_uso',
 } as const satisfies Record<string, Rule>
 
-const CausaPg = Schema.Struct({ constraint: Schema.String })
+const PgCause = Schema.Struct({ constraint: Schema.String })
 
-export const restriccionViolada = (e: SqlError.SqlError): Option.Option<string> =>
-  Schema.decodeUnknownOption(CausaPg)(e.reason.cause).pipe(Option.map((c) => c.constraint))
+export const violatedConstraint = (e: SqlError.SqlError): Option.Option<string> =>
+  Schema.decodeUnknownOption(PgCause)(e.reason.cause).pipe(Option.map((c) => c.constraint))
 
-const esMapeada = Schema.is(Schema.Literals(Record.keys(reglaDeRestriccion)))
+const isMapped = Schema.is(Schema.Literals(Record.keys(ruleByConstraint)))
 
-export const conReglasDeBd = <A, E, R>(
-  efecto: Effect.Effect<A, E | SqlError.SqlError, R>,
+export const withDbRules = <A, E, R>(
+  effect: Effect.Effect<A, E | SqlError.SqlError, R>,
 ): Effect.Effect<A, E | SqlError.SqlError | RuleViolated, R> =>
-  Effect.mapError(efecto, (e) =>
+  Effect.mapError(effect, (e) =>
     SqlError.isSqlError(e)
-      ? Option.match(restriccionViolada(e).pipe(Option.filter(esMapeada)), {
+      ? Option.match(violatedConstraint(e).pipe(Option.filter(isMapped)), {
           onNone: () => e,
-          onSome: (r) => new RuleViolated({ rule: reglaDeRestriccion[r] }),
+          onSome: (r) => new RuleViolated({ rule: ruleByConstraint[r] }),
         })
       : e,
   )

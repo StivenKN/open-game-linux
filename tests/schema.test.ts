@@ -5,13 +5,13 @@ import { getMigrations } from 'better-auth/db/migration'
 import { MAX_LIBRARY_GAMES } from '../src/domain/library.ts'
 import { RuleViolated } from '../src/domain/errors.ts'
 import { auth } from '../src/server/auth.ts'
-import { conReglasDeBd, reglaDeRestriccion } from '../src/server/schema/constraints.ts'
-import { enRollback, idDe, PgTest, restriccionDe } from './support.ts'
-import { base, type Base } from './fixtures.ts'
+import { withDbRules, ruleByConstraint } from '../src/server/schema/constraints.ts'
+import { inRollback, idOf, PgTest, constraintOf } from './support.ts'
+import { seed, type Seed } from './fixtures.ts'
 
 type Valor = string | number | boolean | Date | null
 
-const reporte = (f: Base, cambios: Record<string, Valor> = {}) =>
+const reporte = (f: Seed, cambios: Record<string, Valor> = {}) =>
   f.sql`INSERT INTO reporte ${f.sql.insert({
     edicion_id: f.ed,
     diagnostico_id: f.diag,
@@ -23,7 +23,7 @@ const reporte = (f: Base, cambios: Record<string, Valor> = {}) =>
     ...cambios,
   })} RETURNING id`
 
-const diagnostico = (f: Base, cambios: Record<string, Valor> = {}) =>
+const diagnostico = (f: Seed, cambios: Record<string, Valor> = {}) =>
   f.sql`INSERT INTO diagnostico ${f.sql.insert({
     equipo_id: f.equipo,
     capturado_en: new Date('2026-10-05T10:00:00Z'),
@@ -40,7 +40,7 @@ const diagnostico = (f: Base, cambios: Record<string, Valor> = {}) =>
 
 const bibliotecaDe = (juegos: number) => JSON.stringify(Array.from({ length: juegos }, (_, i) => ({ app_id: i + 1, nombre: 'juego' })))
 
-const perfil = (f: Base, cambios: Record<string, Valor> = {}) =>
+const perfil = (f: Seed, cambios: Record<string, Valor> = {}) =>
   f.sql`INSERT INTO perfil_configuracion ${f.sql.insert({
     edicion_id: f.ed,
     distribucion_id: f.dist,
@@ -52,7 +52,7 @@ const perfil = (f: Base, cambios: Record<string, Valor> = {}) =>
     ...cambios,
   })} RETURNING id`
 
-const guia = (f: Base, cambios: Record<string, Valor> = {}) =>
+const guia = (f: Seed, cambios: Record<string, Valor> = {}) =>
   f.sql`INSERT INTO guia_adopcion ${f.sql.insert({
     autor_id: f.revisor,
     tipo: 'instalacion',
@@ -63,20 +63,20 @@ const guia = (f: Base, cambios: Record<string, Valor> = {}) =>
     ...cambios,
   })}`
 
-const revisar = (f: Base, tabla: 'reporte' | 'solucion' | 'perfil_configuracion', id: number, cambios: Record<string, Valor>) =>
+const revisar = (f: Seed, tabla: 'reporte' | 'solucion' | 'perfil_configuracion', id: number, cambios: Record<string, Valor>) =>
   f.sql`UPDATE ${f.sql(tabla)} SET ${f.sql.update({ revisor_id: f.revisor, revisado_en: new Date(), motivo_revision: 'probado', ...cambios })} WHERE id = ${id}`
 
-const aprobarReporte = (f: Base, evidencia: string | null) => revisar(f, 'reporte', f.rep, { estado_revision: 'aprobado', evidencia_revision: evidencia })
+const aprobarReporte = (f: Seed, evidencia: string | null) => revisar(f, 'reporte', f.rep, { estado_revision: 'aprobado', evidencia_revision: evidencia })
 
-const falloDelReporte = (f: Base) => f.sql`INSERT INTO reporte_fallo (reporte_id, tipo_fallo_id, detalle) VALUES (${f.rep}, ${f.tipoFallo}, 'pantalla negra al iniciar')`
+const falloDelReporte = (f: Seed) => f.sql`INSERT INTO reporte_fallo (reporte_id, tipo_fallo_id, detalle) VALUES (${f.rep}, ${f.tipoFallo}, 'pantalla negra al iniciar')`
 
-const paso = (f: Base, perfilId: number, orden = 1) =>
+const paso = (f: Seed, perfilId: number, orden = 1) =>
   f.sql`INSERT INTO paso_configuracion (perfil_id, orden, titulo, instruccion) VALUES (${perfilId}, ${orden}, 't', 'i')`
 
-const solucion = (f: Base) =>
-  idDe(f.sql`INSERT INTO solucion (reporte_id, tipo_fallo_id, autor_id, titulo, instrucciones) VALUES (${f.rep}, ${f.tipoFallo}, 'revisor', 's', 'i') RETURNING id`)
+const solucion = (f: Seed) =>
+  idOf(f.sql`INSERT INTO solucion (reporte_id, tipo_fallo_id, autor_id, titulo, instrucciones) VALUES (${f.rep}, ${f.tipoFallo}, 'revisor', 's', 'i') RETURNING id`)
 
-type Caso = readonly [caso: string, restriccion: string, ofensa: (f: Base) => Effect.Effect<unknown, SqlError.SqlError | Schema.SchemaError>]
+type Caso = readonly [caso: string, restriccion: string, ofensa: (f: Seed) => Effect.Effect<unknown, SqlError.SqlError | Schema.SchemaError>]
 
 const rechaza: ReadonlyArray<Caso> = [
   ['dependencia duplicada en un perfil', 'perfil_dependencia_pkey', (f) =>
@@ -191,7 +191,7 @@ const rechaza: ReadonlyArray<Caso> = [
     Effect.gen(function* () {
       yield* paso(f, f.perfil)
       yield* revisar(f, 'perfil_configuracion', f.perfil, { estado_revision: 'rechazado' })
-      const otro = yield* idDe(perfil(f))
+      const otro = yield* idOf(perfil(f))
       yield* f.sql`UPDATE paso_configuracion SET perfil_id = ${otro} WHERE perfil_id = ${f.perfil}`
     })],
   ['reescribir un perfil revisado', 'og_perfil_congelado', (f) =>
@@ -206,61 +206,61 @@ const rechaza: ReadonlyArray<Caso> = [
     })],
 ]
 
-const acepta = (efecto: Effect.Effect<unknown, unknown>) =>
+const accepts = (effect: Effect.Effect<unknown, unknown>) =>
   Effect.gen(function* () {
-    expect(yield* restriccionDe(efecto)).toEqual(Option.none())
+    expect(yield* constraintOf(effect)).toEqual(Option.none())
   })
 
 layer(PgTest)('esquema', (it) => {
   describe('rechaza', () => {
     for (const [caso, restriccion, ofensa] of rechaza)
       it.effect(`${caso} -> ${restriccion}`, () =>
-        enRollback(
+        inRollback(
           Effect.gen(function* () {
-            const f = yield* base
-            expect(yield* restriccionDe(ofensa(f))).toEqual(Option.some(restriccion))
+            const f = yield* seed
+            expect(yield* constraintOf(ofensa(f))).toEqual(Option.some(restriccion))
           }),
         ),
       )
   })
 
   describe('permite', () => {
-    const conBase = (prueba: (f: Base) => Effect.Effect<void, unknown, SqlClient.SqlClient>) => () => enRollback(Effect.flatMap(base, prueba))
+    const withSeed = (test: (f: Seed) => Effect.Effect<void, unknown, SqlClient.SqlClient>) => () => inRollback(Effect.flatMap(seed, test))
 
-    it.effect('reporte sin perfil, en cualquier edición', conBase((f) => acepta(reporte(f, { edicion_id: f.ed2, perfil_id: null }))))
-    it.effect('reporte con un perfil de su edición y capa', conBase((f) => acepta(reporte(f, { perfil_id: f.perfil }))))
-    it.effect('varios diagnósticos históricos del mismo equipo', conBase((f) =>
-      Effect.andThen(acepta(diagnostico(f)), acepta(diagnostico(f, { capturado_en: new Date('2026-10-06T10:00:00Z'), version_controlador: '550.1' })))))
-    it.effect('diagnóstico de Windows sin distribución', conBase((f) => acepta(diagnostico(f, { sistema: 'Windows', version_sistema: '11', distribucion_id: null }))))
-    it.effect(`diagnóstico con PCI id y biblioteca de Steam de ${MAX_LIBRARY_GAMES} juegos`, conBase((f) =>
-      acepta(diagnostico(f, { gpu_pci_id: '10de:0fc6', biblioteca_steam: bibliotecaDe(MAX_LIBRARY_GAMES) }))))
-    it.effect('cambiar el dueño de un equipo sin diagnósticos', conBase((f) =>
+    it.effect('reporte sin perfil, en cualquier edición', withSeed((f) => accepts(reporte(f, { edicion_id: f.ed2, perfil_id: null }))))
+    it.effect('reporte con un perfil de su edición y capa', withSeed((f) => accepts(reporte(f, { perfil_id: f.perfil }))))
+    it.effect('varios diagnósticos históricos del mismo equipo', withSeed((f) =>
+      Effect.andThen(accepts(diagnostico(f)), accepts(diagnostico(f, { capturado_en: new Date('2026-10-06T10:00:00Z'), version_controlador: '550.1' })))))
+    it.effect('diagnóstico de Windows sin distribución', withSeed((f) => accepts(diagnostico(f, { sistema: 'Windows', version_sistema: '11', distribucion_id: null }))))
+    it.effect(`diagnóstico con PCI id y biblioteca de Steam de ${MAX_LIBRARY_GAMES} juegos`, withSeed((f) =>
+      accepts(diagnostico(f, { gpu_pci_id: '10de:0fc6', biblioteca_steam: bibliotecaDe(MAX_LIBRARY_GAMES) }))))
+    it.effect('cambiar el dueño de un equipo sin diagnósticos', withSeed((f) =>
       Effect.gen(function* () {
-        const nuevo = yield* idDe(f.sql`INSERT INTO equipo (usuario_id, alias) VALUES (${f.autor}, 'sobremesa') RETURNING id`)
-        yield* acepta(f.sql`UPDATE equipo SET usuario_id = ${f.revisor} WHERE id = ${nuevo}`)
+        const nuevo = yield* idOf(f.sql`INSERT INTO equipo (usuario_id, alias) VALUES (${f.autor}, 'sobremesa') RETURNING id`)
+        yield* accepts(f.sql`UPDATE equipo SET usuario_id = ${f.revisor} WHERE id = ${nuevo}`)
       })))
-    it.effect('guía general sin distribución', conBase((f) => acepta(guia(f, { distribucion_id: null }))))
-    it.effect('varias ediciones sin identificador externo en el mismo lanzador', conBase((f) =>
+    it.effect('guía general sin distribución', withSeed((f) => accepts(guia(f, { distribucion_id: null }))))
+    it.effect('varias ediciones sin identificador externo en el mismo lanzador', withSeed((f) =>
       Effect.gen(function* () {
-        const juego = yield* idDe(f.sql`INSERT INTO juego (titulo, descripcion) VALUES ('Tercero', 'd') RETURNING id`)
-        yield* acepta(f.sql`INSERT INTO edicion_juego (juego_id, lanzador_id) VALUES (${juego}, ${f.lanzador})`)
+        const juego = yield* idOf(f.sql`INSERT INTO juego (titulo, descripcion) VALUES ('Tercero', 'd') RETURNING id`)
+        yield* accepts(f.sql`INSERT INTO edicion_juego (juego_id, lanzador_id) VALUES (${juego}, ${f.lanzador})`)
       })))
-    it.effect('capa Nativo para un juego nativo de Linux', conBase((f) =>
+    it.effect('capa Nativo para un juego nativo de Linux', withSeed((f) =>
       Effect.gen(function* () {
-        const nativo = yield* idDe(f.sql`INSERT INTO version_capa (familia, variante, version) VALUES ('Nativo', 'Steam Linux Runtime', '3.0') RETURNING id`)
-        yield* acepta(reporte(f, { version_capa_id: nativo }))
+        const nativo = yield* idOf(f.sql`INSERT INTO version_capa (familia, variante, version) VALUES ('Nativo', 'Steam Linux Runtime', '3.0') RETURNING id`)
+        yield* accepts(reporte(f, { version_capa_id: nativo }))
       })))
-    it.effect('aprobar con evidencia y luego retirar conservándola', conBase((f) =>
+    it.effect('aprobar con evidencia y luego retirar conservándola', withSeed((f) =>
       Effect.gen(function* () {
-        yield* acepta(aprobarReporte(f, 'captura #12'))
-        yield* acepta(revisar(f, 'reporte', f.rep, { estado_revision: 'retirado', motivo_revision: 'versión obsoleta' }))
+        yield* accepts(aprobarReporte(f, 'captura #12'))
+        yield* accepts(revisar(f, 'reporte', f.rep, { estado_revision: 'retirado', motivo_revision: 'versión obsoleta' }))
         const [fila] = yield* f.sql`SELECT estado_revision, evidencia_revision FROM reporte WHERE id = ${f.rep}`
         expect(fila).toEqual({ estado_revision: 'retirado', evidencia_revision: 'captura #12' })
       })))
-    it.effect('un perfil pendiente sin usar admite cambios, pasos y dependencias', conBase((f) =>
+    it.effect('un perfil pendiente sin usar admite cambios, pasos y dependencias', withSeed((f) =>
       Effect.andThen(
-        acepta(Effect.andThen(f.sql`UPDATE perfil_configuracion SET titulo = 'título corregido' WHERE id = ${f.perfil}`, paso(f, f.perfil))),
-        acepta(f.sql`INSERT INTO perfil_dependencia (perfil_id, dependencia_id, obligatoria, instruccion_instalacion) VALUES (${f.perfil}, ${f.dependencia}, true, 'i')`),
+        accepts(Effect.andThen(f.sql`UPDATE perfil_configuracion SET titulo = 'título corregido' WHERE id = ${f.perfil}`, paso(f, f.perfil))),
+        accepts(f.sql`INSERT INTO perfil_dependencia (perfil_id, dependencia_id, obligatoria, instruccion_instalacion) VALUES (${f.perfil}, ${f.dependencia}, true, 'i')`),
       )))
   })
 
@@ -272,16 +272,16 @@ layer(PgTest)('esquema', (it) => {
           SELECT conname AS nombre FROM pg_constraint
           UNION SELECT (regexp_matches(prosrc, 'CONSTRAINT = ''(og_[a-z_]+)''', 'g'))[1] FROM pg_proc`
         const nombres = new Set(Schema.decodeUnknownSync(Schema.Array(Schema.Struct({ nombre: Schema.String })))(filas).map((f) => f.nombre))
-        expect(Object.keys(reglaDeRestriccion).filter((n) => !nombres.has(n))).toEqual([])
+        expect(Object.keys(ruleByConstraint).filter((n) => !nombres.has(n))).toEqual([])
       }))
 
     it.effect('conReglasDeBd convierte una restricción mapeada en ReglaIncumplida', () =>
-      enRollback(
+      inRollback(
         Effect.gen(function* () {
-          const f = yield* base
+          const f = yield* seed
           yield* falloDelReporte(f)
-          const fallo = yield* Effect.flip(conReglasDeBd(falloDelReporte(f)))
-          expect(fallo).toEqual(new RuleViolated({ rule: 'fallo_duplicado' }))
+          const failure = yield* Effect.flip(withDbRules(falloDelReporte(f)))
+          expect(failure).toEqual(new RuleViolated({ rule: 'fallo_duplicado' }))
         }),
       ))
 

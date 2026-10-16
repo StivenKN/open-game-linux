@@ -12,16 +12,16 @@ import { GraphicsApi, Outcome } from '../../domain/literals.ts'
 import type { X86Level } from '../../domain/platform.ts'
 import { gamePath } from '../../domain/graphics-path.ts'
 import { Diagnostic, Distribution, Machine, AdoptionGuide, Game, Profile } from '../../domain/tables.ts'
-import { exigirUsuario, Visitante } from '../auth.ts'
-import { capturaDe } from '../diagnostics/payload.ts'
-import { equipoEnLinux } from '../gpu/capability.ts'
-import { filas, type Infra } from '../rows.ts'
-import { etiquetaCapa, etiquetaDistribucion } from './labels.ts'
+import { requireUser, Visitor } from '../auth.ts'
+import { captureOf } from '../diagnostics/payload.ts'
+import { machineOnLinux } from '../gpu/capability.ts'
+import { rows, type Infra } from '../rows.ts'
+import { layerLabel, distributionLabel } from './labels.ts'
 
-const JuegoFila = Schema.Struct({ id: Game.fields.id, titulo: Game.fields.titulo, nivel_x86_min: Game.fields.nivel_x86_min, apis: Schema.Array(GraphicsApi) })
-const ResultadoAprobado = Schema.Struct({ juego_id: Game.fields.id, resultado: Outcome })
+const GameRow = Schema.Struct({ id: Game.fields.id, titulo: Game.fields.titulo, nivel_x86_min: Game.fields.nivel_x86_min, apis: Schema.Array(GraphicsApi) })
+const ApprovedOutcome = Schema.Struct({ juego_id: Game.fields.id, resultado: Outcome })
 
-const PerfilAprobado = Schema.Struct({
+const ApprovedProfile = Schema.Struct({
   id: Profile.fields.id,
   juego_id: Game.fields.id,
   titulo: Profile.fields.titulo,
@@ -37,31 +37,31 @@ const PerfilAprobado = Schema.Struct({
 })
 
 /** The capture facts beyond the GPU that the verdicts read. */
-type Entorno = { readonly distribucion_id: typeof Distribution.Type.id | null; readonly arquitectura: string; readonly nivel_x86: X86Level | null }
+type Setup = { readonly distribucion_id: typeof Distribution.Type.id | null; readonly arquitectura: string; readonly nivel_x86: X86Level | null }
 
-const matriz = (equipo: MachineOnLinux, entorno: Entorno, enBiblioteca: ReadonlySet<GameId>) =>
+const matrix = (machine: MachineOnLinux, setup: Setup, inLibrary: ReadonlySet<GameId>) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const juegos = yield* filas(
-      JuegoFila,
+    const games = yield* rows(
+      GameRow,
       sql`
         SELECT j.id, j.titulo, j.nivel_x86_min, COALESCE(array_agg(ja.api) FILTER (WHERE ja.api IS NOT NULL), '{}') AS apis
         FROM juego j LEFT JOIN juego_api ja ON ja.juego_id = j.id
         GROUP BY j.id
         ORDER BY j.titulo, j.id`,
     )
-    const resultados = yield* filas(
-      ResultadoAprobado,
+    const outcomes = yield* rows(
+      ApprovedOutcome,
       sql`
         SELECT ej.juego_id, r.resultado FROM reporte r JOIN edicion_juego ej ON ej.id = r.edicion_id
         WHERE r.estado_revision = 'aprobado'`,
     )
-    const perfiles = yield* filas(
-      PerfilAprobado,
+    const profiles = yield* rows(
+      ApprovedProfile,
       sql`
         SELECT p.id, ej.juego_id, p.titulo, p.revision, p.distribucion_id, p.arquitectura,
                p.ram_min_mb, p.vram_min_mb, p.requiere_vulkan, p.version_vulkan_min,
-               ${sql.literal(etiquetaCapa('vc'))} AS capa, ${sql.literal(etiquetaDistribucion('d'))} AS distribucion
+               ${sql.literal(layerLabel('vc'))} AS capa, ${sql.literal(distributionLabel('d'))} AS distribucion
         FROM perfil_configuracion p
         JOIN edicion_juego ej ON ej.id = p.edicion_id
         JOIN version_capa vc ON vc.id = p.version_capa_id
@@ -69,102 +69,102 @@ const matriz = (equipo: MachineOnLinux, entorno: Entorno, enBiblioteca: Readonly
         WHERE p.estado_revision = 'aprobado'
         ORDER BY p.id`,
     )
-    return juegos.map((juego) => {
-      const aprobados = resultados.filter((r) => r.juego_id === juego.id).map((r) => r.resultado)
-      const evaluados = perfiles.filter((p) => p.juego_id === juego.id).map((p) => ({ ...p, evaluacion: evaluate(equipo, requirements(p)) }))
-      const perfil = suggestProfile(evaluados, entorno)
+    return games.map((game) => {
+      const approved = outcomes.filter((r) => r.juego_id === game.id).map((r) => r.resultado)
+      const evaluated = profiles.filter((p) => p.juego_id === game.id).map((p) => ({ ...p, evaluation: evaluate(machine, requirements(p)) }))
+      const profile = suggestProfile(evaluated, setup)
       return {
-        juego_id: juego.id,
-        titulo: juego.titulo,
-        en_biblioteca: enBiblioteca.has(juego.id),
-        estado: statusOf(aprobados),
-        pruebas: aprobados.length,
-        nivel_x86_min: juego.nivel_x86_min,
-        ruta: gamePath(equipo, entorno.nivel_x86, juego),
-        perfil:
-          perfil === null
+        juego_id: game.id,
+        titulo: game.titulo,
+        in_library: inLibrary.has(game.id),
+        status: statusOf(approved),
+        test_count: approved.length,
+        nivel_x86_min: game.nivel_x86_min,
+        path: gamePath(machine, setup.nivel_x86, game),
+        profile:
+          profile === null
             ? null
-            : { id: perfil.id, titulo: perfil.titulo, revision: perfil.revision, capa: perfil.capa, distribucion: perfil.distribucion, evaluacion: perfil.evaluacion },
+            : { id: profile.id, titulo: profile.titulo, revision: profile.revision, capa: profile.capa, distribucion: profile.distribucion, evaluation: profile.evaluation },
       }
     })
   })
 
-export type FilaMatriz = Effect.Success<ReturnType<typeof matriz>>[number]
+export type MatrixRow = Effect.Success<ReturnType<typeof matrix>>[number]
 
-const EdicionSteam = Schema.Struct({ app_id: Schema.String, juego_id: Game.fields.id })
+const SteamEdition = Schema.Struct({ app_id: Schema.String, juego_id: Game.fields.id })
 
-const separarBiblioteca = (juegos: SteamLibrary) =>
+const splitLibrary = (games: SteamLibrary) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const ediciones =
-      juegos.length === 0
+    const editions =
+      games.length === 0
         ? []
-        : yield* filas(
-            EdicionSteam,
+        : yield* rows(
+            SteamEdition,
             sql`
               SELECT ej.identificador_externo AS app_id, ej.juego_id FROM edicion_juego ej JOIN lanzador l ON l.id = ej.lanzador_id
-              WHERE l.nombre = ${STEAM_LAUNCHER} AND ej.identificador_externo IN ${sql.in(juegos.map((j) => String(j.app_id)))}`,
+              WHERE l.nombre = ${STEAM_LAUNCHER} AND ej.identificador_externo IN ${sql.in(games.map((j) => String(j.app_id)))}`,
           )
-    const conocidos = new Set(ediciones.map((e) => e.app_id))
+    const known = new Set(editions.map((e) => e.app_id))
     return {
-      enCatalogo: new Set(ediciones.map((e) => e.juego_id)),
-      biblioteca: { total: juegos.length, unknown: juegos.filter((j) => !conocidos.has(String(j.app_id))) },
+      inCatalog: new Set(editions.map((e) => e.juego_id)),
+      library: { total: games.length, unknown: games.filter((j) => !known.has(String(j.app_id))) },
     }
   })
 
-const GuiaDistribucion = Schema.Struct({ id: AdoptionGuide.fields.id })
+const DistributionGuide = Schema.Struct({ id: AdoptionGuide.fields.id })
 
-const evaluarEquipo = (equipo: MachineOnLinux, entorno: Entorno, juegos: SteamLibrary | null) =>
+const evaluateMachine = (machine: MachineOnLinux, setup: Setup, games: SteamLibrary | null) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const separada = juegos === null ? null : yield* separarBiblioteca(juegos)
-    const [guia] = yield* filas(
-      GuiaDistribucion,
+    const split = games === null ? null : yield* splitLibrary(games)
+    const [guide] = yield* rows(
+      DistributionGuide,
       sql`SELECT id FROM guia_adopcion WHERE tipo = 'eleccion_distribucion' AND estado = 'publicada' ORDER BY id LIMIT 1`,
     )
     return {
-      matriz: yield* matriz(equipo, entorno, separada?.enCatalogo ?? new Set()),
-      biblioteca: separada?.biblioteca ?? null,
-      distribuciones: { guia: guia?.id ?? null, evaluadas: screenDistros(equipo, entorno.arquitectura) },
+      matrix: yield* matrix(machine, setup, split?.inCatalog ?? new Set()),
+      library: split?.library ?? null,
+      distributions: { guide: guide?.id ?? null, evaluated: screenDistros(machine, setup.arquitectura) },
     }
   })
 
-export const evaluarSinGuardar = (
-  entrada: DiagnosticInput,
+export const evaluateWithoutSaving = (
+  input: DiagnosticInput,
 ): Effect.Effect<
   {
-    readonly captura: Capture
-    readonly equipo: MachineOnLinux
-    readonly matriz: ReadonlyArray<FilaMatriz>
-    readonly biblioteca: EvaluatedLibrary | null
-    readonly distribuciones: { readonly guia: GuideId | null; readonly evaluadas: ReadonlyArray<EvaluatedDistro> }
+    readonly capture: Capture
+    readonly machine: MachineOnLinux
+    readonly matrix: ReadonlyArray<MatrixRow>
+    readonly library: EvaluatedLibrary | null
+    readonly distributions: { readonly guide: GuideId | null; readonly evaluated: ReadonlyArray<EvaluatedDistro> }
   },
   InvalidPayload | Infra,
   SqlClient.SqlClient
 > =>
   Effect.gen(function* () {
-    const captura = yield* capturaDe(entrada)
+    const capture = yield* captureOf(input)
     const sql = yield* SqlClient.SqlClient
-    const [distribucion] =
-      captura.sistema === 'Linux'
-        ? yield* filas(
+    const [distribution] =
+      capture.sistema === 'Linux'
+        ? yield* rows(
             Schema.Struct({ id: Distribution.fields.id }),
-            sql`SELECT id FROM distribucion WHERE nombre = ${captura.distribucion.nombre} AND version = ${captura.distribucion.version}`,
+            sql`SELECT id FROM distribucion WHERE nombre = ${capture.distribucion.nombre} AND version = ${capture.distribucion.version}`,
           )
         : []
-    const equipo = equipoEnLinux(captura)
-    const entorno = { distribucion_id: distribucion?.id ?? null, arquitectura: captura.arquitectura, nivel_x86: captura.nivel_x86 }
-    return { captura, equipo, ...(yield* evaluarEquipo(equipo, entorno, captura.biblioteca_steam)) }
+    const machine = machineOnLinux(capture)
+    const setup = { distribucion_id: distribution?.id ?? null, arquitectura: capture.arquitectura, nivel_x86: capture.nivel_x86 }
+    return { capture, machine, ...(yield* evaluateMachine(machine, setup, capture.biblioteca_steam)) }
   })
 
-const DiagnosticoGuardado = Schema.Struct({
+const SavedDiagnostic = Schema.Struct({
   ...Diagnostic.fields,
   alias: Machine.fields.alias,
   distribucion: Schema.NullOr(Schema.Struct({ nombre: Distribution.fields.nombre, version: Distribution.fields.version })),
 })
 
-const capturaGuardada = (d: typeof DiagnosticoGuardado.Type): Effect.Effect<Capture> => {
-  const comunes = {
+const savedCapture = (d: typeof SavedDiagnostic.Type): Effect.Effect<Capture> => {
+  const common = {
     capturado_en: d.capturado_en,
     version_sistema: d.version_sistema,
     arquitectura: d.arquitectura,
@@ -180,10 +180,10 @@ const capturaGuardada = (d: typeof DiagnosticoGuardado.Type): Effect.Effect<Capt
     gpu_pci_id: d.gpu_pci_id,
     biblioteca_steam: d.biblioteca_steam,
   }
-  if (d.sistema === 'Windows') return Effect.succeed({ ...comunes, sistema: 'Windows' })
+  if (d.sistema === 'Windows') return Effect.succeed({ ...common, sistema: 'Windows' })
   if (d.distribucion === null) return Effect.die(`diagnostico ${d.id}: Linux sin distribucion`)
   return Effect.succeed({
-    ...comunes,
+    ...common,
     sistema: 'Linux',
     distribucion: d.distribucion,
     controlador: d.controlador,
@@ -193,27 +193,27 @@ const capturaGuardada = (d: typeof DiagnosticoGuardado.Type): Effect.Effect<Capt
   })
 }
 
-export const miDiagnostico = (id: DiagnosticId) =>
+export const myDiagnostic = (id: DiagnosticId) =>
   Effect.gen(function* () {
-    const usuario = yield* exigirUsuario
+    const user = yield* requireUser
     const sql = yield* SqlClient.SqlClient
-    const [d] = yield* filas(
-      DiagnosticoGuardado,
+    const [d] = yield* rows(
+      SavedDiagnostic,
       sql`
         SELECT d.*, e.alias,
                CASE WHEN dist.id IS NULL THEN NULL ELSE json_build_object('nombre', dist.nombre, 'version', dist.version) END AS distribucion
         FROM diagnostico d
         JOIN equipo e ON e.id = d.equipo_id
         LEFT JOIN distribucion dist ON dist.id = d.distribucion_id
-        WHERE d.id = ${id} AND e.usuario_id = ${usuario.id}`,
+        WHERE d.id = ${id} AND e.usuario_id = ${user.id}`,
     )
     if (d === undefined) return yield* Effect.fail(new NotFound())
-    const equipo = equipoEnLinux(d)
-    return { id: d.id, alias: d.alias, captura: yield* capturaGuardada(d), equipo, ...(yield* evaluarEquipo(equipo, d, d.biblioteca_steam)) }
+    const machine = machineOnLinux(d)
+    return { id: d.id, alias: d.alias, capture: yield* savedCapture(d), machine, ...(yield* evaluateMachine(machine, d, d.biblioteca_steam)) }
   })
 
-const EquipoFila = Schema.Struct({ id: Machine.fields.id, alias: Machine.fields.alias })
-const CapturaResumida = Schema.Struct({
+const MachineRow = Schema.Struct({ id: Machine.fields.id, alias: Machine.fields.alias })
+const CaptureSummary = Schema.Struct({
   id: Diagnostic.fields.id,
   equipo_id: Diagnostic.fields.equipo_id,
   capturado_en: Diagnostic.fields.capturado_en,
@@ -223,24 +223,24 @@ const CapturaResumida = Schema.Struct({
   distribucion: Schema.NullOr(Schema.String),
 })
 
-export const misEquipos = () =>
+export const myMachines = () =>
   Effect.gen(function* () {
-    const visitante = yield* Visitante
-    if (Option.isNone(visitante)) return []
+    const visitor = yield* Visitor
+    if (Option.isNone(visitor)) return []
     const sql = yield* SqlClient.SqlClient
-    const equipos = yield* filas(
-      EquipoFila,
-      sql`SELECT id, alias FROM equipo WHERE usuario_id = ${visitante.value.id} ORDER BY creado_en, id`,
+    const machines = yield* rows(
+      MachineRow,
+      sql`SELECT id, alias FROM equipo WHERE usuario_id = ${visitor.value.id} ORDER BY creado_en, id`,
     )
-    const capturas = yield* filas(
-      CapturaResumida,
+    const captures = yield* rows(
+      CaptureSummary,
       sql`
-        SELECT d.id, d.equipo_id, d.capturado_en, d.sistema, d.gpu_modelo, d.ram_mb, ${sql.literal(etiquetaDistribucion('dist'))} AS distribucion
+        SELECT d.id, d.equipo_id, d.capturado_en, d.sistema, d.gpu_modelo, d.ram_mb, ${sql.literal(distributionLabel('dist'))} AS distribucion
         FROM diagnostico d
         JOIN equipo e ON e.id = d.equipo_id
         LEFT JOIN distribucion dist ON dist.id = d.distribucion_id
-        WHERE e.usuario_id = ${visitante.value.id}
+        WHERE e.usuario_id = ${visitor.value.id}
         ORDER BY d.capturado_en DESC, d.id DESC`,
     )
-    return equipos.map((e) => ({ ...e, diagnosticos: capturas.filter((c) => c.equipo_id === e.id) }))
+    return machines.map((e) => ({ ...e, diagnostics: captures.filter((c) => c.equipo_id === e.id) }))
   })

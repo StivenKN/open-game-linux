@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { GuideId } from '../../domain/ids.ts'
-import { guiaFn } from '../../fns/guides.ts'
+import { guideFn } from '../../fns/guides.ts'
 import { fecha } from '../../ui/format.ts'
 import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
 import { tipoGuia } from '../../ui/vocabulary.ts'
@@ -10,7 +10,7 @@ const guiaId = idDeRuta(GuideId)
 
 export const Route = createFileRoute('/guias/$guiaId')({
   params: { parse: (p) => ({ guiaId: guiaId(p.guiaId) }), stringify: (p) => ({ guiaId: String(p.guiaId) }) },
-  loader: ({ params }) => guiaFn({ data: params }),
+  loader: ({ params }) => guideFn({ data: params }),
   head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.titulo} · OpenGame Linux` : 'OpenGame Linux' }] }),
   component: Guia,
 })

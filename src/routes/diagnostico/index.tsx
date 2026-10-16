@@ -3,7 +3,7 @@ import { Schema } from 'effect'
 import { useEffect, useRef, useState } from 'react'
 import { OperatingSystem, VulkanSupport } from '../../domain/evaluation.ts'
 import type { InvalidPayload } from '../../domain/errors.ts'
-import { evaluarDiagnosticoFn, misEquiposFn, origenFn } from '../../fns/diagnostic.ts'
+import { evaluateDiagnosticFn, myMachinesFn, originFn } from '../../fns/diagnostic.ts'
 import { CajaCopiar } from '../../ui/compatibility/CopyBox.tsx'
 import { ErrorCampo } from '../../ui/FieldError.tsx'
 import { memoria, momento } from '../../ui/format.ts'
@@ -16,7 +16,7 @@ export const Route = createFileRoute('/diagnostico/')({
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ pegar: Schema.optionalKey(Schema.Literal(1)) })),
   head: () => ({ meta: [{ title: 'Diagnóstico · OpenGame Linux' }] }),
   loader: async () => {
-    const [origen, equipos] = await Promise.all([origenFn(), misEquiposFn()])
+    const [origen, equipos] = await Promise.all([originFn(), myMachinesFn()])
     return { origen, equipos }
   },
   component: Diagnostico,
@@ -43,11 +43,11 @@ function Diagnostico() {
           {equipos.map((e) => (
             <div key={e.id} className="tarjeta pila">
               <h3 className="sin-margen">{e.alias}</h3>
-              {e.diagnosticos.length === 0 ? (
+              {e.diagnostics.length === 0 ? (
                 <p className="pequeno tenue">Sin diagnósticos todavía.</p>
               ) : (
                 <ul className="pila">
-                  {e.diagnosticos.map((d) => (
+                  {e.diagnostics.map((d) => (
                     <li key={d.id}>
                       <Link to="/diagnosticos/$diagnosticoId" params={{ diagnosticoId: d.id }}>
                         {momento(d.capturado_en)}
@@ -70,7 +70,7 @@ function Diagnostico() {
 const useEvaluar = () => {
   const navegar = useNavigate()
   return async (entrada: Entrada) => {
-    const r = await evaluarDiagnosticoFn({ data: entrada })
+    const r = await evaluateDiagnosticFn({ data: entrada })
     if (r.ok) {
       guardarPendiente(entrada)
       await navegar({ to: '/diagnostico/importar' })

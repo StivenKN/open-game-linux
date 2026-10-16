@@ -8,27 +8,27 @@ import { GraphicsApi } from '../../domain/literals.ts'
 import { ReviewStatus, activeStatuses } from '../../domain/review.ts'
 import { gamePath } from '../../domain/graphics-path.ts'
 import { Diagnostic, GameEdition, Machine, Game, GameApi, Launcher, Profile, Solution, FailureType } from '../../domain/tables.ts'
-import { Visitante } from '../auth.ts'
-import { filas, unaFila } from '../rows.ts'
-import { equipoEnLinux } from '../gpu/capability.ts'
-import { esDemo, etiquetaCapa, etiquetaDistribucion, etiquetaPerfil } from './labels.ts'
-import { resumenesProtonDb } from './protondb.ts'
+import { Visitor } from '../auth.ts'
+import { rows, oneRow } from '../rows.ts'
+import { machineOnLinux } from '../gpu/capability.ts'
+import { isDemo, layerLabel, distributionLabel, profileLabel } from './labels.ts'
+import { protonDbSummaries } from './protondb.ts'
 
-const PruebaDeJuego = Schema.Struct({ ...ApprovedTest.fields, juego_id: GameId, ejemplo: Schema.Boolean })
+const GameTest = Schema.Struct({ ...ApprovedTest.fields, juego_id: GameId, ejemplo: Schema.Boolean })
 
-export const pruebasAprobadas = (juego: GameId | null) =>
+export const approvedTests = (game: GameId | null) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    return yield* filas(
-      PruebaDeJuego,
+    return yield* rows(
+      GameTest,
       sql`
       SELECT e.juego_id, r.id AS reporte_id, r.estado_revision, r.edicion_id, l.nombre AS lanzador, r.version_juego,
-             d.distribucion_id, ${sql.literal(etiquetaDistribucion('dist'))} AS distribucion,
-             r.version_capa_id, ${sql.literal(etiquetaCapa('vc'))} AS capa,
-             r.perfil_id, ${sql.literal(etiquetaPerfil('p'))} AS perfil,
+             d.distribucion_id, ${sql.literal(distributionLabel('dist'))} AS distribucion,
+             r.version_capa_id, ${sql.literal(layerLabel('vc'))} AS capa,
+             r.perfil_id, ${sql.literal(profileLabel('p'))} AS perfil,
              r.resultado, r.fecha_prueba, r.fps_promedio, r.resolucion, r.calidad_grafica, r.metodo_medicion,
              COALESCE(array_agg(tf.codigo ORDER BY tf.codigo) FILTER (WHERE tf.id IS NOT NULL), '{}') AS fallos,
-             ${sql.literal(esDemo('u'))} AS ejemplo
+             ${sql.literal(isDemo('u'))} AS ejemplo
       FROM reporte r
       JOIN edicion_juego e ON e.id = r.edicion_id
       JOIN lanzador l ON l.id = e.lanzador_id
@@ -40,13 +40,13 @@ export const pruebasAprobadas = (juego: GameId | null) =>
       LEFT JOIN perfil_configuracion p ON p.id = r.perfil_id
       LEFT JOIN reporte_fallo rf ON rf.reporte_id = r.id
       LEFT JOIN tipo_fallo tf ON tf.id = rf.tipo_fallo_id
-      WHERE ${sql.and([sql`r.estado_revision = 'aprobado'`, ...(juego === null ? [] : [sql`e.juego_id = ${juego}`])])}
+      WHERE ${sql.and([sql`r.estado_revision = 'aprobado'`, ...(game === null ? [] : [sql`e.juego_id = ${game}`])])}
       GROUP BY r.id, e.id, l.id, d.id, dist.id, u.id, vc.id, p.id
       ORDER BY r.fecha_prueba DESC, r.id`,
     )
   })
 
-const MiDiagnostico = Diagnostic.mapFields(
+const MyDiagnostic = Diagnostic.mapFields(
   Struct.pick([
     'id',
     'capturado_en',
@@ -63,34 +63,34 @@ const MiDiagnostico = Diagnostic.mapFields(
   ]),
 ).mapFields(Struct.assign({ equipo: Machine.fields.alias, distribucion: Schema.NullOr(Schema.String) }))
 
-export const ultimoDiagnostico = (usuario: UserId) =>
+export const latestDiagnostic = (user: UserId) =>
   Effect.flatMap(SqlClient.SqlClient, (sql) =>
     SqlSchema.findOneOption({
       Request: UserId,
-      Result: MiDiagnostico,
+      Result: MyDiagnostic,
       execute: (id) => sql`
         SELECT d.id, d.capturado_en, d.sistema, d.distribucion_id, d.arquitectura, d.ram_mb, d.vram_mb, d.soporte_vulkan,
-               d.version_vulkan, d.controlador, d.gpu_pci_id, d.nivel_x86, eq.alias AS equipo, ${sql.literal(etiquetaDistribucion('dist'))} AS distribucion
+               d.version_vulkan, d.controlador, d.gpu_pci_id, d.nivel_x86, eq.alias AS equipo, ${sql.literal(distributionLabel('dist'))} AS distribucion
         FROM diagnostico d
         JOIN equipo eq ON eq.id = d.equipo_id
         LEFT JOIN distribucion dist ON dist.id = d.distribucion_id
         WHERE eq.usuario_id = ${id}
         ORDER BY d.capturado_en DESC, d.id DESC
         LIMIT 1`,
-    })(usuario),
+    })(user),
   )
 
-export const diagnosticoDelVisitante = Effect.flatMap(Visitante, (visitante) =>
-  Option.match(visitante, { onNone: () => Effect.succeedNone, onSome: (u) => ultimoDiagnostico(u.id) }),
+export const visitorDiagnostic = Effect.flatMap(Visitor, (visitor) =>
+  Option.match(visitor, { onNone: () => Effect.succeedNone, onSome: (u) => latestDiagnostic(u.id) }),
 )
 
-const FilaJuego = Game.mapFields(Struct.pick(['id', 'titulo', 'descripcion', 'nivel_x86_min']))
+const GameRow = Game.mapFields(Struct.pick(['id', 'titulo', 'descripcion', 'nivel_x86_min']))
 
-const FilaEdicion = GameEdition.mapFields(Struct.pick(['id', 'identificador_externo'])).mapFields(
+const EditionRow = GameEdition.mapFields(Struct.pick(['id', 'identificador_externo'])).mapFields(
   Struct.assign({ lanzador: Launcher.fields.nombre }),
 )
 
-const FilaPerfil = Profile.mapFields(
+const ProfileRow = Profile.mapFields(
   Struct.pick(['id', 'titulo', 'revision', 'distribucion_id', 'arquitectura', 'ram_min_mb', 'vram_min_mb', 'requiere_vulkan', 'version_vulkan_min']),
 ).mapFields(
   Struct.assign({
@@ -102,60 +102,60 @@ const FilaPerfil = Profile.mapFields(
   }),
 )
 
-const FilaSolucion = Solution.mapFields(Struct.pick(['id', 'titulo', 'instrucciones'])).mapFields(
+const SolutionRow = Solution.mapFields(Struct.pick(['id', 'titulo', 'instrucciones'])).mapFields(
   Struct.assign({ codigo: FailureType.fields.codigo, autor: Schema.String, perfil: Schema.NullOr(Schema.String), ejemplo: Schema.Boolean }),
 )
 
-const Conteo = Schema.Struct({ n: Schema.Int })
+const Count = Schema.Struct({ n: Schema.Int })
 
-export const fichaJuego = (juegoId: GameId) =>
+export const gamePage = (gameId: GameId) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
 
-    const juego = yield* SqlSchema.findOneOption({
+    const game = yield* SqlSchema.findOneOption({
       Request: GameId,
-      Result: FilaJuego,
+      Result: GameRow,
       execute: (id) => sql`SELECT id, titulo, descripcion, nivel_x86_min FROM juego WHERE id = ${id}`,
-    })(juegoId)
-    if (Option.isNone(juego)) return yield* new NotFound()
+    })(gameId)
+    if (Option.isNone(game)) return yield* new NotFound()
 
-    const declaradas = yield* SqlSchema.findAll({
+    const declared = yield* SqlSchema.findAll({
       Request: GameId,
       Result: GameApi.mapFields(Struct.pick(['api'])),
       execute: (id) => sql`SELECT api FROM juego_api WHERE juego_id = ${id}`,
-    })(juegoId)
-    const apis = GraphicsApi.literals.filter((api) => declaradas.some((d) => d.api === api))
+    })(gameId)
+    const apis = GraphicsApi.literals.filter((api) => declared.some((d) => d.api === api))
 
-    const ediciones = yield* SqlSchema.findAll({
+    const editions = yield* SqlSchema.findAll({
       Request: GameId,
-      Result: FilaEdicion,
+      Result: EditionRow,
       execute: (id) => sql`
         SELECT e.id, e.identificador_externo, l.nombre AS lanzador
         FROM edicion_juego e JOIN lanzador l ON l.id = e.lanzador_id
         WHERE e.juego_id = ${id}
         ORDER BY l.nombre`,
-    })(juegoId)
+    })(gameId)
 
-    const ahora = new Date(yield* Clock.currentTimeMillis)
-    const pruebas = yield* pruebasAprobadas(juegoId)
-    const resumen = summarize(pruebas, ahora)
+    const now = new Date(yield* Clock.currentTimeMillis)
+    const tests = yield* approvedTests(gameId)
+    const summary = summarize(tests, now)
 
-    const pendientes = yield* unaFila(
-      Conteo,
+    const pending = yield* oneRow(
+      Count,
       sql`
         SELECT count(*)::int AS n
         FROM reporte r JOIN edicion_juego e ON e.id = r.edicion_id
-        WHERE e.juego_id = ${juegoId} AND r.estado_revision = 'pendiente'`,
+        WHERE e.juego_id = ${gameId} AND r.estado_revision = 'pendiente'`,
     )
 
-    const filasPerfil = yield* SqlSchema.findAll({
+    const profileRows = yield* SqlSchema.findAll({
       Request: GameId,
-      Result: FilaPerfil,
+      Result: ProfileRow,
       execute: (id) => sql`
         SELECT p.id, p.titulo, p.revision, p.distribucion_id, p.arquitectura, p.ram_min_mb, p.vram_min_mb, p.requiere_vulkan,
                p.version_vulkan_min, p.estado_revision, l.nombre AS lanzador,
-               ${sql.literal(etiquetaDistribucion('dist'))} AS distribucion, ${sql.literal(etiquetaCapa('vc'))} AS capa,
-               ${sql.literal(esDemo('u'))} AS ejemplo
+               ${sql.literal(distributionLabel('dist'))} AS distribucion, ${sql.literal(layerLabel('vc'))} AS capa,
+               ${sql.literal(isDemo('u'))} AS ejemplo
         FROM perfil_configuracion p
         JOIN edicion_juego e ON e.id = p.edicion_id
         JOIN lanzador l ON l.id = e.lanzador_id
@@ -164,14 +164,14 @@ export const fichaJuego = (juegoId: GameId) =>
         JOIN usuario u ON u.id = p.autor_id
         WHERE e.juego_id = ${id} AND p.estado_revision IN ${sql.in(activeStatuses)}
         ORDER BY p.estado_revision = 'aprobado' DESC, p.titulo, p.revision DESC`,
-    })(juegoId)
+    })(gameId)
 
-    const soluciones = yield* SqlSchema.findAll({
+    const solutions = yield* SqlSchema.findAll({
       Request: GameId,
-      Result: FilaSolucion,
+      Result: SolutionRow,
       execute: (id) => sql`
-        SELECT s.id, s.titulo, s.instrucciones, tf.codigo, u.alias AS autor, ${sql.literal(etiquetaPerfil('p'))} AS perfil,
-               ${sql.literal(esDemo('u'))} AS ejemplo
+        SELECT s.id, s.titulo, s.instrucciones, tf.codigo, u.alias AS autor, ${sql.literal(profileLabel('p'))} AS perfil,
+               ${sql.literal(isDemo('u'))} AS ejemplo
         FROM solucion s
         JOIN reporte r ON r.id = s.reporte_id
         JOIN edicion_juego e ON e.id = r.edicion_id
@@ -181,63 +181,63 @@ export const fichaJuego = (juegoId: GameId) =>
         WHERE e.juego_id = ${id} AND s.estado_revision = 'aprobado' AND r.estado_revision = 'aprobado'
           AND (s.perfil_id IS NULL OR p.estado_revision = 'aprobado')
         ORDER BY s.revisado_en DESC, s.id`,
-    })(juegoId)
-    const tiposFallo = yield* SqlSchema.findAll({
+    })(gameId)
+    const failureTypes = yield* SqlSchema.findAll({
       Request: Schema.Void,
       Result: FailureType.mapFields(Struct.pick(['id', 'codigo', 'descripcion'])),
       execute: () => sql`SELECT id, codigo, descripcion FROM tipo_fallo`,
     })(undefined)
-    const tipoPorCodigo = new Map(tiposFallo.map((t) => [t.codigo, t]))
-    const causas = resumen.failures.map((f) => {
-      const tipo = tipoPorCodigo.get(f.code)
-      const reporte = pruebas.find((p) => p.fallos.includes(f.code))
+    const typeByCode = new Map(failureTypes.map((t) => [t.codigo, t]))
+    const causes = summary.failures.map((f) => {
+      const type = typeByCode.get(f.code)
+      const report = tests.find((p) => p.fallos.includes(f.code))
       return {
         ...f,
-        descripcion: tipo?.descripcion ?? null,
-        soluciones: soluciones.filter((s) => s.codigo === f.code),
-        responder: tipo && reporte ? { reporte_id: reporte.reporte_id, tipo_fallo_id: tipo.id } : null,
+        descripcion: type?.descripcion ?? null,
+        solutions: solutions.filter((s) => s.codigo === f.code),
+        reply: type && report ? { reporte_id: report.reporte_id, tipo_fallo_id: type.id } : null,
       }
     })
 
-    const [protondb = null] = yield* resumenesProtonDb(juegoId)
-    const diagnostico = yield* diagnosticoDelVisitante
-    const equipo = Option.map(diagnostico, equipoEnLinux)
+    const [protondb = null] = yield* protonDbSummaries(gameId)
+    const diagnostic = yield* visitorDiagnostic
+    const machine = Option.map(diagnostic, machineOnLinux)
 
-    const perfiles = filasPerfil.map(({ ram_min_mb, vram_min_mb, requiere_vulkan, version_vulkan_min, ...p }) => ({
+    const profiles = profileRows.map(({ ram_min_mb, vram_min_mb, requiere_vulkan, version_vulkan_min, ...p }) => ({
       ...p,
-      evaluacion:
-        Option.isSome(equipo) && p.estado_revision === 'aprobado'
-          ? evaluate(equipo.value, requirements({ ram_min_mb, vram_min_mb, requiere_vulkan, version_vulkan_min }))
+      evaluation:
+        Option.isSome(machine) && p.estado_revision === 'aprobado'
+          ? evaluate(machine.value, requirements({ ram_min_mb, vram_min_mb, requiere_vulkan, version_vulkan_min }))
           : null,
     }))
 
-    const personal = Option.match(Option.all({ d: diagnostico, equipo }), {
+    const personal = Option.match(Option.all({ d: diagnostic, machine }), {
       onNone: () => null,
-      onSome: ({ d, equipo }) => ({
-        ruta: gamePath(equipo, d.nivel_x86, { apis, nivel_x86_min: juego.value.nivel_x86_min }),
-        nivel_x86_min: juego.value.nivel_x86_min,
-        orientativa: d.sistema === 'Windows',
-        en_mi_distribucion:
+      onSome: ({ d, machine: equipo }) => ({
+        path: gamePath(equipo, d.nivel_x86, { apis, nivel_x86_min: game.value.nivel_x86_min }),
+        nivel_x86_min: game.value.nivel_x86_min,
+        approximate: d.sistema === 'Windows',
+        on_my_distribution:
           d.distribucion_id === null || d.distribucion === null
             ? null
-            : { nombre: d.distribucion, resumen: onDistribution(pruebas, d.distribucion_id, ahora) },
-        perfil: suggestProfile(
-          perfiles.flatMap((p) => (p.evaluacion === null ? [] : [{ ...p, evaluacion: p.evaluacion }])),
+            : { name: d.distribucion, summary: onDistribution(tests, d.distribucion_id, now) },
+        profile: suggestProfile(
+          profiles.flatMap((p) => (p.evaluation === null ? [] : [{ ...p, evaluation: p.evaluation }])),
           d,
         ),
       }),
     })
 
     return {
-      juego: { ...juego.value, apis },
-      ediciones,
-      resumen,
+      game: { ...game.value, apis },
+      editions,
+      summary,
       protondb,
-      ejemplo: pruebas.some((p) => p.ejemplo),
-      pendientes: pendientes.n,
-      perfiles,
-      causas,
-      diagnostico: Option.match(diagnostico, {
+      ejemplo: tests.some((p) => p.ejemplo),
+      pending: pending.n,
+      profiles,
+      causes,
+      diagnostic: Option.match(diagnostic, {
         onNone: () => null,
         onSome: (d) => ({ equipo: d.equipo, capturado_en: d.capturado_en, distribucion_id: d.distribucion_id }),
       }),

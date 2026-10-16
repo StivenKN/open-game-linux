@@ -1,11 +1,11 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Schema } from 'effect'
-import { equipoEnLinux } from '../server/gpu/capability.ts'
+import { machineOnLinux } from '../server/gpu/capability.ts'
 import { type DistroKey, screenDistros, type EvaluatedDistro } from './distros.ts'
 import { PciId } from './gpu.ts'
 
 const machine = (pci: string | null) =>
-  equipoEnLinux({ sistema: 'Windows', ram_mb: 8192, vram_mb: 2048, gpu_pci_id: pci === null ? null : Schema.decodeSync(PciId)(pci) })
+  machineOnLinux({ sistema: 'Windows', ram_mb: 8192, vram_mb: 2048, gpu_pci_id: pci === null ? null : Schema.decodeSync(PciId)(pci) })
 
 const summary = (pci: string | null, architecture = 'x86_64') =>
   screenDistros(machine(pci), architecture).map((d): [DistroKey, EvaluatedDistro['verdict'], EvaluatedDistro['objections']] => [d.key, d.verdict, d.objections])

@@ -55,7 +55,7 @@ issue at ["version_capa","id"]: Expected a string representing a finite number
 
 **Decision.** Keep `fromFormData(toCodecStringTree(S))` in `ui/useAction.ts`. The fallback (a controlled form object plus `decodeUnknownResult`) is not needed. The forms and schemas follow three rules.
 
-1. A nullable field posts `"null"` for "none". The profile select uses `<option value="null">Sin perfil</option>`. The FPS block posts a hidden `medicion=null` and disables it while the measurement inputs are on.
+1. A nullable field posts `"null"` for "none". The profile select uses `<option value="null">Sin profile</option>`. The FPS block posts a hidden `medicion=null` and disables it while the measurement inputs are on.
 2. An array that a form can leave empty takes `Schema.withDecodingDefaultKey(Effect.succeed([]))` in its input schema. `NewReport.fallos` needs it (lane B, U2). The server fn validator still accepts an explicit array.
 3. The 8.7 filter reports at path `[]`, not `['fallos']`. The sketch's `TODO(U2)` to attach it to `fallos` is required, or the message has no field to land on.
 

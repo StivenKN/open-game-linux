@@ -3,15 +3,15 @@ import { SqlClient, SqlSchema } from 'effect/sql'
 import type { CatalogFilter } from '../../domain/contributions.ts'
 import { type CompatibilityStatus, summarize } from '../../domain/compatibility.ts'
 import { Game, Launcher } from '../../domain/tables.ts'
-import { unaFila } from '../rows.ts'
-import { pruebasAprobadas } from './game.ts'
-import { resumenesProtonDb } from './protondb.ts'
+import { oneRow } from '../rows.ts'
+import { approvedTests } from './game.ts'
+import { protonDbSummaries } from './protondb.ts'
 
-const FilaJuego = Game.mapFields(Struct.pick(['id', 'titulo'])).mapFields(
+const GameRow = Game.mapFields(Struct.pick(['id', 'titulo'])).mapFields(
   Struct.assign({ lanzadores: Schema.Array(Launcher.fields.nombre), pendientes: Schema.Int }),
 )
 
-const Contadores = Schema.Struct({
+const Counters = Schema.Struct({
   juegos_verificados: Schema.Int,
   reportes_aprobados: Schema.Int,
   perfiles_aprobados: Schema.Int,
@@ -20,16 +20,16 @@ const Contadores = Schema.Struct({
 })
 
 /** ILIKE treats % and _ as wildcards; a title search means them literally. */
-const literalLike = (texto: string) => `%${texto.replace(/[\\%_]/g, '\\$&')}%`
+const literalLike = (text: string) => `%${text.replace(/[\\%_]/g, '\\$&')}%`
 
-export const catalogo = (filtro: CatalogFilter) =>
+export const catalog = (filter: CatalogFilter) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const q = filtro.q?.trim() ?? ''
+    const q = filter.q?.trim() ?? ''
 
-    const filas = yield* SqlSchema.findAll({
+    const rows = yield* SqlSchema.findAll({
       Request: Schema.Void,
-      Result: FilaJuego,
+      Result: GameRow,
       execute: () => sql`
         SELECT j.id, j.titulo,
                COALESCE(array_agg(l.nombre ORDER BY l.nombre) FILTER (WHERE l.id IS NOT NULL), '{}') AS lanzadores,
@@ -40,46 +40,46 @@ export const catalogo = (filtro: CatalogFilter) =>
         LEFT JOIN lanzador l ON l.id = e.lanzador_id
         WHERE ${sql.and([
           ...(q === '' ? [] : [sql`j.titulo ILIKE ${literalLike(q)}`]),
-          ...(filtro.lanzador === undefined
+          ...(filter.lanzador === undefined
             ? []
-            : [sql`EXISTS (SELECT 1 FROM edicion_juego x WHERE x.juego_id = j.id AND x.lanzador_id = ${filtro.lanzador})`]),
+            : [sql`EXISTS (SELECT 1 FROM edicion_juego x WHERE x.juego_id = j.id AND x.lanzador_id = ${filter.lanzador})`]),
         ])}
         GROUP BY j.id
         ORDER BY j.titulo`,
     })(undefined)
 
-    const ahora = new Date(yield* Clock.currentTimeMillis)
-    const todas = yield* pruebasAprobadas(null)
-    const protondb = new Map((yield* resumenesProtonDb(null)).map((r) => [r.juego_id, r]))
-    const candidatos = filas
+    const now = new Date(yield* Clock.currentTimeMillis)
+    const allTests = yield* approvedTests(null)
+    const protondb = new Map((yield* protonDbSummaries(null)).map((r) => [r.juego_id, r]))
+    const candidates = rows
       .map((j) => {
-        const pruebas = todas.filter((p) => p.juego_id === j.id)
-        const { status: estado, test_count: aprobados, no_recent_confirmation: sin_confirmacion_reciente, last_tested: ultima_prueba, failures: fallos } = summarize(pruebas, ahora)
-        const externo = protondb.get(j.id)
+        const tests = allTests.filter((p) => p.juego_id === j.id)
+        const { status, test_count, no_recent_confirmation, last_tested, failures } = summarize(tests, now)
+        const external = protondb.get(j.id)
         return {
           ...j,
-          resumen: { estado, pruebas: aprobados, sin_confirmacion_reciente, ultima_prueba, fallos },
-          ejemplo: pruebas.some((p) => p.ejemplo),
-          protondb: externo ? Struct.pick(externo, ['recientes', 'recientes_funcionan', 'reportes_total']) : null,
+          summary: { status, test_count, no_recent_confirmation, last_tested, failures },
+          ejemplo: tests.some((p) => p.ejemplo),
+          protondb: external ? Struct.pick(external, ['recientes', 'recientes_funcionan', 'reportes_total']) : null,
         }
       })
-      .filter((j) => filtro.sin_anti_cheat !== true || !j.resumen.fallos.some((f) => f.code === 'anti_cheat'))
-    const juegos = filtro.estado === undefined ? candidatos : candidatos.filter((j) => j.resumen.estado === filtro.estado)
+      .filter((j) => filter.sin_anti_cheat !== true || !j.summary.failures.some((f) => f.code === 'anti_cheat'))
+    const games = filter.estado === undefined ? candidates : candidates.filter((j) => j.summary.status === filter.estado)
 
     // Counted before the estado filter, so each status filter shows how many games it would list.
-    const cuantos = (estado: CompatibilityStatus) => candidatos.filter((j) => j.resumen.estado === estado).length
-    const por_estado = {
-      sin_evidencia: cuantos('sin_evidencia'),
-      funciona: cuantos('funciona'),
-      funciona_con_ajustes: cuantos('funciona_con_ajustes'),
-      no_inicia: cuantos('no_inicia'),
-      falla_en_ejecucion: cuantos('falla_en_ejecucion'),
-      resultados_variables: cuantos('resultados_variables'),
+    const countWith = (status: CompatibilityStatus) => candidates.filter((j) => j.summary.status === status).length
+    const by_status = {
+      sin_evidencia: countWith('sin_evidencia'),
+      funciona: countWith('funciona'),
+      funciona_con_ajustes: countWith('funciona_con_ajustes'),
+      no_inicia: countWith('no_inicia'),
+      falla_en_ejecucion: countWith('falla_en_ejecucion'),
+      resultados_variables: countWith('resultados_variables'),
     } satisfies Record<CompatibilityStatus, number>
 
     // arreglos_upstream needs no demo filter: its writer refuses demo profiles.
-    const contadores = yield* unaFila(
-      Contadores,
+    const counters = yield* oneRow(
+      Counters,
       sql`
         SELECT count(DISTINCT e.juego_id)::int AS juegos_verificados,
                count(*)::int AS reportes_aprobados,
@@ -92,11 +92,11 @@ export const catalogo = (filtro: CatalogFilter) =>
         WHERE r.estado_revision = 'aprobado'`,
     )
 
-    const lanzadores = yield* SqlSchema.findAll({
+    const launchers = yield* SqlSchema.findAll({
       Request: Schema.Void,
       Result: Launcher.mapFields(Struct.pick(['id', 'nombre'])),
       execute: () => sql`SELECT id, nombre FROM lanzador ORDER BY nombre`,
     })(undefined)
 
-    return { juegos, por_estado, lanzadores, contadores }
+    return { games, by_status, launchers, counters }
   })

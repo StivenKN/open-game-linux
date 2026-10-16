@@ -2,19 +2,19 @@ import { createServerFn } from '@tanstack/react-start'
 import { Schema } from 'effect'
 import { CatalogFilter } from '../domain/contributions.ts'
 import { GameId, ProfileId } from '../domain/ids.ts'
-import { catalogo } from '../server/queries/catalog.ts'
-import { fichaJuego } from '../server/queries/game.ts'
-import { perfil } from '../server/queries/profile.ts'
-import { leer } from '../server/run.ts'
+import { catalog } from '../server/queries/catalog.ts'
+import { gamePage } from '../server/queries/game.ts'
+import { profile } from '../server/queries/profile.ts'
+import { runRead } from '../server/run.ts'
 
-export const catalogoFn = createServerFn({ method: 'GET' })
+export const catalogFn = createServerFn({ method: 'GET' })
   .validator(Schema.toStandardSchemaV1(CatalogFilter))
-  .handler(({ data }) => leer(catalogo(data)))
+  .handler(({ data }) => runRead(catalog(data)))
 
-export const fichaJuegoFn = createServerFn({ method: 'GET' })
+export const gamePageFn = createServerFn({ method: 'GET' })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ juegoId: GameId })))
-  .handler(({ data }) => leer(fichaJuego(data.juegoId)))
+  .handler(({ data }) => runRead(gamePage(data.juegoId)))
 
-export const perfilFn = createServerFn({ method: 'GET' })
+export const profileFn = createServerFn({ method: 'GET' })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ perfilId: ProfileId })))
-  .handler(({ data }) => leer(perfil(data.perfilId)))
+  .handler(({ data }) => runRead(profile(data.perfilId)))

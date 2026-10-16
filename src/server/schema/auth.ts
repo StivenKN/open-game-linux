@@ -1,7 +1,7 @@
 import type { BetterAuthOptions } from 'better-auth'
 import type { Role } from '../../domain/review.ts'
 
-export const esquemaAuth = {
+export const authSchema = {
   user: {
     modelName: 'usuario',
     fields: { name: 'alias', email: 'correo', emailVerified: 'correo_verificado', createdAt: 'creado_en', updatedAt: 'actualizado_en' },

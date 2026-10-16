@@ -3,7 +3,7 @@ import { Schema } from 'effect'
 import type { ReactNode } from 'react'
 import { invalidTransitionNotice, type ApprovalBlocked, type Encoded, type RuleViolated, type InvalidTransition } from '../domain/errors.ts'
 import { ContributionRef, Decision, ContributionType } from '../domain/review.ts'
-import { colaFn, decidirFn } from '../fns/review.ts'
+import { queueFn, decideFn } from '../fns/review.ts'
 import { Chip, Insignia } from '../ui/Badge.tsx'
 import { ErrorCampo } from '../ui/FieldError.tsx'
 import { contar, fecha, fps, momento } from '../ui/format.ts'
@@ -18,19 +18,19 @@ export const Route = createFileRoute('/revision')({
     if (context.visitante.rol === 'usuario') throw notFound()
   },
   loaderDeps: ({ search }) => ({ tipo: search.tipo ?? 'reporte' }),
-  loader: ({ deps }) => colaFn({ data: deps }),
+  loader: ({ deps }) => queueFn({ data: deps }),
   head: () => ({ meta: [{ title: 'Revisión · OpenGame Linux' }] }),
   component: Revision,
 })
 
 const pestanas = { reporte: 'Reportes', perfil: 'Perfiles', solucion: 'Soluciones' } as const satisfies Record<ContributionType, string>
 
-type Cola = Awaited<ReturnType<typeof colaFn>>
-type ElementoDe<T extends Cola['tipo']> = Extract<Cola, { tipo: T }>['elementos'][number]
+type Cola = Awaited<ReturnType<typeof queueFn>>
+type ElementoDe<T extends Cola['type']> = Extract<Cola, { type: T }>['items'][number]
 
 function Revision() {
   const cola = Route.useLoaderData()
-  const pendientes = cola.elementos.filter((e) => e.estado_revision === 'pendiente').length
+  const pendientes = cola.items.filter((e) => e.estado_revision === 'pendiente').length
   return (
     <main className="envoltura">
       <h1>Revisión de aportes</h1>
@@ -39,29 +39,29 @@ function Revision() {
       </p>
       <nav aria-label="Tipo de aporte" className="fila pestanas">
         {ContributionType.literals.map((t) => (
-          <Link key={t} to="/revision" search={{ tipo: t }} aria-current={t === cola.tipo ? 'page' : undefined} className={t === cola.tipo ? 'boton' : 'boton-secundario'}>
+          <Link key={t} to="/revision" search={{ tipo: t }} aria-current={t === cola.type ? 'page' : undefined} className={t === cola.type ? 'boton' : 'boton-secundario'}>
             {pestanas[t]}
           </Link>
         ))}
       </nav>
       <p className="pequeno tenue">{contar(pendientes, 'pendiente', 'pendientes')}</p>
-      {cola.elementos.length === 0 && <p className="tarjeta">No hay {pestanas[cola.tipo].toLowerCase()} pendientes ni aprobados.</p>}
+      {cola.items.length === 0 && <p className="tarjeta">No hay {pestanas[cola.type].toLowerCase()} pendientes ni aprobados.</p>}
       {/* Keyed by state too, so a decided row remounts with an empty form instead of keeping the old motivo. */}
       <div className="pila">
-        {cola.tipo === 'reporte' &&
-          cola.elementos.map((e) => (
+        {cola.type === 'reporte' &&
+          cola.items.map((e) => (
             <Elemento key={`${e.id}-${e.estado_revision}`} refAporte={{ _tag: 'reporte', id: e.id }} elemento={e}>
               <DetalleReporte e={e} />
             </Elemento>
           ))}
-        {cola.tipo === 'perfil' &&
-          cola.elementos.map((e) => (
+        {cola.type === 'perfil' &&
+          cola.items.map((e) => (
             <Elemento key={`${e.id}-${e.estado_revision}`} refAporte={{ _tag: 'perfil', id: e.id }} elemento={e}>
               <DetallePerfil e={e} />
             </Elemento>
           ))}
-        {cola.tipo === 'solucion' &&
-          cola.elementos.map((e) => (
+        {cola.type === 'solucion' &&
+          cola.items.map((e) => (
             <Elemento key={`${e.id}-${e.estado_revision}`} refAporte={{ _tag: 'solucion', id: e.id }} elemento={e}>
               <DetalleSolucion e={e} />
             </Elemento>
@@ -73,9 +73,9 @@ function Revision() {
 
 const FormDecision = Schema.Struct({ ref: ContributionRef, decision: Decision })
 
-function Elemento({ refAporte, elemento, children }: { refAporte: ContributionRef; elemento: ElementoDe<Cola['tipo']>; children: ReactNode }) {
+function Elemento({ refAporte, elemento, children }: { refAporte: ContributionRef; elemento: ElementoDe<Cola['type']>; children: ReactNode }) {
   const router = useRouter()
-  const r = useAccion(FormDecision, decidirFn, {
+  const r = useAccion(FormDecision, decideFn, {
     alFallar: (f: Encoded<RuleViolated | InvalidTransition | ApprovalBlocked>): Errores => {
       switch (f._tag) {
         case 'ReglaIncumplida':
@@ -103,9 +103,9 @@ function Elemento({ refAporte, elemento, children }: { refAporte: ContributionRe
         {elemento.demo && <span className="sello">Datos de ejemplo</span>}
       </header>
       {children}
-      {elemento.bloqueos.length > 0 && (
+      {elemento.blockers.length > 0 && (
         <ul className="nota pequeno" data-tono="amarillo" aria-label="Por qué no se puede aprobar todavía">
-          {elemento.bloqueos.map((b) => (
+          {elemento.blockers.map((b) => (
             <li key={b}>{bloqueo[b]}</li>
           ))}
         </ul>
@@ -140,7 +140,7 @@ function Elemento({ refAporte, elemento, children }: { refAporte: ContributionRe
           <div className="fila">
             {pendiente ? (
               <>
-                <button type="submit" name="decision[_tag]" value="Aprobar" disabled={r.enviando || elemento.bloqueos.length > 0}>
+                <button type="submit" name="decision[_tag]" value="Aprobar" disabled={r.enviando || elemento.blockers.length > 0}>
                   Aprobar
                 </button>
                 <button type="submit" name="decision[_tag]" value="Rechazar" className="boton-secundario" disabled={r.enviando}>

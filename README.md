@@ -160,7 +160,7 @@ The parity harness proves that a change leaves everything a player sees and send
    pnpm parity compare --base abde5bf
    ```
 
-`--head` takes a git ref or a directory, and the default is the current directory. `--base` takes the same values. Each side runs in a temporary copy, with its own database named `opengame_parity_*` and its own port. The harness deletes both when the run ends.
+`--head` takes a git ref or a directory, and the default is the current directory. `--seed` takes the same values. Each side runs in a temporary copy, with its own database named `opengame_parity_*` and its own port. The harness deletes both when the run ends.
 
 Each side seeds its database with a frozen clock and seeded randomness. Then `demo_ana` files a report and `demo_revisor` approves it. The harness requests every route in `scripts/parity/capture.ts` as an anonymous visitor, as `demo_ana` and as `demo_revisor`. It saves the following:
 
@@ -187,7 +187,7 @@ The comparison passes only when every check below passes:
 - The sign-in JSON is byte-identical after the harness replaces each `token` or `secret` value with its length. A token depends on how many random values the app drew before sign-in.
 - Every other file is byte-identical.
 
-The command prints one block for each difference, then one line like `parity: 0 differences across 506 captures`. The next line, `harness: <hash>`, is the SHA-256 of the files in `scripts/parity/`, so a reviewer can see when a change edits the harness. It exits with 1 if it finds a difference. The output directory keeps both captures, the logs, and a diff image for each screenshot that differs. To capture a side once and reuse it, run `pnpm parity capture --ref <ref> --out <dir>`, then pass that directory as `--base` or `--head`.
+The command prints one block for each difference, then one line like `parity: 0 differences across 506 captures`. The next line, `harness: <hash>`, is the SHA-256 of the files in `scripts/parity/`, so a reviewer can see when a change edits the harness. It exits with 1 if it finds a difference. The output directory keeps both captures, the logs, and a diff image for each screenshot that differs. To capture a side once and reuse it, run `pnpm parity capture --ref <ref> --out <dir>`, then pass that directory as `--seed` or `--head`.
 
 ## Production
 

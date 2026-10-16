@@ -3,7 +3,7 @@ import { Option, Schema } from 'effect'
 import { useEffect, useState } from 'react'
 import { TargetMachine } from '../../domain/contributions.ts'
 import { Checkbox, type DiagnosticId } from '../../domain/ids.ts'
-import { evaluarDiagnosticoFn, guardarDiagnosticoFn, misEquiposFn } from '../../fns/diagnostic.ts'
+import { evaluateDiagnosticFn, saveDiagnosticFn, myMachinesFn } from '../../fns/diagnostic.ts'
 import { Distribuciones } from '../../ui/diagnostics/Distributions.tsx'
 import { JuegosDelEquipo } from '../../ui/diagnostics/MachineGames.tsx'
 import { ResumenCaptura } from '../../ui/diagnostics/CaptureSummary.tsx'
@@ -17,11 +17,11 @@ import { type Entrada, guardarPendiente, leerPendiente, olvidarPendiente } from 
 export const Route = createFileRoute('/diagnostico/importar')({
   ssr: false,
   head: () => ({ meta: [{ title: 'Tu diagnóstico · OpenGame Linux' }] }),
-  loader: () => misEquiposFn(),
+  loader: () => myMachinesFn(),
   component: Importar,
 })
 
-type Evaluado = Awaited<ReturnType<typeof evaluarDiagnosticoFn>>
+type Evaluado = Awaited<ReturnType<typeof evaluateDiagnosticFn>>
 
 const tomarFragmento = () => {
   const { hash, pathname, search } = window.location
@@ -39,7 +39,7 @@ function Importar() {
     if (Option.isNone(pendiente)) return setEstado('vacio')
     const entrada = pendiente.value
     setEstado({ entrada, evaluado: null })
-    void evaluarDiagnosticoFn({ data: entrada }).then((evaluado) => setEstado({ entrada, evaluado }))
+    void evaluateDiagnosticFn({ data: entrada }).then((evaluado) => setEstado({ entrada, evaluado }))
   }, [])
 
   if (estado === 'vacio')
@@ -76,11 +76,11 @@ function Importar() {
         Esta evaluación no se ha guardado. Compara RAM, VRAM y Vulkan con el perfil aprobado sugerido para cada juego; no
         predice FPS.
       </p>
-      <ResumenCaptura captura={r.value.captura} />
-      <TarjetaGraficaEnLinux equipo={r.value.equipo} pci={r.value.captura.gpu_pci_id} />
-      <Guardar entrada={estado.entrada} juegosEnBiblioteca={r.value.biblioteca?.total ?? 0} />
-      <JuegosDelEquipo filas={r.value.matriz} biblioteca={r.value.biblioteca} orientativa={r.value.captura.sistema === 'Windows'} />
-      <Distribuciones {...r.value.distribuciones} />
+      <ResumenCaptura captura={r.value.capture} />
+      <TarjetaGraficaEnLinux equipo={r.value.machine} pci={r.value.capture.gpu_pci_id} />
+      <Guardar entrada={estado.entrada} juegosEnBiblioteca={r.value.library?.total ?? 0} />
+      <JuegosDelEquipo filas={r.value.matrix} biblioteca={r.value.library} orientativa={r.value.capture.sistema === 'Windows'} />
+      <Distribuciones {...r.value.distributions} />
     </main>
   )
 }
@@ -93,7 +93,7 @@ function Guardar({ entrada, juegosEnBiblioteca }: { entrada: Entrada; juegosEnBi
   const equipos = Route.useLoaderData()
   const [destino, setDestino] = useState(() => (equipos[0] === undefined ? 'nuevo' : String(equipos[0].id)))
   const [guardado, setGuardado] = useState<Guardado | null>(null)
-  const r = useAccion(Destino, ({ data }) => guardarDiagnosticoFn({ data: { equipo: data.equipo, con_biblioteca: data.con_biblioteca, entrada } }), {
+  const r = useAccion(Destino, ({ data }) => saveDiagnosticFn({ data: { equipo: data.equipo, con_biblioteca: data.con_biblioteca, entrada } }), {
     alFallar: (f) =>
       f._tag === 'ReglaIncumplida'
         ? { 'equipo[id]': 'Ese equipo no es tuyo. Elige uno de tu lista.' }

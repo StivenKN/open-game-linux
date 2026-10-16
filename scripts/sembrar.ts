@@ -7,12 +7,12 @@ import { UserId } from '../src/domain/ids.ts'
 import { type GraphicsApi, requiresFailure, type LayerFamily, type Outcome } from '../src/domain/literals.ts'
 import type { X86Level } from '../src/domain/platform.ts'
 import { ContributionRef, Decision, type Role } from '../src/domain/review.ts'
-import { registrarReporte, registrarSolucion } from '../src/server/commands/contributions.ts'
-import { registrarDiagnostico } from '../src/server/commands/diagnostic.ts'
-import { VERSION_ESQUEMA } from '../src/server/diagnostics/payload.ts'
-import { decidir } from '../src/server/commands/review.ts'
-import { asignarRol, auth, dominioDemo, Visitante } from '../src/server/auth.ts'
-import { filas, unaFila } from '../src/server/rows.ts'
+import { submitReport, submitSolution } from '../src/server/commands/contributions.ts'
+import { submitDiagnostic } from '../src/server/commands/diagnostic.ts'
+import { SCHEMA_VERSION } from '../src/server/diagnostics/payload.ts'
+import { decide } from '../src/server/commands/review.ts'
+import { assignRole, auth, demoDomain, Visitor } from '../src/server/auth.ts'
+import { rows, oneRow } from '../src/server/rows.ts'
 import { PgLive } from '../src/server/runtime.ts'
 
 const contrasenaDemo = 'opengame-demo'
@@ -24,7 +24,7 @@ const cuentas = {
   demo_bruno: 'usuario',
 } as const satisfies Record<string, Role>
 type Cuenta = keyof typeof cuentas
-const correoDe = (alias: Cuenta) => `${alias}@${dominioDemo}`
+const correoDe = (alias: Cuenta) => `${alias}@${demoDomain}`
 
 const lanzadores = {
   steam: { nombre: STEAM_LAUNCHER, url_oficial: 'https://store.steampowered.com' },
@@ -503,9 +503,9 @@ const programa = Effect.gen(function* () {
   const asegurar = (tabla: string, clave: Readonly<Record<string, Valor>>, resto: Readonly<Record<string, Valor>> = {}) =>
     Effect.gen(function* () {
       const donde = sql.and(Object.entries(clave).map(([c, v]) => sql`${sql(c)} IS NOT DISTINCT FROM ${v}`))
-      const [fila] = yield* filas(ConId, sql`SELECT id FROM ${sql(tabla)} WHERE ${donde}`)
+      const [fila] = yield* rows(ConId, sql`SELECT id FROM ${sql(tabla)} WHERE ${donde}`)
       if (fila !== undefined) return { id: fila.id, nuevo: false }
-      const creada = yield* unaFila(ConId, sql`INSERT INTO ${sql(tabla)} ${sql.insert({ ...clave, ...resto })} RETURNING id`)
+      const creada = yield* oneRow(ConId, sql`INSERT INTO ${sql(tabla)} ${sql.insert({ ...clave, ...resto })} RETURNING id`)
       contar(tabla)
       return { id: creada.id, nuevo: true }
     })
@@ -517,11 +517,11 @@ const programa = Effect.gen(function* () {
   const usuario = new Map<Cuenta, string>()
   for (const [alias, rol] of Record.toEntries(cuentas)) {
     const correo = correoDe(alias)
-    const [existente] = yield* filas(ConIdTexto, sql`SELECT id FROM usuario WHERE correo = ${correo}`)
+    const [existente] = yield* rows(ConIdTexto, sql`SELECT id FROM usuario WHERE correo = ${correo}`)
     if (existente === undefined) contar('usuario')
     const id =
       existente?.id ?? (yield* Effect.promise(() => auth.api.signUpEmail({ body: { name: alias, email: correo, password: contrasenaDemo } }))).user.id
-    if ((yield* asignarRol(correo, rol)).cambio) contar('usuario.rol')
+    if ((yield* assignRole(correo, rol)).changed) contar('usuario.rol')
     usuario.set(alias, id)
   }
 
@@ -611,7 +611,7 @@ const programa = Effect.gen(function* () {
 
       const como = <A, E, R>(alias: Cuenta, programa: Effect.Effect<A, E, R>) =>
         Effect.flatMap(de(usuario, alias), (id) =>
-          Effect.provideService(programa, Visitante, Option.some({ id: Schema.decodeSync(UserId)(id), alias, rol: cuentas[alias] })),
+          Effect.provideService(programa, Visitor, Option.some({ id: Schema.decodeSync(UserId)(id), alias, rol: cuentas[alias] })),
         )
 
       const diagnosticoDe = new Map<keyof typeof equipos, number>()
@@ -619,7 +619,7 @@ const programa = Effect.gen(function* () {
         const { nombre, version } = distribuciones[eq.distribucion]
         // As detector output: the manual form drops the PCI id and the CPU level the verdicts read.
         const payload = {
-          version_esquema: VERSION_ESQUEMA,
+          version_esquema: SCHEMA_VERSION,
           sistema: 'Linux',
           distribucion: { nombre, version },
           arquitectura: 'x86_64',
@@ -631,7 +631,7 @@ const programa = Effect.gen(function* () {
           equipo: { _tag: 'nuevo', alias: eq.alias },
           entrada: { _tag: 'detector', texto: JSON.stringify(payload) },
         })
-        const { id, nuevo } = yield* como(eq.dueno, registrarDiagnostico(guardar))
+        const { id, nuevo } = yield* como(eq.dueno, submitDiagnostic(guardar))
         if (nuevo) contar('diagnostico')
         diagnosticoDe.set(k, id)
       }
@@ -641,7 +641,7 @@ const programa = Effect.gen(function* () {
         const eq = equipos[r.equipo]
         const diagnostico_id = yield* de(diagnosticoDe, r.equipo)
         const edicion_id = yield* de(edicion, r.edicion.join('/'))
-        const [existente] = yield* filas(
+        const [existente] = yield* rows(
           ConId,
           sql`SELECT id FROM reporte WHERE diagnostico_id = ${diagnostico_id} AND edicion_id = ${edicion_id} AND fecha_prueba = ${r.fecha_prueba}`,
         )
@@ -664,27 +664,27 @@ const programa = Effect.gen(function* () {
           fallos,
           observaciones: r.observaciones,
         })
-        reporteDe.set(i, (yield* como(eq.dueno, registrarReporte(nuevo))).id)
+        reporteDe.set(i, (yield* como(eq.dueno, submitReport(nuevo))).id)
         contar('reporte')
       }
 
       const sol = solucionDemo
       const reporte_id = yield* de(reporteDe, sol.reporte)
       const tipo_fallo_id = yield* de(tipoFallo, sol.tipoFallo)
-      const [solucionExistente] = yield* filas(
+      const [solucionExistente] = yield* rows(
         ConId,
         sql`SELECT id FROM solucion WHERE reporte_id = ${reporte_id} AND tipo_fallo_id = ${tipo_fallo_id} AND titulo = ${sol.titulo}`,
       )
       let solucion_id = solucionExistente?.id
       if (solucion_id === undefined) {
         const nueva = yield* Schema.decodeUnknownEffect(NewSolution)({ reporte_id, tipo_fallo_id, perfil_id: null, titulo: sol.titulo, instrucciones: sol.instrucciones })
-        solucion_id = (yield* como('demo_bruno', registrarSolucion(nueva))).id
+        solucion_id = (yield* como('demo_bruno', submitSolution(nueva))).id
         contar('solucion')
       }
 
       const aprobar = (ref: { _tag: ContributionRef['_tag']; id: number }, que: string) =>
         Effect.gen(function* () {
-          const { cambio } = yield* como('demo_revisor', decidir(yield* Schema.decodeUnknownEffect(ContributionRef)(ref), aprobacionDemo(que)))
+          const { changed: cambio } = yield* como('demo_revisor', decide(yield* Schema.decodeUnknownEffect(ContributionRef)(ref), aprobacionDemo(que)))
           if (cambio) contar(`aprobación de ${ref._tag}`)
         })
       for (const [i, r] of reportes.entries()) if (r.aprobar) yield* aprobar({ _tag: 'reporte', id: yield* de(reporteDe, i) }, 'Reporte')

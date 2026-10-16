@@ -17,10 +17,10 @@ TanStack Start 1.169 on Vite 8 serves React 19 with SSR. Effect 4.0.2 runs the s
 
 ## The core in five sentences
 
-1. Route loaders and `createServerFn` are the only server boundary. Each server fn is one line that calls `leer` (reads) or `accion` (UI-triggered calls, one transaction each) in `server/run.ts`.
+1. Route loaders and `createServerFn` are the only server boundary. Each server fn is one line that calls `runRead` (reads) or `runAction` (UI-triggered calls, one transaction each) in `server/run.ts`.
 2. Domain failures come back as a returned `Reply<A, E>` union, never as thrown errors, so the compiler checks that each form handles exactly the failures its program can produce. Not found, login and forbidden use the router's own `notFound()` and `redirect()`.
 3. One Effect Schema per concept serves the DB CHECK lists, row decoding, browser form decoding, server fn validation and search params. Page data types are inferred from the server programs. Only `Schema` ships to the browser, with no Effect runtime there.
-4. Nothing stores a verdict or a projection. `summarize` and `statusOf` compute compatibility from approved reports on each request. `equipoEnLinux` projects what the GPU can do on Linux from its stored PCI id, and `evaluate` gives exactly three outcomes with no FPS field.
+4. Nothing stores a verdict or a projection. `summarize` and `statusOf` compute compatibility from approved reports on each request. `machineOnLinux` projects what the GPU can do on Linux from its stored PCI id, and `evaluate` gives exactly three outcomes with no FPS field.
 5. Every 8.7/8.9/8.11 rule has one home. Row-local rules are DB constraints and three triggers. Cross-row rules live in `server/commands/contributions.ts` (single writer of contributions) and `server/commands/review.ts` (single writer of the review block). `src/boundaries.test.ts` fails the build on a second writer or a wrong import.
 
 ## Decisions settled by prototype
@@ -54,10 +54,10 @@ Three candidates ran in parallel with assigned shapes.
 | Fable | `InvalidTransition { de, a }` is its own failure class, not a `Rule` case. |
 | Sonnet | `Capture` is a union of Linux and Windows members. `ResultadoObservado` requires a `NonEmptyArray` of fallos for a failing result, replacing the filter with a TODO. |
 | Sonnet | The review CHECK is built from `formaPorEstado satisfies Record<ReviewStatus, string>`. That makes the separate `estado_revision IN (...)` CHECK redundant, so it goes. |
-| Sonnet | `test/ayudas/db.ts` (savepoint-based `restriccionDe`) and the `schema.test.ts` bodies that ran green on PostgreSQL 18.6 replace the sketch's `it.todo` list, renamed to the sketch's constraint names. A report's content is frozen from birth, so FPS rules are tested with INSERT. |
+| Sonnet | `test/ayudas/db.ts` (savepoint-based `constraintOf`) and the `schema.test.ts` bodies that ran green on PostgreSQL 18.6 replace the sketch's `it.todo` list, renamed to the sketch's constraint names. A report's content is frozen from birth, so FPS rules are tested with INSERT. |
 | Sonnet | `IncomparableProfile { mismatches: NonEmptyArray<Mismatch> }` with `{ de, esperado, observado }`, so the message can say "perfil para x86_64, tu diagnóstico es aarch64". |
 | Sonnet | `.oxlintrc.json` with `no-explicit-any`, `consistent-type-assertions: never` and `no-non-null-assertion`, inside `pnpm check`. |
-| Judge | Author ≠ reviewer gets one home, in `decidir`, for all three reviewable tables. The `*_sin_autoaprobacion` CHECKs go, because `reporte`'s author is only reachable through a join. |
+| Judge | Author ≠ reviewer gets one home, in `decide`, for all three reviewable tables. The `*_sin_autoaprobacion` CHECKs go, because `reporte`'s author is only reachable through a join. |
 | Judge | The detector route reads the script inside its handler, not at module scope, so its text stays out of the client chunk. |
 
 **Rejected.**
@@ -67,7 +67,7 @@ Three candidates ran in parallel with assigned shapes.
 - **Hand-written auth.** It is a security surface the team would own eight days before the defense.
 - **dependency-cruiser.** It does not support TypeScript 7.
 - **`bigserial` ids.** They add bigint friction to every URL and React key. Ids are `integer GENERATED ALWAYS AS IDENTITY`.
-- **Running `evaluate` in the browser for guests.** It is attractive, but the server already evaluates in a read-only `accion`, so there is one path for guests and users.
+- **Running `evaluate` in the browser for guests.** It is attractive, but the server already evaluates in a read-only `runAction`, so there is one path for guests and users.
 
 **Known double homes, kept on purpose.** The FPS context rule is both the `FpsMeasurement` input type (for field errors before a request) and the CHECK `reporte_fps_con_contexto` (the enforcement). "Solo revisores publican guías" has no code home because there is no guide authoring UI. Guides come from seeders, and the defense deck says so.
 

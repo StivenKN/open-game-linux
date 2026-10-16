@@ -20,8 +20,8 @@ export function JuegosDelEquipo({
         <MatrizDiagnostico filas={filas} orientativa={orientativa} />
       </>
     )
-  const propias = filas.filter((f) => f.en_biblioteca)
-  const resto = filas.filter((f) => !f.en_biblioteca)
+  const propias = filas.filter((f) => f.in_library)
+  const resto = filas.filter((f) => !f.in_library)
   const { unknown: desconocidos } = biblioteca
   return (
     <>

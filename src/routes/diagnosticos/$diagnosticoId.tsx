@@ -1,6 +1,6 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { DiagnosticId } from '../../domain/ids.ts'
-import { miDiagnosticoFn } from '../../fns/diagnostic.ts'
+import { myDiagnosticFn } from '../../fns/diagnostic.ts'
 import { Distribuciones } from '../../ui/diagnostics/Distributions.tsx'
 import { JuegosDelEquipo } from '../../ui/diagnostics/MachineGames.tsx'
 import { ResumenCaptura } from '../../ui/diagnostics/CaptureSummary.tsx'
@@ -16,7 +16,7 @@ export const Route = createFileRoute('/diagnosticos/$diagnosticoId')({
   beforeLoad: ({ context, location }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
   },
-  loader: ({ params }) => miDiagnosticoFn({ data: { id: params.diagnosticoId } }),
+  loader: ({ params }) => myDiagnosticFn({ data: { id: params.diagnosticoId } }),
   component: DiagnosticoGuardado,
 })
 
@@ -29,10 +29,10 @@ function DiagnosticoGuardado() {
       </p>
       <h1>Diagnóstico de «{d.alias}»</h1>
       <p className="tenue">Solo tú ves este diagnóstico. Los reportes que publiques mostrarán su contexto técnico, no tu correo.</p>
-      <ResumenCaptura captura={d.captura} />
-      <TarjetaGraficaEnLinux equipo={d.equipo} pci={d.captura.gpu_pci_id} />
-      <JuegosDelEquipo filas={d.matriz} biblioteca={d.biblioteca} orientativa={d.captura.sistema === 'Windows'} />
-      <Distribuciones {...d.distribuciones} />
+      <ResumenCaptura captura={d.capture} />
+      <TarjetaGraficaEnLinux equipo={d.machine} pci={d.capture.gpu_pci_id} />
+      <JuegosDelEquipo filas={d.matrix} biblioteca={d.library} orientativa={d.capture.sistema === 'Windows'} />
+      <Distribuciones {...d.distributions} />
     </main>
   )
 }

@@ -3,7 +3,7 @@ import { Effect, Schema, SchemaTransformation, Struct } from 'effect'
 import type { FormEvent, ReactNode } from 'react'
 import { CatalogFilter } from '../domain/contributions.ts'
 import { CompatibilityStatus } from '../domain/compatibility.ts'
-import { catalogoFn } from '../fns/catalog.ts'
+import { catalogFn } from '../fns/catalog.ts'
 import { ChipsFallos } from '../ui/compatibility/FailureChips.tsx'
 import { contar, fecha } from '../ui/format.ts'
 import { Portada } from '../ui/Cover.tsx'
@@ -29,7 +29,7 @@ export const Route = createFileRoute('/')({
   // router-core keeps raw query keys that validateSearch dropped in `search`, so the loader and the page
   // read this cleaned copy instead.
   loaderDeps: ({ search }) => limpiar(search),
-  loader: ({ deps }) => catalogoFn({ data: deps }),
+  loader: ({ deps }) => catalogFn({ data: deps }),
   head: () => ({ meta: [{ title: 'Catálogo · OpenGame Linux' }] }),
   component: Catalogo,
 })
@@ -48,11 +48,11 @@ const soloIgual = { exact: true } as const
 const posiciones = ['centro', 'izquierda', 'derecha'] as const
 
 function Catalogo() {
-  const { juegos, por_estado, lanzadores, contadores } = Route.useLoaderData()
+  const { games: juegos, by_status: por_estado, launchers: lanzadores, counters: contadores } = Route.useLoaderData()
   const filtro = Route.useLoaderDeps()
   const navigate = useNavigate({ from: '/' })
   const filtrado = Object.keys(filtro).length > 0
-  const destacados = [...juegos].sort((a, b) => b.resumen.pruebas - a.resumen.pruebas).slice(0, posiciones.length)
+  const destacados = [...juegos].sort((a, b) => b.summary.test_count - a.summary.test_count).slice(0, posiciones.length)
   const activos = [
     filtro.q === undefined ? undefined : `«${filtro.q}»`,
     filtro.estado === undefined ? undefined : estadoCompatibilidad[filtro.estado].texto,
@@ -112,7 +112,7 @@ function Catalogo() {
         <div className="abanico" aria-hidden="true">
           {destacados.map((j, i) => (
             <div key={j.id} className="abanico-carta" data-posicion={posiciones[i]}>
-              <Portada titulo={j.titulo} estado={j.resumen.estado} ejemplo={j.ejemplo} />
+              <Portada titulo={j.titulo} estado={j.summary.status} ejemplo={j.ejemplo} />
             </div>
           ))}
         </div>
@@ -195,15 +195,15 @@ function Catalogo() {
                 <li key={j.id} className="juego">
                   <Link to="/juegos/$juegoId" params={{ juegoId: j.id }} className="juego-enlace">
                     <span className="juego-nombre">{j.titulo}</span>
-                    <Portada titulo={j.titulo} estado={j.resumen.estado} ejemplo={j.ejemplo} />
+                    <Portada titulo={j.titulo} estado={j.summary.status} ejemplo={j.ejemplo} />
                   </Link>
                   <p className="juego-meta">
                     <span className="juego-lanzadores">{j.lanzadores.join(', ')}</span>
                     <br />
-                    {j.resumen.ultima_prueba
-                      ? `${contar(j.resumen.pruebas, 'reporte aprobado', 'reportes aprobados')} · última prueba ${fecha(j.resumen.ultima_prueba)}`
+                    {j.summary.last_tested
+                      ? `${contar(j.summary.test_count, 'reporte aprobado', 'reportes aprobados')} · última prueba ${fecha(j.summary.last_tested)}`
                       : 'Nadie ha aprobado una prueba todavía'}
-                    {j.resumen.sin_confirmacion_reciente && (
+                    {j.summary.no_recent_confirmation && (
                       <>
                         <br />
                         Sin confirmación en el último año
@@ -217,7 +217,7 @@ function Catalogo() {
                     )}
                   </p>
                   {j.protondb && <LineaProtonDb resumen={j.protondb} />}
-                  {j.resumen.fallos.length > 0 && <ChipsFallos fallos={j.resumen.fallos} />}
+                  {j.summary.failures.length > 0 && <ChipsFallos fallos={j.summary.failures} />}
                 </li>
               ))}
             </ul>

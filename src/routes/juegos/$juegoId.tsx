@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { GameId } from '../../domain/ids.ts'
-import { fichaJuegoFn } from '../../fns/catalog.ts'
+import { gamePageFn } from '../../fns/catalog.ts'
 import { EstadoJuego } from '../../ui/compatibility/GameStatus.tsx'
 import { MatrizEntornos } from '../../ui/compatibility/EnvironmentMatrix.tsx'
 import { VeredictoParaMi } from '../../ui/compatibility/VerdictForMe.tsx'
@@ -16,13 +16,13 @@ const juegoId = idDeRuta(GameId)
 
 export const Route = createFileRoute('/juegos/$juegoId')({
   params: { parse: (p) => ({ juegoId: juegoId(p.juegoId) }), stringify: (p) => ({ juegoId: String(p.juegoId) }) },
-  loader: ({ params }) => fichaJuegoFn({ data: params }),
-  head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.juego.titulo} · OpenGame Linux` : 'OpenGame Linux' }] }),
+  loader: ({ params }) => gamePageFn({ data: params }),
+  head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.game.titulo} · OpenGame Linux` : 'OpenGame Linux' }] }),
   component: Ficha,
 })
 
 function Ficha() {
-  const { juego, ediciones, resumen, protondb, ejemplo, pendientes, perfiles, causas, diagnostico, personal } = Route.useLoaderData()
+  const { game: juego, editions: ediciones, summary: resumen, protondb, ejemplo, pending: pendientes, profiles: perfiles, causes: causas, diagnostic: diagnostico, personal } = Route.useLoaderData()
   const reportar = (
     <Link to="/juegos/$juegoId/reportar" params={{ juegoId: juego.id }} className="boton">
       Reportar un resultado
@@ -102,10 +102,10 @@ function Ficha() {
                   {p.estado_revision === 'pendiente' ? (
                     <p className="pequeno tenue">Aún no está aprobado. Puedes probarlo: tu reporte aporta la evidencia que su aprobación necesita.</p>
                   ) : (
-                    p.evaluacion && (
+                    p.evaluation && (
                       <div className="fila pequeno">
                         <span>Tu equipo:</span>
-                        <Insignia etiqueta={veredictoRequisitos[p.evaluacion.verdict]} forma="punteado" />
+                        <Insignia etiqueta={veredictoRequisitos[p.evaluation.verdict]} forma="punteado" />
                       </div>
                     )
                   )}
@@ -130,10 +130,10 @@ function Ficha() {
                       <span className="pequeno tenue">{contar(c.reports, 'reporte aprobado', 'reportes aprobados')}</span>
                     </div>
                     {c.descripcion && <p>{c.descripcion}</p>}
-                    {c.soluciones.length === 0 ? (
+                    {c.solutions.length === 0 ? (
                       <p className="pequeno tenue">Sin soluciones verificadas todavía.</p>
                     ) : (
-                      c.soluciones.map((s) => (
+                      c.solutions.map((s) => (
                         <div key={s.id} className="solucion pila">
                           <div className="fila">
                             <b>{s.titulo}</b>
@@ -147,12 +147,12 @@ function Ficha() {
                         </div>
                       ))
                     )}
-                    {c.responder !== null && (
+                    {c.reply !== null && (
                       <p className="pequeno">
                         <Link
                           to="/reportes/$reporteId/solucion"
-                          params={{ reporteId: c.responder.reporte_id }}
-                          search={{ tipoFallo: c.responder.tipo_fallo_id }}
+                          params={{ reporteId: c.reply.reporte_id }}
+                          search={{ tipoFallo: c.reply.tipo_fallo_id }}
                         >
                           Proponer una solución
                         </Link>

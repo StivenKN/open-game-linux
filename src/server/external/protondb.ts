@@ -5,121 +5,121 @@ import { SqlClient } from 'effect/sql'
 import type { EditionId } from '../../domain/ids.ts'
 import { parseReport, type ProtonDbReport, summarizeProtonDb } from '../../domain/protondb.ts'
 import { GameEdition } from '../../domain/tables.ts'
-import { filas, unaFila } from '../rows.ts'
+import { rows, oneRow } from '../rows.ts'
 
-export class ExportacionInvalida extends Schema.TaggedError<ExportacionInvalida>()('ExportacionInvalida', { motivo: Schema.String }) {}
+export class InvalidExport extends Schema.TaggedError<InvalidExport>()('ExportacionInvalida', { reason: Schema.String }) {}
 
-export type ResultadoImportacion = {
-  readonly leidos: number
-  readonly descartados: number
-  readonly coincidentes: number
-  readonly guardados: number
-  readonly exportado_en: Date
+export type ImportResult = {
+  readonly read: number
+  readonly discarded: number
+  readonly matched: number
+  readonly saved: number
+  readonly exported_at: Date
 }
 
 // A record is about 1.3 kB, but one in the October 2026 export carries 1 MB of notes. Past this limit an
 // element is scanned without being kept, so a broken file cannot grow the buffer without bound.
-const LIMITE_ELEMENTO = 4 * 1024 * 1024
+const ELEMENT_LIMIT = 4 * 1024 * 1024
 
-const COMILLA = 0x22
-const BARRA = 0x5c
-const COMA = 0x2c
-const ABRE_CORCHETE = 0x5b
-const CIERRA_CORCHETE = 0x5d
-const ABRE_LLAVE = 0x7b
-const CIERRA_LLAVE = 0x7d
+const QUOTE = 0x22
+const BACKSLASH = 0x5c
+const COMMA = 0x2c
+const OPEN_BRACKET = 0x5b
+const CLOSE_BRACKET = 0x5d
+const OPEN_BRACE = 0x7b
+const CLOSE_BRACE = 0x7d
 const BOM = 0xfeff
-const esEspacio = (c: number) => c === 0x20 || c === 0x0a || c === 0x0d || c === 0x09
+const isWhitespace = (c: number) => c === 0x20 || c === 0x0a || c === 0x0d || c === 0x09
 // String content is most of the export; one regex call skips it faster than the char loop.
-const hastaComillaOBarra = /[^"\\]*/y
+const untilQuoteOrBackslash = /[^"\\]*/y
 
 /**
  * Yields the text of each element of a top-level JSON array, read from text chunks. JSON.parse of the
  * whole export would pass V8's string limit. Fails on anything but one complete array. An element that is
  * missing or over the size limit comes out as '', which no reader accepts, so it is counted, not hidden.
  */
-export async function* elementosDeArreglo(trozos: AsyncIterable<string>): AsyncGenerator<string> {
-  let profundidad = 0
-  let enCadena = false
-  let escapado = false
-  let empezado = false
-  let terminado = false
-  let esperaElemento = false
-  let enElemento = false
-  let partes: Array<string> = []
-  let acumulado = 0
+export async function* arrayElements(chunks: AsyncIterable<string>): AsyncGenerator<string> {
+  let depth = 0
+  let inString = false
+  let escaped = false
+  let started = false
+  let finished = false
+  let expectingElement = false
+  let inElement = false
+  let parts: Array<string> = []
+  let buffered = 0
 
-  const elemento = (trozo: string, inicio: number, fin: number) => {
-    const texto = acumulado + fin - inicio > LIMITE_ELEMENTO ? '' : (partes.join('') + trozo.slice(inicio, fin)).trimEnd()
-    partes = []
-    acumulado = 0
-    enElemento = false
-    return texto
+  const takeElement = (chunk: string, start: number, end: number) => {
+    const text = buffered + end - start > ELEMENT_LIMIT ? '' : (parts.join('') + chunk.slice(start, end)).trimEnd()
+    parts = []
+    buffered = 0
+    inElement = false
+    return text
   }
 
-  for await (const trozo of trozos) {
-    const listos: Array<string> = []
-    let inicio = 0
-    for (let i = 0; i < trozo.length; i++) {
-      if (enCadena) {
-        if (escapado) {
-          escapado = false
+  for await (const chunk of chunks) {
+    const ready: Array<string> = []
+    let start = 0
+    for (let i = 0; i < chunk.length; i++) {
+      if (inString) {
+        if (escaped) {
+          escaped = false
           continue
         }
-        hastaComillaOBarra.lastIndex = i
-        hastaComillaOBarra.test(trozo)
-        i = hastaComillaOBarra.lastIndex
-        if (trozo.charCodeAt(i) === BARRA) escapado = true
-        else if (i < trozo.length) enCadena = false
+        untilQuoteOrBackslash.lastIndex = i
+        untilQuoteOrBackslash.test(chunk)
+        i = untilQuoteOrBackslash.lastIndex
+        if (chunk.charCodeAt(i) === BACKSLASH) escaped = true
+        else if (i < chunk.length) inString = false
         continue
       }
-      const c = trozo.charCodeAt(i)
-      if (terminado) {
-        if (!esEspacio(c)) throw new ExportacionInvalida({ motivo: 'hay datos después del arreglo' })
+      const c = chunk.charCodeAt(i)
+      if (finished) {
+        if (!isWhitespace(c)) throw new InvalidExport({ reason: 'hay datos después del arreglo' })
         continue
       }
-      if (!empezado) {
-        if (esEspacio(c) || c === BOM) continue
-        if (c !== ABRE_CORCHETE) throw new ExportacionInvalida({ motivo: 'no es un arreglo JSON' })
-        empezado = true
-        profundidad = 1
+      if (!started) {
+        if (isWhitespace(c) || c === BOM) continue
+        if (c !== OPEN_BRACKET) throw new InvalidExport({ reason: 'no es un arreglo JSON' })
+        started = true
+        depth = 1
         continue
       }
-      if (profundidad === 1 && !enElemento) {
-        if (esEspacio(c)) continue
-        if (c === COMA || c === CIERRA_CORCHETE) {
-          if (c === COMA || esperaElemento) listos.push('')
-          esperaElemento = c === COMA
-          terminado = c === CIERRA_CORCHETE
+      if (depth === 1 && !inElement) {
+        if (isWhitespace(c)) continue
+        if (c === COMMA || c === CLOSE_BRACKET) {
+          if (c === COMMA || expectingElement) ready.push('')
+          expectingElement = c === COMMA
+          finished = c === CLOSE_BRACKET
           continue
         }
-        enElemento = true
-        inicio = i
+        inElement = true
+        start = i
       }
-      if (c === COMILLA) enCadena = true
-      else if (c === ABRE_CORCHETE || c === ABRE_LLAVE) profundidad++
-      else if ((c === COMA || c === CIERRA_CORCHETE) && profundidad === 1) {
-        listos.push(elemento(trozo, inicio, i))
-        esperaElemento = c === COMA
-        terminado = c === CIERRA_CORCHETE
-      } else if (c === CIERRA_CORCHETE || c === CIERRA_LLAVE) profundidad--
+      if (c === QUOTE) inString = true
+      else if (c === OPEN_BRACKET || c === OPEN_BRACE) depth++
+      else if ((c === COMMA || c === CLOSE_BRACKET) && depth === 1) {
+        ready.push(takeElement(chunk, start, i))
+        expectingElement = c === COMMA
+        finished = c === CLOSE_BRACKET
+      } else if (c === CLOSE_BRACKET || c === CLOSE_BRACE) depth--
     }
-    if (enElemento) {
-      acumulado += trozo.length - inicio
-      if (acumulado > LIMITE_ELEMENTO) partes = []
-      else partes.push(trozo.slice(inicio))
+    if (inElement) {
+      buffered += chunk.length - start
+      if (buffered > ELEMENT_LIMIT) parts = []
+      else parts.push(chunk.slice(start))
     }
-    yield* listos
+    yield* ready
   }
-  if (!empezado) throw new ExportacionInvalida({ motivo: 'la entrada está vacía' })
-  if (!terminado) throw new ExportacionInvalida({ motivo: 'el archivo está truncado' })
+  if (!started) throw new InvalidExport({ reason: 'la entrada está vacía' })
+  if (!finished) throw new InvalidExport({ reason: 'el archivo está truncado' })
 }
 
-const EdicionSteam = GameEdition.mapFields(Struct.pick(['id'])).mapFields(Struct.assign({ app_id: Schema.String }))
+const SteamEdition = GameEdition.mapFields(Struct.pick(['id'])).mapFields(Struct.assign({ app_id: Schema.String }))
 
-const edicionesSteam = Effect.flatMap(SqlClient.SqlClient, (sql) =>
-  filas(
-    EdicionSteam,
+const steamEditions = Effect.flatMap(SqlClient.SqlClient, (sql) =>
+  rows(
+    SteamEdition,
     sql`
       SELECT e.id, e.identificador_externo AS app_id
       FROM edicion_juego e JOIN lanzador l ON l.id = e.lanzador_id
@@ -127,76 +127,76 @@ const edicionesSteam = Effect.flatMap(SqlClient.SqlClient, (sql) =>
   ),
 )
 
-const leer = async (trozos: AsyncIterable<string>, ediciones: ReadonlyMap<string, EditionId>, hasta: number) => {
-  let leidos = 0
-  let descartados = 0
-  let coincidentes = 0
-  let exportado = 0
-  const porEdicion = new Map<EditionId, [ProtonDbReport, ...ProtonDbReport[]]>()
-  for await (const texto of elementosDeArreglo(trozos)) {
-    leidos++
-    const reporte = Option.getOrNull(parseReport(texto))
+const readExport = async (chunks: AsyncIterable<string>, editions: ReadonlyMap<string, EditionId>, until: number) => {
+  let read = 0
+  let discarded = 0
+  let matched = 0
+  let exported = 0
+  const byEdition = new Map<EditionId, [ProtonDbReport, ...ProtonDbReport[]]>()
+  for await (const text of arrayElements(chunks)) {
+    read++
+    const report = Option.getOrNull(parseReport(text))
     // A report dated after the import would move the export date forward and lock out every real export.
-    if (reporte === null || reporte.reported_at.getTime() > hasta) {
-      descartados++
+    if (report === null || report.reported_at.getTime() > until) {
+      discarded++
       continue
     }
-    exportado = Math.max(exportado, reporte.reported_at.getTime())
-    const edicion = ediciones.get(reporte.app_id)
-    if (edicion === undefined) continue
-    coincidentes++
-    const grupo = porEdicion.get(edicion)
-    if (grupo === undefined) porEdicion.set(edicion, [reporte])
-    else grupo.push(reporte)
+    exported = Math.max(exported, report.reported_at.getTime())
+    const edition = editions.get(report.app_id)
+    if (edition === undefined) continue
+    matched++
+    const group = byEdition.get(edition)
+    if (group === undefined) byEdition.set(edition, [report])
+    else group.push(report)
   }
-  return { leidos, descartados, coincidentes, exportado, porEdicion }
+  return { read, discarded, matched, exported, byEdition }
 }
 
-const Anterior = Schema.Struct({ exportado_en: Schema.NullOr(Schema.Date) })
+const Previous = Schema.Struct({ exportado_en: Schema.NullOr(Schema.Date) })
 
 /**
  * Stores one aggregate per catalog Steam edition from a ProtonDB export, replacing the last import.
  * Refuses an export older than the stored one; the same export again converges to the same rows.
  */
-export const importarProtonDb = (trozos: AsyncIterable<string>) =>
+export const importProtonDb = (chunks: AsyncIterable<string>) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const ediciones = new Map((yield* edicionesSteam).map((e) => [e.app_id, e.id]))
-    const hasta = yield* Clock.currentTimeMillis
-    const lectura = yield* Effect.tryPromise({
-      try: () => leer(trozos, ediciones, hasta),
+    const editions = new Map((yield* steamEditions).map((e) => [e.app_id, e.id]))
+    const until = yield* Clock.currentTimeMillis
+    const parsed = yield* Effect.tryPromise({
+      try: () => readExport(chunks, editions, until),
       catch: (e) =>
-        e instanceof ExportacionInvalida
+        e instanceof InvalidExport
           ? e
-          : new ExportacionInvalida({ motivo: `no se pudo leer la entrada (${e instanceof Error ? e.message : String(e)})` }),
+          : new InvalidExport({ reason: `no se pudo leer la entrada (${e instanceof Error ? e.message : String(e)})` }),
     })
-    if (lectura.exportado === 0) return yield* new ExportacionInvalida({ motivo: 'ningún reporte válido' })
-    const exportado_en = new Date(lectura.exportado)
-    const resumenes = [...lectura.porEdicion].map(([edicion, reportes]) => summarizeProtonDb(edicion, reportes, exportado_en))
+    if (parsed.exported === 0) return yield* new InvalidExport({ reason: 'ningún reporte válido' })
+    const exported_at = new Date(parsed.exported)
+    const summaries = [...parsed.byEdition].map(([edition, reports]) => summarizeProtonDb(edition, reports, exported_at))
 
     yield* sql.withTransaction(
       Effect.gen(function* () {
         yield* sql`LOCK TABLE protondb_resumen IN EXCLUSIVE MODE`
-        const anterior = yield* unaFila(Anterior, sql`SELECT max(exportado_en) AS exportado_en FROM protondb_resumen`)
-        if (anterior.exportado_en !== null && anterior.exportado_en > exportado_en)
-          return yield* new ExportacionInvalida({ motivo: 'exportación más antigua que la importada' })
+        const previous = yield* oneRow(Previous, sql`SELECT max(exportado_en) AS exportado_en FROM protondb_resumen`)
+        if (previous.exportado_en !== null && previous.exportado_en > exported_at)
+          return yield* new InvalidExport({ reason: 'exportación más antigua que la importada' })
         yield* sql`DELETE FROM protondb_resumen`
-        for (const lote of Arr.chunksOf(resumenes, 500)) yield* sql`INSERT INTO protondb_resumen ${sql.insert(lote)}`
+        for (const batch of Arr.chunksOf(summaries, 500)) yield* sql`INSERT INTO protondb_resumen ${sql.insert(batch)}`
       }),
     )
 
     return {
-      leidos: lectura.leidos,
-      descartados: lectura.descartados,
-      coincidentes: lectura.coincidentes,
-      guardados: resumenes.length,
-      exportado_en,
-    } satisfies ResultadoImportacion
+      read: parsed.read,
+      discarded: parsed.discarded,
+      matched: parsed.matched,
+      saved: summaries.length,
+      exported_at,
+    } satisfies ImportResult
   })
 
-const numero = new Intl.NumberFormat('es-CO')
+const numberFormat = new Intl.NumberFormat('es-CO')
 
-export const resumenImportacion = (r: ResultadoImportacion): string =>
-  `ProtonDB: ${numero.format(r.leidos)} reportes leídos, ${numero.format(r.descartados)} descartados, ` +
-  `${numero.format(r.coincidentes)} de juegos del catálogo. ${numero.format(r.guardados)} ediciones de Steam guardadas ` +
-  `(export del ${r.exportado_en.toISOString().slice(0, 10)}); el resumen anterior fue reemplazado.`
+export const importSummary = (r: ImportResult): string =>
+  `ProtonDB: ${numberFormat.format(r.read)} reportes leídos, ${numberFormat.format(r.discarded)} descartados, ` +
+  `${numberFormat.format(r.matched)} de juegos del catálogo. ${numberFormat.format(r.saved)} ediciones de Steam guardadas ` +
+  `(export del ${r.exported_at.toISOString().slice(0, 10)}); el resumen anterior fue reemplazado.`

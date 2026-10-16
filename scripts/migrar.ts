@@ -3,13 +3,13 @@
 import { Effect } from 'effect'
 import { NodeServices } from '@effect/platform-node'
 import { PgLive } from '../src/server/runtime.ts'
-import { migrar, vaciarEsquema } from '../src/server/schema/migrations.ts'
+import { migrate, dropSchema } from '../src/server/schema/migrations.ts'
 
 const reset = process.argv.indexOf('--reset')
 
 const programa = Effect.gen(function* () {
-  if (reset !== -1) yield* vaciarEsquema(process.argv[reset + 1] ?? '')
-  yield* Effect.log('migraciones aplicadas', yield* migrar)
+  if (reset !== -1) yield* dropSchema(process.argv[reset + 1] ?? '')
+  yield* Effect.log('migraciones aplicadas', yield* migrate)
 }).pipe(Effect.provide([PgLive, NodeServices.layer]))
 
 Effect.runPromise(programa).then(

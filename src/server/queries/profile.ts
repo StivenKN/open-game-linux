@@ -7,11 +7,11 @@ import { ReviewStatus, activeStatuses } from '../../domain/review.ts'
 import { LayerFamily } from '../../domain/literals.ts'
 import { Dependency, GameEdition, Game, ProfileStep, Profile, ProfileDependency } from '../../domain/tables.ts'
 import { exportFix, PrNumber } from '../../domain/upstream.ts'
-import { equipoEnLinux } from '../gpu/capability.ts'
-import { esDemo, etiquetaCapa, etiquetaDistribucion } from './labels.ts'
-import { diagnosticoDelVisitante } from './game.ts'
+import { machineOnLinux } from '../gpu/capability.ts'
+import { isDemo, layerLabel, distributionLabel } from './labels.ts'
+import { visitorDiagnostic } from './game.ts'
 
-const FilaPerfil = Profile.mapFields(
+const ProfileRow = Profile.mapFields(
   Struct.pick([
     'id',
     'titulo',
@@ -42,26 +42,26 @@ const FilaPerfil = Profile.mapFields(
   }),
 )
 
-const FilaArreglo = Schema.Struct({ pr: PrNumber, registrado_en: Schema.Date })
+const FixRow = Schema.Struct({ pr: PrNumber, registrado_en: Schema.Date })
 
-const FilaPaso = ProfileStep.mapFields(Struct.pick(['orden', 'titulo', 'instruccion']))
+const StepRow = ProfileStep.mapFields(Struct.pick(['orden', 'titulo', 'instruccion']))
 
-const FilaDependencia = ProfileDependency.mapFields(Struct.pick(['version_requerida', 'obligatoria', 'instruccion_instalacion'])).mapFields(
+const DependencyRow = ProfileDependency.mapFields(Struct.pick(['version_requerida', 'obligatoria', 'instruccion_instalacion'])).mapFields(
   Struct.assign(Struct.pick(Dependency.fields, ['nombre', 'gestor', 'descripcion'])),
 )
 
-export const perfil = (id: ProfileId) =>
+export const profile = (id: ProfileId) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const fila = yield* SqlSchema.findOneOption({
+    const row = yield* SqlSchema.findOneOption({
       Request: ProfileId,
-      Result: FilaPerfil,
+      Result: ProfileRow,
       execute: (id) => sql`
         SELECT p.id, p.titulo, p.revision, p.revisado_en, p.arquitectura, p.version_juego_objetivo, p.ram_min_mb, p.vram_min_mb,
                p.requiere_vulkan, p.version_vulkan_min, p.condicion_cpu, p.condicion_gpu, p.parametros_lanzamiento, p.estado_revision,
                j.id AS juego_id, j.titulo AS juego, l.nombre AS lanzador, e.identificador_externo, vc.familia,
-               ${sql.literal(etiquetaDistribucion('dist'))} AS distribucion, ${sql.literal(etiquetaCapa('vc'))} AS capa,
-               u.alias AS autor, ${sql.literal(esDemo('u'))} AS ejemplo
+               ${sql.literal(distributionLabel('dist'))} AS distribucion, ${sql.literal(layerLabel('vc'))} AS capa,
+               u.alias AS autor, ${sql.literal(isDemo('u'))} AS ejemplo
         FROM perfil_configuracion p
         JOIN edicion_juego e ON e.id = p.edicion_id
         JOIN juego j ON j.id = e.juego_id
@@ -71,18 +71,18 @@ export const perfil = (id: ProfileId) =>
         JOIN usuario u ON u.id = p.autor_id
         WHERE p.id = ${id} AND p.estado_revision IN ${sql.in(activeStatuses)}`,
     })(id)
-    if (Option.isNone(fila)) return yield* new NotFound()
-    const p = fila.value
+    if (Option.isNone(row)) return yield* new NotFound()
+    const p = row.value
 
-    const pasos = yield* SqlSchema.findAll({
+    const steps = yield* SqlSchema.findAll({
       Request: ProfileId,
-      Result: FilaPaso,
+      Result: StepRow,
       execute: (id) => sql`SELECT orden, titulo, instruccion FROM paso_configuracion WHERE perfil_id = ${id} ORDER BY orden`,
     })(id)
 
-    const dependencias = yield* SqlSchema.findAll({
+    const dependencies = yield* SqlSchema.findAll({
       Request: ProfileId,
-      Result: FilaDependencia,
+      Result: DependencyRow,
       execute: (id) => sql`
         SELECT pd.version_requerida, pd.obligatoria, pd.instruccion_instalacion, d.nombre, d.gestor, d.descripcion
         FROM perfil_dependencia pd JOIN dependencia d ON d.id = pd.dependencia_id
@@ -90,20 +90,20 @@ export const perfil = (id: ProfileId) =>
         ORDER BY pd.obligatoria DESC, d.nombre`,
     })(id)
 
-    const evaluacion =
+    const evaluation =
       p.estado_revision === 'pendiente'
         ? ('perfil_en_prueba' as const)
-        : Option.match(yield* diagnosticoDelVisitante, {
+        : Option.match(yield* visitorDiagnostic, {
             onNone: () => 'sin_diagnostico' as const,
-            onSome: (d) => evaluate(equipoEnLinux(d), requirements(p)),
+            onSome: (d) => evaluate(machineOnLinux(d), requirements(p)),
           })
 
-    const exportacion = p.estado_revision === 'aprobado' ? exportFix({ ...p, profile: { id: p.id, revision: p.revision }, dependencies: dependencias }) : null
-    const arreglos = yield* SqlSchema.findAll({
+    const fixExport = p.estado_revision === 'aprobado' ? exportFix({ ...p, profile: { id: p.id, revision: p.revision }, dependencies }) : null
+    const fixes = yield* SqlSchema.findAll({
       Request: ProfileId,
-      Result: FilaArreglo,
+      Result: FixRow,
       execute: (id) => sql`SELECT pr, registrado_en FROM arreglo_upstream WHERE perfil_id = ${id} ORDER BY registrado_en, pr`,
     })(id)
 
-    return { perfil: p, pasos, dependencias, evaluacion, exportacion, arreglos }
+    return { profile: p, steps, dependencies, evaluation, fixExport, fixes }
   })

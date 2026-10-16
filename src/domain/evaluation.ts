@@ -120,12 +120,12 @@ export const requirements = (p: RequirementColumns): KnownRequirements => ({
   version_vulkan_min: vulkanVersion(p.version_vulkan_min),
 })
 
-export const suggestProfile = <P extends { readonly distribucion_id: number; readonly arquitectura: string; readonly revision: number; readonly evaluacion: Evaluation | null }>(
+export const suggestProfile = <P extends { readonly distribucion_id: number; readonly arquitectura: string; readonly revision: number; readonly evaluation: Evaluation | null }>(
   profiles: ReadonlyArray<P>,
   diagnostic: { readonly distribucion_id: number | null; readonly arquitectura: string },
 ): P | null => {
   const differs = (p: P) => (p.distribucion_id === diagnostic.distribucion_id && p.arquitectura === diagnostic.arquitectura ? 0 : 1)
-  const rankOf = (p: P) => verdictRank[p.evaluacion?.verdict ?? 'informacion_insuficiente']
+  const rankOf = (p: P) => verdictRank[p.evaluation?.verdict ?? 'informacion_insuficiente']
   const compare = (a: P, b: P) => differs(a) - differs(b) || rankOf(a) - rankOf(b) || b.revision - a.revision
   return profiles.reduce<P | null>((best, p) => (best === null || compare(p, best) < 0 ? p : best), null)
 }

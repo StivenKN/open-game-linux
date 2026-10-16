@@ -5,91 +5,91 @@ import { Effect, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { ApprovalBlocked, RuleViolated } from '../src/domain/errors.ts'
 import type { Role } from '../src/domain/review.ts'
-import { auth, exigirRevisor, exigirUsuario } from '../src/server/auth.ts'
-import { accion, leer } from '../src/server/run.ts'
+import { auth, requireReviewer, requireUser } from '../src/server/auth.ts'
+import { runAction, runRead } from '../src/server/run.ts'
 import { runtime } from '../src/server/runtime.ts'
 
-type Desenlace<A> = { readonly ok: true; readonly valor: A } | { readonly ok: false; readonly lanzado: unknown }
+type Settled<A> = { readonly ok: true; readonly value: A } | { readonly ok: false; readonly thrown: unknown }
 
-const enPeticion = <A>(cookie: string | null, fn: () => Promise<A>) =>
-  new Promise<Desenlace<A>>((resolver) => {
-    const peticion = new Request('http://localhost:3000/_serverFn/prueba', { headers: cookie === null ? {} : { cookie } })
+const inRequest = <A>(cookie: string | null, fn: () => Promise<A>) =>
+  new Promise<Settled<A>>((resolve) => {
+    const request = new Request('http://localhost:3000/_serverFn/prueba', { headers: cookie === null ? {} : { cookie } })
     void createServerEntry({
       fetch: async () => {
         await fn().then(
-          (valor) => resolver({ ok: true, valor }),
-          (lanzado: unknown) => resolver({ ok: false, lanzado }),
+          (value) => resolve({ ok: true, value }),
+          (thrown: unknown) => resolve({ ok: false, thrown }),
         )
         return new Response(null)
       },
-    }).fetch(peticion, {})
+    }).fetch(request, {})
   })
 
-const lanzado = <A>(d: Desenlace<A>): unknown => (d.ok ? undefined : d.lanzado)
+const thrownOf = <A>(d: Settled<A>): unknown => (d.ok ? undefined : d.thrown)
 
 const sql = <A>(f: (sql: SqlClient.SqlClient) => Effect.Effect<A, unknown>) => runtime.runPromise(Effect.flatMap(SqlClient.SqlClient, f))
 
-const cuenta = async (rol: Role, activo = true) => {
-  const correo = `${rol}-${crypto.randomUUID()}@opengame.test`
+const sessionCookie = async (role: Role, active = true) => {
+  const email = `${role}-${crypto.randomUUID()}@opengame.test`
   const { headers } = await auth.api.signUpEmail({
-    body: { name: `demo_${rol}`, email: correo, password: 'contrasena-de-prueba' },
+    body: { name: `demo_${role}`, email, password: 'contrasena-de-prueba' },
     returnHeaders: true,
   })
-  await sql((s) => s`UPDATE usuario SET rol = ${rol}, activo = ${activo} WHERE correo = ${correo}`)
-  const [galleta] = headers.getSetCookie()
-  if (galleta === undefined) throw new Error('better-auth no devolvió la cookie de sesión')
-  return galleta.split(';')[0] ?? ''
+  await sql((s) => s`UPDATE usuario SET rol = ${role}, activo = ${active} WHERE correo = ${email}`)
+  const [cookie] = headers.getSetCookie()
+  if (cookie === undefined) throw new Error('better-auth no devolvió la cookie de sesión')
+  return cookie.split(';')[0] ?? ''
 }
 
 describe('leer', () => {
   it('sin sesión, exigirRevisor redirige a /entrar', async () => {
-    const d = await enPeticion(null, () => leer(exigirRevisor))
-    const e = lanzado(d)
+    const d = await inRequest(null, () => runRead(requireReviewer))
+    const e = thrownOf(d)
     expect(isRedirect(e) && e.options.to).toBe('/entrar')
   })
 
   it('un usuario sin rol de revisor recibe notFound', async () => {
-    const d = await enPeticion(await cuenta('usuario'), () => leer(exigirRevisor))
-    expect(isNotFound(lanzado(d))).toBe(true)
+    const d = await inRequest(await sessionCookie('usuario'), () => runRead(requireReviewer))
+    expect(isNotFound(thrownOf(d))).toBe(true)
   })
 
   it('un revisor pasa y recibe su propio usuario', async () => {
-    const d = await enPeticion(await cuenta('revisor'), () => leer(exigirRevisor))
-    expect(d.ok && { alias: d.valor.alias, rol: d.valor.rol }).toEqual({ alias: 'demo_revisor', rol: 'revisor' })
+    const d = await inRequest(await sessionCookie('revisor'), () => runRead(requireReviewer))
+    expect(d.ok && { alias: d.value.alias, rol: d.value.rol }).toEqual({ alias: 'demo_revisor', rol: 'revisor' })
   })
 
   it('una cuenta desactivada cuenta como visitante sin sesión', async () => {
-    const d = await enPeticion(await cuenta('administrador', false), () => leer(exigirUsuario))
-    expect(isRedirect(lanzado(d))).toBe(true)
+    const d = await inRequest(await sessionCookie('administrador', false), () => runRead(requireUser))
+    expect(isRedirect(thrownOf(d))).toBe(true)
   })
 })
 
 describe('accion', () => {
-  const lanzadores = (nombre: string) =>
-    sql((s) => s`SELECT count(*)::int AS n FROM lanzador WHERE nombre = ${nombre}`).then(
+  const countLaunchers = (name: string) =>
+    sql((s) => s`SELECT count(*)::int AS n FROM lanzador WHERE nombre = ${name}`).then(
       Schema.decodeUnknownSync(Schema.Tuple([Schema.Struct({ n: Schema.Int })])),
     )
-  const insertar = (nombre: string) => Effect.flatMap(SqlClient.SqlClient, (s) => s`INSERT INTO lanzador (nombre) VALUES (${nombre})`)
+  const insertLauncher = (name: string) => Effect.flatMap(SqlClient.SqlClient, (s) => s`INSERT INTO lanzador (nombre) VALUES (${name})`)
 
   it('un fallo de dominio vuelve como dato y revierte lo que el programa ya escribió', async () => {
-    const nombre = `revertido-${crypto.randomUUID()}`
-    const programa = Effect.andThen(insertar(nombre), Effect.fail(new RuleViolated({ rule: 'fallo_duplicado' })))
-    const d = await enPeticion(null, () => accion(RuleViolated, programa))
-    expect(d).toEqual({ ok: true, valor: { ok: false, error: { _tag: 'ReglaIncumplida', rule: 'fallo_duplicado' } } })
-    expect(await lanzadores(nombre)).toEqual([{ n: 0 }])
+    const name = `revertido-${crypto.randomUUID()}`
+    const program = Effect.andThen(insertLauncher(name), Effect.fail(new RuleViolated({ rule: 'fallo_duplicado' })))
+    const d = await inRequest(null, () => runAction(RuleViolated, program))
+    expect(d).toEqual({ ok: true, value: { ok: false, error: { _tag: 'ReglaIncumplida', rule: 'fallo_duplicado' } } })
+    expect(await countLaunchers(name)).toEqual([{ n: 0 }])
   })
 
   it('un programa que termina bien confirma lo que escribió', async () => {
-    const nombre = `confirmado-${crypto.randomUUID()}`
-    const d = await enPeticion(null, () => accion(RuleViolated, Effect.as(insertar(nombre), 'hecho')))
-    expect(d).toEqual({ ok: true, valor: { ok: true, value: 'hecho' } })
-    expect(await lanzadores(nombre)).toEqual([{ n: 1 }])
+    const name = `confirmado-${crypto.randomUUID()}`
+    const d = await inRequest(null, () => runAction(RuleViolated, Effect.as(insertLauncher(name), 'hecho')))
+    expect(d).toEqual({ ok: true, value: { ok: true, value: 'hecho' } })
+    expect(await countLaunchers(name)).toEqual([{ n: 1 }])
   })
 
   it('no compila si el programa puede fallar con algo que `fallos` no declara', () => {
-    const sinDeclarar = () =>
+    const undeclared = () =>
       // @ts-expect-error AprobacionBloqueada is not listed in fallos, so the browser could not narrow it
-      accion(RuleViolated, Effect.fail(new ApprovalBlocked({ blockers: ['reporte_incomparable'] })))
-    expect(sinDeclarar).toBeTypeOf('function')
+      runAction(RuleViolated, Effect.fail(new ApprovalBlocked({ blockers: ['reporte_incomparable'] })))
+    expect(undeclared).toBeTypeOf('function')
   })
 })

@@ -81,14 +81,14 @@ const gta: Muestra = {
   }),
   pendientes: 1,
   personal: {
-    ruta: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
-    en_mi_distribucion: {
-      nombre: 'Linux Mint 21.3',
-      resumen: alDia({ status: 'funciona', test_count: 2, last_tested: dia('2026-09-28'), setups: [gtaMint], failures: [] }),
+    path: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, approximate: false,
+    on_my_distribution: {
+      name: 'Linux Mint 21.3',
+      summary: alDia({ status: 'funciona', test_count: 2, last_tested: dia('2026-09-28'), setups: [gtaMint], failures: [] }),
     },
-    perfil: {
+    profile: {
       titulo: 'GTAV-BAJO', revision: 2,
-      evaluacion: {
+      evaluation: {
         verdict: 'cumple', advisory_only: false,
         checks: [
           { requirement: 'ram', status: 'cumple', required: '8192', detected: { value: '8192', origin: 'medido' } },
@@ -122,12 +122,12 @@ const valorant: Muestra = {
   }),
   pendientes: 0,
   personal: {
-    ruta: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
-    en_mi_distribucion: {
-      nombre: 'Linux Mint 21.3',
-      resumen: alDia({ status: 'no_inicia', test_count: 1, last_tested: dia('2026-07-11'), setups: [valMint], failures: [{ code: 'anti_cheat', reports: 1 }] }),
+    path: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, approximate: false,
+    on_my_distribution: {
+      name: 'Linux Mint 21.3',
+      summary: alDia({ status: 'no_inicia', test_count: 1, last_tested: dia('2026-07-11'), setups: [valMint], failures: [{ code: 'anti_cheat', reports: 1 }] }),
     },
-    perfil: null,
+    profile: null,
   },
 }
 
@@ -140,12 +140,12 @@ const ets2: Muestra = {
   resumen: alDia({ status: 'sin_evidencia', test_count: 0, last_tested: null, setups: [], failures: [] }),
   pendientes: 2,
   personal: {
-    ruta: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
-    en_mi_distribucion: {
-      nombre: 'Linux Mint 21.3',
-      resumen: alDia({ status: 'sin_evidencia', test_count: 0, last_tested: null, setups: [], failures: [] }),
+    path: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, approximate: false,
+    on_my_distribution: {
+      name: 'Linux Mint 21.3',
+      summary: alDia({ status: 'sin_evidencia', test_count: 0, last_tested: null, setups: [], failures: [] }),
     },
-    perfil: null,
+    profile: null,
   },
 }
 
@@ -171,14 +171,14 @@ const eldenRing: Muestra = {
   resumen: alDia({ status: 'funciona_con_ajustes', test_count: 2, last_tested: dia('2026-09-30'), setups: [erUbuntu, erMint], failures: [] }),
   pendientes: 0,
   personal: {
-    ruta: { status: 'con_ruta', path: 'vkd3d_proton' }, nivel_x86_min: null, orientativa: false,
-    en_mi_distribucion: {
-      nombre: 'Linux Mint 21.3',
-      resumen: alDia({ status: 'funciona_con_ajustes', test_count: 1, last_tested: dia('2026-09-21'), setups: [erMint], failures: [] }),
+    path: { status: 'con_ruta', path: 'vkd3d_proton' }, nivel_x86_min: null, approximate: false,
+    on_my_distribution: {
+      name: 'Linux Mint 21.3',
+      summary: alDia({ status: 'funciona_con_ajustes', test_count: 1, last_tested: dia('2026-09-21'), setups: [erMint], failures: [] }),
     },
-    perfil: {
+    profile: {
       titulo: 'ER-BASE', revision: 3,
-      evaluacion: {
+      evaluation: {
         verdict: 'no_cumple', advisory_only: false,
         checks: [
           { requirement: 'ram', status: 'no_cumple', required: '12288', detected: { value: '8192', origin: 'medido' } },
@@ -210,14 +210,14 @@ const witcher: Muestra = {
   resumen: alDia({ status: 'funciona', test_count: 2, last_tested: dia('2026-09-10'), setups: [twPop, twMint], failures: [] }),
   pendientes: 0,
   personal: {
-    ruta: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
-    en_mi_distribucion: {
-      nombre: 'Linux Mint 21.3',
-      resumen: alDia({ status: 'funciona', test_count: 1, last_tested: dia('2026-08-20'), setups: [twMint], failures: [] }),
+    path: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, approximate: false,
+    on_my_distribution: {
+      name: 'Linux Mint 21.3',
+      summary: alDia({ status: 'funciona', test_count: 1, last_tested: dia('2026-08-20'), setups: [twMint], failures: [] }),
     },
-    perfil: {
+    profile: {
       titulo: 'TW3-IGPU', revision: 1,
-      evaluacion: {
+      evaluation: {
         verdict: 'informacion_insuficiente', advisory_only: false,
         checks: [
           { requirement: 'ram', status: 'cumple', required: '6144', detected: { value: '8192', origin: 'medido' } },

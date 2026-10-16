@@ -1,5 +1,5 @@
 import type { GpuFamily, GpuVendor } from '../src/domain/gpu.ts'
-import { codificarTramos } from '../src/server/gpu/ranges.ts'
+import { encodeSpans } from '../src/server/gpu/ranges.ts'
 
 export type Dispositivo = { readonly vendor: GpuVendor; readonly device: string; readonly familia: GpuFamily }
 
@@ -149,6 +149,6 @@ export const tablaDe = (dispositivos: ReadonlyArray<Dispositivo>): Tabla => {
     grupos.set(clave, grupo)
   }
   const tabla: Tabla = { '8086': {}, '1002': {}, '10de': {} }
-  for (const g of grupos.values()) tabla[g.vendor][g.familia] = codificarTramos(g.numeros)
+  for (const g of grupos.values()) tabla[g.vendor][g.familia] = encodeSpans(g.numeros)
   return tabla
 }

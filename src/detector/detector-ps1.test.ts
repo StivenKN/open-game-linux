@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MAX_LIBRARY_GAMES } from '../domain/library.ts'
-import { parsearPayload } from '../server/diagnostics/payload.ts'
+import { parsePayload } from '../server/diagnostics/payload.ts'
 
 const raiz = fileURLToPath(new URL('../../', import.meta.url))
 const ps1 = join(raiz, 'src/detector/opengame-detect.ps1')
@@ -78,7 +78,7 @@ const leerRegistro = (): Array<string> => {
 const leer = (json: string): unknown => JSON.parse(json)
 const desdeUrl = (url: string): string => Buffer.from(url.slice(url.indexOf('#d=') + 3), 'base64url').toString('utf8')
 const captura = (texto: string) => {
-  const r = parsearPayload(texto)
+  const r = parsePayload(texto)
   if (Result.isFailure(r)) throw new Error(`expected a capture, got ${JSON.stringify(r.failure)}`)
   return r.success
 }

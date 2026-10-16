@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { guiasFn } from '../../fns/guides.ts'
+import { guidesFn } from '../../fns/guides.ts'
 import { fecha } from '../../ui/format.ts'
 import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
 import { tipoGuia } from '../../ui/vocabulary.ts'
 
 export const Route = createFileRoute('/guias/')({
-  loader: () => guiasFn(),
+  loader: () => guidesFn(),
   head: () => ({ meta: [{ title: 'Guías · OpenGame Linux' }] }),
   component: Guias,
 })

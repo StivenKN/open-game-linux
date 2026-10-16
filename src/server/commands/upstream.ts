@@ -5,56 +5,56 @@ import { LayerFamily } from '../../domain/literals.ts'
 import { ReviewStatus } from '../../domain/review.ts'
 import { GameEdition, Launcher } from '../../domain/tables.ts'
 import { exportableAppId, type FixNote } from '../../domain/upstream.ts'
-import { exigirRevisor } from '../auth.ts'
-import { esDemo } from '../queries/labels.ts'
-import { filas } from '../rows.ts'
-import type { Escritura } from './contributions.ts'
+import { requireReviewer } from '../auth.ts'
+import { isDemo } from '../queries/labels.ts'
+import { rows } from '../rows.ts'
+import type { Write } from './contributions.ts'
 
-const PerfilExportable = Schema.Struct({
+const ExportableProfile = Schema.Struct({
   estado_revision: ReviewStatus,
   lanzador: Launcher.fields.nombre,
   identificador_externo: GameEdition.fields.identificador_externo,
   familia: LayerFamily,
   ejemplo: Schema.Boolean,
 })
-const ConId = Schema.Struct({ id: Schema.Int })
-const DelPr = Schema.Struct({ perfil_id: Schema.Int })
+const IdRow = Schema.Struct({ id: Schema.Int })
+const PrOwner = Schema.Struct({ perfil_id: Schema.Int })
 
 /**
  * The single writer of arreglo_upstream. Idempotent: recording a PR twice, or annulling a PR that is not
  * recorded, changes nothing. A later retirement of the profile leaves its rows: the merge upstream happened.
  */
-export const anotarArreglo = (nota: FixNote): Escritura<{ readonly cambio: boolean }, RuleViolated | Forbidden> =>
+export const noteFix = (note: FixNote): Write<{ readonly changed: boolean }, RuleViolated | Forbidden> =>
   Effect.gen(function* () {
-    const revisor = yield* exigirRevisor
+    const reviewer = yield* requireReviewer
     const sql = yield* SqlClient.SqlClient
-    if (nota._tag === 'Anular') {
-      const borradas = yield* filas(ConId, sql`DELETE FROM arreglo_upstream WHERE pr = ${nota.pr} RETURNING id`)
-      return { cambio: borradas.length > 0 }
+    if (note._tag === 'Anular') {
+      const deleted = yield* rows(IdRow, sql`DELETE FROM arreglo_upstream WHERE pr = ${note.pr} RETURNING id`)
+      return { changed: deleted.length > 0 }
     }
 
-    const [perfil] = yield* filas(
-      PerfilExportable,
-      sql`SELECT p.estado_revision, l.nombre AS lanzador, e.identificador_externo, vc.familia, ${sql.literal(esDemo('u'))} AS ejemplo
+    const [profile] = yield* rows(
+      ExportableProfile,
+      sql`SELECT p.estado_revision, l.nombre AS lanzador, e.identificador_externo, vc.familia, ${sql.literal(isDemo('u'))} AS ejemplo
           FROM perfil_configuracion p
           JOIN edicion_juego e ON e.id = p.edicion_id
           JOIN lanzador l ON l.id = e.lanzador_id
           JOIN version_capa vc ON vc.id = p.version_capa_id
           JOIN usuario u ON u.id = p.autor_id
-          WHERE p.id = ${nota.perfil_id}
+          WHERE p.id = ${note.perfil_id}
           FOR SHARE OF p`,
     )
-    if (perfil === undefined || perfil.estado_revision !== 'aprobado' || exportableAppId(perfil)._tag === 'no_exportable')
+    if (profile === undefined || profile.estado_revision !== 'aprobado' || exportableAppId(profile)._tag === 'no_exportable')
       return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_no_exportable' }))
-    if (perfil.ejemplo) return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_datos_de_ejemplo' }))
+    if (profile.ejemplo) return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_datos_de_ejemplo' }))
 
-    const creadas = yield* filas(
-      ConId,
-      sql`INSERT INTO arreglo_upstream ${sql.insert({ pr: nota.pr, perfil_id: nota.perfil_id, registrado_por: revisor.id })}
+    const created = yield* rows(
+      IdRow,
+      sql`INSERT INTO arreglo_upstream ${sql.insert({ pr: note.pr, perfil_id: note.perfil_id, registrado_por: reviewer.id })}
           ON CONFLICT ON CONSTRAINT arreglo_upstream_pr_uq DO NOTHING RETURNING id`,
     )
-    if (creadas.length > 0) return { cambio: true }
-    const [existente] = yield* filas(DelPr, sql`SELECT perfil_id FROM arreglo_upstream WHERE pr = ${nota.pr}`)
-    if (existente?.perfil_id !== nota.perfil_id) return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_pr_de_otro_perfil' }))
-    return { cambio: false }
+    if (created.length > 0) return { changed: true }
+    const [existing] = yield* rows(PrOwner, sql`SELECT perfil_id FROM arreglo_upstream WHERE pr = ${note.pr}`)
+    if (existing?.perfil_id !== note.perfil_id) return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_pr_de_otro_perfil' }))
+    return { changed: false }
   })

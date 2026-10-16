@@ -12,12 +12,12 @@ import { estadoCompatibilidad } from '../vocabulary.ts'
 export type FilaMatriz = {
   readonly juego_id: GameId
   readonly titulo: string
-  readonly en_biblioteca: boolean
-  readonly estado: CompatibilityStatus
-  readonly pruebas: number
+  readonly in_library: boolean
+  readonly status: CompatibilityStatus
+  readonly test_count: number
   readonly nivel_x86_min: X86Level | null
-  readonly ruta: GamePath
-  readonly perfil: (PerfilEvaluado & { readonly capa: string; readonly distribucion: string }) | null
+  readonly path: GamePath
+  readonly profile: (PerfilEvaluado & { readonly capa: string; readonly distribucion: string }) | null
 }
 
 /** `orientativa`: the capture came from Windows, so every verdict is a projection. */
@@ -32,18 +32,18 @@ export function MatrizDiagnostico({ filas, orientativa }: { filas: ReadonlyArray
             </Link>
           </h3>
           <div className="fila">
-            <Insignia etiqueta={estadoCompatibilidad[f.estado]} />
-            <span className="pequeno tenue">{contar(f.pruebas, 'reporte aprobado', 'reportes aprobados')}</span>
+            <Insignia etiqueta={estadoCompatibilidad[f.status]} />
+            <span className="pequeno tenue">{contar(f.test_count, 'reporte aprobado', 'reportes aprobados')}</span>
           </div>
           <hr />
-          <RutaGrafica ruta={f.ruta} minimo={f.nivel_x86_min} orientativa={orientativa} />
+          <RutaGrafica ruta={f.path} minimo={f.nivel_x86_min} orientativa={orientativa} />
           <hr />
-          {f.perfil && (
+          {f.profile && (
             <p className="pequeno tenue dato">
-              {f.perfil.capa} · {f.perfil.distribucion}
+              {f.profile.capa} · {f.profile.distribucion}
             </p>
           )}
-          <ChecklistEvaluacion perfil={f.perfil} />
+          <ChecklistEvaluacion perfil={f.profile} />
         </li>
       ))}
     </ul>

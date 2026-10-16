@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ProfileId } from '../../domain/ids.ts'
 import { canReview } from '../../domain/review.ts'
-import { perfilFn } from '../../fns/catalog.ts'
+import { profileFn } from '../../fns/catalog.ts'
 import { CajaCopiar } from '../../ui/compatibility/CopyBox.tsx'
 import { ChecklistEvaluacion } from '../../ui/compatibility/EvaluationChecklist.tsx'
 import { PanelEquipo } from '../../ui/compatibility/VerdictForMe.tsx'
@@ -17,8 +17,8 @@ const perfilId = idDeRuta(ProfileId)
 
 export const Route = createFileRoute('/perfiles/$perfilId')({
   params: { parse: (p) => ({ perfilId: perfilId(p.perfilId) }), stringify: (p) => ({ perfilId: String(p.perfilId) }) },
-  loader: ({ params }) => perfilFn({ data: params }),
-  head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.perfil.titulo} · OpenGame Linux` : 'OpenGame Linux' }] }),
+  loader: ({ params }) => profileFn({ data: params }),
+  head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.profile.titulo} · OpenGame Linux` : 'OpenGame Linux' }] }),
   component: Perfil,
 })
 
@@ -30,7 +30,7 @@ const sinEvaluacion = {
 } as const
 
 function Perfil() {
-  const { perfil: p, pasos, dependencias, evaluacion, exportacion, arreglos } = Route.useLoaderData()
+  const { profile: p, steps: pasos, dependencies: dependencias, evaluation: evaluacion, fixExport: exportacion, fixes: arreglos } = Route.useLoaderData()
   const { visitante } = Route.useRouteContext()
   const aprobado = p.estado_revision === 'aprobado'
   return (
@@ -146,7 +146,7 @@ function Perfil() {
               {typeof evaluacion === 'string' ? (
                 <p className="pequeno tenue">{sinEvaluacion[evaluacion]}</p>
               ) : (
-                <ChecklistEvaluacion perfil={{ titulo: p.titulo, revision: p.revision, evaluacion }} />
+                <ChecklistEvaluacion perfil={{ titulo: p.titulo, revision: p.revision, evaluation: evaluacion }} />
               )}
             </PanelEquipo>
           </div>

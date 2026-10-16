@@ -3,7 +3,7 @@ import { Schema } from 'effect'
 import { useState } from 'react'
 import { NewSolution } from '../../domain/contributions.ts'
 import { ReportId, FailureTypeId } from '../../domain/ids.ts'
-import { opcionesSolucionFn, registrarSolucionFn } from '../../fns/contributions.ts'
+import { solutionOptionsFn, submitSolutionFn } from '../../fns/contributions.ts'
 import { ErrorCampo } from '../../ui/FieldError.tsx'
 import { momento } from '../../ui/format.ts'
 import { Campo, campo, nulo } from '../../ui/form.tsx'
@@ -21,16 +21,16 @@ export const Route = createFileRoute('/reportes/$reporteId/solucion')({
   beforeLoad: ({ context, location }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
   },
-  loader: ({ params }) => opcionesSolucionFn({ data: { reporteId: params.reporteId } }),
-  head: ({ loaderData }) => ({ meta: [{ title: `Proponer solución · ${loaderData?.reporte.juego ?? 'OpenGame Linux'}` }] }),
+  loader: ({ params }) => solutionOptionsFn({ data: { reporteId: params.reporteId } }),
+  head: ({ loaderData }) => ({ meta: [{ title: `Proponer solución · ${loaderData?.report.juego ?? 'OpenGame Linux'}` }] }),
   component: ProponerSolucion,
 })
 
 function ProponerSolucion() {
-  const { reporte, fallos, perfiles } = Route.useLoaderData()
+  const { report: reporte, failures: fallos, profiles: perfiles } = Route.useLoaderData()
   const { tipoFallo: preseleccion } = Route.useSearch()
   const [enviada, setEnviada] = useState(false)
-  const r = useAccion(NewSolution, registrarSolucionFn, { alFallar: erroresDeRegla, alCompletar: () => setEnviada(true) })
+  const r = useAccion(NewSolution, submitSolutionFn, { alFallar: erroresDeRegla, alCompletar: () => setEnviada(true) })
 
   return (
     <main className="envoltura">

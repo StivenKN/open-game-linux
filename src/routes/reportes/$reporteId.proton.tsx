@@ -1,6 +1,6 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { ReportId } from '../../domain/ids.ts'
-import { informeProtonFn } from '../../fns/upstream.ts'
+import { protonReportFn } from '../../fns/upstream.ts'
 import { CajaCopiar } from '../../ui/compatibility/CopyBox.tsx'
 import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
 import { motivoSinInforme } from '../../ui/vocabulary.ts'
@@ -14,13 +14,13 @@ export const Route = createFileRoute('/reportes/$reporteId/proton')({
   beforeLoad: ({ context, location }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
   },
-  loader: ({ params }) => informeProtonFn({ data: { reporteId: params.reporteId } }),
-  head: ({ loaderData }) => ({ meta: [{ title: `Informe para Valve · ${loaderData?.reporte.juego ?? 'OpenGame Linux'}` }] }),
+  loader: ({ params }) => protonReportFn({ data: { reporteId: params.reporteId } }),
+  head: ({ loaderData }) => ({ meta: [{ title: `Informe para Valve · ${loaderData?.report.juego ?? 'OpenGame Linux'}` }] }),
   component: InformeParaValve,
 })
 
 function InformeParaValve() {
-  const { reporte, informe: x } = Route.useLoaderData()
+  const { report: reporte, protonReport: x } = Route.useLoaderData()
   const volver = (
     <Link to="/juegos/$juegoId" params={{ juegoId: reporte.juego_id }}>
       Volver a la ficha del juego

@@ -3,7 +3,7 @@ import { memoria } from '../format.ts'
 import { Insignia } from '../Badge.tsx'
 import { estadoComprobacion, origenVulkan, requisito, veredictoRequisitos } from '../vocabulary.ts'
 
-export type PerfilEvaluado = { readonly titulo: string; readonly revision: number; readonly evaluacion: Evaluation }
+export type PerfilEvaluado = { readonly titulo: string; readonly revision: number; readonly evaluation: Evaluation }
 
 const valor = (c: RequirementCheck, v: string) => (c.requirement === 'vulkan' ? v : memoria(Number(v)))
 
@@ -31,7 +31,7 @@ const motivo = (e: Evaluation): string => {
 }
 
 export function ChecklistEvaluacion({ perfil }: { perfil: PerfilEvaluado | null }) {
-  const evaluacion = perfil?.evaluacion
+  const evaluacion = perfil?.evaluation
   return (
     <div className="pila">
       <div className="fila">

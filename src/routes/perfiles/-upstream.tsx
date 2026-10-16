@@ -2,7 +2,7 @@
 import { useRouter } from '@tanstack/react-router'
 import type { ProfileId } from '../../domain/ids.ts'
 import { type FixExport, FixNote, type PrNumber, type Skipped, openGamePrs, prUrl } from '../../domain/upstream.ts'
-import { anotarArregloFn } from '../../fns/upstream.ts'
+import { noteFixFn } from '../../fns/upstream.ts'
 import { CajaCopiar } from '../../ui/compatibility/CopyBox.tsx'
 import { ErrorCampo } from '../../ui/FieldError.tsx'
 import { fecha } from '../../ui/format.ts'
@@ -107,7 +107,7 @@ function Omitidos({ omitidos }: { omitidos: ReadonlyArray<Skipped> }) {
 
 function RegistrarArreglo({ perfilId }: { perfilId: ProfileId }) {
   const router = useRouter()
-  const r = useAccion(FixNote, anotarArregloFn, { alFallar: erroresDeRegla, alCompletar: () => router.invalidate() })
+  const r = useAccion(FixNote, noteFixFn, { alFallar: erroresDeRegla, alCompletar: () => router.invalidate() })
   return (
     <form className="tarjeta formulario" {...r.formulario}>
       <ErrorCampo errores={r.errores} campo="formulario" />
@@ -131,7 +131,7 @@ function RegistrarArreglo({ perfilId }: { perfilId: ProfileId }) {
 
 function Anular({ pr }: { pr: PrNumber }) {
   const router = useRouter()
-  const r = useAccion(FixNote, anotarArregloFn, { alFallar: erroresDeRegla, alCompletar: () => router.invalidate() })
+  const r = useAccion(FixNote, noteFixFn, { alFallar: erroresDeRegla, alCompletar: () => router.invalidate() })
   return (
     <form className="fila" {...r.formulario}>
       <input type="hidden" name="_tag" value="Anular" />

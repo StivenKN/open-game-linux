@@ -2,22 +2,22 @@ import { describe, expect, it } from '@effect/vitest'
 import { Result, Schema } from 'effect'
 import { readFileSync } from 'node:fs'
 import { InvalidPayload } from '../../domain/errors.ts'
-import { parsearPayload } from './payload.ts'
+import { parsePayload } from './payload.ts'
 
 const outJson = readFileSync(new URL('../../../prototypes/detector/out.json', import.meta.url), 'utf8')
 const windowsJson = readFileSync(new URL('../../../prototypes/detector/windows-out.json', import.meta.url), 'utf8')
-const prototipo = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown)))(outJson)
-const base64url = (valor: unknown) => Buffer.from(JSON.stringify(valor)).toString('base64url')
+const prototype = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown)))(outJson)
+const base64url = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url')
 
-const captura = (texto: string) => {
-  const r = parsearPayload(texto)
+const capture = (text: string) => {
+  const r = parsePayload(text)
   if (Result.isFailure(r)) throw new Error(`expected a capture, got ${JSON.stringify(r.failure)}`)
   return r.success
 }
 
 describe('parsearPayload', () => {
   it('reads the prototype out.json, which predates the machine facts, with every fact null', () => {
-    expect(captura(outJson)).toEqual({
+    expect(capture(outJson)).toEqual({
       capturado_en: new Date('2026-10-10T18:43:52Z'),
       sistema: 'Linux',
       version_sistema: '7.0.0-30-generic',
@@ -42,12 +42,12 @@ describe('parsearPayload', () => {
   })
 
   it('reads the machine facts a current detector sends', () => {
-    const hechos = { nivel_x86: 'v3', arranque_seguro: 'bios', tpm: 'no_detectado', zram_mb: 8192, swap_mb: 0 }
-    expect(captura(JSON.stringify({ ...prototipo, ...hechos }))).toMatchObject(hechos)
+    const facts = { nivel_x86: 'v3', arranque_seguro: 'bios', tpm: 'no_detectado', zram_mb: 8192, swap_mb: 0 }
+    expect(capture(JSON.stringify({ ...prototype, ...facts }))).toMatchObject(facts)
   })
 
   it('reads the PowerShell detector output: no distro, no Linux driver, Vulkan unknown, Steam tools dropped', () => {
-    expect(captura(windowsJson)).toEqual({
+    expect(capture(windowsJson)).toEqual({
       capturado_en: new Date('2026-10-15T00:57:49Z'),
       sistema: 'Windows',
       version_sistema: 'Windows 10 Home 22H2 (19045)',
@@ -72,8 +72,8 @@ describe('parsearPayload', () => {
   })
 
   it('drops the Vulkan and driver keys a Windows payload sends', () => {
-    const conVulkan = { ...JSON.parse(windowsJson), soporte_vulkan: 'si', version_vulkan: '1.3.280', controlador: 'nvlddmkm' }
-    expect(captura(JSON.stringify(conVulkan))).toEqual(captura(windowsJson))
+    const withVulkan = { ...JSON.parse(windowsJson), soporte_vulkan: 'si', version_vulkan: '1.3.280', controlador: 'nvlddmkm' }
+    expect(capture(JSON.stringify(withVulkan))).toEqual(capture(windowsJson))
   })
 
   it('normalizes the library: tools, bad ids and repeats out, order kept, names trimmed and cut', () => {
@@ -90,7 +90,7 @@ describe('parsearPayload', () => {
       { app_id: 227300, nombre: 'N'.repeat(130) },
       { app_id: 1245620, nombre: 'ProtonDB Fan Game' },
     ]
-    expect(captura(JSON.stringify({ ...prototipo, biblioteca_steam })).biblioteca_steam).toEqual([
+    expect(capture(JSON.stringify({ ...prototype, biblioteca_steam })).biblioteca_steam).toEqual([
       { app_id: 271590, nombre: 'Grand Theft Auto V' },
       { app_id: 227300, nombre: 'N'.repeat(120) },
       { app_id: 1245620, nombre: 'ProtonDB Fan Game' },
@@ -99,28 +99,28 @@ describe('parsearPayload', () => {
 
   it('drops control characters and replaces lone surrogates in a name, so jsonb can store it', () => {
     const biblioteca_steam = [{ app_id: 271590, nombre: 'Grand\u0000 Theft\u001f Auto\u007f \udc00V' }]
-    expect(captura(JSON.stringify({ ...prototipo, biblioteca_steam })).biblioteca_steam).toEqual([{ app_id: 271590, nombre: 'Grand Theft Auto \ufffdV' }])
+    expect(capture(JSON.stringify({ ...prototype, biblioteca_steam })).biblioteca_steam).toEqual([{ app_id: 271590, nombre: 'Grand Theft Auto \ufffdV' }])
   })
 
   it('keeps the first 1000 games of a larger library and an empty library as empty', () => {
     const biblioteca_steam = Array.from({ length: 1200 }, (_, i) => ({ app_id: i + 1, nombre: `Juego ${i + 1}` }))
-    const leida = captura(JSON.stringify({ ...prototipo, biblioteca_steam })).biblioteca_steam
-    expect([leida?.length, leida?.[0], leida?.[999]]).toEqual([1000, { app_id: 1, nombre: 'Juego 1' }, { app_id: 1000, nombre: 'Juego 1000' }])
-    expect(captura(JSON.stringify({ ...prototipo, biblioteca_steam: [] })).biblioteca_steam).toEqual([])
+    const library = capture(JSON.stringify({ ...prototype, biblioteca_steam })).biblioteca_steam
+    expect([library?.length, library?.[0], library?.[999]]).toEqual([1000, { app_id: 1, nombre: 'Juego 1' }, { app_id: 1000, nombre: 'Juego 1000' }])
+    expect(capture(JSON.stringify({ ...prototype, biblioteca_steam: [] })).biblioteca_steam).toEqual([])
   })
 
   it('keeps the Vulkan version when support is si', () => {
-    expect(captura(JSON.stringify({ ...prototipo, soporte_vulkan: 'si', version_vulkan: '1.3.275' }))).toMatchObject({
+    expect(capture(JSON.stringify({ ...prototype, soporte_vulkan: 'si', version_vulkan: '1.3.275' }))).toMatchObject({
       soporte_vulkan: 'si',
       version_vulkan: '1.3.275',
     })
   })
 
   it('maps an Arch build-date VERSION_ID and a missing version to rolling', () => {
-    const arch = { ...prototipo, distribucion: { nombre: 'Arch Linux', version: '20261004.0.606936' } }
-    expect(captura(JSON.stringify(arch))).toMatchObject({ distribucion: { nombre: 'Arch Linux', version: 'rolling' } })
-    const sinVersion = { ...prototipo, distribucion: { nombre: 'Arch Linux', version: null } }
-    expect(captura(JSON.stringify(sinVersion))).toMatchObject({ distribucion: { version: 'rolling' } })
+    const arch = { ...prototype, distribucion: { nombre: 'Arch Linux', version: '20261004.0.606936' } }
+    expect(capture(JSON.stringify(arch))).toMatchObject({ distribucion: { nombre: 'Arch Linux', version: 'rolling' } })
+    const withoutVersion = { ...prototype, distribucion: { nombre: 'Arch Linux', version: null } }
+    expect(capture(JSON.stringify(withoutVersion))).toMatchObject({ distribucion: { version: 'rolling' } })
   })
 
   it.each([
@@ -131,28 +131,28 @@ describe('parsearPayload', () => {
     ['10de:2504:00', null, 'GPU no detectada'],
     [42, null, 'GPU no detectada'],
     [null, null, 'GPU no detectada'],
-  ])('keeps gpu_pci_id %o as %o (never a failure) and labels a null GPU name from it', (enviado, gpu_pci_id, gpu_modelo) => {
-    expect(captura(JSON.stringify({ ...prototipo, gpu_modelo: null, gpu_pci_id: enviado }))).toMatchObject({ gpu_pci_id, gpu_modelo })
+  ])('keeps gpu_pci_id %o as %o (never a failure) and labels a null GPU name from it', (sent, gpu_pci_id, gpu_modelo) => {
+    expect(capture(JSON.stringify({ ...prototype, gpu_modelo: null, gpu_pci_id: sent }))).toMatchObject({ gpu_pci_id, gpu_modelo })
   })
 
   it('accepts the bare base64url fragment and a whole pasted URL with #d=', () => {
-    const esperado = captura(outJson)
-    expect(captura(base64url(prototipo))).toEqual(esperado)
-    expect(captura(`  http://localhost:3000/diagnostico/importar#d=${base64url(prototipo)}\n`)).toEqual(esperado)
+    const expected = capture(outJson)
+    expect(capture(base64url(prototype))).toEqual(expected)
+    expect(capture(`  http://localhost:3000/diagnostico/importar#d=${base64url(prototype)}\n`)).toEqual(expected)
   })
 
   it('names an unnamed CPU (ARM kernels) instead of rejecting the payload', () => {
-    expect(captura(JSON.stringify({ ...prototipo, cpu_modelo: null })).cpu_modelo).toBe('CPU no detectada')
+    expect(capture(JSON.stringify({ ...prototype, cpu_modelo: null })).cpu_modelo).toBe('CPU no detectada')
   })
 
   it('rejects another version_esquema, telling the user to download the detector again', () => {
-    expect(parsearPayload(JSON.stringify({ ...prototipo, version_esquema: 2 }))).toEqual(
+    expect(parsePayload(JSON.stringify({ ...prototype, version_esquema: 2 }))).toEqual(
       Result.fail(new InvalidPayload({ reason: 'version_esquema', field: 'version_esquema' })),
     )
   })
 
-  it.each(['', 'hola', '{no es json', '#d=@@@', base64url('solo texto'), '[1,2]'])('%o is ilegible', (texto) => {
-    expect(parsearPayload(texto)).toEqual(Result.fail(new InvalidPayload({ reason: 'ilegible', field: null })))
+  it.each(['', 'hola', '{no es json', '#d=@@@', base64url('solo texto'), '[1,2]'])('%o is ilegible', (text) => {
+    expect(parsePayload(text)).toEqual(Result.fail(new InvalidPayload({ reason: 'ilegible', field: null })))
   })
 
   it.each([
@@ -168,9 +168,9 @@ describe('parsearPayload', () => {
     [{ tpm: '2' }, 'tpm'],
     [{ zram_mb: -1 }, 'zram_mb'],
     [{ swap_mb: 1.5 }, 'swap_mb'],
-  ])('a bad field %o is campo_invalido at %s', (cambio, campo) => {
-    expect(parsearPayload(JSON.stringify({ ...prototipo, ...cambio }))).toEqual(
-      Result.fail(new InvalidPayload({ reason: 'campo_invalido', field: campo })),
+  ])('a bad field %o is campo_invalido at %s', (override, field) => {
+    expect(parsePayload(JSON.stringify({ ...prototype, ...override }))).toEqual(
+      Result.fail(new InvalidPayload({ reason: 'campo_invalido', field })),
     )
   })
 })

@@ -7,7 +7,7 @@ import { type Encoded, profileMismatches, type IncomparableProfile, type RuleVio
 import { LayerFamily, requiresFailure, Outcome } from '../../domain/literals.ts'
 import { GameId, ProfileId, type ReportId } from '../../domain/ids.ts'
 import { protonReportPossible } from '../../domain/upstream.ts'
-import { opcionesReporteFn, registrarReporteFn } from '../../fns/contributions.ts'
+import { reportOptionsFn, submitReportFn } from '../../fns/contributions.ts'
 import { ErrorCampo } from '../../ui/FieldError.tsx'
 import { momento } from '../../ui/format.ts'
 import { Campo, campo, GrupoOpcional, nulo } from '../../ui/form.tsx'
@@ -26,18 +26,18 @@ export const Route = createFileRoute('/juegos/$juegoId_/reportar')({
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
   },
   loaderDeps: ({ search }) => ({ perfil: search.perfil ?? null }),
-  loader: ({ params, deps }) => opcionesReporteFn({ data: { juegoId: params.juegoId, perfil: deps.perfil } }),
-  head: ({ loaderData }) => ({ meta: [{ title: `Reportar ${loaderData?.juego.titulo ?? 'resultado'} · OpenGame Linux` }] }),
+  loader: ({ params, deps }) => reportOptionsFn({ data: { juegoId: params.juegoId, perfil: deps.perfil } }),
+  head: ({ loaderData }) => ({ meta: [{ title: `Reportar ${loaderData?.game.titulo ?? 'resultado'} · OpenGame Linux` }] }),
   component: Reportar,
 })
 
-type Opciones = Awaited<ReturnType<typeof opcionesReporteFn>>
+type Opciones = Awaited<ReturnType<typeof reportOptionsFn>>
 type Enviado = { readonly id: ReportId; readonly conFallos: boolean; readonly proton: boolean }
 
 function Reportar() {
   const opciones = Route.useLoaderData()
   const [enviado, setEnviado] = useState<Enviado | null>(null)
-  const { juego } = opciones
+  const { game: juego } = opciones
 
   return (
     <main className="envoltura">
@@ -68,7 +68,7 @@ function Reportar() {
             </button>
           </p>
         </section>
-      ) : opciones.diagnosticos.length === 0 ? (
+      ) : opciones.diagnostics.length === 0 ? (
         <section className="tarjeta nota pila">
           <p>Para reportar necesitas un diagnóstico de tu equipo hecho en Linux: el reporte guarda el entorno exacto de la prueba.</p>
           <p>
@@ -86,17 +86,17 @@ const porId = <I extends number>(lista: ReadonlyArray<{ readonly id: I }>, valor
 
 const nombres = (o: Opciones) => {
   const distribuciones = new Map<number, string>([
-    ...o.perfiles.map((p) => [p.distribucion_id, p.distribucion] as const),
-    ...o.diagnosticos.map((d) => [d.distribucion_id, d.distribucion] as const),
+    ...o.profiles.map((p) => [p.distribucion_id, p.distribucion] as const),
+    ...o.diagnostics.map((d) => [d.distribucion_id, d.distribucion] as const),
   ])
   const capa = (id: number) => {
-    const c = o.capas.find((x) => x.id === id)
+    const c = o.layers.find((x) => x.id === id)
     return c === undefined ? 'otra capa' : `${c.familia} ${c.variante} ${c.version}`
   }
   return (d: Encoded<IncomparableProfile>['mismatches'][number]): readonly [string, string] => {
     switch (d.aspect) {
       case 'edicion':
-        return [o.ediciones.find((e) => e.id === d.expected)?.lanzador ?? 'otra edición', o.ediciones.find((e) => e.id === d.actual)?.lanzador ?? 'otra edición']
+        return [o.editions.find((e) => e.id === d.expected)?.lanzador ?? 'otra edición', o.editions.find((e) => e.id === d.actual)?.lanzador ?? 'otra edición']
       case 'capa':
         return [capa(d.expected), capa(d.actual)]
       case 'distribucion':
@@ -109,7 +109,7 @@ const nombres = (o: Opciones) => {
 }
 
 function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (enviado: Enviado) => void }) {
-  const { diagnosticos, ediciones, capas, perfiles, tiposFallo, perfilElegido } = opciones
+  const { diagnostics: diagnosticos, editions: ediciones, layers: capas, profiles: perfiles, failureTypes: tiposFallo, selectedProfile: perfilElegido } = opciones
   const elegido = perfiles.find((p) => p.id === perfilElegido)
 
   const [diagnosticoId, setDiagnosticoId] = useState(diagnosticos.at(0)?.id)
@@ -132,7 +132,7 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
   const perfilValor = comparables.some((p) => String(p.id) === perfilId) ? perfilId : nulo
 
   const nombreDe = nombres(opciones)
-  const r = useAccion(NewReport, registrarReporteFn, {
+  const r = useAccion(NewReport, submitReportFn, {
     alFallar: (f: Encoded<RuleViolated | IncomparableProfile>): Errores => {
       switch (f._tag) {
         case 'ReglaIncumplida':

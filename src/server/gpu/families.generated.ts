@@ -5,8 +5,8 @@
 import type { GpuFamily, GpuVendor } from '../../domain/gpu.ts'
 
 /** `marca` lets scripts/sin-servidor-en-cliente.ts spot this table in a browser bundle. */
-export const tablaGpu = {
-  marca: 'OPENGAME_TABLA_GPU',
+export const gpuTable = {
+  leakSentinel: 'OPENGAME_TABLA_GPU',
   ids: {
     '8086': {
       intel_gen5_o_anterior: '0042 0046 2562 2572 2582 258a 2592 2772 27a2 27ae 2972 2982 2992 29a2 29b2 29c2 29d2 2a02 2a12 2a42 2e02 2e12 2e22 2e32 2e42 2e92 3577 3582 a001 a011',

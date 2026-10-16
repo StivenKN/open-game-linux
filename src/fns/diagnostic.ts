@@ -4,23 +4,23 @@ import { Schema } from 'effect'
 import { DiagnosticInput, SaveDiagnostic } from '../domain/contributions.ts'
 import { InvalidPayload, RuleViolated } from '../domain/errors.ts'
 import { DiagnosticId } from '../domain/ids.ts'
-import { registrarDiagnostico } from '../server/commands/diagnostic.ts'
-import { evaluarSinGuardar, miDiagnostico, misEquipos } from '../server/queries/diagnostic.ts'
-import { accion, leer } from '../server/run.ts'
-import { origenPublico } from '../server/origin.ts'
+import { submitDiagnostic } from '../server/commands/diagnostic.ts'
+import { evaluateWithoutSaving, myDiagnostic, myMachines } from '../server/queries/diagnostic.ts'
+import { runAction, runRead } from '../server/run.ts'
+import { publicOrigin } from '../server/origin.ts'
 
-export const evaluarDiagnosticoFn = createServerFn({ method: 'POST' })
+export const evaluateDiagnosticFn = createServerFn({ method: 'POST' })
   .validator(Schema.toStandardSchemaV1(DiagnosticInput))
-  .handler(({ data }) => accion(InvalidPayload, evaluarSinGuardar(data)))
+  .handler(({ data }) => runAction(InvalidPayload, evaluateWithoutSaving(data)))
 
-export const guardarDiagnosticoFn = createServerFn({ method: 'POST' })
+export const saveDiagnosticFn = createServerFn({ method: 'POST' })
   .validator(Schema.toStandardSchemaV1(SaveDiagnostic))
-  .handler(({ data }) => accion(Schema.Union([RuleViolated, InvalidPayload]), registrarDiagnostico(data)))
+  .handler(({ data }) => runAction(Schema.Union([RuleViolated, InvalidPayload]), submitDiagnostic(data)))
 
-export const misEquiposFn = createServerFn({ method: 'GET' }).handler(() => leer(misEquipos()))
+export const myMachinesFn = createServerFn({ method: 'GET' }).handler(() => runRead(myMachines()))
 
-export const miDiagnosticoFn = createServerFn({ method: 'GET' })
+export const myDiagnosticFn = createServerFn({ method: 'GET' })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ id: DiagnosticId })))
-  .handler(({ data }) => leer(miDiagnostico(data.id)))
+  .handler(({ data }) => runRead(myDiagnostic(data.id)))
 
-export const origenFn = createServerFn({ method: 'GET' }).handler(() => origenPublico(getRequest()))
+export const originFn = createServerFn({ method: 'GET' }).handler(() => publicOrigin(getRequest()))
