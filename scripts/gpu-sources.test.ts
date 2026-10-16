@@ -14,7 +14,7 @@ CHIPSET(0x9400, R600_9400, R600)`
     ])
   })
   it('fails on a line it cannot read', () => {
-    expect(() => chipsetsMesa('CHIPSET(0x0412, hsw_gt2, "x")\n#define OTRA 1', 'crocus')).toThrow('crocus:2: línea ilegible «#define OTRA 1»')
+    expect(() => chipsetsMesa('CHIPSET(0x0412, hsw_gt2, "x")\n#define OTRA 1', 'crocus')).toThrow('crocus:2: unreadable line «#define OTRA 1»')
   })
 })
 
@@ -31,7 +31,7 @@ describe('Intel tokens', () => {
     expect(familiaCrocus(token)).toBe(familia)
   })
   it('crocus fails on a token it has no rule for', () => {
-    expect(() => familiaCrocus('xyz_gt1')).toThrow('crocus: token desconocido «xyz_gt1»')
+    expect(() => familiaCrocus('xyz_gt1')).toThrow('crocus: unknown token «xyz_gt1»')
   })
   it.each([
     ['bdw_gt2', 'intel_gen8'],
@@ -67,10 +67,10 @@ ${cuerpo}
     ])
   })
   it('fails on an unknown CHIP_*', () => {
-    expect(() => idsAmdgpu(lista('\t{0x1002, 0x7550, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_NAVI48},'))).toThrow('CHIP_NAVI48 desconocido')
+    expect(() => idsAmdgpu(lista('\t{0x1002, 0x7550, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_NAVI48},'))).toThrow('unknown CHIP_NAVI48')
   })
   it('fails on an entry it cannot read', () => {
-    expect(() => idsAmdgpu(lista('\t{0x1002, CHIP_TAHITI},'))).toThrow('entrada ilegible')
+    expect(() => idsAmdgpu(lista('\t{0x1002, CHIP_TAHITI},'))).toThrow('unreadable entry')
   })
 })
 
@@ -107,13 +107,13 @@ describe('idsNvidia', () => {
     ])
   })
   it('fails on a line it cannot read inside the vendor block', () => {
-    expect(() => idsNvidia('10de  NVIDIA Corporation\n\t0de1 GF108')).toThrow('pci.ids:2: línea ilegible')
+    expect(() => idsNvidia('10de  NVIDIA Corporation\n\t0de1 GF108')).toThrow('pci.ids:2: unreadable line')
   })
 })
 
 describe('conPiso', () => {
   it('fails below the floor and passes at it', () => {
-    expect(() => conPiso('iris', 3, [1, 2])).toThrow('iris: 2 ids, menos que el piso 3')
+    expect(() => conPiso('iris', 3, [1, 2])).toThrow('iris: 2 ids, under the floor of 3')
     expect(conPiso('iris', 2, [1, 2])).toEqual([1, 2])
   })
 })
@@ -139,6 +139,6 @@ describe('tablaDe', () => {
         { vendor: '1002', device: '6798', familia: 'amd_gcn1' },
         { vendor: '1002', device: '6798', familia: 'amd_terascale_o_anterior' },
       ]),
-    ).toThrow('1002:6798 aparece como amd_gcn1 y como amd_terascale_o_anterior')
+    ).toThrow('1002:6798 appears as both amd_gcn1 and amd_terascale_o_anterior')
   })
 })

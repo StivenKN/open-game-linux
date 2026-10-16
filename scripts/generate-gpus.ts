@@ -68,4 +68,4 @@ ${bloque}
 
 const unicos = new Map(dispositivos.map((d) => [`${d.vendor}:${d.device}`, d.familia]))
 for (const f of GpuFamily.literals) console.log(`${f.padEnd(28)}${[...unicos.values()].filter((u) => u === f).length}`)
-console.log(`Escrito ${destino.pathname}`)
+console.log(`Wrote ${destino.pathname}`)

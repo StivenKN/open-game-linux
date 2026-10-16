@@ -72,7 +72,7 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `ui/diagnostics/Distributions.tsx` | The "Distribuciones" section: candidates grouped by verdict with their reasons | |
 | `detector/opengame-detect.sh` | The productionized prototype script: payload v1 + `gpu_pci_id` + `biblioteca_steam`, with `__OPENGAME_URL__` and `__OPENGAME_MAX_JUEGOS__` filled in by the server route | |
 | `detector/opengame-detect.ps1` | The Windows detector for Windows PowerShell 5.1 and pwsh 7, ASCII only, no admin: the same payload without Vulkan or kernel driver. A URL over 2000 characters (the ShellExecute limit) goes to the clipboard and opens `/diagnostico?pegar=1` | |
-| `scripts/` | `migrate`, `seed` (approvals only via `decide`), `set-role`, `protondb` (`pnpm db:protondb <ruta \| ->`), `no-server-in-client`, `generate-gpus` (`pnpm gpu:generate`) with its pure parsers in `gpu-sources.ts`, which fail closed on an unreadable line, an unknown token or a count under its floor | |
+| `scripts/` | `migrate`, `seed` (approvals only via `decide`), `set-role`, `protondb` (`pnpm db:protondb <path \| ->`), `no-server-in-client`, `generate-gpus` (`pnpm gpu:generate`) with its pure parsers in `gpu-sources.ts`, which fail closed on an unreadable line, an unknown token or a count under its floor | |
 | `tests/` | `support.ts` (rollback-per-test, constraint-name decoder), `setup.ts` (globalSetup: refuses any DB not named `*_test`, rebuilds the schema, migrates), `schema.test.ts`, `contributions.test.ts` | |
 
 ## Route map

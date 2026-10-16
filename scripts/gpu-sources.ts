@@ -9,13 +9,13 @@ export const chipsetsMesa = (texto: string, fuente: string): ReadonlyArray<{ rea
   texto.split('\n').flatMap((linea, i) => {
     if (linea.trim() === '') return []
     const m = /^CHIPSET\(0x([0-9a-fA-F]{1,4}),\s*([A-Za-z0-9_]+)\s*,/.exec(linea)
-    if (m?.[1] === undefined || m[2] === undefined) throw new Error(`${fuente}:${i + 1}: línea ilegible «${linea}»`)
+    if (m?.[1] === undefined || m[2] === undefined) throw new Error(`${fuente}:${i + 1}: unreadable line «${linea}»`)
     return [{ device: hex4(m[1]), token: m[2] }]
   })
 
 const reglas = (fuente: string, token: string, tabla: ReadonlyArray<readonly [RegExp, GpuFamily]>, otro?: GpuFamily): GpuFamily => {
   const familia = tabla.find(([re]) => re.test(token))?.[1] ?? otro
-  if (familia === undefined) throw new Error(`${fuente}: token desconocido «${token}»; agrega su familia en scripts/gpu-sources.ts`)
+  if (familia === undefined) throw new Error(`${fuente}: unknown token «${token}»; add its family to scripts/gpu-sources.ts`)
   return familia
 }
 
@@ -79,7 +79,7 @@ const esChip = (chip: string): chip is keyof typeof chipsAmdgpu => Object.hasOwn
  */
 export const idsAmdgpu = (texto: string): ReadonlyArray<Dispositivo> => {
   const inicio = texto.search(/^static const struct pci_device_id pciidlist\[\] = \{$/m)
-  if (inicio === -1) throw new Error('amdgpu_drv.c: no encuentro «static const struct pci_device_id pciidlist[] = {»')
+  if (inicio === -1) throw new Error('amdgpu_drv.c: cannot find «static const struct pci_device_id pciidlist[] = {»')
   const fin = texto.indexOf('\n};', inicio)
   const cuerpo = texto
     .slice(texto.indexOf('{', inicio) + 1, fin)
@@ -90,9 +90,9 @@ export const idsAmdgpu = (texto: string): ReadonlyArray<Dispositivo> => {
     if (e === '' || /^0,\s*0,\s*0$/.test(e)) return []
     if (/^(PCI_DEVICE\()?0x1002,\s*PCI_ANY_ID\b/.test(e)) return []
     const m = /^(?:PCI_DEVICE\()?0x1002,\s*0x([0-9a-fA-F]{4})\b[\s\S]*?\bCHIP_([A-Z0-9_]+)/.exec(e)
-    if (m?.[1] === undefined || m[2] === undefined) throw new Error(`amdgpu_drv.c: entrada ilegible «${e}»`)
+    if (m?.[1] === undefined || m[2] === undefined) throw new Error(`amdgpu_drv.c: unreadable entry «${e}»`)
     const chip = m[2]
-    if (!esChip(chip)) throw new Error(`amdgpu_drv.c: CHIP_${chip} desconocido; agrega su familia en scripts/gpu-sources.ts`)
+    if (!esChip(chip)) throw new Error(`amdgpu_drv.c: unknown CHIP_${chip}; add its family to scripts/gpu-sources.ts`)
     return [{ vendor: '1002', device: hex4(m[1]), familia: chipsAmdgpu[chip] }]
   })
 }
@@ -111,13 +111,13 @@ const noEsGpu = /\b(Audio|Bridge|bridge|Controller|PCIe host|USB|UCSI|SMBus|Ethe
 export const idsNvidia = (texto: string): ReadonlyArray<Dispositivo> => {
   const lineas = texto.split('\n')
   const inicio = lineas.findIndex((l) => l.startsWith('10de  '))
-  if (inicio === -1) throw new Error('pci.ids: no encuentro el vendor 10de')
+  if (inicio === -1) throw new Error('pci.ids: cannot find vendor 10de')
   const salida: Array<Dispositivo> = []
   for (const [i, linea] of lineas.slice(inicio + 1).entries()) {
     if (/^([0-9a-f]{4}  |C )/.test(linea)) break
     if (linea.trim() === '' || linea.startsWith('#') || /^\t\t[0-9a-f]{4} [0-9a-f]{4}  /.test(linea)) continue
     const m = /^\t([0-9a-f]{4})  (.+)$/.exec(linea)
-    if (m?.[1] === undefined || m[2] === undefined) throw new Error(`pci.ids:${inicio + i + 2}: línea ilegible «${linea}»`)
+    if (m?.[1] === undefined || m[2] === undefined) throw new Error(`pci.ids:${inicio + i + 2}: unreadable line «${linea}»`)
     const nombre = m[2]
     if (noEsGpu.test(nombre.replace(/\[[^\]]*\]/g, ''))) continue
     const familia = codenamesNvidia.find(([re]) => re.test(nombre))?.[1]
@@ -127,7 +127,7 @@ export const idsNvidia = (texto: string): ReadonlyArray<Dispositivo> => {
 }
 
 export const conPiso = <A>(fuente: string, piso: number, ids: ReadonlyArray<A>): ReadonlyArray<A> => {
-  if (ids.length < piso) throw new Error(`${fuente}: ${ids.length} ids, menos que el piso ${piso}; ¿cambió el formato?`)
+  if (ids.length < piso) throw new Error(`${fuente}: ${ids.length} ids, under the floor of ${piso}; did the format change?`)
   return ids
 }
 
@@ -138,7 +138,7 @@ export const tablaDe = (dispositivos: ReadonlyArray<Dispositivo>): Tabla => {
   for (const d of dispositivos) {
     const clave = `${d.vendor}:${d.device}`
     const previa = unicos.get(clave)?.familia
-    if (previa !== undefined && previa !== d.familia) throw new Error(`${clave} aparece como ${previa} y como ${d.familia}`)
+    if (previa !== undefined && previa !== d.familia) throw new Error(`${clave} appears as both ${previa} and ${d.familia}`)
     unicos.set(clave, d)
   }
   const grupos = new Map<string, { readonly vendor: GpuVendor; readonly familia: GpuFamily; readonly numeros: Array<number> }>()

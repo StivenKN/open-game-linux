@@ -1,7 +1,7 @@
-// Probe (a): can the report form post its FormData straight into NuevoReporte?
+// Probe (a): can the report form post its FormData straight into NewReport?
 // Run: node scripts/probes/probe-form.ts
-// U2 folded the probe's fix into NuevoReporte (fallos defaults to [], the 8.7 rule lands on `fallos`),
-// so the sketch-schema case is gone and the "con defecto" cases run against NuevoReporte itself.
+// U2 folded the probe's fix into NewReport (failures defaults to [], the 8.7 rule lands on `failures`),
+// so the sketch-schema case is gone and the "defaults to []" cases run against NewReport itself.
 import { Schema } from 'effect'
 import { NewReport } from '../../src/domain/contributions.ts'
 
@@ -29,11 +29,11 @@ const con = (pares: ReadonlyArray<Par>, cambios: Record<string, string>): Readon
 ]
 
 const casos: ReadonlyArray<readonly [string, Schema.Codec<unknown, unknown>, ReadonlyArray<Par>]> = [
-  ['profile_id "" y measurement ""', NewReport, con(base, { profile_id: '', measurement: '' })],
-  ['perfil_id y medicion ausentes', NewReport, base],
-  ['profile_id "null" y measurement "null" (nulo canónico de StringTree)', NewReport, con(base, { profile_id: 'null', measurement: 'null' })],
+  ['profile_id "" and measurement ""', NewReport, con(base, { profile_id: '', measurement: '' })],
+  ['profile_id and measurement missing', NewReport, base],
+  ['profile_id "null" and measurement "null" (the StringTree canonical null)', NewReport, con(base, { profile_id: 'null', measurement: 'null' })],
   [
-    'version_capa nueva, perfil 7, medición completa',
+    'new layer_version, profile 7, full measurement',
     NewReport,
     con(base.filter(([k]) => !k.startsWith('layer_version')), {
       'layer_version[_tag]': 'nueva',
@@ -47,10 +47,10 @@ const casos: ReadonlyArray<readonly [string, Schema.Codec<unknown, unknown>, Rea
       'measurement[measurement_method]': 'MangoHud',
     }),
   ],
-  ['funciona sin fallos, fallos con defecto []', NewReport, con(sinFallos, { outcome: 'funciona', profile_id: 'null', measurement: 'null' })],
-  ['no_inicia sin fallos, fallos con defecto [] (regla 8.7)', NewReport, con(sinFallos, { profile_id: 'null', measurement: 'null' })],
-  ['id no numérico', NewReport, con(base, { 'layer_version[id]': 'abc', profile_id: 'null', measurement: 'null' })],
-  ['texto opcional escrito "null"', NewReport, con(base, { launcher_version: 'null', profile_id: 'null', measurement: 'null' })],
+  ['funciona without failures, failures defaults to []', NewReport, con(sinFallos, { outcome: 'funciona', profile_id: 'null', measurement: 'null' })],
+  ['no_inicia without failures, failures defaults to [] (rule 8.7)', NewReport, con(sinFallos, { profile_id: 'null', measurement: 'null' })],
+  ['non-numeric id', NewReport, con(base, { 'layer_version[id]': 'abc', profile_id: 'null', measurement: 'null' })],
+  ['optional text written as "null"', NewReport, con(base, { launcher_version: 'null', profile_id: 'null', measurement: 'null' })],
 ]
 
 for (const [nombre, esquema, pares] of casos) {

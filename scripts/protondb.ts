@@ -7,7 +7,7 @@ import { PgLive } from '../src/server/runtime.ts'
 
 const ruta = process.argv[2]
 if (ruta === undefined) {
-  console.error('Uso: pnpm db:protondb <reports_piiremoved.json | ->')
+  console.error('Usage: pnpm db:protondb <reports_piiremoved.json | ->')
   process.exit(2)
 }
 
@@ -17,7 +17,7 @@ async function* trozos(origen: string): AsyncGenerator<string> {
 }
 
 const programa = importProtonDb(trozos(ruta)).pipe(
-  Effect.catchTag('ExportacionInvalida', (e) => Effect.die(`ProtonDB: ${e.reason}. No se cambió nada.`)),
+  Effect.catchTag('ExportacionInvalida', (e) => Effect.die(`ProtonDB: ${e.reason}. Nothing changed.`)),
   Effect.flatMap((r) => Effect.log(importSummary(r))),
   Effect.provide(PgLive),
 )

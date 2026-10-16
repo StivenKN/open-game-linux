@@ -24,12 +24,12 @@ const programa = Effect.gen(function* () {
            NULL::numeric(7,2)                         AS numeric_null,
            '2026-10-01 18:30:00-05'::timestamptz      AS timestamptz,
            ARRAY['pantalla_negra','sin_audio']::text[] AS text_array,
-           '{}'::text[]                               AS text_array_vacio,
+           '{}'::text[]                               AS text_array_empty,
            true::boolean                              AS boolean,
            '2026-10-01'::date                         AS date,
            (SELECT count(*) FROM pg_database)         AS count_star,
            9007199254740993::bigint                   AS bigint,
-           current_setting('TimeZone')                AS zona_sesion`
+           current_setting('TimeZone')                AS session_zone`
   for (const [columna, valor] of Object.entries(fila ?? {})) console.log(`${columna.padEnd(18)} ${describir(valor)}`)
   console.log(`process TZ         ${Intl.DateTimeFormat().resolvedOptions().timeZone}`)
 })
