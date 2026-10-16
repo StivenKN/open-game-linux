@@ -194,7 +194,15 @@ const fixUnlinked = (files: ReadonlySet<SourceFile>, renamed: ReadonlyMap<string
         else if (Node.isIdentifier(node) && Node.isShorthandPropertyAssignment(parent)) to = keyTarget(from, parent.getParentOrThrow())
         else if (Node.isIdentifier(node) && Node.isBindingElement(parent) && (parent.getPropertyNameNode() ?? parent.getNameNode()) === node) to = renamedPropertyOf(from, parent.getParentOrThrow().getType())
         else if (Node.isStringLiteral(node) && Node.isBinaryExpression(parent) && parent.getOperatorToken().getText() === 'in' && parent.getLeft() === node) to = renamedPropertyOf(from, parent.getRight().getType())
-        else if (Node.isStringLiteral(node) && Node.isLiteralTypeNode(parent)) {
+        else if (Node.isStringLiteral(node) && Node.isArrayLiteralExpression(parent)) {
+          // `Struct.pick(['a'])` carries no type; `Struct.pick(T.fields, ['a'])` does.
+          const call = parent.getParent()
+          if (Node.isCallExpression(call) && /\.(pick|omit)$/.test(call.getExpression().getText())) {
+            const [first] = call.getArguments()
+            const targets = [...(renamed.get(from) ?? [])]
+            to = first !== undefined && first !== parent ? renamedPropertyOf(from, first.getType()) : targets.length === 1 ? targets[0] : undefined
+          }
+        } else if (Node.isStringLiteral(node) && Node.isLiteralTypeNode(parent)) {
           const owner = parent.getParentWhile((n) => Node.isUnionTypeNode(n) || Node.isLiteralTypeNode(n)) ?? parent
           const holder = owner.getParent()
           if (Node.isIndexedAccessTypeNode(holder) && holder.getIndexTypeNode() === owner) to = renamedPropertyOf(from, holder.getObjectTypeNode().getType())
