@@ -15,7 +15,7 @@ export const chipsetsMesa = (texto: string, fuente: string): ReadonlyArray<{ rea
 
 const reglas = (fuente: string, token: string, tabla: ReadonlyArray<readonly [RegExp, GpuFamily]>, otro?: GpuFamily): GpuFamily => {
   const familia = tabla.find(([re]) => re.test(token))?.[1] ?? otro
-  if (familia === undefined) throw new Error(`${fuente}: token desconocido «${token}»; agrega su familia en scripts/gpu-fuentes.ts`)
+  if (familia === undefined) throw new Error(`${fuente}: token desconocido «${token}»; agrega su familia en scripts/gpu-sources.ts`)
   return familia
 }
 
@@ -92,7 +92,7 @@ export const idsAmdgpu = (texto: string): ReadonlyArray<Dispositivo> => {
     const m = /^(?:PCI_DEVICE\()?0x1002,\s*0x([0-9a-fA-F]{4})\b[\s\S]*?\bCHIP_([A-Z0-9_]+)/.exec(e)
     if (m?.[1] === undefined || m[2] === undefined) throw new Error(`amdgpu_drv.c: entrada ilegible «${e}»`)
     const chip = m[2]
-    if (!esChip(chip)) throw new Error(`amdgpu_drv.c: CHIP_${chip} desconocido; agrega su familia en scripts/gpu-fuentes.ts`)
+    if (!esChip(chip)) throw new Error(`amdgpu_drv.c: CHIP_${chip} desconocido; agrega su familia en scripts/gpu-sources.ts`)
     return [{ vendor: '1002', device: hex4(m[1]), familia: chipsAmdgpu[chip] }]
   })
 }

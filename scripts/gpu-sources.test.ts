@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { chipsetsMesa, conPiso, familiaCrocus, familiaIris, idsAmdgpu, idsNvidia, tablaDe } from './gpu-fuentes.ts'
+import { chipsetsMesa, conPiso, familiaCrocus, familiaIris, idsAmdgpu, idsNvidia, tablaDe } from './gpu-sources.ts'
 
 describe('chipsetsMesa', () => {
   it('reads every CHIPSET line and skips blank ones', () => {

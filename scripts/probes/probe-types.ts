@@ -1,5 +1,5 @@
 // Probe (c): which JS value does @effect/sql-pg hand back for each column type the schema uses?
-// Run: node --env-file=.env scripts/probes/probe-tipos.ts
+// Run: node --env-file=.env scripts/probes/probe-types.ts
 import { PgClient } from '@effect/sql-pg'
 import { Effect, Redacted } from 'effect'
 import { SqlClient } from 'effect/sql'

@@ -4,9 +4,9 @@ Three probes from `PLAN.md` row U0, run on 2026-10-10 against the pinned stack (
 
 | Probe | Question | Result | Decision |
 |---|---|---|---|
-| (a) `probe-formulario.ts` | Does `Schema.fromFormData(Schema.toCodecStringTree(NewReport))` decode the report form? | Yes, with two form conventions | Keep the direct path. No fallback |
+| (a) `probe-form.ts` | Does `Schema.fromFormData(Schema.toCodecStringTree(NewReport))` decode the report form? | Yes, with two form conventions | Keep the direct path. No fallback |
 | (b) `probe-auth.ts` | Does better-auth honor every `usuario` mapping? | Yes, in the DDL and at sign-up | Keep the mapping. No camelCase fallback |
-| (c) `probe-tipos.ts` | Which JS value does `@effect/sql-pg` return per column type? | `numeric` is a string, `count(*)` is a bigint | The sketch's Schemas stand. Queries cast counts to `int` |
+| (c) `probe-types.ts` | Which JS value does `@effect/sql-pg` return per column type? | `numeric` is a string, `count(*)` is a bigint | The sketch's Schemas stand. Queries cast counts to `int` |
 
 ## (a) Form decode
 

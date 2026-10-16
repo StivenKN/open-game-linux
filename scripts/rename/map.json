@@ -99,7 +99,17 @@
     "tests/esquema.test.ts": "tests/schema.test.ts",
     "tests/migraciones.test.ts": "tests/migrations.test.ts",
     "tests/preparar.ts": "tests/setup.ts",
-    "tests/registro.test.ts": "tests/signup.test.ts"
+    "tests/registro.test.ts": "tests/signup.test.ts",
+    "scripts/migrar.ts": "scripts/migrate.ts",
+    "scripts/sembrar.ts": "scripts/seed.ts",
+    "scripts/rol.ts": "scripts/set-role.ts",
+    "scripts/generar-gpus.ts": "scripts/generate-gpus.ts",
+    "scripts/gpu-fuentes.ts": "scripts/gpu-sources.ts",
+    "scripts/gpu-fuentes.test.ts": "scripts/gpu-sources.test.ts",
+    "scripts/crear-bases.sql": "scripts/create-databases.sql",
+    "scripts/sin-servidor-en-cliente.ts": "scripts/no-server-in-client.ts",
+    "scripts/probes/probe-formulario.ts": "scripts/probes/probe-form.ts",
+    "scripts/probes/probe-tipos.ts": "scripts/probes/probe-types.ts"
   },
   "frozen": [
     "prototypes/",
@@ -127,7 +137,8 @@
       "compose.prod.yaml",
       "t3.json",
       ".dockerignore",
-      ".gitignore"
+      ".gitignore",
+      "package.json"
     ],
     "exclude": [
       "scripts/parity/",
@@ -4110,7 +4121,7 @@
       "InformeParaValve.reporte": "report",
       "InformeParaValve.volver": "backLink"
     },
-    "scripts/sembrar.ts": {
+    "scripts/seed.ts": {
       "lanzadores": "launchers",
       "lanzadores.steam.nombre:prop": "name",
       "lanzadores.steam.url_oficial:prop": "official_url",

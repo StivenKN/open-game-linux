@@ -18,7 +18,7 @@ ui/ ─────┴───────────────────�
 | equipo/diagnostico writes | only `server/commands/diagnostic.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
 | protondb_summary writes | only `server/external/protondb.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
 | upstream_fix writes | only `server/commands/upstream.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
-| browser bundle | no server code, no GPU table, no detector script | `scripts/sin-servidor-en-cliente.ts` after `vite build`, inside `pnpm check` (markers include `OPENGAME_TABLA_GPU` and `Win32_VideoController`) |
+| browser bundle | no server code, no GPU table, no detector script | `scripts/no-server-in-client.ts` after `vite build`, inside `pnpm check` (markers include `OPENGAME_TABLA_GPU` and `Win32_VideoController`) |
 | `styles.css` | every rule closed (no accidental nesting), one rule per selector | `src/styles.test.ts` |
 
 Each failure message names the fix, for example: "routes call server fns from src/fns/; never import src/server/ (it would ship pg to the browser)". All three planted violations failed as intended (RATIONALE, Evidence).
@@ -72,7 +72,7 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `ui/diagnostics/Distributions.tsx` | The "Distribuciones" section: candidates grouped by verdict with their reasons | |
 | `detector/opengame-detect.sh` | The productionized prototype script: payload v1 + `gpu_pci_id` + `biblioteca_steam`, with `__OPENGAME_URL__` and `__OPENGAME_MAX_JUEGOS__` filled in by the server route | |
 | `detector/opengame-detect.ps1` | The Windows detector for Windows PowerShell 5.1 and pwsh 7, ASCII only, no admin: the same payload without Vulkan or kernel driver. A URL over 2000 characters (the ShellExecute limit) goes to the clipboard and opens `/diagnostico?pegar=1` | |
-| `scripts/` | `migrate`, `sembrar` (approvals only via `decide`), `rol`, `protondb` (`pnpm db:protondb <ruta \| ->`), `sin-servidor-en-cliente`, `generar-gpus` (`pnpm gpu:generar`) with its pure parsers in `gpu-fuentes.ts`, which fail closed on an unreadable line, an unknown token or a count under its floor | |
+| `scripts/` | `migrate`, `sembrar` (approvals only via `decide`), `rol`, `protondb` (`pnpm db:protondb <ruta \| ->`), `sin-servidor-en-cliente`, `generar-gpus` (`pnpm gpu:generar`) with its pure parsers in `gpu-sources.ts`, which fail closed on an unreadable line, an unknown token or a count under its floor | |
 | `tests/` | `support.ts` (rollback-per-test, constraint-name decoder), `setup.ts` (globalSetup: refuses any DB not named `*_test`, rebuilds the schema, migrates), `schema.test.ts`, `contributions.test.ts` | |
 
 ## Route map

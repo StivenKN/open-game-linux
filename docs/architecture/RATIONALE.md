@@ -269,7 +269,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 
 - `RequirementCheck.required` and `detected.value` hold either MB or a Vulkan version in one string. A union tagged by requisito would remove the `Number()` parse in `EvaluationChecklist`.
 - `Personal` (`VerdictForMe`) and the FPS fields of `ApprovedTest` are sets of nullables whose combinations mean different things. Each should be a tagged union or one nullable struct, like `FpsMeasurement`.
-- `FpsMeasurement.fps_promedio`'s maximum copies `numeric(7,2)` by hand, and the failure-type codes live in both `scripts/sembrar.ts` and `ui/vocabulary.ts`. Derive both from one source.
+- `FpsMeasurement.fps_promedio`'s maximum copies `numeric(7,2)` by hand, and the failure-type codes live in both `scripts/seed.ts` and `ui/vocabulary.ts`. Derive both from one source.
 - Migrations build their CHECK lists from today's literal Schemas, so an old migration renders different SQL after a literal changes. Snapshot the lists per migration before the first real deploy.
 - `submitDiagnostic` serializes per user with a row lock. A unique index on `(usuario_id, lower(alias))` with `ON CONFLICT` would make convergence structural.
 - `ui/samples/fixtures.ts` is hand-written and could be derived with `summarize` and `evaluate`.

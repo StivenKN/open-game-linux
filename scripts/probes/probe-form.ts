@@ -1,5 +1,5 @@
 // Probe (a): can the report form post its FormData straight into NuevoReporte?
-// Run: node scripts/probes/probe-formulario.ts
+// Run: node scripts/probes/probe-form.ts
 // U2 folded the probe's fix into NuevoReporte (fallos defaults to [], the 8.7 rule lands on `fallos`),
 // so the sketch-schema case is gone and the "con defecto" cases run against NuevoReporte itself.
 import { Schema } from 'effect'
