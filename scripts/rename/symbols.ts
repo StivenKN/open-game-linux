@@ -15,7 +15,7 @@ import { Node, Project, type SourceFile, SymbolFlags, type Type } from 'ts-morph
 const SymbolMap = Schema.Struct({
   glossary: Schema.Record(Schema.String, Schema.String),
   symbols: Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.String)),
-  text: Schema.Struct({ include: Schema.Array(Schema.String), exclude: Schema.Array(Schema.String) }),
+  text: Schema.Struct({ include: Schema.Array(Schema.String), exclude: Schema.Array(Schema.String), keepInDocs: Schema.Array(Schema.String) }),
 })
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim()
@@ -225,9 +225,14 @@ const twins = Object.entries(map.symbols).flatMap(([file, entries]) => {
 })
 if (twins.length > 0) throw new Error(`sibling keys share a target, so a rerun could not tell them apart:\n${twins.join('\n')}`)
 
+// `/entrar`, `u6-diagnostico.png` and `?tipoFallo=` name a URL, a file or a search key, not the export.
+const notAfterPathCharacter = String.raw`(?<![\w/.?&=#$[\]-])`
+const notBeforePathCharacter = String.raw`(?![\w/=#\]-]|\.\w)`
+
 const renameInCodeSpans = (exports: ReadonlyMap<string, string>) => {
-  if (exports.size === 0) return []
-  const names = new RegExp(String.raw`\b(${[...exports.keys()].join('|')})\b`, 'g')
+  const renamable = [...exports.keys()].filter((name) => !map.text.keepInDocs.includes(name))
+  if (renamable.length === 0) return []
+  const names = new RegExp(`${notAfterPathCharacter}(${renamable.join('|')})${notBeforePathCharacter}`, 'g')
   const tracked = execFileSync('git', ['ls-files', '-z', '--', '*.md'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean)
   const within = (file: string, prefixes: ReadonlyArray<string>) => prefixes.some((p) => file.startsWith(p))
   const changed: string[] = []
