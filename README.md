@@ -143,6 +143,41 @@ pnpm check
 
 This runs route generation, `tsc`, oxlint, Vitest, `vite build` and a guard that keeps server code out of the browser bundle. The tests in `tests/` need the database container. They empty and migrate `DATABASE_URL_TEST` once per run. The PowerShell detector tests need `pwsh` on the `PATH` or Docker with the `mcr.microsoft.com/powershell` image pulled. Without either, Vitest skips them and names the reason.
 
+## Parity harness
+
+The parity harness proves that a change leaves everything a player sees and sends exactly as it was. It builds two versions of the app, gives each its own database, and compares what each one serves.
+
+1. Start the database container with `pnpm db:up`.
+2. Install the browser that the harness uses. Run this command once per machine.
+
+   ```sh
+   pnpm exec playwright-core install chromium-headless-shell
+   ```
+
+3. Compare your working tree, uncommitted edits included, with a base commit.
+
+   ```sh
+   pnpm parity compare --base abde5bf
+   ```
+
+`--head` takes a git ref or a directory, and the default is the current directory. `--base` takes the same values. Each side runs in a temporary copy, with its own database named `opengame_parity_*` and its own port. The harness deletes both when the run ends.
+
+Each side seeds its database with a frozen clock and seeded randomness. Then `demo_ana` files a report and `demo_revisor` approves it. The harness requests every route in `scripts/parity/capture.ts` as an anonymous visitor, as `demo_ana` and as `demo_revisor`. It saves the following:
+
+- The status, the `Location` header and the content type.
+- The HTML, or the body of a response that is not HTML, such as the two detector scripts.
+- Full-page screenshots at 1280 px and 390 px wide.
+- The sign-in JSON.
+
+The comparison passes only when every check below passes:
+
+- Screenshots are identical pixel for pixel. ImageMagick measures a pair whose files differ.
+- The HTML is byte-identical after the harness removes every `<script>` element and replaces `/assets/` file names. For each pair of names in `scripts/parity/markup-map.json`, the harness changes the new name in the head's tags back to the old name.
+- The router data in the page has the same values in the same order, with the same number of object keys. The key names can differ.
+- Every other file is byte-identical.
+
+The command prints one block for each difference, then one line like `parity: 0 differences across 506 captures`. It exits with 1 if it finds a difference. The output directory keeps both captures, the logs, and a diff image for each screenshot that differs. To capture a side once and reuse it, run `pnpm parity capture --ref <ref> --out <dir>`, then pass that directory as `--base` or `--head`.
+
 ## Production
 
 ```sh
