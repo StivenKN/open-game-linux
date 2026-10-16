@@ -35,7 +35,7 @@ const engine = succeeds('pwsh', ['-NoProfile', '-Command', 'exit 0']) ? 'pwsh' :
 
 let tmp = ''
 const steam = (steamRoot: string) => join(tmp, 'steam', steamRoot)
-const handoffLog = () => join(tmp, 'registro.txt')
+const handoffLog = () => join(tmp, 'handoff.log')
 
 beforeAll(() => {
   tmp = mkdtempSync(join(tmpdir(), 'opengame-detector-'))
@@ -58,7 +58,7 @@ const library = (folder: string, count: number) => {
 const expected = (count: number) => Array.from({ length: count }, (_, k) => ({ app_id: count - k, nombre: gameName(count - k) }))
 
 const powershell = (env: Record<string, string>): string => {
-  const variables = { OPENGAME_URL: 'http://ejemplo.test', OPENGAME_MAX_JUEGOS: String(MAX_LIBRARY_GAMES), PROCESSOR_ARCHITECTURE: 'AMD64', OPENGAME_PRUEBA_STEAM: steam('nuevo'), OPENGAME_PRUEBA_REGISTRO: handoffLog(), ...env }
+  const variables = { OPENGAME_URL: 'http://ejemplo.test', OPENGAME_MAX_JUEGOS: String(MAX_LIBRARY_GAMES), PROCESSOR_ARCHITECTURE: 'AMD64', OPENGAME_TEST_STEAM: steam('nuevo'), OPENGAME_TEST_HANDOFF_LOG: handoffLog(), ...env }
   const args = ['-NoProfile', '-NonInteractive', '-Command', `. '${stubs}'; Invoke-Expression (Get-Content -Raw -LiteralPath '${ps1}')`]
   if (engine === 'pwsh') return execFileSync('pwsh', args, { encoding: 'utf8', env: { ...process.env, ...variables } }).trim()
   const docker = [
@@ -69,7 +69,7 @@ const powershell = (env: Record<string, string>): string => {
   return execFileSync('docker', [...docker, IMAGE, 'pwsh', ...args], { encoding: 'utf8' }).trim()
 }
 const bash = (env: Record<string, string>, ...args: Array<string>): string =>
-  execFileSync('bash', [sh, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, HOME: join(tmp, 'sin-steam'), OPENGAME_MAX_JUEGOS: String(MAX_LIBRARY_GAMES), ...env } }).trim()
+  execFileSync('bash', [sh, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, HOME: join(tmp, 'no-steam'), OPENGAME_MAX_JUEGOS: String(MAX_LIBRARY_GAMES), ...env } }).trim()
 const readHandoffLog = (): Array<string> => {
   const lines = readFileSync(handoffLog(), 'utf8').trim().split('\n')
   rmSync(handoffLog())
@@ -124,7 +124,7 @@ describe.skipIf(engine === null)(`opengame-detect.ps1 under ${engine ?? `pwsh (s
   })
 
   it('picks the GeForce over a Ryzen iGPU listed first: the adapter with the most VRAM runs the games', () => {
-    expect(capture(powershell({ OPENGAME_PRUEBA_EQUIPO: 'ryzen', OPENGAME_IMPRIMIR: '1' }))).toMatchObject({
+    expect(capture(powershell({ OPENGAME_TEST_MACHINE: 'ryzen', OPENGAME_IMPRIMIR: '1' }))).toMatchObject({
       gpu_model: 'NVIDIA GeForce GTX 1650',
       gpu_pci_id: '10de:1f91',
       vram_mb: 4096,
@@ -136,7 +136,7 @@ describe.skipIf(engine === null)(`opengame-detect.ps1 under ${engine ?? `pwsh (s
   })
 
   it('sends nulls for a GPU without driver and a PC without Steam', () => {
-    const env = { OPENGAME_PRUEBA_EQUIPO: 'basico', PROCESSOR_ARCHITECTURE: 'x86', PROCESSOR_ARCHITEW6432: 'AMD64', OPENGAME_IMPRIMIR: '1' }
+    const env = { OPENGAME_TEST_MACHINE: 'basic', PROCESSOR_ARCHITECTURE: 'x86', PROCESSOR_ARCHITEW6432: 'AMD64', OPENGAME_IMPRIMIR: '1' }
     expect(capture(powershell(env))).toEqual({
       captured_at: expect.any(Date),
       operating_system: 'Windows',
@@ -171,7 +171,7 @@ describe.skipIf(engine === null)(`opengame-detect.ps1 under ${engine ?? `pwsh (s
     expect(parse((copied ?? '').replace(/^Set-Clipboard /, ''))).toMatchObject({ biblioteca_steam: expected(30) })
   })
 
-  it('sends at most MAX_JUEGOS_BIBLIOTECA games, the most recently played', () => {
+  it('sends at most MAX_LIBRARY_GAMES games, the most recently played', () => {
     const output = powershell({ OPENGAME_STEAM_DIR: join(tmp, 'grande'), OPENGAME_IMPRIMIR: '1' })
     expect(parse(output)).toMatchObject({ biblioteca_steam: expected(2000).slice(0, MAX_LIBRARY_GAMES) })
   })
@@ -189,7 +189,7 @@ describe.skipIf(engine === null || process.platform !== 'linux')('Steam library:
 })
 
 describe.skipIf(process.platform !== 'linux')('opengame-detect.sh with a large Steam library', () => {
-  it('prints the JSON, capped at MAX_JUEGOS_BIBLIOTECA games, instead of a --open URL longer than 100 000 chars', () => {
+  it('prints the JSON, capped at MAX_LIBRARY_GAMES games, instead of a --open URL longer than 100 000 chars', () => {
     const output = bash({ OPENGAME_STEAM_DIR: join(tmp, 'grande'), OPENGAME_DRY: '1', OPENGAME_URL: 'http://ejemplo.test' }, '--open')
     expect(parse(output)).toMatchObject({ sistema: 'Linux', biblioteca_steam: expected(2000).slice(0, MAX_LIBRARY_GAMES) })
   })

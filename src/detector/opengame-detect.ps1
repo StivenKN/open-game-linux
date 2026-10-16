@@ -1,7 +1,7 @@
 # OpenGame Linux detector for Windows. Reads the hardware and the installed Steam games without admin
 # rights and opens the web app with a JSON payload (version 1). Nothing leaves this PC unless you choose to:
 #
-#   irm <origen>/opengame-detect.ps1 | iex
+#   irm <origin>/opengame-detect.ps1 | iex
 #   powershell -ExecutionPolicy Bypass -File .\opengame-detect.ps1
 #
 # The payload travels in the URL fragment (#d=), which the browser never sends to the server. A payload

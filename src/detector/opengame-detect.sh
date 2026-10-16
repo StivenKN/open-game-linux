@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # OpenGame Linux detector. Reads the hardware without root and prints a JSON payload (version 1)
-# shaped like the `diagnostico` table. Nothing leaves this computer unless you choose to:
+# shaped like the `diagnostic` table. Nothing leaves this computer unless you choose to:
 #
 #   bash opengame-detect.sh          prints the JSON to paste in the web app
 #   bash opengame-detect.sh --open   opens the web app with the payload in the URL fragment (#d=),

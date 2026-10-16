@@ -226,8 +226,8 @@ const ps1Cases: ReadonlyArray<Ps1Case> = [
   { name: 'hybrid laptop opens the import page', served: true, env: {} },
   { name: 'raw script, dry run', env: { OPENGAME_DRY: '1' } },
   { name: 'OPENGAME_URL overrides the app address', served: true, env: { OPENGAME_URL: 'https://other.example', OPENGAME_DRY: '1' } },
-  { name: 'Ryzen iGPU listed first', served: true, env: { OPENGAME_PRUEBA_EQUIPO: 'ryzen', OPENGAME_IMPRIMIR: '1' } },
-  { name: 'basic display adapter, no Steam', served: true, env: { OPENGAME_PRUEBA_EQUIPO: 'basico', OPENGAME_IMPRIMIR: '1' } },
+  { name: 'Ryzen iGPU listed first', served: true, env: { OPENGAME_TEST_MACHINE: 'ryzen', OPENGAME_IMPRIMIR: '1' } },
+  { name: 'basic display adapter, no Steam', served: true, env: { OPENGAME_TEST_MACHINE: 'basic', OPENGAME_IMPRIMIR: '1' } },
   { name: 'no VRAM anywhere: brand picks NVIDIA over AMD and Intel', served: true, env: { OPENGAME_EQUIVALENCE_GPUS: '8086:0412:0,1002:1638:0,10de:1380:0', OPENGAME_IMPRIMIR: '1' } },
   { name: 'unknown vendor loses to Intel', served: true, env: { OPENGAME_EQUIVALENCE_GPUS: '1af4:1050:0,8086:0412:0', OPENGAME_IMPRIMIR: '1' } },
   { name: 'same brand and VRAM: listing order picks', served: true, env: { OPENGAME_EQUIVALENCE_GPUS: '10de:1f91:2048,10de:1380:2048', OPENGAME_IMPRIMIR: '1' } },
@@ -273,7 +273,7 @@ writeFileSync(
 }
 `,
 )
-const powershellEnv = (c: Ps1Case) => ({ PROCESSOR_ARCHITECTURE: 'AMD64', OPENGAME_PRUEBA_STEAM: join(steam, 'nuevo'), OPENGAME_PRUEBA_REGISTRO: handoff, ...c.env })
+const powershellEnv = (c: Ps1Case) => ({ PROCESSOR_ARCHITECTURE: 'AMD64', OPENGAME_TEST_STEAM: join(steam, 'nuevo'), OPENGAME_TEST_HANDOFF_LOG: handoff, ...c.env })
 const powershellArgs = (script: string) => ['-NoProfile', '-NonInteractive', '-Command', `. '${stubsFile}'; . '${tieStubs}'; Invoke-Expression (Get-Content -Raw -LiteralPath '${script}')`]
 
 const hasPwsh = spawnSync('pwsh', ['-NoProfile', '-Command', 'exit 0'], { stdio: 'ignore' }).status === 0

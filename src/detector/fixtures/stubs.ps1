@@ -1,5 +1,5 @@
-$basic = $env:OPENGAME_PRUEBA_EQUIPO -eq 'basico'
-$ryzen = $env:OPENGAME_PRUEBA_EQUIPO -eq 'ryzen'
+$basic = $env:OPENGAME_TEST_MACHINE -eq 'basic'
+$ryzen = $env:OPENGAME_TEST_MACHINE -eq 'ryzen'
 
 function Get-CimInstance([string]$ClassName) {
   switch ($ClassName) {
@@ -47,10 +47,10 @@ function Get-ItemProperty([string]$Path) {
       }
     }
     'HKCU:\Software\Valve\Steam' {
-      if (-not $basic) { [pscustomobject]@{ SteamPath = $env:OPENGAME_PRUEBA_STEAM } }
+      if (-not $basic) { [pscustomobject]@{ SteamPath = $env:OPENGAME_TEST_STEAM } }
     }
   }
 }
 
-function Start-Process([string]$FilePath) { Add-Content -LiteralPath $env:OPENGAME_PRUEBA_REGISTRO -Value ('Start-Process ' + $FilePath) }
-function Set-Clipboard([string]$Value) { Add-Content -LiteralPath $env:OPENGAME_PRUEBA_REGISTRO -Value ('Set-Clipboard ' + $Value) }
+function Start-Process([string]$FilePath) { Add-Content -LiteralPath $env:OPENGAME_TEST_HANDOFF_LOG -Value ('Start-Process ' + $FilePath) }
+function Set-Clipboard([string]$Value) { Add-Content -LiteralPath $env:OPENGAME_TEST_HANDOFF_LOG -Value ('Set-Clipboard ' + $Value) }
