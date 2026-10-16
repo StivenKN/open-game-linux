@@ -13,10 +13,10 @@ import { estadoRevision } from '../../ui/vocabulary.ts'
 import { idDeRuta } from '../-ids.ts'
 import { CompartirUpstream } from './-upstream.tsx'
 
-const perfilId = idDeRuta(ProfileId)
+const profileId = idDeRuta(ProfileId)
 
-export const Route = createFileRoute('/perfiles/$perfilId')({
-  params: { parse: (p) => ({ perfilId: perfilId(p.perfilId) }), stringify: (p) => ({ perfilId: String(p.perfilId) }) },
+export const Route = createFileRoute('/perfiles/$profileId')({
+  params: { parse: (p) => ({ profileId: profileId(p.profileId) }), stringify: (p) => ({ profileId: String(p.profileId) }) },
   loader: ({ params }) => profileFn({ data: params }),
   head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.profile.titulo} · OpenGame Linux` : 'OpenGame Linux' }] }),
   component: Perfil,
@@ -37,7 +37,7 @@ function Perfil() {
     <main className="envoltura">
       <header className="pila">
         <div className="migas">
-          <Link to="/">Catálogo</Link> / <Link to="/juegos/$juegoId" params={{ juegoId: p.juego_id }}>{p.juego}</Link> / Perfil
+          <Link to="/">Catálogo</Link> / <Link to="/juegos/$gameId" params={{ gameId: p.juego_id }}>{p.juego}</Link> / Perfil
         </div>
         <h1 className="titulo-juego">
           {p.titulo} <span className="tenue">r{p.revision}</span>
@@ -66,7 +66,7 @@ function Perfil() {
           OpenGame no descarga ni ejecuta nada. Sigue los pasos tú mismo; los comandos se copian tal cual.
         </p>
         <p>
-          <Link to="/juegos/$juegoId/reportar" params={{ juegoId: p.juego_id }} search={{ perfil: p.id }} className="boton">
+          <Link to="/juegos/$gameId/reportar" params={{ gameId: p.juego_id }} search={{ perfil: p.id }} className="boton">
             Reportar resultado con este perfil
           </Link>
         </p>
@@ -155,7 +155,7 @@ function Perfil() {
 
       {exportacion !== null && (
         <CompartirUpstream
-          perfilId={p.id}
+          profileId={p.id}
           exportacion={exportacion}
           arreglos={arreglos}
           revisor={visitante !== null && canReview[visitante.rol]}

@@ -193,7 +193,7 @@ function Catalogo() {
             <ul className="rejilla-juegos">
               {juegos.map((j) => (
                 <li key={j.id} className="juego">
-                  <Link to="/juegos/$juegoId" params={{ juegoId: j.id }} className="juego-enlace">
+                  <Link to="/juegos/$gameId" params={{ gameId: j.id }} className="juego-enlace">
                     <span className="juego-nombre">{j.titulo}</span>
                     <Portada titulo={j.titulo} estado={j.summary.status} ejemplo={j.ejemplo} />
                   </Link>

@@ -27,7 +27,7 @@ export function MatrizDiagnostico({ filas, orientativa }: { filas: ReadonlyArray
       {filas.map((f) => (
         <li key={f.juego_id} className="tarjeta pila">
           <h3 className="sin-margen">
-            <Link to="/juegos/$juegoId" params={{ juegoId: f.juego_id }} className="nombre-juego">
+            <Link to="/juegos/$gameId" params={{ gameId: f.juego_id }} className="nombre-juego">
               {f.titulo}
             </Link>
           </h3>

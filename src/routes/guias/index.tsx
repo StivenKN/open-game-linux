@@ -23,7 +23,7 @@ function Guias() {
           {guias.map((g) => (
             <li key={g.id} className="tarjeta pila">
               <div className="fila">
-                <Link to="/guias/$guiaId" params={{ guiaId: g.id }} className="nombre-juego">
+                <Link to="/guias/$guideId" params={{ guideId: g.id }} className="nombre-juego">
                   {g.titulo}
                 </Link>
                 {g.ejemplo && <SelloEjemplo />}

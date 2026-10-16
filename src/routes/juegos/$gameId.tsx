@@ -12,10 +12,10 @@ import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
 import { apiGrafica, nivelX86, tipoFallo, veredictoRequisitos } from '../../ui/vocabulary.ts'
 import { idDeRuta } from '../-ids.ts'
 
-const juegoId = idDeRuta(GameId)
+const gameId = idDeRuta(GameId)
 
-export const Route = createFileRoute('/juegos/$juegoId')({
-  params: { parse: (p) => ({ juegoId: juegoId(p.juegoId) }), stringify: (p) => ({ juegoId: String(p.juegoId) }) },
+export const Route = createFileRoute('/juegos/$gameId')({
+  params: { parse: (p) => ({ gameId: gameId(p.gameId) }), stringify: (p) => ({ gameId: String(p.gameId) }) },
   loader: ({ params }) => gamePageFn({ data: params }),
   head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.game.titulo} · OpenGame Linux` : 'OpenGame Linux' }] }),
   component: Ficha,
@@ -24,7 +24,7 @@ export const Route = createFileRoute('/juegos/$juegoId')({
 function Ficha() {
   const { game: juego, editions: ediciones, summary: resumen, protondb, ejemplo, pending: pendientes, profiles: perfiles, causes: causas, diagnostic: diagnostico, personal } = Route.useLoaderData()
   const reportar = (
-    <Link to="/juegos/$juegoId/reportar" params={{ juegoId: juego.id }} className="boton">
+    <Link to="/juegos/$gameId/reportar" params={{ gameId: juego.id }} className="boton">
       Reportar un resultado
     </Link>
   )
@@ -87,7 +87,7 @@ function Ficha() {
               {perfiles.map((p) => (
                 <li key={p.id} className="tarjeta pila">
                   <div className="fila">
-                    <Link to="/perfiles/$perfilId" params={{ perfilId: p.id }} className="nombre-juego">
+                    <Link to="/perfiles/$profileId" params={{ profileId: p.id }} className="nombre-juego">
                       {p.titulo} r{p.revision}
                     </Link>
                     {p.estado_revision === 'pendiente' && <Chip tono="gris">en prueba</Chip>}
@@ -150,8 +150,8 @@ function Ficha() {
                     {c.reply !== null && (
                       <p className="pequeno">
                         <Link
-                          to="/reportes/$reporteId/solucion"
-                          params={{ reporteId: c.reply.reporte_id }}
+                          to="/reportes/$reportId/solucion"
+                          params={{ reportId: c.reply.reporte_id }}
                           search={{ tipoFallo: c.reply.tipo_fallo_id }}
                         >
                           Proponer una solución

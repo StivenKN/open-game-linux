@@ -7,14 +7,14 @@ import { motivoSinInforme } from '../../ui/vocabulary.ts'
 import { idDeRuta } from '../-ids.ts'
 import { volverAqui } from '../-return-to.ts'
 
-const reporteId = idDeRuta(ReportId)
+const reportId = idDeRuta(ReportId)
 
-export const Route = createFileRoute('/reportes/$reporteId/proton')({
-  params: { parse: (p) => ({ reporteId: reporteId(p.reporteId) }), stringify: (p) => ({ reporteId: String(p.reporteId) }) },
+export const Route = createFileRoute('/reportes/$reportId/proton')({
+  params: { parse: (p) => ({ reportId: reportId(p.reportId) }), stringify: (p) => ({ reportId: String(p.reportId) }) },
   beforeLoad: ({ context, location }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
   },
-  loader: ({ params }) => protonReportFn({ data: { reporteId: params.reporteId } }),
+  loader: ({ params }) => protonReportFn({ data: { reportId: params.reportId } }),
   head: ({ loaderData }) => ({ meta: [{ title: `Informe para Valve · ${loaderData?.report.juego ?? 'OpenGame Linux'}` }] }),
   component: InformeParaValve,
 })
@@ -22,7 +22,7 @@ export const Route = createFileRoute('/reportes/$reporteId/proton')({
 function InformeParaValve() {
   const { report: reporte, protonReport: x } = Route.useLoaderData()
   const volver = (
-    <Link to="/juegos/$juegoId" params={{ juegoId: reporte.juego_id }}>
+    <Link to="/juegos/$gameId" params={{ gameId: reporte.juego_id }}>
       Volver a la ficha del juego
     </Link>
   )

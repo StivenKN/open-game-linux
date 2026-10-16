@@ -16,7 +16,7 @@ export function Distribuciones({ evaluated, guide }: { evaluated: ReadonlyArray<
       <p className="tenue">
         No elegimos una por ti. Descartamos las que tu equipo no puede usar y decimos qué ajuste necesita cada una; «sin objeciones» significa que no encontramos
         nada en contra. Para decidir entre ellas, lee{' '}
-        {guide === null ? <Link to="/guias">las guías de adopción</Link> : <Link to="/guias/$guiaId" params={{ guiaId: guide }}>¿Qué distribución elegir para jugar?</Link>}.
+        {guide === null ? <Link to="/guias">las guías de adopción</Link> : <Link to="/guias/$guideId" params={{ guideId: guide }}>¿Qué distribución elegir para jugar?</Link>}.
       </p>
       <div className="mosaico mosaico-ancho">
         {GRUPOS.map((grupo) => {

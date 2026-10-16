@@ -80,15 +80,15 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | Wireframe / RF | Path | Loader / action fns | Auth |
 |---|---|---|---|
 | 9.1 Inicio + buscador (RF-01, 02) | `/` `?q&estado&lanzador&sin_anti_cheat` | `catalogFn` | public |
-| 9.3 Ficha (RF-02, 03, 06, 08, 10) | `/juegos/$juegoId` | `gamePageFn` | public; personal verdict when logged in with a diagnosis |
-| 9.4 Asistente → profile page (RF-06, 07) | `/perfiles/$perfilId` | `profileFn`; reviewers record merged PRs with `noteFixFn` | public (pending shows "en prueba") |
-| RF-08 report | `/juegos/$juegoId/reportar?profile=` | `reportOptionsFn` / `submitReportFn` | login |
-| RF-08 solution | `/reportes/$reporteId/solucion?tipoFallo=` | `submitSolutionFn` | login |
+| 9.3 Ficha (RF-02, 03, 06, 08, 10) | `/juegos/$gameId` | `gamePageFn` | public; personal verdict when logged in with a diagnosis |
+| 9.4 Asistente → profile page (RF-06, 07) | `/perfiles/$profileId` | `profileFn`; reviewers record merged PRs with `noteFixFn` | public (pending shows "en prueba") |
+| RF-08 report | `/juegos/$gameId/reportar?profile=` | `reportOptionsFn` / `submitReportFn` | login |
+| RF-08 solution | `/reportes/$reportId/solucion?tipoFallo=` | `submitSolutionFn` | login |
 | 9.2 Diagnóstico (RF-04, 05, 09) | `/diagnostico` `?pegar=1` | `myMachinesFn` / `evaluateDiagnosticFn`, `saveDiagnosticFn` | public evaluation; saving needs login |
 | detector landing | `/diagnostico/importar#d=…` (`ssr: false`) | `evaluateDiagnosticFn` | public |
-| saved diagnosis | `/diagnosticos/$diagnosticoId` | `myDiagnosticFn` | owner only (others get notFound) |
-| Proton report for Valve | `/reportes/$reporteId/proton` | `protonReportFn` | report owner only (others get notFound) |
-| RF-09 guides | `/guides`, `/guides/$guiaId` | `guidesFn`, `guideFn` | public |
+| saved diagnosis | `/diagnosticos/$diagnosticId` | `myDiagnosticFn` | owner only (others get notFound) |
+| Proton report for Valve | `/reportes/$reportId/proton` | `protonReportFn` | report owner only (others get notFound) |
+| RF-09 guides | `/guides`, `/guides/$guideId` | `guidesFn`, `guideFn` | public |
 | RF-10 review | `/revision?tipo=profile\|reporte\|solucion` | `queueFn` / `decideFn` | revisor, administrador |
 | RF-03 new game | `/catalog/nuevo` | `createGameFn` | revisor, administrador |
 | auth | `/entrar`, `/registro`; server route `/api/auth/$` | better-auth client | |

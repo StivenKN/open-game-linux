@@ -8,15 +8,15 @@ import { TarjetaGraficaEnLinux } from '../../ui/diagnostics/GraphicsCardOnLinux.
 import { idDeRuta } from '../-ids.ts'
 import { volverAqui } from '../-return-to.ts'
 
-const diagnosticoId = idDeRuta(DiagnosticId)
+const diagnosticId = idDeRuta(DiagnosticId)
 
-export const Route = createFileRoute('/diagnosticos/$diagnosticoId')({
-  params: { parse: (p) => ({ diagnosticoId: diagnosticoId(p.diagnosticoId) }), stringify: (p) => ({ diagnosticoId: String(p.diagnosticoId) }) },
+export const Route = createFileRoute('/diagnosticos/$diagnosticId')({
+  params: { parse: (p) => ({ diagnosticId: diagnosticId(p.diagnosticId) }), stringify: (p) => ({ diagnosticId: String(p.diagnosticId) }) },
   head: () => ({ meta: [{ title: 'Diagnóstico guardado · OpenGame Linux' }] }),
   beforeLoad: ({ context, location }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
   },
-  loader: ({ params }) => myDiagnosticFn({ data: { id: params.diagnosticoId } }),
+  loader: ({ params }) => myDiagnosticFn({ data: { id: params.diagnosticId } }),
   component: DiagnosticoGuardado,
 })
 

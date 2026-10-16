@@ -6,10 +6,10 @@ import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
 import { tipoGuia } from '../../ui/vocabulary.ts'
 import { idDeRuta } from '../-ids.ts'
 
-const guiaId = idDeRuta(GuideId)
+const guideId = idDeRuta(GuideId)
 
-export const Route = createFileRoute('/guias/$guiaId')({
-  params: { parse: (p) => ({ guiaId: guiaId(p.guiaId) }), stringify: (p) => ({ guiaId: String(p.guiaId) }) },
+export const Route = createFileRoute('/guias/$guideId')({
+  params: { parse: (p) => ({ guideId: guideId(p.guideId) }), stringify: (p) => ({ guideId: String(p.guideId) }) },
   loader: ({ params }) => guideFn({ data: params }),
   head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.titulo} · OpenGame Linux` : 'OpenGame Linux' }] }),
   component: Guia,

@@ -13,15 +13,15 @@ import { estadoRevision, resultado, tipoFallo } from '../../ui/vocabulary.ts'
 import { idDeRuta } from '../-ids.ts'
 import { volverAqui } from '../-return-to.ts'
 
-const reporteId = idDeRuta(ReportId)
+const reportId = idDeRuta(ReportId)
 
-export const Route = createFileRoute('/reportes/$reporteId/solucion')({
-  params: { parse: (p) => ({ reporteId: reporteId(p.reporteId) }), stringify: (p) => ({ reporteId: String(p.reporteId) }) },
+export const Route = createFileRoute('/reportes/$reportId/solucion')({
+  params: { parse: (p) => ({ reportId: reportId(p.reportId) }), stringify: (p) => ({ reportId: String(p.reportId) }) },
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipoFallo: Schema.optionalKey(FailureTypeId) })),
   beforeLoad: ({ context, location }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
   },
-  loader: ({ params }) => solutionOptionsFn({ data: { reporteId: params.reporteId } }),
+  loader: ({ params }) => solutionOptionsFn({ data: { reportId: params.reportId } }),
   head: ({ loaderData }) => ({ meta: [{ title: `Proponer solución · ${loaderData?.report.juego ?? 'OpenGame Linux'}` }] }),
   component: ProponerSolucion,
 })
@@ -54,7 +54,7 @@ function ProponerSolucion() {
             Queda <strong>pendiente de revisión</strong>. Para publicarla, un revisor necesita evidencia de que resuelve el fallo, no solo que el fallo existe.
           </p>
           <p>
-            <Link to="/juegos/$juegoId" params={{ juegoId: reporte.juego_id }}>
+            <Link to="/juegos/$gameId" params={{ gameId: reporte.juego_id }}>
               Volver a la ficha del juego
             </Link>
           </p>

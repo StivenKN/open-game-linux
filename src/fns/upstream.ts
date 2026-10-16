@@ -12,5 +12,5 @@ export const noteFixFn = createServerFn({ method: 'POST' })
   .handler(({ data }) => runAction(RuleViolated, noteFix(data)))
 
 export const protonReportFn = createServerFn({ method: 'GET' })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ reporteId: ReportId })))
-  .handler(({ data }) => runRead(myProtonReport(data.reporteId)))
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ reportId: ReportId })))
+  .handler(({ data }) => runRead(myProtonReport(data.reportId)))

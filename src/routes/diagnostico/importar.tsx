@@ -156,7 +156,7 @@ function Guardar({ entrada, juegosEnBiblioteca }: { entrada: Entrada; juegosEnBi
       {guardado && (
         <p role="status" className="pequeno">
           {guardado.nuevo ? 'Guardado.' : 'Ya estaba guardado; no se creó una copia.'}{' '}
-          <Link to="/diagnosticos/$diagnosticoId" params={{ diagnosticoId: guardado.id }}>
+          <Link to="/diagnosticos/$diagnosticId" params={{ diagnosticId: guardado.id }}>
             Ver el diagnóstico guardado
           </Link>
         </p>

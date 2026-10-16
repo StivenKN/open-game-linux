@@ -182,7 +182,7 @@ The comparison passes only when every check below passes:
   URLs, query strings, form values and text are never changed, so a map entry cannot hide a change to them.
 - The router data in the page has the same values in the same order, with the same number of object keys. Most key names can differ. These keys must match, because they carry data:
   - Numeric keys.
-  - Route ids, which start with `/`. Route param names such as `$juegoId` can differ.
+  - Route ids, which start with `/`. Route param names such as `$gameId` can differ.
   - Values that a CHECK constraint in the base database allows, such as `funciona`. The harness reads them from the base database into `frozen-literals.json`.
 - The sign-in JSON is byte-identical after the harness replaces each `token` or `secret` value with its length. A token depends on how many random values the app drew before sign-in.
 - Every other file is byte-identical.

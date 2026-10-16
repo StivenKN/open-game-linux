@@ -15,12 +15,12 @@ type Arreglo = { readonly pr: PrNumber; readonly registrado_en: Date }
 
 /** "Compartir con umu-protonfixes" on an approved profile: its fix file, what did not translate, and the merged PRs it led to. */
 export function CompartirUpstream({
-  perfilId,
+  profileId,
   exportacion: x,
   arreglos,
   revisor,
 }: {
-  perfilId: ProfileId
+  profileId: ProfileId
   exportacion: FixExport
   arreglos: ReadonlyArray<Arreglo>
   revisor: boolean
@@ -86,7 +86,7 @@ export function CompartirUpstream({
             </ul>
           )}
           {/* Keyed by the count so a recorded PR clears the field. */}
-          {revisor && <RegistrarArreglo key={arreglos.length} perfilId={perfilId} />}
+          {revisor && <RegistrarArreglo key={arreglos.length} profileId={profileId} />}
         </>
       )}
     </section>
@@ -105,14 +105,14 @@ function Omitidos({ omitidos }: { omitidos: ReadonlyArray<Skipped> }) {
   )
 }
 
-function RegistrarArreglo({ perfilId }: { perfilId: ProfileId }) {
+function RegistrarArreglo({ profileId }: { profileId: ProfileId }) {
   const router = useRouter()
   const r = useAccion(FixNote, noteFixFn, { alFallar: erroresDeRegla, alCompletar: () => router.invalidate() })
   return (
     <form className="tarjeta formulario" {...r.formulario}>
       <ErrorCampo errores={r.errores} campo="formulario" />
       <input type="hidden" name="_tag" value="Aceptado" />
-      <input type="hidden" name="perfil_id" value={perfilId} />
+      <input type="hidden" name="perfil_id" value={profileId} />
       <Campo errores={r.errores} nombre="pr" etiqueta="Registrar un PR fusionado (revisores)">
         <input {...campo(r.errores, 'pr')} placeholder="https://github.com/Open-Wine-Components/umu-protonfixes/pull/…" />
       </Campo>

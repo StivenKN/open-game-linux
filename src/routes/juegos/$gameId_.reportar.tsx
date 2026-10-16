@@ -1,4 +1,4 @@
-// `$juegoId_` keeps this page out of the ficha's layout (it renders on its own).
+// `$gameId_` keeps this page out of the ficha's layout (it renders on its own).
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useState } from 'react'
@@ -16,17 +16,17 @@ import { estadoRevision, resultado as etiquetaResultado, tipoFallo } from '../..
 import { idDeRuta } from '../-ids.ts'
 import { volverAqui } from '../-return-to.ts'
 
-const juegoId = idDeRuta(GameId)
+const gameId = idDeRuta(GameId)
 
-export const Route = createFileRoute('/juegos/$juegoId_/reportar')({
-  params: { parse: (p) => ({ juegoId: juegoId(p.juegoId) }), stringify: (p) => ({ juegoId: String(p.juegoId) }) },
+export const Route = createFileRoute('/juegos/$gameId_/reportar')({
+  params: { parse: (p) => ({ gameId: gameId(p.gameId) }), stringify: (p) => ({ gameId: String(p.gameId) }) },
   // The router already parses `?perfil=7` into a number.
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ perfil: Schema.optionalKey(ProfileId) })),
   beforeLoad: ({ context, location }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
   },
   loaderDeps: ({ search }) => ({ perfil: search.perfil ?? null }),
-  loader: ({ params, deps }) => reportOptionsFn({ data: { juegoId: params.juegoId, perfil: deps.perfil } }),
+  loader: ({ params, deps }) => reportOptionsFn({ data: { gameId: params.gameId, perfil: deps.perfil } }),
   head: ({ loaderData }) => ({ meta: [{ title: `Reportar ${loaderData?.game.titulo ?? 'resultado'} · OpenGame Linux` }] }),
   component: Reportar,
 })
@@ -50,16 +50,16 @@ function Reportar() {
             Queda <strong>pendiente de revisión</strong> y no cuenta en el resumen del juego hasta que un revisor lo apruebe.
           </p>
           <p className="fila">
-            <Link to="/juegos/$juegoId" params={{ juegoId: juego.id }}>
+            <Link to="/juegos/$gameId" params={{ gameId: juego.id }}>
               Volver a la ficha del juego
             </Link>
             {enviado.conFallos && (
-              <Link to="/reportes/$reporteId/solucion" params={{ reporteId: enviado.id }}>
+              <Link to="/reportes/$reportId/solucion" params={{ reportId: enviado.id }}>
                 ¿Conoces una solución? Propónla
               </Link>
             )}
             {enviado.proton && (
-              <Link to="/reportes/$reporteId/proton" params={{ reporteId: enviado.id }}>
+              <Link to="/reportes/$reportId/proton" params={{ reportId: enviado.id }}>
                 Prepara el informe para Valve
               </Link>
             )}
@@ -112,24 +112,24 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
   const { diagnostics: diagnosticos, editions: ediciones, layers: capas, profiles: perfiles, failureTypes: tiposFallo, selectedProfile: perfilElegido } = opciones
   const elegido = perfiles.find((p) => p.id === perfilElegido)
 
-  const [diagnosticoId, setDiagnosticoId] = useState(diagnosticos.at(0)?.id)
+  const [diagnosticId, setDiagnosticoId] = useState(diagnosticos.at(0)?.id)
   const [edicionId, setEdicionId] = useState(elegido?.edicion_id ?? ediciones.at(0)?.id)
   const [tipoCapa, setTipoCapa] = useState<'existente' | 'nueva'>('existente')
   const [capaId, setCapaId] = useState(elegido?.version_capa_id ?? capas.at(0)?.id)
   const [capaNueva, setCapaNueva] = useState<{ readonly familia: LayerFamily; readonly variante: string }>({ familia: 'Wine', variante: '' })
   const [versionJuego, setVersionJuego] = useState(elegido?.version_juego_objetivo ?? '')
-  const [perfilId, setPerfilId] = useState(elegido === undefined ? nulo : String(elegido.id))
+  const [profileId, setPerfilId] = useState(elegido === undefined ? nulo : String(elegido.id))
   const [resultado, setResultado] = useState<Outcome>('funciona')
   const [fallos, setFallos] = useState<ReadonlyArray<number>>([])
   const [siguienteFallo, setSiguienteFallo] = useState(0)
 
-  const diagnostico = diagnosticos.find((d) => d.id === diagnosticoId)
+  const diagnostico = diagnosticos.find((d) => d.id === diagnosticId)
   const prueba =
     diagnostico !== undefined && edicionId !== undefined && capaId !== undefined && tipoCapa === 'existente'
       ? { edicion_id: edicionId, version_capa_id: capaId, distribucion_id: diagnostico.distribucion_id, arquitectura: diagnostico.arquitectura, version_juego: versionJuego.trim() }
       : null
   const comparables = perfiles.filter((p) => p.id === perfilElegido || (prueba !== null && mismatches(prueba, p).length === 0))
-  const perfilValor = comparables.some((p) => String(p.id) === perfilId) ? perfilId : nulo
+  const perfilValor = comparables.some((p) => String(p.id) === profileId) ? profileId : nulo
 
   const nombreDe = nombres(opciones)
   const r = useAccion(NewReport, submitReportFn, {
@@ -166,7 +166,7 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
 
       <h2 className="titulo-seccion">Dónde probaste</h2>
       <Campo errores={r.errores} nombre="diagnostico_id" etiqueta="Diagnóstico del equipo" ayuda="Solo aparecen tus diagnósticos hechos en Linux.">
-        <select {...campo(r.errores, 'diagnostico_id')} value={diagnosticoId ?? ''} onChange={(e) => setDiagnosticoId(porId(diagnosticos, e.currentTarget.value))}>
+        <select {...campo(r.errores, 'diagnostico_id')} value={diagnosticId ?? ''} onChange={(e) => setDiagnosticoId(porId(diagnosticos, e.currentTarget.value))}>
           {diagnosticos.map((d) => (
             <option key={d.id} value={d.id}>
               {d.equipo} · {d.distribucion} · {d.arquitectura} · {momento(d.capturado_en)}

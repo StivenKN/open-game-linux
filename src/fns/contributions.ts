@@ -8,16 +8,16 @@ import { gameOptions, reportOptions, solutionOptions } from '../server/queries/f
 import { runAction, runRead } from '../server/run.ts'
 
 export const reportOptionsFn = createServerFn({ method: 'GET' })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ juegoId: GameId, perfil: Schema.NullOr(ProfileId) })))
-  .handler(({ data }) => runRead(reportOptions(data.juegoId, data.perfil)))
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ gameId: GameId, perfil: Schema.NullOr(ProfileId) })))
+  .handler(({ data }) => runRead(reportOptions(data.gameId, data.perfil)))
 
 export const submitReportFn = createServerFn({ method: 'POST' })
   .validator(Schema.toStandardSchemaV1(NewReport))
   .handler(({ data }) => runAction(Schema.Union([RuleViolated, IncomparableProfile]), submitReport(data)))
 
 export const solutionOptionsFn = createServerFn({ method: 'GET' })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ reporteId: ReportId })))
-  .handler(({ data }) => runRead(solutionOptions(data.reporteId)))
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ reportId: ReportId })))
+  .handler(({ data }) => runRead(solutionOptions(data.reportId)))
 
 export const submitSolutionFn = createServerFn({ method: 'POST' })
   .validator(Schema.toStandardSchemaV1(NewSolution))

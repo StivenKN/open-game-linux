@@ -7,5 +7,5 @@ import { runRead } from '../server/run.ts'
 export const guidesFn = createServerFn({ method: 'GET' }).handler(() => runRead(guides))
 
 export const guideFn = createServerFn({ method: 'GET' })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ guiaId: GuideId })))
-  .handler(({ data }) => runRead(guide(data.guiaId)))
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ guideId: GuideId })))
+  .handler(({ data }) => runRead(guide(data.guideId)))

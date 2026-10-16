@@ -17,9 +17,9 @@ Same product, same section 8, same round 1 domain decisions; the stack changed t
 **The ficha loads.** One route file, one server fn, one Effect program. The page type is inferred end to end, and nobody writes a props interface.
 
 ```tsx
-// src/routes/juegos/$juegoId.tsx
-export const Route = createFileRoute('/juegos/$juegoId')({
-  loader: ({ params }) => gamePageFn({ data: { juegoId: params.juegoId } }),
+// src/routes/juegos/$gameId.tsx
+export const Route = createFileRoute('/juegos/$gameId')({
+  loader: ({ params }) => gamePageFn({ data: { gameId: params.gameId } }),
   component: Ficha,
 })
 function Ficha() {
@@ -33,8 +33,8 @@ function Ficha() {
 
 // src/fns/catalog.ts: the whole server boundary for this page
 export const gamePageFn = createServerFn({ method: 'GET' })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ juegoId: GameId })))
-  .handler(({ data }) => runRead(gamePage(data.juegoId)))
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ gameId: GameId })))
+  .handler(({ data }) => runRead(gamePage(data.gameId)))
 
 // src/server/queries/game.ts: rows decoded by the domain Schema, summary by the pure rule
 const tests = yield* approvedTests(gameId)             // ApprovedTest has estado_revision: Literal('aprobado')
@@ -47,10 +47,10 @@ A missing game makes the program fail with `NotFound`. `runRead` turns that into
 **A report breaks a rule, and the field shows the error.**
 
 ```tsx
-// src/routes/juegos/$juegoId.reportar.tsx
+// src/routes/juegos/$gameId.reportar.tsx
 const r = useAccion(NewReport, submitReportFn, {
   alFallar: erroresDeRegla,                   // error: { _tag: 'ReglaIncumplida'; rule: Rule }, the only failure submitReport returns
-  alCompletar: () => navigate({ to: '/juegos/$juegoId', params: { juegoId } }),
+  alCompletar: () => navigate({ to: '/juegos/$gameId', params: { gameId } }),
 })
 <form {...r.formulario}>
   <select name="perfil_id">…</select>

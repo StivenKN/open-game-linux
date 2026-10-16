@@ -31,7 +31,7 @@ function NuevoJuegoPagina() {
   const [siguiente, setSiguiente] = useState(1)
   const r = useAccion(NewGame, createGameFn, {
     alFallar: erroresDeRegla,
-    alCompletar: ({ id }) => void navegar({ to: '/juegos/$juegoId', params: { juegoId: id } }),
+    alCompletar: ({ id }) => void navegar({ to: '/juegos/$gameId', params: { gameId: id } }),
   })
 
   const agregar = () => {

@@ -12,9 +12,9 @@ export const catalogFn = createServerFn({ method: 'GET' })
   .handler(({ data }) => runRead(catalog(data)))
 
 export const gamePageFn = createServerFn({ method: 'GET' })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ juegoId: GameId })))
-  .handler(({ data }) => runRead(gamePage(data.juegoId)))
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ gameId: GameId })))
+  .handler(({ data }) => runRead(gamePage(data.gameId)))
 
 export const profileFn = createServerFn({ method: 'GET' })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ perfilId: ProfileId })))
-  .handler(({ data }) => runRead(profile(data.perfilId)))
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ profileId: ProfileId })))
+  .handler(({ data }) => runRead(profile(data.profileId)))
