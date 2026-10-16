@@ -13,8 +13,8 @@
 set -u
 
 APP_URL="${OPENGAME_URL:-__OPENGAME_URL__}"
-MAX_JUEGOS="${OPENGAME_MAX_JUEGOS:-__OPENGAME_MAX_JUEGOS__}"
-case "$MAX_JUEGOS" in ''|*[!0-9]*) MAX_JUEGOS=0 ;; esac
+MAX_GAMES="${OPENGAME_MAX_JUEGOS:-__OPENGAME_MAX_JUEGOS__}"
+case "$MAX_GAMES" in ''|*[!0-9]*) MAX_GAMES=0 ;; esac
 
 json_str() {
   if [ -z "${1:-}" ]; then printf 'null'; else
@@ -24,21 +24,21 @@ json_num() { # a JSON integer, or null for anything else (nvidia-smi prints "[N/
   case "${1:-}" in ''|*[!0-9]*) printf 'null' ;; *) printf '%s' "$1" ;; esac
 }
 
-arquitectura=$(uname -m)
-version_sistema=$(uname -r)
-distro_nombre=$(. /etc/os-release 2>/dev/null; printf '%s' "${NAME:-}")
+architecture=$(uname -m)
+os_version=$(uname -r)
+distro_name=$(. /etc/os-release 2>/dev/null; printf '%s' "${NAME:-}")
 distro_version=$(. /etc/os-release 2>/dev/null; printf '%s' "${VERSION_ID:-}")
 # x86 names the CPU in /proc/cpuinfo; ARM kernels often do not, while lscpu still does.
-cpu_modelo=$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2- | sed 's/^ *//')
-[ -z "$cpu_modelo" ] && command -v lscpu >/dev/null && cpu_modelo=$(lscpu 2>/dev/null | sed -n 's/^Model name: *//p' | head -1)
-[ -z "$cpu_modelo" ] && cpu_modelo=$(grep -m1 '^Hardware' /proc/cpuinfo 2>/dev/null | cut -d: -f2- | sed 's/^ *//')
+cpu_model=$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2- | sed 's/^ *//')
+[ -z "$cpu_model" ] && command -v lscpu >/dev/null && cpu_model=$(lscpu 2>/dev/null | sed -n 's/^Model name: *//p' | head -1)
+[ -z "$cpu_model" ] && cpu_model=$(grep -m1 '^Hardware' /proc/cpuinfo 2>/dev/null | cut -d: -f2- | sed 's/^ *//')
 
 # Installed RAM from online memory blocks (16384 on a 16 GB machine). MemTotal is lower (kernel and
 # iGPU reservations) and would fail an exact "8 GB" minimum on an 8 GB laptop.
 ram_mb=""
 if [ -r /sys/devices/system/memory/block_size_bytes ]; then
-  bloques=$(grep -l online /sys/devices/system/memory/memory*/state 2>/dev/null | wc -l)
-  [ "$bloques" -gt 0 ] && ram_mb=$(( 0x$(cat /sys/devices/system/memory/block_size_bytes) * bloques / 1048576 ))
+  blocks=$(grep -l online /sys/devices/system/memory/memory*/state 2>/dev/null | wc -l)
+  [ "$blocks" -gt 0 ] && ram_mb=$(( 0x$(cat /sys/devices/system/memory/block_size_bytes) * blocks / 1048576 ))
 fi
 [ -z "$ram_mb" ] && ram_mb=$(awk '/MemTotal/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null)
 
@@ -49,7 +49,7 @@ fi
 # has; the name needs lspci, so the server labels the PCI id when the name is missing.
 nvidia_smi=""
 command -v nvidia-smi >/dev/null && nvidia_smi=$(nvidia-smi --query-gpu=pci.bus_id,memory.total,name --format=csv,noheader,nounits 2>/dev/null)
-gpu_modelo=""; gpu_pci_id=""; controlador=""; version_controlador=""; vram_mb=""; pci_slot=""; mayor_vram=-1
+gpu_model=""; gpu_pci_id=""; gpu_driver=""; driver_version=""; vram_mb=""; pci_slot=""; best_score=-1
 for card in "${OPENGAME_DRM:-/sys/class/drm}"/card*; do
   case "${card##*/}" in *-*) continue ;; esac
   [ -r "$card/device/uevent" ] || continue
@@ -57,28 +57,28 @@ for card in "${OPENGAME_DRM:-/sys/class/drm}"/card*; do
   [ -n "$slot" ] || continue
   driver=$(sed -n 's/^DRIVER=//p' "$card/device/uevent")
   pci_id=$(sed -n 's/^PCI_ID=//p' "$card/device/uevent" | tr 'A-F' 'a-f')
-  vram=""; nombre=""
+  vram=""; name=""
   if [ -r "$card/device/mem_info_vram_total" ]; then # amdgpu
     vram=$(( $(cat "$card/device/mem_info_vram_total") / 1048576 ))
   elif [ "$driver" = nvidia ]; then # nvidia-smi writes the bus as 00000000:01:00.0, sysfs as 0000:01:00.0
-    fila=$(printf '%s\n' "$nvidia_smi" | awk -F', ' -v bus="${slot#*:}" 'tolower(substr($1, index($1, ":") + 1)) == bus { print; exit }')
-    vram=$(printf '%s' "$fila" | cut -d, -f2 | tr -d ' ')
-    nombre=$(printf '%s' "$fila" | cut -d, -f3- | sed 's/^ *//')
+    row=$(printf '%s\n' "$nvidia_smi" | awk -F', ' -v bus="${slot#*:}" 'tolower(substr($1, index($1, ":") + 1)) == bus { print; exit }')
+    vram=$(printf '%s' "$row" | cut -d, -f2 | tr -d ' ')
+    name=$(printf '%s' "$row" | cut -d, -f3- | sed 's/^ *//')
   fi
-  orden=$vram; case "$orden" in ''|*[!0-9]*) orden=0 ;; esac # nvidia-smi prints "[N/A]" on some cards
-  case "$pci_id" in 10de:*) marca=3 ;; 1002:*) marca=2 ;; 8086:*) marca=1 ;; *) marca=0 ;; esac
-  orden=$(( orden * 4 + marca ))
-  [ "$orden" -gt "$mayor_vram" ] || continue
-  mayor_vram=$orden; pci_slot=$slot; controlador=$driver; vram_mb=$vram; gpu_modelo=$nombre; gpu_pci_id=$pci_id
+  score=$vram; case "$score" in ''|*[!0-9]*) score=0 ;; esac # nvidia-smi prints "[N/A]" on some cards
+  case "$pci_id" in 10de:*) brand=3 ;; 1002:*) brand=2 ;; 8086:*) brand=1 ;; *) brand=0 ;; esac
+  score=$(( score * 4 + brand ))
+  [ "$score" -gt "$best_score" ] || continue
+  best_score=$score; pci_slot=$slot; gpu_driver=$driver; vram_mb=$vram; gpu_model=$name; gpu_pci_id=$pci_id
 done
-if [ -z "$gpu_modelo" ] && command -v lspci >/dev/null && [ -n "$pci_slot" ]; then
-  gpu_modelo=$(lspci -mm -s "$pci_slot" 2>/dev/null | awk -F'"' '{print $4" "$6}')
+if [ -z "$gpu_model" ] && command -v lspci >/dev/null && [ -n "$pci_slot" ]; then
+  gpu_model=$(lspci -mm -s "$pci_slot" 2>/dev/null | awk -F'"' '{print $4" "$6}')
 fi
-if [ "$controlador" = "nvidia" ]; then
-  version_controlador=$(sed -n 's/.*Kernel Module *\([0-9.]*\).*/\1/p' /proc/driver/nvidia/version 2>/dev/null | head -1)
+if [ "$gpu_driver" = "nvidia" ]; then
+  driver_version=$(sed -n 's/.*Kernel Module *\([0-9.]*\).*/\1/p' /proc/driver/nvidia/version 2>/dev/null | head -1)
 else
-  version_controlador=$( (dpkg-query -W -f='${Version}' libgl1-mesa-dri 2>/dev/null || rpm -q --qf '%{VERSION}' mesa-dri-drivers 2>/dev/null || pacman -Q mesa 2>/dev/null | awk '{print $2}') | head -1)
-  [ -n "$version_controlador" ] && version_controlador="Mesa $version_controlador"
+  driver_version=$( (dpkg-query -W -f='${Version}' libgl1-mesa-dri 2>/dev/null || rpm -q --qf '%{VERSION}' mesa-dri-drivers 2>/dev/null || pacman -Q mesa 2>/dev/null | awk '{print $2}') | head -1)
+  [ -n "$driver_version" ] && driver_version="Mesa $driver_version"
 fi
 
 # Vulkan: only vulkaninfo proves support. Mesa installs ICD manifests for GPU families the machine
@@ -86,72 +86,72 @@ fi
 # version is the chosen card's, matched by vendor:device: the list can lead with another GPU or with
 # llvmpipe, a CPU renderer that is no GPU support. With no PCI card (Arm boards) the first GPU device
 # counts. Older vulkaninfo writes apiVersion as "4206847 (1.3.255)".
-soporte_vulkan="desconocido"; version_vulkan=""
+vulkan_support="desconocido"; vulkan_version=""
 if vulkan=$(vulkaninfo --summary 2>/dev/null); then
-  version_vulkan=$(printf '%s\n' "$vulkan" | awk -F' *= *' -v id="$gpu_pci_id" '
+  vulkan_version=$(printf '%s\n' "$vulkan" | awk -F' *= *' -v id="$gpu_pci_id" '
     function hex4(x) { sub(/^0x/, "", x); sub(/[ \t\r].*/, "", x); x = tolower(x); while (length(x) < 4) x = "0" x; return x }
-    function fin() {
-      if (!hallada && ven != "" && tipo !~ /CPU/ && (id == "" || ven ":" dev == id)) { print api; hallada = 1 }
-      ven = dev = api = tipo = ""
+    function flush() {
+      if (!found && ven != "" && type !~ /CPU/ && (id == "" || ven ":" dev == id)) { print api; found = 1 }
+      ven = dev = api = type = ""
     }
-    /^GPU[0-9]+:/ { fin() }
-    { clave = $1; gsub(/[ \t]/, "", clave) }
-    clave == "apiVersion" { api = $2; sub(/^[0-9]+ *\(/, "", api); sub(/[^0-9.].*/, "", api) }
-    clave == "vendorID" { ven = hex4($2) }
-    clave == "deviceID" { dev = hex4($2) }
-    clave == "deviceType" { tipo = $2 }
-    END { fin() }')
-  if [ -n "$version_vulkan" ]; then soporte_vulkan="si"; else soporte_vulkan="no"; fi
+    /^GPU[0-9]+:/ { flush() }
+    { key = $1; gsub(/[ \t]/, "", key) }
+    key == "apiVersion" { api = $2; sub(/^[0-9]+ *\(/, "", api); sub(/[^0-9.].*/, "", api) }
+    key == "vendorID" { ven = hex4($2) }
+    key == "deviceID" { dev = hex4($2) }
+    key == "deviceType" { type = $2 }
+    END { flush() }')
+  if [ -n "$vulkan_version" ]; then vulkan_support="si"; else vulkan_support="no"; fi
 fi
 
 # VDF files nest blocks (an appmanifest's UserConfig has its own "name"), so a flat grep reads the
 # wrong key. Keys are lowercased because old manifests write appID.
-vdf_pares() {
+vdf_pairs() {
   awk '
-    function cadena(s,   out, i, c) {
+    function unquote(s,   out, i, c) {
       out = ""
       for (i = 1; i <= length(s); i++) {
         c = substr(s, i, 1)
         if (c == "\\") { i++; out = out substr(s, i, 1) }
-        else if (c == "\"") { resto = substr(s, i + 1); return out }
+        else if (c == "\"") { rest = substr(s, i + 1); return out }
         else out = out c
       }
-      resto = ""; return out
+      rest = ""; return out
     }
-    FNR == 1 { archivo++; d = 0 }
+    FNR == 1 { file++; d = 0 }
     {
       sub(/^[ \t]+/, ""); sub(/[ \t\r]+$/, "")
       if ($0 == "{") { d++; next }
       if ($0 == "}") { d--; next }
       if (substr($0, 1, 1) != "\"") next
-      k = cadena(substr($0, 2)); r = resto; sub(/^[ \t]+/, "", r)
+      k = unquote(substr($0, 2)); r = rest; sub(/^[ \t]+/, "", r)
       if (substr(r, 1, 1) != "\"") next
-      v = cadena(substr(r, 2)); gsub(/\t/, " ", v)
-      print archivo "\t" d "\t" tolower(k) "\t" v
+      v = unquote(substr(r, 2)); gsub(/\t/, " ", v)
+      print file "\t" d "\t" tolower(k) "\t" v
     }' "$@"
 }
 
 # Every Steam root (native, Flatpak, Snap) lists its libraries in steamapps/libraryfolders.vdf: "path"
 # two levels deep, or a numbered key one level deep in the pre-2021 format.
-biblioteca_steam="null"; bibliotecas=()
-for raiz in "${OPENGAME_STEAM_DIR:-}" "${HOME:-}/.steam/steam" "${HOME:-}/.local/share/Steam" \
+steam_library="null"; libraries=()
+for root in "${OPENGAME_STEAM_DIR:-}" "${HOME:-}/.steam/steam" "${HOME:-}/.local/share/Steam" \
   "${HOME:-}/.var/app/com.valvesoftware.Steam/.local/share/Steam" "${HOME:-}/snap/steam/common/.local/share/Steam"; do
-  [ -n "$raiz" ] && [ -d "$raiz/steamapps" ] || continue
-  bibliotecas+=("$raiz")
-  if [ -r "$raiz/steamapps/libraryfolders.vdf" ]; then
-    while IFS= read -r ruta; do bibliotecas+=("$ruta"); done < <(vdf_pares "$raiz/steamapps/libraryfolders.vdf" |
+  [ -n "$root" ] && [ -d "$root/steamapps" ] || continue
+  libraries+=("$root")
+  if [ -r "$root/steamapps/libraryfolders.vdf" ]; then
+    while IFS= read -r library; do libraries+=("$library"); done < <(vdf_pairs "$root/steamapps/libraryfolders.vdf" |
       awk -F'\t' '($2 == 2 && $3 == "path") || ($2 == 1 && $3 ~ /^[0-9]+$/) { print $4 }')
   fi
 done
-if [ "${#bibliotecas[@]}" -gt 0 ]; then
-  manifiestos=()
-  while IFS= read -r ruta; do
-    for m in "$ruta"/steamapps/appmanifest_*.acf; do [ -f "$m" ] && manifiestos+=("$m"); done
-  done < <(for b in "${bibliotecas[@]}"; do realpath -e "$b" 2>/dev/null; done | sort -u)
-  biblioteca_steam="[]"
-  if [ "${#manifiestos[@]}" -gt 0 ]; then
+if [ "${#libraries[@]}" -gt 0 ]; then
+  manifests=()
+  while IFS= read -r library; do
+    for m in "$library"/steamapps/appmanifest_*.acf; do [ -f "$m" ] && manifests+=("$m"); done
+  done < <(for b in "${libraries[@]}"; do realpath -e "$b" 2>/dev/null; done | sort -u)
+  steam_library="[]"
+  if [ "${#manifests[@]}" -gt 0 ]; then
     # StateFlags 4 is fully installed; 1024 marks an update in progress, which clears bit 4 meanwhile.
-    biblioteca_steam=$(vdf_pares "${manifiestos[@]}" | awk -F'\t' '
+    steam_library=$(vdf_pairs "${manifests[@]}" | awk -F'\t' '
         $2 == 1 { v[$1, $3] = $4; n = $1 }
         END {
           for (a = 1; a <= n; a++) {
@@ -160,28 +160,28 @@ if [ "${#bibliotecas[@]}" -gt 0 ]; then
               print (v[a, "lastplayed"] + 0) "\t" v[a, "appid"] "\t" v[a, "name"]
           }
         }' | sort -t "$(printf '\t')" -k1,1nr -k2,2n | tr -d '\000-\010\013-\037\177' | sed 's/\\/\\\\/g; s/"/\\"/g' |
-      awk -F'\t' -v max="$MAX_JUEGOS" 'BEGIN { printf "[" } max == 0 || NR <= max { printf "%s{\"app_id\":%s,\"nombre\":\"%s\"}", (NR > 1 ? "," : ""), $2 + 0, $3 } END { printf "]" }')
+      awk -F'\t' -v max="$MAX_GAMES" 'BEGIN { printf "[" } max == 0 || NR <= max { printf "%s{\"app_id\":%s,\"nombre\":\"%s\"}", (NR > 1 ? "," : ""), $2 + 0, $3 } END { printf "]" }')
   fi
 fi
 
 # Machine facts. Empty means unknown and goes out as null; none of these needs root.
 # CPU level: glibc >= 2.33 lists its x86-64 hwcaps levels as "supported" or not. Older glibc lists
 # none, so the level stays unknown rather than v1.
-nivel_x86=""
-if [ "$arquitectura" = x86_64 ] && [ -x /lib64/ld-linux-x86-64.so.2 ]; then
+x86_level=""
+if [ "$architecture" = x86_64 ] && [ -x /lib64/ld-linux-x86-64.so.2 ]; then
   ldso=$(/lib64/ld-linux-x86-64.so.2 --help 2>/dev/null)
   if printf '%s\n' "$ldso" | grep -q 'x86-64-v2'; then
-    nivel_x86=$(printf '%s\n' "$ldso" | sed -n 's/^ *x86-64-\(v[234]\) (supported.*/\1/p' | sort | tail -1)
-    [ -n "$nivel_x86" ] || nivel_x86=v1
+    x86_level=$(printf '%s\n' "$ldso" | sed -n 's/^ *x86-64-\(v[234]\) (supported.*/\1/p' | sort | tail -1)
+    [ -n "$x86_level" ] || x86_level=v1
   fi
 fi
 # No /sys/firmware/efi: legacy BIOS boot. EFI with an unreadable variable stays unknown. The 5th
 # byte of the efivar (after 4 attribute bytes) is the state.
-arranque_seguro=""
-if [ ! -d /sys/firmware/efi ]; then arranque_seguro=bios
+secure_boot=""
+if [ ! -d /sys/firmware/efi ]; then secure_boot=bios
 else
   sb=$(od -An -t u1 -j4 -N1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c 2>/dev/null | tr -d ' ')
-  case "$sb" in 1) arranque_seguro=activo ;; 0) arranque_seguro=inactivo ;; esac
+  case "$sb" in 1) secure_boot=activo ;; 0) secure_boot=inactivo ;; esac
 fi
 # A kernel without the tpm class can't tell; a tpm0 without tpm_version_major (old kernels) neither.
 tpm=""
@@ -195,7 +195,7 @@ if [ -r /proc/swaps ]; then
   read -r zram_mb swap_mb < <(awk 'NR > 1 { if ($1 ~ /^\/dev\/zram/) z += $3; else s += $3 } END { printf "%d %d\n", z / 1024, s / 1024 }' /proc/swaps)
 fi
 
-payload="{\"version_esquema\":1,\"capturado_en\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"sistema\":\"Linux\",\"version_sistema\":$(json_str "$version_sistema"),\"distribucion\":{\"nombre\":$(json_str "$distro_nombre"),\"version\":$(json_str "$distro_version")},\"arquitectura\":$(json_str "$arquitectura"),\"cpu_modelo\":$(json_str "$cpu_modelo"),\"gpu_modelo\":$(json_str "$gpu_modelo"),\"gpu_pci_id\":$(json_str "$gpu_pci_id"),\"ram_mb\":$(json_num "$ram_mb"),\"vram_mb\":$(json_num "$vram_mb"),\"controlador\":$(json_str "$controlador"),\"version_controlador\":$(json_str "$version_controlador"),\"soporte_vulkan\":\"$soporte_vulkan\",\"version_vulkan\":$(json_str "$version_vulkan"),\"biblioteca_steam\":$biblioteca_steam,\"nivel_x86\":$(json_str "$nivel_x86"),\"arranque_seguro\":$(json_str "$arranque_seguro"),\"tpm\":$(json_str "$tpm"),\"zram_mb\":$(json_num "$zram_mb"),\"swap_mb\":$(json_num "$swap_mb")}"
+payload="{\"version_esquema\":1,\"capturado_en\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"sistema\":\"Linux\",\"version_sistema\":$(json_str "$os_version"),\"distribucion\":{\"nombre\":$(json_str "$distro_name"),\"version\":$(json_str "$distro_version")},\"arquitectura\":$(json_str "$architecture"),\"cpu_modelo\":$(json_str "$cpu_model"),\"gpu_modelo\":$(json_str "$gpu_model"),\"gpu_pci_id\":$(json_str "$gpu_pci_id"),\"ram_mb\":$(json_num "$ram_mb"),\"vram_mb\":$(json_num "$vram_mb"),\"controlador\":$(json_str "$gpu_driver"),\"version_controlador\":$(json_str "$driver_version"),\"soporte_vulkan\":\"$vulkan_support\",\"version_vulkan\":$(json_str "$vulkan_version"),\"biblioteca_steam\":$steam_library,\"nivel_x86\":$(json_str "$x86_level"),\"arranque_seguro\":$(json_str "$secure_boot"),\"tpm\":$(json_str "$tpm"),\"zram_mb\":$(json_num "$zram_mb"),\"swap_mb\":$(json_num "$swap_mb")}"
 
 if [ "${1:-}" != "--open" ]; then
   printf '%s\n' "$payload"
