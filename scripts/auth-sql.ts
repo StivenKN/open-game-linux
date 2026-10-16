@@ -4,7 +4,7 @@
 import { getMigrations } from 'better-auth/db/migration'
 import { Schema } from 'effect'
 import { Pool } from 'pg'
-import { esquemaAuth } from '../src/servidor/esquema/auth.ts'
+import { esquemaAuth } from '../src/server/schema/auth.ts'
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL_TEST, max: 1 })
 try {

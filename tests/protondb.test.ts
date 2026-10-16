@@ -1,14 +1,14 @@
 import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Option } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { EdicionId, JuegoId } from '../src/dominio/ids.ts'
-import { ProtonDbResumen } from '../src/dominio/tablas.ts'
-import { Visitante } from '../src/servidor/auth.ts'
-import { catalogo } from '../src/servidor/consultas/catalogo.ts'
-import { fichaJuego } from '../src/servidor/consultas/ficha.ts'
-import { importarProtonDb } from '../src/servidor/externo/protondb.ts'
-import { filas } from '../src/servidor/filas.ts'
-import { elDia, enRollback, idDe, PgTest } from './apoyo.ts'
+import { EdicionId, JuegoId } from '../src/domain/ids.ts'
+import { ProtonDbResumen } from '../src/domain/tables.ts'
+import { Visitante } from '../src/server/auth.ts'
+import { catalogo } from '../src/server/queries/catalog.ts'
+import { fichaJuego } from '../src/server/queries/game.ts'
+import { importarProtonDb } from '../src/server/external/protondb.ts'
+import { filas } from '../src/server/rows.ts'
+import { elDia, enRollback, idDe, PgTest } from './support.ts'
 
 async function* trozos(texto: string) {
   for (let i = 0; i < texto.length; i += 7) yield texto.slice(i, i + 7)

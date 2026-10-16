@@ -17,11 +17,11 @@ TanStack Start 1.169 on Vite 8 serves React 19 with SSR. Effect 4.0.2 runs the s
 
 ## The core in five sentences
 
-1. Route loaders and `createServerFn` are the only server boundary. Each server fn is one line that calls `leer` (reads) or `accion` (UI-triggered calls, one transaction each) in `servidor/ejecutar.ts`.
+1. Route loaders and `createServerFn` are the only server boundary. Each server fn is one line that calls `leer` (reads) or `accion` (UI-triggered calls, one transaction each) in `server/run.ts`.
 2. Domain failures come back as a returned `Respuesta<A, E>` union, never as thrown errors, so the compiler checks that each form handles exactly the failures its program can produce. Not found, login and forbidden use the router's own `notFound()` and `redirect()`.
 3. One Effect Schema per concept serves the DB CHECK lists, row decoding, browser form decoding, server fn validation and search params. Page data types are inferred from the server programs. Only `Schema` ships to the browser, with no Effect runtime there.
 4. Nothing stores a verdict or a projection. `resumir` and `estadoDe` compute compatibility from approved reports on each request. `equipoEnLinux` projects what the GPU can do on Linux from its stored PCI id, and `evaluar` gives exactly three outcomes with no FPS field.
-5. Every 8.7/8.9/8.11 rule has one home. Row-local rules are DB constraints and three triggers. Cross-row rules live in `servidor/aportes/aportes.ts` (single writer of contributions) and `servidor/aportes/revision.ts` (single writer of the review block). `src/fronteras.test.ts` fails the build on a second writer or a wrong import.
+5. Every 8.7/8.9/8.11 rule has one home. Row-local rules are DB constraints and three triggers. Cross-row rules live in `server/commands/contributions.ts` (single writer of contributions) and `server/commands/review.ts` (single writer of the review block). `src/boundaries.test.ts` fails the build on a second writer or a wrong import.
 
 ## Decisions settled by prototype
 
@@ -49,12 +49,12 @@ Three candidates ran in parallel with assigned shapes.
 
 | From | Graft |
 |---|---|
-| Fable | `dominio/tablas.ts`: one row Schema per table built from `Texto(n)`, branded ids and a spread `BloqueRevision`. Queries pick from it instead of declaring ad-hoc Structs, and input Schemas spread its fields. The migration reads `varchar(n)` lengths from the same `Texto(n)` constants, so no drift test is needed. |
+| Fable | `domain/tables.ts`: one row Schema per table built from `Texto(n)`, branded ids and a spread `BloqueRevision`. Queries pick from it instead of declaring ad-hoc Structs, and input Schemas spread its fields. The migration reads `varchar(n)` lengths from the same `Texto(n)` constants, so no drift test is needed. |
 | Fable | Fixtures for app tests come from an `escenario()` helper that writes through the real writers, so a fixture cannot encode a state the app cannot reach. Route components are named functions (an inline arrow loses the loader type). |
 | Fable | `TransicionInvalida { de, a }` is its own failure class, not a `Regla` case. |
 | Sonnet | `Captura` is a union of Linux and Windows members. `ResultadoObservado` requires a `NonEmptyArray` of fallos for a failing result, replacing the filter with a TODO. |
 | Sonnet | The review CHECK is built from `formaPorEstado satisfies Record<EstadoRevision, string>`. That makes the separate `estado_revision IN (...)` CHECK redundant, so it goes. |
-| Sonnet | `test/ayudas/db.ts` (savepoint-based `restriccionDe`) and the `esquema.test.ts` bodies that ran green on PostgreSQL 18.6 replace the sketch's `it.todo` list, renamed to the sketch's constraint names. A report's content is frozen from birth, so FPS rules are tested with INSERT. |
+| Sonnet | `test/ayudas/db.ts` (savepoint-based `restriccionDe`) and the `schema.test.ts` bodies that ran green on PostgreSQL 18.6 replace the sketch's `it.todo` list, renamed to the sketch's constraint names. A report's content is frozen from birth, so FPS rules are tested with INSERT. |
 | Sonnet | `PerfilNoComparable { discrepancias: NonEmptyArray<Discrepancia> }` with `{ de, esperado, observado }`, so the message can say "perfil para x86_64, tu diagnóstico es aarch64". |
 | Sonnet | `.oxlintrc.json` with `no-explicit-any`, `consistent-type-assertions: never` and `no-non-null-assertion`, inside `pnpm check`. |
 | Judge | Author ≠ reviewer gets one home, in `decidir`, for all three reviewable tables. The `*_sin_autoaprobacion` CHECKs go, because `reporte`'s author is only reachable through a join. |
@@ -83,5 +83,5 @@ Three candidates ran in parallel with assigned shapes.
 
 - **Blocking first steps.** U0 scaffolds the app at the repo root with the spike's pins and runs three probes capped at 2 hours (form decode of nested FormData, better-auth field mapping, driver types for `numeric` and `text[]`). Nothing else starts until `pnpm check` is green on `main`.
 - **Independent workstreams.** After U0, three lanes run in parallel. U1 is the schema and DB tests. U2 is the pure domain plus the payload parser. U2c is the verdict components on fixtures. After U3 (runtime, auth, seed base), U4 (read pages), U5 (writes and review) and U6 (diagnosis) run in parallel. U7 and U8 fill the gaps.
-- **Shared mutable state.** `servidor/esquema/migraciones.ts` and `dominio/fallos.ts` have one owner (lane A). `routeTree.gen.ts` is regenerated, never merged. `ui/vocabulario.ts` is appended per lane, and `tsc` catches gaps. Each delegate works in its own git worktree on its own branch. Parallel lanes share one local Postgres container but each uses its own `*_test` database.
+- **Shared mutable state.** `server/schema/migrations.ts` and `domain/errors.ts` have one owner (lane A). `routeTree.gen.ts` is regenerated, never merged. `ui/vocabulary.ts` is appended per lane, and `tsc` catches gaps. Each delegate works in its own git worktree on its own branch. Parallel lanes share one local Postgres container but each uses its own `*_test` database.
 - **Smallest safe decomposition.** One owner per lane, three lanes. Lane A (U0, U1, U3, U5, U9) is the critical path. Splitting U5 further would put two writers on the review rules.

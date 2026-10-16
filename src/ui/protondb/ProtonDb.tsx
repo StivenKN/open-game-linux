@@ -1,7 +1,7 @@
-import type { VarianteProton } from '../../dominio/literales.ts'
-import type { ProtonDbResumen } from '../../dominio/tablas.ts'
-import { contar, fecha } from '../formato.ts'
-import { varianteProton } from '../vocabulario.ts'
+import type { VarianteProton } from '../../domain/literals.ts'
+import type { ProtonDbResumen } from '../../domain/tables.ts'
+import { contar, fecha } from '../format.ts'
+import { varianteProton } from '../vocabulary.ts'
 
 type Recientes = Pick<ProtonDbResumen, 'recientes' | 'recientes_funcionan' | 'reportes_total'>
 

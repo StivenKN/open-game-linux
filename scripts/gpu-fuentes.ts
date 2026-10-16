@@ -1,5 +1,5 @@
-import type { FamiliaGpu, VendorGpu } from '../src/dominio/gpu.ts'
-import { codificarTramos } from '../src/servidor/gpu/tramos.ts'
+import type { FamiliaGpu, VendorGpu } from '../src/domain/gpu.ts'
+import { codificarTramos } from '../src/server/gpu/ranges.ts'
 
 export type Dispositivo = { readonly vendor: VendorGpu; readonly device: string; readonly familia: FamiliaGpu }
 

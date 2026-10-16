@@ -5,13 +5,13 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { MAX_JUEGOS_BIBLIOTECA } from '../dominio/biblioteca.ts'
-import { parsearPayload } from '../servidor/diagnostico/payload.ts'
+import { MAX_JUEGOS_BIBLIOTECA } from '../domain/library.ts'
+import { parsearPayload } from '../server/diagnostics/payload.ts'
 
 const raiz = fileURLToPath(new URL('../../', import.meta.url))
 const ps1 = join(raiz, 'src/detector/opengame-detect.ps1')
 const sh = join(raiz, 'src/detector/opengame-detect.sh')
-const stubs = join(raiz, 'src/detector/pruebas/stubs.ps1')
+const stubs = join(raiz, 'src/detector/fixtures/stubs.ps1')
 const fuente = readFileSync(ps1, 'utf8')
 
 describe('opengame-detect.ps1 source', () => {

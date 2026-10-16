@@ -4,9 +4,9 @@ import bigShoulders from '@fontsource-variable/big-shoulders-display/files/big-s
 import onest from '@fontsource-variable/onest/files/onest-latin-wght-normal.woff2?url'
 import unbounded from '@fontsource-variable/unbounded/files/unbounded-latin-wght-normal.woff2?url'
 import icono from '../../assets/icon.svg?url'
-import { visitanteFn } from '../fns/sesion.ts'
+import { visitanteFn } from '../fns/session.ts'
 import appCss from '../styles.css?url'
-import { authCliente } from './-auth-cliente.ts'
+import { authCliente } from './-auth-client.ts'
 
 export const Route = createRootRoute({
   beforeLoad: async () => ({ visitante: await visitanteFn() }),

@@ -1,8 +1,8 @@
 // `pnpm rol <correo> <usuario|revisor|administrador>`: the only way to promote an account (no admin UI).
 import { Effect, Schema } from 'effect'
-import { Rol } from '../src/dominio/revision.ts'
-import { asignarRol } from '../src/servidor/auth.ts'
-import { PgLive } from '../src/servidor/runtime.ts'
+import { Rol } from '../src/domain/review.ts'
+import { asignarRol } from '../src/server/auth.ts'
+import { PgLive } from '../src/server/runtime.ts'
 
 const [correo = '', rol] = process.argv.slice(2)
 

@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs'
-import { FamiliaGpu, VendorGpu } from '../src/dominio/gpu.ts'
+import { FamiliaGpu, VendorGpu } from '../src/domain/gpu.ts'
 import { chipsetsMesa, conPiso, type Dispositivo, familiaCrocus, familiaIris, idsAmdgpu, idsNvidia, tablaDe } from './gpu-fuentes.ts'
 
 const fuentes = {
@@ -8,7 +8,7 @@ const fuentes = {
   pciids: '6b9987960d8d7e8cb87d2fcea0984e82b7e505f8',
 } as const
 
-const destino = new URL('../src/servidor/gpu/familias.generado.ts', import.meta.url)
+const destino = new URL('../src/server/gpu/families.generated.ts', import.meta.url)
 
 const bajar = async (url: string) => {
   const r = await fetch(url)
@@ -55,7 +55,7 @@ writeFileSync(
 // Mesa ${fuentes.mesa}: include/pci_ids/{crocus,iris,i915,i830,r300,r600}_pci_ids.h
 // Linux ${fuentes.linux}: drivers/gpu/drm/amd/amdgpu/amdgpu_drv.c
 // pciutils/pciids ${fuentes.pciids}: pci.ids
-import type { FamiliaGpu, VendorGpu } from '../../dominio/gpu.ts'
+import type { FamiliaGpu, VendorGpu } from '../../domain/gpu.ts'
 
 /** \`marca\` lets scripts/sin-servidor-en-cliente.ts spot this table in a browser bundle. */
 export const tablaGpu = {

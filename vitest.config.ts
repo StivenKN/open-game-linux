@@ -14,8 +14,8 @@ export default defineConfig({
         test: {
           name: 'bd',
           include: ['tests/**/*.test.ts'],
-          globalSetup: ['tests/preparar.ts'],
-          // servidor/runtime.ts and servidor/auth.ts read DATABASE_URL; point them at the test database.
+          globalSetup: ['tests/setup.ts'],
+          // server/runtime.ts and server/auth.ts read DATABASE_URL; point them at the test database.
           // An empty value makes them fail instead of falling back to the dev database.
           env: { DATABASE_URL: process.env.DATABASE_URL_TEST ?? '' },
         },

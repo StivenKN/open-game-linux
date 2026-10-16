@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { ErrorCampo } from '../ui/ErrorCampo.tsx'
-import { campo } from '../ui/formulario.tsx'
-import { useAccion } from '../ui/useAccion.ts'
-import { Entrada, entrar, erroresDeCuenta } from './-cuenta.ts'
-import { Volver } from './-volver.ts'
+import { ErrorCampo } from '../ui/FieldError.tsx'
+import { campo } from '../ui/form.tsx'
+import { useAccion } from '../ui/useAction.ts'
+import { Entrada, entrar, erroresDeCuenta } from './-account.ts'
+import { Volver } from './-return-to.ts'
 
 export const Route = createFileRoute('/entrar')({
   head: () => ({ meta: [{ title: 'Entrar · OpenGame Linux' }] }),

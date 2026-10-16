@@ -125,7 +125,7 @@ The `/diagnostico` page shows both commands, and it also accepts the pasted outp
 
 ## Update the GPU table
 
-The diagnosis projects what a GPU can do on Linux from its PCI id. The id table, `src/servidor/gpu/familias.generado.ts`, is generated from pinned Mesa, Linux and pci.ids sources. Do not edit it by hand.
+The diagnosis projects what a GPU can do on Linux from its PCI id. The id table, `src/server/gpu/families.generated.ts`, is generated from pinned Mesa, Linux and pci.ids sources. Do not edit it by hand.
 
 To recognize newer GPUs, bump the pins in `scripts/generar-gpus.ts`, then regenerate the table. Review the printed counts and the diff before you commit.
 

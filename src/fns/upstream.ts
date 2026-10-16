@@ -1,11 +1,11 @@
 import { createServerFn } from '@tanstack/react-start'
 import { Schema } from 'effect'
-import { ReglaIncumplida } from '../dominio/fallos.ts'
-import { ReporteId } from '../dominio/ids.ts'
-import { NotaArreglo } from '../dominio/upstream.ts'
-import { anotarArreglo } from '../servidor/aportes/upstream.ts'
-import { informeProtonDe } from '../servidor/consultas/upstream.ts'
-import { accion, leer } from '../servidor/ejecutar.ts'
+import { ReglaIncumplida } from '../domain/errors.ts'
+import { ReporteId } from '../domain/ids.ts'
+import { NotaArreglo } from '../domain/upstream.ts'
+import { anotarArreglo } from '../server/commands/upstream.ts'
+import { informeProtonDe } from '../server/queries/upstream.ts'
+import { accion, leer } from '../server/run.ts'
 
 export const anotarArregloFn = createServerFn({ method: 'POST' })
   .validator(Schema.toStandardSchemaV1(NotaArreglo))

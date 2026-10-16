@@ -1,12 +1,12 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { DiagnosticoId } from '../../dominio/ids.ts'
-import { miDiagnosticoFn } from '../../fns/diagnostico.ts'
-import { Distribuciones } from '../../ui/diagnostico/Distribuciones.tsx'
-import { JuegosDelEquipo } from '../../ui/diagnostico/JuegosDelEquipo.tsx'
-import { ResumenCaptura } from '../../ui/diagnostico/ResumenCaptura.tsx'
-import { TarjetaGraficaEnLinux } from '../../ui/diagnostico/TarjetaGraficaEnLinux.tsx'
+import { DiagnosticoId } from '../../domain/ids.ts'
+import { miDiagnosticoFn } from '../../fns/diagnostic.ts'
+import { Distribuciones } from '../../ui/diagnostics/Distributions.tsx'
+import { JuegosDelEquipo } from '../../ui/diagnostics/MachineGames.tsx'
+import { ResumenCaptura } from '../../ui/diagnostics/CaptureSummary.tsx'
+import { TarjetaGraficaEnLinux } from '../../ui/diagnostics/GraphicsCardOnLinux.tsx'
 import { idDeRuta } from '../-ids.ts'
-import { volverAqui } from '../-volver.ts'
+import { volverAqui } from '../-return-to.ts'
 
 const diagnosticoId = idDeRuta(DiagnosticoId)
 

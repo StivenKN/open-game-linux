@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { MAX_JUEGOS_BIBLIOTECA } from '../dominio/biblioteca.ts'
-import { origenPublico } from '../servidor/origen.ts'
+import { MAX_JUEGOS_BIBLIOTECA } from '../domain/library.ts'
+import { origenPublico } from '../server/origin.ts'
 
 export const Route = createFileRoute('/opengame-detect.sh')({
   server: {

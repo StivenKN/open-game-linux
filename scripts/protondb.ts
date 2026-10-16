@@ -2,8 +2,8 @@
 // `tar -xzOf reports_oct1_2026.tar.gz | pnpm db:protondb -`. Run it again after adding Steam games.
 import { createReadStream } from 'node:fs'
 import { Effect } from 'effect'
-import { importarProtonDb, resumenImportacion } from '../src/servidor/externo/protondb.ts'
-import { PgLive } from '../src/servidor/runtime.ts'
+import { importarProtonDb, resumenImportacion } from '../src/server/external/protondb.ts'
+import { PgLive } from '../src/server/runtime.ts'
 
 const ruta = process.argv[2]
 if (ruta === undefined) {

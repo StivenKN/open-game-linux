@@ -1,11 +1,11 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { ReporteId } from '../../dominio/ids.ts'
+import { ReporteId } from '../../domain/ids.ts'
 import { informeProtonFn } from '../../fns/upstream.ts'
-import { CajaCopiar } from '../../ui/compatibilidad/CajaCopiar.tsx'
-import { SelloEjemplo } from '../../ui/SelloEjemplo.tsx'
-import { motivoSinInforme } from '../../ui/vocabulario.ts'
+import { CajaCopiar } from '../../ui/compatibility/CopyBox.tsx'
+import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
+import { motivoSinInforme } from '../../ui/vocabulary.ts'
 import { idDeRuta } from '../-ids.ts'
-import { volverAqui } from '../-volver.ts'
+import { volverAqui } from '../-return-to.ts'
 
 const reporteId = idDeRuta(ReporteId)
 

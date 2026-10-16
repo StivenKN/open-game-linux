@@ -2,8 +2,8 @@
 // `pnpm db:reset <base>` drops the public schema first, only when <base> names the database DATABASE_URL reaches.
 import { Effect } from 'effect'
 import { NodeServices } from '@effect/platform-node'
-import { PgLive } from '../src/servidor/runtime.ts'
-import { migrar, vaciarEsquema } from '../src/servidor/esquema/migraciones.ts'
+import { PgLive } from '../src/server/runtime.ts'
+import { migrar, vaciarEsquema } from '../src/server/schema/migrations.ts'
 
 const reset = process.argv.indexOf('--reset')
 

@@ -1,15 +1,15 @@
 // Lives under routes/ rather than ui/ because the reviewer forms call a server fn, which ui/ may not import.
 import { useRouter } from '@tanstack/react-router'
-import type { PerfilId } from '../../dominio/ids.ts'
-import { type ExportacionFix, NotaArreglo, type NumeroPr, type Omitido, prsDeOpenGame, urlPr } from '../../dominio/upstream.ts'
+import type { PerfilId } from '../../domain/ids.ts'
+import { type ExportacionFix, NotaArreglo, type NumeroPr, type Omitido, prsDeOpenGame, urlPr } from '../../domain/upstream.ts'
 import { anotarArregloFn } from '../../fns/upstream.ts'
-import { CajaCopiar } from '../../ui/compatibilidad/CajaCopiar.tsx'
-import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
-import { fecha } from '../../ui/formato.ts'
-import { Campo, campo } from '../../ui/formulario.tsx'
-import { SelloEjemplo } from '../../ui/SelloEjemplo.tsx'
-import { erroresDeRegla, useAccion } from '../../ui/useAccion.ts'
-import { motivoNoExportable, motivoOmision } from '../../ui/vocabulario.ts'
+import { CajaCopiar } from '../../ui/compatibility/CopyBox.tsx'
+import { ErrorCampo } from '../../ui/FieldError.tsx'
+import { fecha } from '../../ui/format.ts'
+import { Campo, campo } from '../../ui/form.tsx'
+import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
+import { erroresDeRegla, useAccion } from '../../ui/useAction.ts'
+import { motivoNoExportable, motivoOmision } from '../../ui/vocabulary.ts'
 
 type Arreglo = { readonly pr: NumeroPr; readonly registrado_en: Date }
 

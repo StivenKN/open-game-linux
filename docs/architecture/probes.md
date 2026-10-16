@@ -10,7 +10,7 @@ Three probes from `PLAN.md` row U0, run on 2026-10-10 against the pinned stack (
 
 ## (a) Form decode
 
-**Setup.** The probe uses the real `NuevoReporte` from `src/dominio/aportes.ts` rather than a stand-in, because the real schema is already in place. It builds a `FormData` with bracket keys (`fallos[0][tipo_fallo_id]`, `version_capa[_tag]`, `medicion[fps_promedio]`) and validates it through `Schema.toStandardSchemaV1`, which reports issue paths the way the form hook will read them.
+**Setup.** The probe uses the real `NuevoReporte` from `src/domain/contributions.ts` rather than a stand-in, because the real schema is already in place. It builds a `FormData` with bracket keys (`fallos[0][tipo_fallo_id]`, `version_capa[_tag]`, `medicion[fps_promedio]`) and validates it through `Schema.toStandardSchemaV1`, which reports issue paths the way the form hook will read them.
 
 **Observed.**
 
@@ -53,7 +53,7 @@ issue at ["version_capa","id"]: Expected a string representing a finite number
 
 **What does not.** An empty `perfil_id` does not mean null. The StringTree codec writes null as the literal string `"null"`, and only that string decodes to null. `""` fails, and an absent key fails. FormData also cannot express an empty array, so a report with no `fallos` fails with `Missing key`.
 
-**Decision.** Keep `fromFormData(toCodecStringTree(S))` in `ui/useAccion.ts`. The fallback (a controlled form object plus `decodeUnknownResult`) is not needed. The forms and schemas follow three rules.
+**Decision.** Keep `fromFormData(toCodecStringTree(S))` in `ui/useAction.ts`. The fallback (a controlled form object plus `decodeUnknownResult`) is not needed. The forms and schemas follow three rules.
 
 1. A nullable field posts `"null"` for "none". The profile select uses `<option value="null">Sin perfil</option>`. The FPS block posts a hidden `medicion=null` and disables it while the measurement inputs are on.
 2. An array that a form can leave empty takes `Schema.withDecodingDefaultKey(Effect.succeed([]))` in its input schema. `NuevoReporte.fallos` needs it (lane B, U2). The server fn validator still accepts an explicit array.
@@ -61,7 +61,7 @@ issue at ["version_capa","id"]: Expected a string representing a finite number
 
 **Side findings.**
 
-- Rebuilding a Struct from `NuevoReporte.fields` drops its `.check` filters. The probe's first version silently lost the 8.7 rule this way. This matters for the `dominio/tablas.ts` graft, where input Schemas spread row fields: restate the filters after a spread.
+- Rebuilding a Struct from `NuevoReporte.fields` drops its `.check` filters. The probe's first version silently lost the 8.7 rule this way. This matters for the `domain/tables.ts` graft, where input Schemas spread row fields: restate the filters after a spread.
 - A user who types the word `null` into a `TextoOpcional` field gets `null`. This is cosmetic and accepted.
 - `DateFromString` reads `'2026-10-01'` as UTC midnight. In `America/Bogota` that renders as 30 September. U5 renders `fecha_prueba` with `timeZone: 'UTC'`, or the column becomes `date`.
 
@@ -101,7 +101,7 @@ create index "verification_identifier_idx" on "verification" ("identifier");
 
 **Decision.** Keep the mapping as written. The camelCase fallback is not needed. U1 and U3 inherit four facts.
 
-- `image` is not mapped in this config and stays `image`. The sketch's `servidor/auth.ts` maps it to `imagen`, which is consistent with this result.
+- `image` is not mapped in this config and stays `image`. The sketch's `server/auth.ts` maps it to `imagen`, which is consistent with this result.
 - `rol` and `activo` are `not null` with no DB default, because better-auth applies `defaultValue` in JS. A seeder that inserts into `usuario` directly must set both. U1 adds the `rol` CHECK from `Rol.literals`.
 - `session`, `account` and `verification` keep camelCase columns (`userId`, `expiresAt`). These are better-auth's own tables, and the app does not query them.
 - better-auth logs `Database schema mismatch` at startup while its tables are missing. The log is expected before `1_auth` runs.

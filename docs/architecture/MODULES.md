@@ -3,77 +3,77 @@
 ## Dependency direction, and how the build enforces it
 
 ```
-routes/ ─┬─► fns/ ──► servidor/ ──► dominio/ ──► effect
-ui/ ─────┴──────────────────────────► dominio/
+routes/ ─┬─► fns/ ──► server/ ──► domain/ ──► effect
+ui/ ─────┴──────────────────────────► domain/
 ```
 
 | Layer | May import | Enforced by |
 |---|---|---|
-| `src/dominio/` | `effect`, `dominio/` | `src/fronteras.test.ts` |
-| `src/servidor/` | `effect`, `@effect/*`, `better-auth`, `pg`, `@tanstack/react-start/server`, `@tanstack/react-router` (only for `notFound`/`redirect` in `ejecutar.ts`), `dominio/`, `servidor/` | same |
-| `src/fns/` | `@tanstack/react-start`, `effect`, `dominio/`, `servidor/` | same, plus the rule that **a top-level line is only an import or `export const x = createServerFn(`** (gotcha 3) |
-| `src/routes/` | `@tanstack/*`, `react`, `effect`, `dominio/`, `fns/`, `ui/`, `routes/` (helpers in `-*.ts` files the router skips), `detector/`, `assets/`, `better-auth/react` | same. Three allowlisted exceptions, server handlers with no component: `routes/api/auth/$.ts`, `routes/opengame-detect[.]sh.ts` and `routes/opengame-detect[.]ps1.ts` |
-| `src/ui/` | `react`, `effect`, `@tanstack/react-router`, `dominio/`, `ui/` | same |
-| review block writes | only `servidor/aportes/revision.ts` (and DDL in `servidor/esquema/`) | same test: an SQL template with `SET`/`INSERT INTO` that touches `estado_revision`, `revisor_id` or `evidencia_revision` anywhere else, `scripts/` included, fails |
-| equipo/diagnostico writes | only `servidor/aportes/diagnostico.ts` | `src/fronteras.test.ts`, same scan of `src/` and `scripts/` |
-| protondb_resumen writes | only `servidor/externo/protondb.ts` | `src/fronteras.test.ts`, same scan of `src/` and `scripts/` |
-| arreglo_upstream writes | only `servidor/aportes/upstream.ts` | `src/fronteras.test.ts`, same scan of `src/` and `scripts/` |
+| `src/domain/` | `effect`, `domain/` | `src/boundaries.test.ts` |
+| `src/server/` | `effect`, `@effect/*`, `better-auth`, `pg`, `@tanstack/react-start/server`, `@tanstack/react-router` (only for `notFound`/`redirect` in `run.ts`), `domain/`, `server/` | same |
+| `src/fns/` | `@tanstack/react-start`, `effect`, `domain/`, `server/` | same, plus the rule that **a top-level line is only an import or `export const x = createServerFn(`** (gotcha 3) |
+| `src/routes/` | `@tanstack/*`, `react`, `effect`, `domain/`, `fns/`, `ui/`, `routes/` (helpers in `-*.ts` files the router skips), `detector/`, `assets/`, `better-auth/react` | same. Three allowlisted exceptions, server handlers with no component: `routes/api/auth/$.ts`, `routes/opengame-detect[.]sh.ts` and `routes/opengame-detect[.]ps1.ts` |
+| `src/ui/` | `react`, `effect`, `@tanstack/react-router`, `domain/`, `ui/` | same |
+| review block writes | only `server/commands/review.ts` (and DDL in `server/schema/`) | same test: an SQL template with `SET`/`INSERT INTO` that touches `estado_revision`, `revisor_id` or `evidencia_revision` anywhere else, `scripts/` included, fails |
+| equipo/diagnostico writes | only `server/commands/diagnostic.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
+| protondb_resumen writes | only `server/external/protondb.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
+| arreglo_upstream writes | only `server/commands/upstream.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
 | browser bundle | no server code, no GPU table, no detector script | `scripts/sin-servidor-en-cliente.ts` after `vite build`, inside `pnpm check` (markers include `OPENGAME_TABLA_GPU` and `Win32_VideoController`) |
 | `styles.css` | every rule closed (no accidental nesting), one rule per selector | `src/styles.test.ts` |
 
-Each failure message names the fix, for example: "routes call server fns from src/fns/; never import src/servidor/ (it would ship pg to the browser)". All three planted violations failed as intended (RATIONALE, Evidence).
+Each failure message names the fix, for example: "routes call server fns from src/fns/; never import src/server/ (it would ship pg to the browser)". All three planted violations failed as intended (RATIONALE, Evidence).
 
 ## Ownership
 
 | Path | Owns | Does not own |
 |---|---|---|
-| `dominio/ids.ts` | Branded integer ids (including `DependenciaId`), text `UsuarioId`, `Texto` (trim + non-empty), `TextoOpcional` (blank → null), `idDeRuta` (`routes/-ids.ts`) | |
-| `dominio/literales.ts` | `FamiliaCapa`, `Resultado` with `ResultadoFuncional`/`ResultadoFallido`, `exigeFallo`, `VarianteProton`. Imports only `effect`, so `aportes.ts` can spread `tablas.ts` fields without a cycle | |
-| `dominio/compatibilidad.ts` | `EstadoCompatibilidad`, `estadoDeResultado` (explicit map), **`estadoDe`** (the only result-set rule), `PruebaAprobada` (row schema that proves approval), **`resumir(pruebas, ahora)`** (the one state function for ficha and catalog: last-year base set, `sin_confirmacion_reciente`, `regresiones`), `enDistribucion` | Queries, the clock |
-| `dominio/vigencia.ts` | **`esVigente`**, the only 365-day window, for OpenGame's reports (against `ahora`) and ProtonDB's (against the export date) | |
-| `dominio/protondb.ts` | The export's boundary Schema (private), `interpretarReporte`, `resumirProtonDb` (the stored aggregate, deduplicated) | OpenGame's state: nothing here reaches `resumir` |
-| `dominio/evaluacion.ts` | `Sistema`, `SoporteVulkan`, `VulkanEquipo` (tagged by `soporte`; `si` and `no` carry their `origen`, `medido` or `proyectado`, and `si` a `RangoVulkan`, one point when measured), `versionVulkan`/`alMenos`, `rangoVulkan`, `Capacidades`, `CondicionesConocidas`, **`evaluar`** (3 outcomes, no FPS field; a projected range that straddles the minimum is `desconocido`), the `condiciones` column adapter, `sugerirPerfil` | Building `Capacidades` from columns (`servidor/gpu/capacidad.ts`) |
-| `dominio/gpu.ts` | `PciId`, `FamiliaGpu` (15 families), `ControladorLinux`, `RutaD3d`, `AvisoGpu`, and the `EquipoEnLinux` type the GPU card reads. Literals and types only, so it ships to the browser small | The id table, the policy per family |
-| `dominio/ruta.ts` | `CAMINOS` (the one best-first order of graphics paths), **`rutaJuego`** (a game's declared APIs and minimum x86-64 level against `EquipoEnLinux`: `con_ruta`, `sin_ruta`, `sin_datos` with the certain floor, `sin_apis`). Composes `equipoEnLinux`'s path and `estadoVulkan`; never recomputes a Vulkan threshold | Vulkan levels per path (`servidor/gpu/capacidad.ts`) |
-| `dominio/distros.ts` | `DISTROS` (sourced facts only, display order), `REGLAS` (one per objection code, each marking whether it rules the distro out), **`descartarDistros`** | Any ranking |
-| `dominio/largo.ts` | `largo`, every column length limit by table, plus `biblioteca.nombre` for library game names. Imports nothing, so `tablas.ts` and `biblioteca.ts` share it without a cycle | |
-| `dominio/biblioteca.ts` | `LANZADOR_STEAM`, `MAX_JUEGOS_BIBLIOTECA` (1000), `AppIdSteam`, `JuegoBiblioteca`, `BibliotecaSteam`, `BibliotecaEvaluada`, `esHerramientaSteam` | |
-| `dominio/revision.ts` | `EstadoRevision`, **`siguientes`** (the only transition table), `Decision` (approval requires evidence), `planificar` (idempotence), `AporteRef`, `Bloqueo`, `Rol`, `puedeRevisar` | Who may decide, preconditions |
-| `dominio/aportes.ts` | Every input schema (`NuevoReporte` with the failing-result filter, `NuevaSolucion`, `NuevoJuego`, `Captura` with `gpu_pci_id` and `biblioteca_steam` and the Linux driver and Vulkan only on its Linux member, `CapturaManual` without the PCI id or library, `EntradaDiagnostico` with detector text capped at 300 000 characters (derived from `MAX_JUEGOS_BIBLIOTECA` and `largo.biblioteca.nombre`), `GuardarDiagnostico` with `con_biblioteca`, `VersionCapaRef`, `EquipoDestino`, `FiltroCatalogo`), **`discrepancias`** (8.7 comparability) | Persisting |
-| `dominio/fallos.ts` | `Regla` + `reglas` (field + Spanish message per rule), failure classes, `FalloDominio`, `Respuesta`, control errors | |
-| `dominio/guias.ts` | `TipoGuia`, `EstadoGuia` | |
-| `dominio/upstream.ts` | `AppIdSteam`, `PrProtonfixes`, `NotaArreglo`, **`exportarFix`** (profile → umu-protonfixes file, every untranslated token listed) and **`informeProton`** (report → Valve's compatibility-report). The tokenizer, the brand-gated Python renderer and the GitHub URL builders are private | Sending anything: users open the prefilled links themselves |
-| `servidor/runtime.ts` | `PgLive` (config `DATABASE_URL`), the one `ManagedRuntime`, HMR dispose | |
-| `servidor/auth.ts` | better-auth instance (usuario mapping, `rol`/`activo` additionalFields, public sign-up refuses `dominioDemo`), `Visitante` service, `visitanteDe`, `exigirUsuario`, `exigirRevisor` → `Revisor` brand | Data rules |
-| `servidor/ejecutar.ts` | `leer`, `accion`: session → `Visitante`, transaction per action, control errors → `notFound`/`redirect`, domain failures → `Respuesta` | Business rules |
-| `servidor/esquema/migraciones.ts` | All DDL, the rule-home index, and CHECK lists generated from Schema literals | |
-| `servidor/esquema/restricciones.ts` | `reglaDeRestriccion` (constraint name → `Regla`), `conReglasDeBd` | |
-| `servidor/aportes/aportes.ts` | **Single writer** of reporte/reporte_fallo/version_capa upsert, solucion, and juego/edicion_juego (`crearJuego`, reviewers only). App-side 8.7/8.9 write rules | The review block, equipo/diagnostico |
-| `servidor/aportes/diagnostico.ts` | **Single writer** of equipo and diagnostico, and the distribucion a capture names (`registrarDiagnostico`, converging on one equipo per alias and one capture per time). Stores `biblioteca_steam` only when `con_biblioteca` is true | |
-| `servidor/aportes/revision.ts` | **Single writer** of the review block. `decidir`, `bloqueosAprobacion`, the reviewable-table registry | |
-| `servidor/aportes/upstream.ts` | **Single writer** of arreglo_upstream (`anotarArreglo`, reviewers only): merged umu-protonfixes PRs of approved, exportable, non-demo profiles | |
-| `servidor/externo/protondb.ts` | **Single writer** of `protondb_resumen`. `elementosDeArreglo` (streams the export's top-level array), `importarProtonDb` (read all, then replace in one transaction; refuses an older export), `resumenImportacion` | Catalog rows: it only matches existing Steam editions |
-| `servidor/consultas/*.ts` | Read models: `catalogo`, `perfil`, `guias`, `guia`, `opcionesReporte`, `opcionesSolucion`, `opcionesJuego`, `fichaJuego`, `cola`, `evaluarSinGuardar`, `miDiagnostico`, `misEquipos`, `resumenesProtonDb` (ficha and catalog), `informeProtonDe`. Their success types are the page types. `fichaJuego` and `catalogo` read `ahora` once from the `Clock` | Writes |
-| `servidor/diagnostico/payload.ts` | **The only detector parser**: `parsearPayload` over payload v1, a union on `sistema` (the Windows member has no Vulkan and no kernel driver). It normalizes `gpu_pci_id` (a malformed id becomes null), the library (drops Steam tools and bad app ids, keeps the first of each id in the detector's order, cuts at 1000) and `rolling`. The private `etiquetaPci` names a GPU the detector could not name | |
-| `servidor/gpu/capacidad.ts` | **`equipoEnLinux`**, the only builder of what `evaluar` consumes: PCI id to family, the policy per family (Linux driver, Vulkan range, warnings), the Direct3D path. Measured Linux Vulkan wins over the projection, and a Windows row's stored Vulkan is never read | Storing anything |
-| `servidor/gpu/familias.generado.ts` | The PCI id to `FamiliaGpu` table, generated by `pnpm gpu:generar` with its source pins in the header. Never edited by hand | |
-| `servidor/gpu/tramos.ts` | `codificarTramos`/`decodificarTramos`, the hex-run format of that table, shared by the generator and `capacidad.ts` | |
+| `domain/ids.ts` | Branded integer ids (including `DependenciaId`), text `UsuarioId`, `Texto` (trim + non-empty), `TextoOpcional` (blank → null), `idDeRuta` (`routes/-ids.ts`) | |
+| `domain/literals.ts` | `FamiliaCapa`, `Resultado` with `ResultadoFuncional`/`ResultadoFallido`, `exigeFallo`, `VarianteProton`. Imports only `effect`, so `contributions.ts` can spread `tables.ts` fields without a cycle | |
+| `domain/compatibility.ts` | `EstadoCompatibilidad`, `estadoDeResultado` (explicit map), **`estadoDe`** (the only result-set rule), `PruebaAprobada` (row schema that proves approval), **`resumir(pruebas, ahora)`** (the one state function for ficha and catalog: last-year base set, `sin_confirmacion_reciente`, `regresiones`), `enDistribucion` | Queries, the clock |
+| `domain/recency.ts` | **`esVigente`**, the only 365-day window, for OpenGame's reports (against `ahora`) and ProtonDB's (against the export date) | |
+| `domain/protondb.ts` | The export's boundary Schema (private), `interpretarReporte`, `resumirProtonDb` (the stored aggregate, deduplicated) | OpenGame's state: nothing here reaches `resumir` |
+| `domain/evaluation.ts` | `Sistema`, `SoporteVulkan`, `VulkanEquipo` (tagged by `soporte`; `si` and `no` carry their `origen`, `medido` or `proyectado`, and `si` a `RangoVulkan`, one point when measured), `versionVulkan`/`alMenos`, `rangoVulkan`, `Capacidades`, `CondicionesConocidas`, **`evaluar`** (3 outcomes, no FPS field; a projected range that straddles the minimum is `desconocido`), the `condiciones` column adapter, `sugerirPerfil` | Building `Capacidades` from columns (`server/gpu/capability.ts`) |
+| `domain/gpu.ts` | `PciId`, `FamiliaGpu` (15 families), `ControladorLinux`, `RutaD3d`, `AvisoGpu`, and the `EquipoEnLinux` type the GPU card reads. Literals and types only, so it ships to the browser small | The id table, the policy per family |
+| `domain/graphics-path.ts` | `CAMINOS` (the one best-first order of graphics paths), **`rutaJuego`** (a game's declared APIs and minimum x86-64 level against `EquipoEnLinux`: `con_ruta`, `sin_ruta`, `sin_datos` with the certain floor, `sin_apis`). Composes `equipoEnLinux`'s path and `estadoVulkan`; never recomputes a Vulkan threshold | Vulkan levels per path (`server/gpu/capability.ts`) |
+| `domain/distros.ts` | `DISTROS` (sourced facts only, display order), `REGLAS` (one per objection code, each marking whether it rules the distro out), **`descartarDistros`** | Any ranking |
+| `domain/max-lengths.ts` | `largo`, every column length limit by table, plus `biblioteca.nombre` for library game names. Imports nothing, so `tables.ts` and `library.ts` share it without a cycle | |
+| `domain/library.ts` | `LANZADOR_STEAM`, `MAX_JUEGOS_BIBLIOTECA` (1000), `AppIdSteam`, `JuegoBiblioteca`, `BibliotecaSteam`, `BibliotecaEvaluada`, `esHerramientaSteam` | |
+| `domain/review.ts` | `EstadoRevision`, **`siguientes`** (the only transition table), `Decision` (approval requires evidence), `planificar` (idempotence), `AporteRef`, `Bloqueo`, `Rol`, `puedeRevisar` | Who may decide, preconditions |
+| `domain/contributions.ts` | Every input schema (`NuevoReporte` with the failing-result filter, `NuevaSolucion`, `NuevoJuego`, `Captura` with `gpu_pci_id` and `biblioteca_steam` and the Linux driver and Vulkan only on its Linux member, `CapturaManual` without the PCI id or library, `EntradaDiagnostico` with detector text capped at 300 000 characters (derived from `MAX_JUEGOS_BIBLIOTECA` and `largo.biblioteca.nombre`), `GuardarDiagnostico` with `con_biblioteca`, `VersionCapaRef`, `EquipoDestino`, `FiltroCatalogo`), **`discrepancias`** (8.7 comparability) | Persisting |
+| `domain/errors.ts` | `Regla` + `reglas` (field + Spanish message per rule), failure classes, `FalloDominio`, `Respuesta`, control errors | |
+| `domain/guides.ts` | `TipoGuia`, `EstadoGuia` | |
+| `domain/upstream.ts` | `AppIdSteam`, `PrProtonfixes`, `NotaArreglo`, **`exportarFix`** (profile → umu-protonfixes file, every untranslated token listed) and **`informeProton`** (report → Valve's compatibility-report). The tokenizer, the brand-gated Python renderer and the GitHub URL builders are private | Sending anything: users open the prefilled links themselves |
+| `server/runtime.ts` | `PgLive` (config `DATABASE_URL`), the one `ManagedRuntime`, HMR dispose | |
+| `server/auth.ts` | better-auth instance (usuario mapping, `rol`/`activo` additionalFields, public sign-up refuses `dominioDemo`), `Visitante` service, `visitanteDe`, `exigirUsuario`, `exigirRevisor` → `Revisor` brand | Data rules |
+| `server/run.ts` | `leer`, `accion`: session → `Visitante`, transaction per action, control errors → `notFound`/`redirect`, domain failures → `Respuesta` | Business rules |
+| `server/schema/migrations.ts` | All DDL, the rule-home index, and CHECK lists generated from Schema literals | |
+| `server/schema/constraints.ts` | `reglaDeRestriccion` (constraint name → `Regla`), `conReglasDeBd` | |
+| `server/commands/contributions.ts` | **Single writer** of reporte/reporte_fallo/version_capa upsert, solucion, and juego/edicion_juego (`crearJuego`, reviewers only). App-side 8.7/8.9 write rules | The review block, equipo/diagnostico |
+| `server/commands/diagnostic.ts` | **Single writer** of equipo and diagnostico, and the distribucion a capture names (`registrarDiagnostico`, converging on one equipo per alias and one capture per time). Stores `biblioteca_steam` only when `con_biblioteca` is true | |
+| `server/commands/review.ts` | **Single writer** of the review block. `decidir`, `bloqueosAprobacion`, the reviewable-table registry | |
+| `server/commands/upstream.ts` | **Single writer** of arreglo_upstream (`anotarArreglo`, reviewers only): merged umu-protonfixes PRs of approved, exportable, non-demo profiles | |
+| `server/external/protondb.ts` | **Single writer** of `protondb_resumen`. `elementosDeArreglo` (streams the export's top-level array), `importarProtonDb` (read all, then replace in one transaction; refuses an older export), `resumenImportacion` | Catalog rows: it only matches existing Steam editions |
+| `server/queries/*.ts` | Read models: `catalogo`, `perfil`, `guias`, `guia`, `opcionesReporte`, `opcionesSolucion`, `opcionesJuego`, `fichaJuego`, `cola`, `evaluarSinGuardar`, `miDiagnostico`, `misEquipos`, `resumenesProtonDb` (ficha and catalog), `informeProtonDe`. Their success types are the page types. `fichaJuego` and `catalogo` read `ahora` once from the `Clock` | Writes |
+| `server/diagnostics/payload.ts` | **The only detector parser**: `parsearPayload` over payload v1, a union on `sistema` (the Windows member has no Vulkan and no kernel driver). It normalizes `gpu_pci_id` (a malformed id becomes null), the library (drops Steam tools and bad app ids, keeps the first of each id in the detector's order, cuts at 1000) and `rolling`. The private `etiquetaPci` names a GPU the detector could not name | |
+| `server/gpu/capability.ts` | **`equipoEnLinux`**, the only builder of what `evaluar` consumes: PCI id to family, the policy per family (Linux driver, Vulkan range, warnings), the Direct3D path. Measured Linux Vulkan wins over the projection, and a Windows row's stored Vulkan is never read | Storing anything |
+| `server/gpu/families.generated.ts` | The PCI id to `FamiliaGpu` table, generated by `pnpm gpu:generar` with its source pins in the header. Never edited by hand | |
+| `server/gpu/ranges.ts` | `codificarTramos`/`decodificarTramos`, the hex-run format of that table, shared by the generator and `capability.ts` | |
 | `fns/*.ts` | The server API surface: one `createServerFn` per operation | Anything else |
 | `routes/**` | Pages, loaders, search params, route guards (UX only) | Data rules |
-| `ui/useAccion.ts` | The one form hook: the form's props (`method="post"` included), decode FormData → call fn → narrow `Respuesta` → field errors | |
-| `routes/-volver.ts` | `Destino` and the only parser of `?volver=` on `/entrar` and `/registro`; `volverAqui` for route guards | |
-| `ui/formato.ts` | Display formatting. Every instant prints in Bogotá time with the year (`fecha` day, `momento` day and 24-hour time) | |
-| `ui/progreso.ts` | The profile page's local step checklist (`localStorage`, SSR-safe) | |
-| `ui/vocabulario.ts` | Spanish label and tone for every domain literal, exhaustive via `satisfies Record` | |
-| `ui/diagnostico/TarjetaGraficaEnLinux.tsx` | The "Tu tarjeta gráfica en Linux" card: family, Linux driver, Vulkan labelled "Detectado" or "Proyectado", the Direct3D path with its launch option, and the warnings | |
-| `ui/diagnostico/JuegosDelEquipo.tsx` | The diagnosis matrix, split into "Tu biblioteca de Steam", "Juegos que todavía no conocemos" and "Resto del catálogo" when the capture has a library | |
-| `ui/compatibilidad/*` | `EstadoJuego` (variant 1 badge, the stale note and "Dejó de funcionar"), `MatrizEntornos`, `VeredictoParaMi` (with the "En tu distribución" line), `RutaGrafica` (the hardware-only path, apart from the community state and the profile check), evaluation checklist, copy box | |
+| `ui/useAction.ts` | The one form hook: the form's props (`method="post"` included), decode FormData → call fn → narrow `Respuesta` → field errors | |
+| `routes/-return-to.ts` | `Destino` and the only parser of `?volver=` on `/entrar` and `/registro`; `volverAqui` for route guards | |
+| `ui/format.ts` | Display formatting. Every instant prints in Bogotá time with the year (`fecha` day, `momento` day and 24-hour time) | |
+| `ui/progress.ts` | The profile page's local step checklist (`localStorage`, SSR-safe) | |
+| `ui/vocabulary.ts` | Spanish label and tone for every domain literal, exhaustive via `satisfies Record` | |
+| `ui/diagnostics/GraphicsCardOnLinux.tsx` | The "Tu tarjeta gráfica en Linux" card: family, Linux driver, Vulkan labelled "Detectado" or "Proyectado", the Direct3D path with its launch option, and the warnings | |
+| `ui/diagnostics/MachineGames.tsx` | The diagnosis matrix, split into "Tu biblioteca de Steam", "Juegos que todavía no conocemos" and "Resto del catálogo" when the capture has a library | |
+| `ui/compatibility/*` | `EstadoJuego` (variant 1 badge, the stale note and "Dejó de funcionar"), `MatrizEntornos`, `VeredictoParaMi` (with the "En tu distribución" line), `RutaGrafica` (the hardware-only path, apart from the community state and the profile check), evaluation checklist, copy box | |
 | `ui/protondb/ProtonDb.tsx` | The ficha's "Otras fuentes: ProtonDB" section, the catalog card line, the ODbL attribution | |
-| `ui/diagnostico/Distribuciones.tsx` | The "Distribuciones" section: candidates grouped by verdict with their reasons | |
+| `ui/diagnostics/Distributions.tsx` | The "Distribuciones" section: candidates grouped by verdict with their reasons | |
 | `detector/opengame-detect.sh` | The productionized prototype script: payload v1 + `gpu_pci_id` + `biblioteca_steam`, with `__OPENGAME_URL__` and `__OPENGAME_MAX_JUEGOS__` filled in by the server route | |
 | `detector/opengame-detect.ps1` | The Windows detector for Windows PowerShell 5.1 and pwsh 7, ASCII only, no admin: the same payload without Vulkan or kernel driver. A URL over 2000 characters (the ShellExecute limit) goes to the clipboard and opens `/diagnostico?pegar=1` | |
 | `scripts/` | `migrar`, `sembrar` (approvals only via `decidir`), `rol`, `protondb` (`pnpm db:protondb <ruta \| ->`), `sin-servidor-en-cliente`, `generar-gpus` (`pnpm gpu:generar`) with its pure parsers in `gpu-fuentes.ts`, which fail closed on an unreadable line, an unknown token or a count under its floor | |
-| `tests/` | `apoyo.ts` (rollback-per-test, constraint-name decoder), `preparar.ts` (globalSetup: refuses any DB not named `*_test`, rebuilds the schema, migrates), `esquema.test.ts`, `aportes.test.ts` | |
+| `tests/` | `support.ts` (rollback-per-test, constraint-name decoder), `setup.ts` (globalSetup: refuses any DB not named `*_test`, rebuilds the schema, migrates), `schema.test.ts`, `contributions.test.ts` | |
 
 ## Route map
 
@@ -96,7 +96,7 @@ Each failure message names the fix, for example: "routes call server fns from sr
 
 ## Rule homes
 
-Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names are in `src/servidor/esquema/migraciones.ts`.
+Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names are in `src/server/schema/migrations.ts`.
 
 | Rule | Home |
 |---|---|
@@ -113,28 +113,28 @@ Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names 
 | report / solution content never rewritten (frozen at birth) | DB trigger og_solo_revision |
 | profile, its steps and deps frozen once reviewed or used | DB trigger og_perfil_congelado |
 | solucion -> reporte_fallo | DB composite FK solucion_fallo_fk |
-| report comparability (edition, layer, distro, arch, version) (edition + layer also a composite FK backstop, unmapped) | app: dominio/aportes.ts discrepancias (+ DB reporte_perfil_fk) |
-| own equipo; Linux diagnosis; fecha_prueba >= capturado_en | app: servidor/aportes/aportes.ts |
-| solution's profile in the report's edition | app: servidor/aportes/aportes.ts |
-| one equipo per alias per user, one capture per time; the library stored only by the user's choice | app: servidor/aportes/diagnostico.ts |
-| measured Linux Vulkan beats the projection; Windows Vulkan is never evaluated | app: servidor/gpu/capacidad.ts equipoEnLinux |
-| failing result has >= 1 fallo | app: dominio/aportes.ts NuevoReporte |
-| reviewer role + activo (also: only reviewers register games) | app: servidor/auth.ts exigirRevisor |
-| author != reviewer (all three tables), transitions, approval preconditions | app: servidor/aportes/revision.ts decidir |
+| report comparability (edition, layer, distro, arch, version) (edition + layer also a composite FK backstop, unmapped) | app: domain/contributions.ts discrepancias (+ DB reporte_perfil_fk) |
+| own equipo; Linux diagnosis; fecha_prueba >= capturado_en | app: server/commands/contributions.ts |
+| solution's profile in the report's edition | app: server/commands/contributions.ts |
+| one equipo per alias per user, one capture per time; the library stored only by the user's choice | app: server/commands/diagnostic.ts |
+| measured Linux Vulkan beats the projection; Windows Vulkan is never evaluated | app: server/gpu/capability.ts equipoEnLinux |
+| failing result has >= 1 fallo | app: domain/contributions.ts NuevoReporte |
+| reviewer role + activo (also: only reviewers register games) | app: server/auth.ts exigirRevisor |
+| author != reviewer (all three tables), transitions, approval preconditions | app: server/commands/review.ts decidir |
 | only reviewers publish guides | no write path this delivery (seeded) |
-| one profile per merged PR; only approved, exportable, non-demo profiles | DB UQ arreglo_upstream_pr_uq + app: servidor/aportes/upstream.ts |
+| one profile per merged PR; only approved, exportable, non-demo profiles | DB UQ arreglo_upstream_pr_uq + app: server/commands/upstream.ts |
 | arreglo_upstream rows never rewritten (Anular deletes) | DB trigger og_inmutable |
-| public view hides retired rows | app: servidor/consultas (WHERE aprobado) |
-| state from the approved reports of the last 365 days, else all of them flagged | app: dominio/compatibilidad.ts resumir + dominio/vigencia.ts |
-| ProtonDB never feeds the computed state; aggregates only (8.9) | app: no path from dominio/protondb.ts to resumir; DB: protondb_resumen has no report rows |
+| public view hides retired rows | app: server/queries (WHERE aprobado) |
+| state from the approved reports of the last 365 days, else all of them flagged | app: domain/compatibility.ts resumir + domain/recency.ts |
+| ProtonDB never feeds the computed state; aggregates only (8.9) | app: no path from domain/protondb.ts to resumir; DB: protondb_resumen has no report rows |
 | ProtonDB row counts nest, a layer only with its count | DB CHECK protondb_resumen_conteos_anidados, _capa_con_reportes, _version_con_variante |
 
-Single writers. `src/fronteras.test.ts` checks the SQL in `src/` and `scripts/` for the first two and the last two.
+Single writers. `src/boundaries.test.ts` checks the SQL in `src/` and `scripts/` for the first two and the last two.
 
 | Tables | Writer |
 |---|---|
-| `equipo`, `diagnostico` (and the `distribucion` a capture names) | `servidor/aportes/diagnostico.ts` |
-| review block of `perfil_configuracion`, `reporte`, `solucion` | `servidor/aportes/revision.ts` `decidir` |
-| `reporte` (with `reporte_fallo` and the `version_capa` upsert), `solucion`, `juego` (with `edicion_juego`) | `servidor/aportes/aportes.ts` |
-| `protondb_resumen` | `servidor/externo/protondb.ts` `importarProtonDb` |
-| `arreglo_upstream` | `servidor/aportes/upstream.ts` `anotarArreglo` |
+| `equipo`, `diagnostico` (and the `distribucion` a capture names) | `server/commands/diagnostic.ts` |
+| review block of `perfil_configuracion`, `reporte`, `solucion` | `server/commands/review.ts` `decidir` |
+| `reporte` (with `reporte_fallo` and the `version_capa` upsert), `solucion`, `juego` (with `edicion_juego`) | `server/commands/contributions.ts` |
+| `protondb_resumen` | `server/external/protondb.ts` `importarProtonDb` |
+| `arreglo_upstream` | `server/commands/upstream.ts` `anotarArreglo` |

@@ -1,11 +1,11 @@
 // Dev-only gallery of the verdict components on fixtures (PLAN U2c). The [_] escape makes the URL
 // /_muestras; a bare `_muestras.tsx` would be a pathless layout. Production builds answer notFound.
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { CajaCopiar } from '../ui/compatibilidad/CajaCopiar.tsx'
-import { EstadoJuego } from '../ui/compatibilidad/EstadoJuego.tsx'
-import { MatrizEntornos } from '../ui/compatibilidad/MatrizEntornos.tsx'
-import { VeredictoParaMi } from '../ui/compatibilidad/VeredictoParaMi.tsx'
-import { diagnostico, muestras, parametrosLanzamiento, type Muestra } from '../ui/muestras/fixtures.ts'
+import { CajaCopiar } from '../ui/compatibility/CopyBox.tsx'
+import { EstadoJuego } from '../ui/compatibility/GameStatus.tsx'
+import { MatrizEntornos } from '../ui/compatibility/EnvironmentMatrix.tsx'
+import { VeredictoParaMi } from '../ui/compatibility/VerdictForMe.tsx'
+import { diagnostico, muestras, parametrosLanzamiento, type Muestra } from '../ui/samples/fixtures.ts'
 
 export const Route = createFileRoute('/_muestras')({
   beforeLoad: () => {

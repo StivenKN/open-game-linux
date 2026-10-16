@@ -1,14 +1,14 @@
 import { createFileRoute, notFound, redirect, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { NuevoJuego } from '../../dominio/aportes.ts'
-import { ApiGrafica } from '../../dominio/literales.ts'
-import type { NivelX86 } from '../../dominio/plataforma.ts'
-import { crearJuegoFn, opcionesJuegoFn } from '../../fns/aportes.ts'
-import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
-import { Campo, campo, nulo } from '../../ui/formulario.tsx'
-import { erroresDeRegla, useAccion } from '../../ui/useAccion.ts'
-import { apiGrafica, nivelX86 } from '../../ui/vocabulario.ts'
-import { volverAqui } from '../-volver.ts'
+import { NuevoJuego } from '../../domain/contributions.ts'
+import { ApiGrafica } from '../../domain/literals.ts'
+import type { NivelX86 } from '../../domain/platform.ts'
+import { crearJuegoFn, opcionesJuegoFn } from '../../fns/contributions.ts'
+import { ErrorCampo } from '../../ui/FieldError.tsx'
+import { Campo, campo, nulo } from '../../ui/form.tsx'
+import { erroresDeRegla, useAccion } from '../../ui/useAction.ts'
+import { apiGrafica, nivelX86 } from '../../ui/vocabulary.ts'
+import { volverAqui } from '../-return-to.ts'
 
 // v1 is every x86-64 CPU, so it is no requirement.
 const nivelesMinimos = ['v2', 'v3', 'v4'] as const satisfies ReadonlyArray<NivelX86>

@@ -1,7 +1,7 @@
 import { Effect } from 'effect'
 import { SqlClient } from 'effect/sql'
-import type { Rol } from '../src/dominio/revision.ts'
-import { idDe } from './apoyo.ts'
+import type { Rol } from '../src/domain/review.ts'
+import { idDe } from './support.ts'
 
 export const base = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient

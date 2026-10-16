@@ -3,7 +3,7 @@
 // U2 folded the probe's fix into NuevoReporte (fallos defaults to [], the 8.7 rule lands on `fallos`),
 // so the sketch-schema case is gone and the "con defecto" cases run against NuevoReporte itself.
 import { Schema } from 'effect'
-import { NuevoReporte } from '../../src/dominio/aportes.ts'
+import { NuevoReporte } from '../../src/domain/contributions.ts'
 
 type Par = readonly [string, string]
 

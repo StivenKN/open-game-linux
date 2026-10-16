@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { GuiaId } from '../../dominio/ids.ts'
-import { guiaFn } from '../../fns/guias.ts'
-import { fecha } from '../../ui/formato.ts'
-import { SelloEjemplo } from '../../ui/SelloEjemplo.tsx'
-import { tipoGuia } from '../../ui/vocabulario.ts'
+import { GuiaId } from '../../domain/ids.ts'
+import { guiaFn } from '../../fns/guides.ts'
+import { fecha } from '../../ui/format.ts'
+import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
+import { tipoGuia } from '../../ui/vocabulary.ts'
 import { idDeRuta } from '../-ids.ts'
 
 const guiaId = idDeRuta(GuiaId)

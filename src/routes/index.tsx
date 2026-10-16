@@ -1,14 +1,14 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Effect, Schema, SchemaTransformation, Struct } from 'effect'
 import type { FormEvent, ReactNode } from 'react'
-import { FiltroCatalogo } from '../dominio/aportes.ts'
-import { EstadoCompatibilidad } from '../dominio/compatibilidad.ts'
-import { catalogoFn } from '../fns/catalogo.ts'
-import { ChipsFallos } from '../ui/compatibilidad/ChipsFallos.tsx'
-import { contar, fecha } from '../ui/formato.ts'
-import { Portada } from '../ui/Portada.tsx'
+import { FiltroCatalogo } from '../domain/contributions.ts'
+import { EstadoCompatibilidad } from '../domain/compatibility.ts'
+import { catalogoFn } from '../fns/catalog.ts'
+import { ChipsFallos } from '../ui/compatibility/FailureChips.tsx'
+import { contar, fecha } from '../ui/format.ts'
+import { Portada } from '../ui/Cover.tsx'
 import { AtribucionProtonDb, LineaProtonDb } from '../ui/protondb/ProtonDb.tsx'
-import { estadoCompatibilidad, significadoEstado } from '../ui/vocabulario.ts'
+import { estadoCompatibilidad, significadoEstado } from '../ui/vocabulary.ts'
 
 const opcional = <S extends Schema.Constraint>(campo: S) => Schema.catchDecoding<S>(() => Effect.succeedNone)(campo)
 // The router JSON-parses each query value, so a title typed as `?q=2` arrives as the number 2.
