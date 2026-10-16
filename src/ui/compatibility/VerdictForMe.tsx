@@ -19,16 +19,16 @@ export type Personal = {
 /** The dashed "Tu equipo" panel: everything in it is computed from the visitor's hardware. */
 export function MachinePanel({ children }: { children: ReactNode }) {
   return (
-    <section className="panel-equipo" aria-label="Tu equipo">
-      <p className="panel-titulo">Tu equipo</p>
+    <section className="machine-panel" aria-label="Tu equipo">
+      <p className="panel-title">Tu equipo</p>
       {children}
-      <ul className="clave-formas" aria-label="Cómo leer las etiquetas">
+      <ul className="shape-key" aria-label="Cómo leer las etiquetas">
         <li>
-          <i data-forma="relleno" />
+          <i data-shape="relleno" />
           Relleno: lo dicen los reportes aprobados
         </li>
         <li>
-          <i data-forma="punteado" />
+          <i data-shape="punteado" />
           Punteado: lo calcula tu equipo
         </li>
       </ul>
@@ -42,17 +42,17 @@ export function VerdictForMe({ personal, children }: { personal: Personal | null
   return (
     <MachinePanel>
       {personal === null ? (
-        <p className="pequeno tenue">
+        <p className="small muted">
           Sin diagnóstico. Ejecuta el detector para ver si tu tarjeta gráfica tiene una ruta para este juego, la evidencia
           de tu distribución y cómo te comparas con un perfil aprobado.
         </p>
       ) : (
         <>
           {mine && (
-            <p className="fila pequeno">
+            <p className="row small">
               <span>En tu distribución, {mine.name}:</span>
               <Badge label={compatibilityStatus[mine.summary.status]} />
-              <span className="tenue">
+              <span className="muted">
                 {mine.summary.last_tested
                   ? `${count(mine.summary.test_count, 'reporte aprobado', 'reportes aprobados')} · última prueba ${date(mine.summary.last_tested)}${mine.summary.no_recent_confirmation ? ' · sin confirmación en el último año' : ''}`
                   : `nadie ha aprobado una prueba en ${mine.name}`}

@@ -23,23 +23,23 @@ export type MatrixRow = {
 /** `approximate`: the capture came from Windows, so every verdict is a projection. */
 export function DiagnosticMatrix({ rows, approximate }: { rows: ReadonlyArray<MatrixRow>; approximate: boolean }) {
   return (
-    <ul className="mosaico mosaico-ancho" aria-label="Juegos frente a tu equipo">
+    <ul className="mosaic mosaic-wide" aria-label="Juegos frente a tu equipo">
       {rows.map((f) => (
-        <li key={f.game_id} className="tarjeta pila">
-          <h3 className="sin-margen">
-            <Link to="/juegos/$gameId" params={{ gameId: f.game_id }} className="nombre-juego">
+        <li key={f.game_id} className="card stack">
+          <h3 className="no-margin">
+            <Link to="/juegos/$gameId" params={{ gameId: f.game_id }} className="game-name">
               {f.title}
             </Link>
           </h3>
-          <div className="fila">
+          <div className="row">
             <Badge label={compatibilityStatus[f.status]} />
-            <span className="pequeno tenue">{count(f.test_count, 'reporte aprobado', 'reportes aprobados')}</span>
+            <span className="small muted">{count(f.test_count, 'reporte aprobado', 'reportes aprobados')}</span>
           </div>
           <hr />
           <GraphicsPath path={f.path} minX86Level={f.x86_level_min} approximate={approximate} />
           <hr />
           {f.profile && (
-            <p className="pequeno tenue dato">
+            <p className="small muted datum">
               {f.profile.layer} · {f.profile.distribution}
             </p>
           )}

@@ -13,25 +13,25 @@ export const Route = createFileRoute('/guias/')({
 function GuidesPage() {
   const guides = Route.useLoaderData()
   return (
-    <main className="envoltura">
+    <main className="wrapper">
       <h1>Guías de adopción</h1>
-      <p className="tenue">Para elegir una distribución, instalarla o convivir con Windows en el mismo equipo.</p>
+      <p className="muted">Para elegir una distribución, instalarla o convivir con Windows en el mismo equipo.</p>
       {guides.length === 0 ? (
-        <p className="tarjeta tenue">Todavía no hay guías publicadas.</p>
+        <p className="card muted">Todavía no hay guías publicadas.</p>
       ) : (
-        <ul className="lista-tarjetas">
+        <ul className="card-list">
           {guides.map((g) => (
-            <li key={g.id} className="tarjeta pila">
-              <div className="fila">
-                <Link to="/guias/$guideId" params={{ guideId: g.id }} className="nombre-juego">
+            <li key={g.id} className="card stack">
+              <div className="row">
+                <Link to="/guias/$guideId" params={{ guideId: g.id }} className="game-name">
                   {g.title}
                 </Link>
                 {g.demo && <DemoStamp />}
               </div>
-              <div className="fila-chips">
+              <div className="chip-row">
                 <span className="chip">{guideType[g.type]}</span>
                 <span className="chip">{g.distribution ?? 'cualquier distribución'}</span>
-                <span className="pequeno tenue">actualizada el {date(g.updated_at)}</span>
+                <span className="small muted">actualizada el {date(g.updated_at)}</span>
               </div>
             </li>
           ))}

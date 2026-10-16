@@ -22,20 +22,20 @@ function SignUpPage() {
     },
   })
   return (
-    <main className="envoltura estrecha">
+    <main className="wrapper narrow">
       <h1>Crear cuenta</h1>
-      <p className="tenue">Los demás solo verán tu alias. Tu correo no se muestra en ningún aporte.</p>
-      <form className="tarjeta formulario" {...r.form}>
-        <FieldError errors={r.errors} field="formulario" />
+      <p className="muted">Los demás solo verán tu alias. Tu correo no se muestra en ningún aporte.</p>
+      <form className="card form" {...r.form}>
+        <FieldError errors={r.errors} field="form" />
         <label htmlFor="alias">Alias</label>
         <input {...fieldProps(r.errors, 'alias')} autoComplete="nickname" />
         <FieldError errors={r.errors} field="alias" />
-        <label htmlFor="correo">Correo</label>
-        <input {...fieldProps(r.errors, 'correo')} type="email" autoComplete="email" />
-        <FieldError errors={r.errors} field="correo" />
-        <label htmlFor="contrasena">Contraseña</label>
-        <input {...fieldProps(r.errors, 'contrasena')} type="password" autoComplete="new-password" />
-        <FieldError errors={r.errors} field="contrasena" />
+        <label htmlFor="email">Correo</label>
+        <input {...fieldProps(r.errors, 'email')} type="email" autoComplete="email" />
+        <FieldError errors={r.errors} field="email" />
+        <label htmlFor="password">Contraseña</label>
+        <input {...fieldProps(r.errors, 'password')} type="password" autoComplete="new-password" />
+        <FieldError errors={r.errors} field="password" />
         <button type="submit" disabled={r.submitting}>
           {r.submitting ? 'Creando cuenta…' : 'Crear cuenta'}
         </button>

@@ -41,7 +41,7 @@ export const noteFix = (note: FixNote): Write<{ readonly changed: boolean }, Rul
           JOIN launcher l ON l.id = e.launcher_id
           JOIN layer_version vc ON vc.id = p.layer_version_id
           JOIN app_user u ON u.id = p.author_id
-          WHERE p.id = ${note.perfil_id}
+          WHERE p.id = ${note.profile_id}
           FOR SHARE OF p`,
     )
     if (profile === undefined || profile.review_status !== 'aprobado' || exportableAppId(profile)._tag === 'no_exportable')
@@ -50,11 +50,11 @@ export const noteFix = (note: FixNote): Write<{ readonly changed: boolean }, Rul
 
     const created = yield* rows(
       IdRow,
-      sql`INSERT INTO upstream_fix ${sql.insert({ pr: note.pr, profile_id: note.perfil_id, noted_by: reviewer.id })}
+      sql`INSERT INTO upstream_fix ${sql.insert({ pr: note.pr, profile_id: note.profile_id, noted_by: reviewer.id })}
           ON CONFLICT ON CONSTRAINT upstream_fix_pr_uq DO NOTHING RETURNING id`,
     )
     if (created.length > 0) return { changed: true }
     const [existing] = yield* rows(PrOwner, sql`SELECT profile_id FROM upstream_fix WHERE pr = ${note.pr}`)
-    if (existing?.profile_id !== note.perfil_id) return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_pr_de_otro_perfil' }))
+    if (existing?.profile_id !== note.profile_id) return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_pr_de_otro_perfil' }))
     return { changed: false }
   })

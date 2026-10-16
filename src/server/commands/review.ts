@@ -118,10 +118,10 @@ export const decide = (
       if (Arr.isReadonlyArrayNonEmpty(blockers)) return yield* Effect.fail(new ApprovalBlocked({ blockers }))
     }
 
-    const evidence = decision._tag === 'Aprobar' ? decision.evidencia : null
+    const evidence = decision._tag === 'Aprobar' ? decision.evidence : null
     yield* sql`UPDATE ${sql(reviewable.table)}
                SET review_status = ${target}, reviewer_id = ${reviewer.id}, reviewed_at = now(),
-                   review_reason = ${decision.motivo}, review_evidence = COALESCE(${evidence}, review_evidence)
+                   review_reason = ${decision.reason}, review_evidence = COALESCE(${evidence}, review_evidence)
                WHERE id = ${ref.id}`
     return { changed: true }
   })

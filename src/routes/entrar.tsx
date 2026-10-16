@@ -22,17 +22,17 @@ function SignInPage() {
     },
   })
   return (
-    <main className="envoltura estrecha">
+    <main className="wrapper narrow">
       <h1>Entrar</h1>
-      <p className="tenue">Entra para guardar tu diagnóstico y publicar reportes.</p>
-      <form className="tarjeta formulario" {...r.form}>
-        <FieldError errors={r.errors} field="formulario" />
-        <label htmlFor="correo">Correo</label>
-        <input {...fieldProps(r.errors, 'correo')} type="email" autoComplete="email" />
-        <FieldError errors={r.errors} field="correo" />
-        <label htmlFor="contrasena">Contraseña</label>
-        <input {...fieldProps(r.errors, 'contrasena')} type="password" autoComplete="current-password" />
-        <FieldError errors={r.errors} field="contrasena" />
+      <p className="muted">Entra para guardar tu diagnóstico y publicar reportes.</p>
+      <form className="card form" {...r.form}>
+        <FieldError errors={r.errors} field="form" />
+        <label htmlFor="email">Correo</label>
+        <input {...fieldProps(r.errors, 'email')} type="email" autoComplete="email" />
+        <FieldError errors={r.errors} field="email" />
+        <label htmlFor="password">Contraseña</label>
+        <input {...fieldProps(r.errors, 'password')} type="password" autoComplete="current-password" />
+        <FieldError errors={r.errors} field="password" />
         <button type="submit" disabled={r.submitting}>
           {r.submitting ? 'Entrando…' : 'Entrar'}
         </button>

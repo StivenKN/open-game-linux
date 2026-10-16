@@ -32,22 +32,22 @@ function ReviewPage() {
   const queue = Route.useLoaderData()
   const pendingCount = queue.items.filter((e) => e.review_status === 'pendiente').length
   return (
-    <main className="envoltura">
+    <main className="wrapper">
       <h1>Revisión de aportes</h1>
-      <p className="tenue">
+      <p className="muted">
         Aprobar exige evidencia verificable. Lo pendiente no cuenta en ningún resumen; lo aprobado se puede retirar si deja de ser válido.
       </p>
-      <nav aria-label="Tipo de aporte" className="fila pestanas">
+      <nav aria-label="Tipo de aporte" className="row tabs">
         {ContributionType.literals.map((t) => (
-          <Link key={t} to="/revision" search={{ tipo: t }} aria-current={t === queue.type ? 'page' : undefined} className={t === queue.type ? 'boton' : 'boton-secundario'}>
+          <Link key={t} to="/revision" search={{ tipo: t }} aria-current={t === queue.type ? 'page' : undefined} className={t === queue.type ? 'button' : 'button-secondary'}>
             {tabs[t]}
           </Link>
         ))}
       </nav>
-      <p className="pequeno tenue">{count(pendingCount, 'pendiente', 'pendientes')}</p>
-      {queue.items.length === 0 && <p className="tarjeta">No hay {tabs[queue.type].toLowerCase()} pendientes ni aprobados.</p>}
+      <p className="small muted">{count(pendingCount, 'pendiente', 'pendientes')}</p>
+      {queue.items.length === 0 && <p className="card">No hay {tabs[queue.type].toLowerCase()} pendientes ni aprobados.</p>}
       {/* Keyed by state too, so a decided row remounts with an empty form instead of keeping the old motivo. */}
-      <div className="pila">
+      <div className="stack">
         {queue.type === 'reporte' &&
           queue.items.map((e) => (
             <ReviewItem key={`${e.id}-${e.review_status}`} contributionRef={{ _tag: 'reporte', id: e.id }} item={e}>
@@ -92,63 +92,63 @@ function ReviewItem({ contributionRef, item, children }: { contributionRef: Cont
   const headingId = `${contributionRef._tag}-${contributionRef.id}`
 
   return (
-    <article className="tarjeta pila" aria-labelledby={headingId}>
-      <header className="fila">
+    <article className="card stack" aria-labelledby={headingId}>
+      <header className="row">
         <Badge label={reviewStatus[item.review_status]} />
         <strong id={headingId}>{item.game}</strong>
-        <span className="dato tenue">{item.launcher}</span>
-        <span className="pequeno tenue">
+        <span className="datum muted">{item.launcher}</span>
+        <span className="small muted">
           por {item.author} · {date(item.created_at)}
         </span>
-        {item.demo && <span className="sello">Datos de ejemplo</span>}
+        {item.demo && <span className="stamp">Datos de ejemplo</span>}
       </header>
       {children}
       {item.blockers.length > 0 && (
-        <ul className="nota pequeno" data-tono="amarillo" aria-label="Por qué no se puede aprobar todavía">
+        <ul className="note small" data-tone="amarillo" aria-label="Por qué no se puede aprobar todavía">
           {item.blockers.map((b) => (
             <li key={b}>{blocker[b]}</li>
           ))}
         </ul>
       )}
       {item.is_own ? (
-        <p className="pequeno tenue">Es tu aporte: otro revisor debe decidir sobre él.</p>
+        <p className="small muted">Es tu aporte: otro revisor debe decidir sobre él.</p>
       ) : (
-        <form className="formulario decision" {...r.form}>
-          <FieldError errors={r.errors} field="formulario" />
+        <form className="form decision" {...r.form}>
+          <FieldError errors={r.errors} field="form" />
           <input type="hidden" name="ref[_tag]" value={contributionRef._tag} />
           <input type="hidden" name="ref[id]" value={contributionRef.id} />
           <label>
             Motivo
-            <textarea name="decision[motivo]" rows={2} aria-invalid={r.errors['decision[motivo]'] !== undefined} />
+            <textarea name="decision[reason]" rows={2} aria-invalid={r.errors['decision[reason]'] !== undefined} />
           </label>
-          <FieldError errors={r.errors} field="decision[motivo]" />
+          <FieldError errors={r.errors} field="decision[reason]" />
           {pending && (
             <>
               <label>
                 Evidencia (para aprobar)
                 <textarea
-                  name="decision[evidencia]"
+                  name="decision[evidence]"
                   rows={2}
                   placeholder="Referencia verificable: captura, registro o reporte identificado"
-                  aria-invalid={r.errors['decision[evidencia]'] !== undefined}
+                  aria-invalid={r.errors['decision[evidence]'] !== undefined}
                 />
               </label>
-              <FieldError errors={r.errors} field="decision[evidencia]" />
+              <FieldError errors={r.errors} field="decision[evidence]" />
             </>
           )}
           <FieldError errors={r.errors} field="decision" />
-          <div className="fila">
+          <div className="row">
             {pending ? (
               <>
                 <button type="submit" name="decision[_tag]" value="Aprobar" disabled={r.submitting || item.blockers.length > 0}>
                   Aprobar
                 </button>
-                <button type="submit" name="decision[_tag]" value="Rechazar" className="boton-secundario" disabled={r.submitting}>
+                <button type="submit" name="decision[_tag]" value="Rechazar" className="button-secondary" disabled={r.submitting}>
                   Rechazar
                 </button>
               </>
             ) : (
-              <button type="submit" name="decision[_tag]" value="Retirar" className="boton-secundario" disabled={r.submitting}>
+              <button type="submit" name="decision[_tag]" value="Retirar" className="button-secondary" disabled={r.submitting}>
                 Retirar
               </button>
             )}
@@ -162,20 +162,20 @@ function ReviewItem({ contributionRef, item, children }: { contributionRef: Cont
 function ReportDetail({ e }: { e: ItemOf<'reporte'> }) {
   return (
     <>
-      <p className="fila">
+      <p className="row">
         <Badge label={outcome[e.outcome]} />
-        <span className="dato">
+        <span className="datum">
           {e.distribution} · {e.architecture} · {e.layer} · versión {e.game_version} · probado el {dateTime(e.tested_at)}
         </span>
       </p>
-      <p className="pequeno">{e.profile === null ? 'Sin perfil.' : `Siguió el perfil «${e.profile}».`}</p>
+      <p className="small">{e.profile === null ? 'Sin perfil.' : `Siguió el perfil «${e.profile}».`}</p>
       {e.avg_fps !== null && (
-        <p className="pequeno">
+        <p className="small">
           <span className="fps">{fps(e.avg_fps)} FPS</span> · {e.resolution} · {e.graphics_quality} · {e.measurement_method}
         </p>
       )}
       {e.failures.length > 0 && (
-        <ul className="pequeno">
+        <ul className="small">
           {e.failures.map((f) => (
             <li key={f.code}>
               <Chip tone={failureType(f.code).tone}>{failureType(f.code).text}</Chip> {f.detail}
@@ -192,16 +192,16 @@ function ProfileDetail({ e }: { e: ItemOf<'perfil'> }) {
   return (
     <>
       <p>
-        <strong>{e.title}</strong> <span className="dato tenue">r{e.revision}</span>
+        <strong>{e.title}</strong> <span className="datum muted">r{e.revision}</span>
       </p>
-      <p className="dato">
+      <p className="datum">
         {e.distribution} · {e.architecture} · {e.layer}
         {e.target_game_version !== null && ` · versión ${e.target_game_version}`}
       </p>
-      <p className="pequeno">
+      <p className="small">
         {count(e.steps, 'paso', 'pasos')} · {count(e.working_reports, 'reporte funcional aprobado', 'reportes funcionales aprobados')}
       </p>
-      {e.launch_options !== null && <pre className="dato">{e.launch_options}</pre>}
+      {e.launch_options !== null && <pre className="datum">{e.launch_options}</pre>}
     </>
   )
 }
@@ -212,12 +212,12 @@ function SolutionDetail({ e }: { e: ItemOf<'solucion'> }) {
       <p>
         <strong>{e.title}</strong>
       </p>
-      <p className="pequeno">
+      <p className="small">
         Responde a <Chip tone={failureType(e.failure_type).tone}>{failureType(e.failure_type).text}</Chip> «{e.failure}» del reporte #{e.report_id} (
         {reviewStatus[e.report_status].text.toLowerCase()}).
       </p>
-      <p className="pequeno">{e.profile === null ? 'No recomienda un perfil.' : `Recomienda el perfil «${e.profile}».`}</p>
-      <p className="instrucciones">{e.instructions}</p>
+      <p className="small">{e.profile === null ? 'No recomienda un perfil.' : `Recomienda el perfil «${e.profile}».`}</p>
+      <p className="instructions">{e.instructions}</p>
     </>
   )
 }

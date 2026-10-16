@@ -18,21 +18,21 @@ export const Route = createFileRoute('/guias/$guideId')({
 function GuidePage() {
   const g = Route.useLoaderData()
   return (
-    <main className="envoltura estrecha-lectura pila">
-      <div className="migas">
+    <main className="wrapper narrow-reading stack">
+      <div className="breadcrumbs">
         <Link to="/guias">Guías</Link> / {guideType[g.type]}
       </div>
       <h1>{g.title}</h1>
-      <div className="fila">
+      <div className="row">
         <span className="chip">{g.distribution ?? 'cualquier distribución'}</span>
-        <span className="pequeno tenue">
+        <span className="small muted">
           Revisión {g.revision} · actualizada el {date(g.updated_at)} · por {g.author}
         </span>
         {g.demo && <DemoStamp />}
       </div>
-      <article className="tarjeta pila">
+      <article className="card stack">
         {g.content.split(/\n\s*\n/).map((paragraph, i) => (
-          <p key={i} className="texto-largo">
+          <p key={i} className="long-text">
             {paragraph}
           </p>
         ))}

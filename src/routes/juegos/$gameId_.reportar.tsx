@@ -40,16 +40,16 @@ function ReportPage() {
   const { game } = options
 
   return (
-    <main className="envoltura">
-      <p className="rotulo">Reportar resultado</p>
+    <main className="wrapper">
+      <p className="caption">Reportar resultado</p>
       <h1>{game.title}</h1>
       {submitted !== null ? (
-        <section className="tarjeta pila" aria-live="polite">
+        <section className="card stack" aria-live="polite">
           <h2>Reporte enviado</h2>
           <p>
             Queda <strong>pendiente de revisión</strong> y no cuenta en el resumen del juego hasta que un revisor lo apruebe.
           </p>
-          <p className="fila">
+          <p className="row">
             <Link to="/juegos/$gameId" params={{ gameId: game.id }}>
               Volver a la ficha del juego
             </Link>
@@ -63,13 +63,13 @@ function ReportPage() {
                 Prepara el informe para Valve
               </Link>
             )}
-            <button type="button" className="boton-secundario" onClick={() => setSubmitted(null)}>
+            <button type="button" className="button-secondary" onClick={() => setSubmitted(null)}>
               Reportar otro resultado
             </button>
           </p>
         </section>
       ) : options.diagnostics.length === 0 ? (
-        <section className="tarjeta nota pila">
+        <section className="card note stack">
           <p>Para reportar necesitas un diagnóstico de tu equipo hecho en Linux: el reporte guarda el entorno exacto de la prueba.</p>
           <p>
             <Link to="/diagnostico">Hacer un diagnóstico</Link>
@@ -161,12 +161,12 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
   }
 
   return (
-    <form className="tarjeta formulario formulario-ancho" {...r.form}>
-      <FieldError errors={r.errors} field="formulario" />
+    <form className="card form form-wide" {...r.form}>
+      <FieldError errors={r.errors} field="form" />
 
-      <h2 className="titulo-seccion">Dónde probaste</h2>
-      <Field errors={r.errors} name="diagnostico_id" label="Diagnóstico del equipo" help="Solo aparecen tus diagnósticos hechos en Linux.">
-        <select {...fieldProps(r.errors, 'diagnostico_id')} value={diagnosticId ?? ''} onChange={(e) => setDiagnosticId(byId(diagnostics, e.currentTarget.value))}>
+      <h2 className="section-title">Dónde probaste</h2>
+      <Field errors={r.errors} name="diagnostic_id" label="Diagnóstico del equipo" help="Solo aparecen tus diagnósticos hechos en Linux.">
+        <select {...fieldProps(r.errors, 'diagnostic_id')} value={diagnosticId ?? ''} onChange={(e) => setDiagnosticId(byId(diagnostics, e.currentTarget.value))}>
           {diagnostics.map((d) => (
             <option key={d.id} value={d.id}>
               {d.machine} · {d.distribution} · {d.architecture} · {dateTime(d.captured_at)}
@@ -174,8 +174,8 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
           ))}
         </select>
       </Field>
-      <Field errors={r.errors} name="edicion_id" label="Edición (lanzador)">
-        <select {...fieldProps(r.errors, 'edicion_id')} value={editionId ?? ''} onChange={(e) => setEditionId(byId(editions, e.currentTarget.value))}>
+      <Field errors={r.errors} name="edition_id" label="Edición (lanzador)">
+        <select {...fieldProps(r.errors, 'edition_id')} value={editionId ?? ''} onChange={(e) => setEditionId(byId(editions, e.currentTarget.value))}>
           {editions.map((e) => (
             <option key={e.id} value={e.id}>
               {e.launcher}
@@ -184,21 +184,21 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
         </select>
       </Field>
 
-      <fieldset className="grupo">
+      <fieldset className="group">
         <legend>Capa de compatibilidad usada</legend>
-        <div className="fila">
-          <label className="casilla">
-            <input type="radio" name="version_capa[_tag]" value="existente" checked={layerType === 'existente'} onChange={() => setLayerType('existente')} />
+        <div className="row">
+          <label className="checkbox">
+            <input type="radio" name="layer_version[_tag]" value="existente" checked={layerType === 'existente'} onChange={() => setLayerType('existente')} />
             Una versión de la lista
           </label>
-          <label className="casilla">
-            <input type="radio" name="version_capa[_tag]" value="nueva" checked={layerType === 'nueva'} onChange={() => setLayerType('nueva')} />
+          <label className="checkbox">
+            <input type="radio" name="layer_version[_tag]" value="nueva" checked={layerType === 'nueva'} onChange={() => setLayerType('nueva')} />
             Otra versión
           </label>
         </div>
         {layerType === 'existente' ? (
-          <Field errors={r.errors} name="version_capa[id]" label="Versión">
-            <select {...fieldProps(r.errors, 'version_capa[id]')} value={layerId ?? ''} onChange={(e) => setLayerId(byId(layers, e.currentTarget.value))}>
+          <Field errors={r.errors} name="layer_version[id]" label="Versión">
+            <select {...fieldProps(r.errors, 'layer_version[id]')} value={layerId ?? ''} onChange={(e) => setLayerId(byId(layers, e.currentTarget.value))}>
               {layers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.family} {c.variant} {c.version}
@@ -207,10 +207,10 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
             </select>
           </Field>
         ) : (
-          <div className="fila campos-en-linea">
-            <Field errors={r.errors} name="version_capa[familia]" label="Familia">
+          <div className="row inline-fields">
+            <Field errors={r.errors} name="layer_version[family]" label="Familia">
               <select
-                {...fieldProps(r.errors, 'version_capa[familia]')}
+                {...fieldProps(r.errors, 'layer_version[family]')}
                 value={newLayer.familia}
                 onChange={(e) => setNewLayer({ ...newLayer, familia: LayerFamily.literals.find((f) => f === e.currentTarget.value) ?? newLayer.familia })}
               >
@@ -219,38 +219,38 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
                 ))}
               </select>
             </Field>
-            <Field errors={r.errors} name="version_capa[variante]" label="Variante">
+            <Field errors={r.errors} name="layer_version[variant]" label="Variante">
               <input
-                {...fieldProps(r.errors, 'version_capa[variante]')}
+                {...fieldProps(r.errors, 'layer_version[variant]')}
                 value={newLayer.variante}
                 onChange={(e) => setNewLayer({ ...newLayer, variante: e.currentTarget.value })}
                 placeholder="GE"
               />
             </Field>
-            <Field errors={r.errors} name="version_capa[version]" label="Versión exacta">
-              <input {...fieldProps(r.errors, 'version_capa[version]')} placeholder="9-20" />
+            <Field errors={r.errors} name="layer_version[version]" label="Versión exacta">
+              <input {...fieldProps(r.errors, 'layer_version[version]')} placeholder="9-20" />
             </Field>
           </div>
         )}
-        <FieldError errors={r.errors} field="version_capa" />
+        <FieldError errors={r.errors} field="layer_version" />
       </fieldset>
 
-      <div className="fila campos-en-linea">
-        <Field errors={r.errors} name="version_juego" label="Versión o build del juego">
-          <input {...fieldProps(r.errors, 'version_juego')} value={gameVersion} onChange={(e) => setGameVersion(e.currentTarget.value)} placeholder="1.0.3179" />
+      <div className="row inline-fields">
+        <Field errors={r.errors} name="game_version" label="Versión o build del juego">
+          <input {...fieldProps(r.errors, 'game_version')} value={gameVersion} onChange={(e) => setGameVersion(e.currentTarget.value)} placeholder="1.0.3179" />
         </Field>
-        <Field errors={r.errors} name="version_lanzador" label="Versión del lanzador (opcional)">
-          <input {...fieldProps(r.errors, 'version_lanzador')} />
+        <Field errors={r.errors} name="launcher_version" label="Versión del lanzador (opcional)">
+          <input {...fieldProps(r.errors, 'launcher_version')} />
         </Field>
       </div>
 
       <Field
         errors={r.errors}
-        name="perfil_id"
+        name="profile_id"
         label="Perfil que seguiste"
         help="Solo aparecen los perfiles que coinciden con tu diagnóstico, la edición, la capa y la versión del juego."
       >
-        <select {...fieldProps(r.errors, 'perfil_id')} value={profileValue} onChange={(e) => setProfileId(e.currentTarget.value)}>
+        <select {...fieldProps(r.errors, 'profile_id')} value={profileValue} onChange={(e) => setProfileId(e.currentTarget.value)}>
           <option value={nullText}>Sin perfil</option>
           {comparable.map((p) => (
             <option key={p.id} value={p.id}>
@@ -260,33 +260,33 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
         </select>
       </Field>
 
-      <h2 className="titulo-seccion">Qué pasó</h2>
-      <Field errors={r.errors} name="fecha_prueba" label="Fecha y hora de la prueba">
-        <input {...fieldProps(r.errors, 'fecha_prueba')} type="datetime-local" />
+      <h2 className="section-title">Qué pasó</h2>
+      <Field errors={r.errors} name="tested_at" label="Fecha y hora de la prueba">
+        <input {...fieldProps(r.errors, 'tested_at')} type="datetime-local" />
       </Field>
-      <fieldset className="grupo">
+      <fieldset className="group">
         <legend>Resultado</legend>
-        <div className="fila">
+        <div className="row">
           {Outcome.literals.map((value) => (
-            <label key={value} className="casilla">
-              <input type="radio" name="resultado" value={value} checked={outcome === value} onChange={() => setOutcome(value)} />
+            <label key={value} className="checkbox">
+              <input type="radio" name="outcome" value={value} checked={outcome === value} onChange={() => setOutcome(value)} />
               {outcomeLabel[value].text}
             </label>
           ))}
         </div>
       </fieldset>
 
-      <fieldset className="grupo">
+      <fieldset className="group">
         <legend>Fallos observados</legend>
-        <p className="pequeno tenue">
+        <p className="small muted">
           {requiresFailure[outcome]
             ? 'Indica al menos un tipo de fallo. Si no sabes la causa, elige «Otro» y describe el síntoma.'
             : 'Opcional: anota cualquier problema aunque el juego funcione.'}
         </p>
         {failures.map((key, i) => (
-          <div key={key} className="fila campos-en-linea">
-            <Field errors={r.errors} name={`fallos[${i}][tipo_fallo_id]`} label="Tipo">
-              <select {...fieldProps(r.errors, `fallos[${i}][tipo_fallo_id]`)}>
+          <div key={key} className="row inline-fields">
+            <Field errors={r.errors} name={`failures[${i}][failure_type_id]`} label="Tipo">
+              <select {...fieldProps(r.errors, `failures[${i}][failure_type_id]`)}>
                 {failureTypes.map((t) => (
                   <option key={t.id} value={t.id} title={t.description}>
                     {failureType(t.code).text}
@@ -294,42 +294,42 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
                 ))}
               </select>
             </Field>
-            <Field errors={r.errors} name={`fallos[${i}][detalle]`} label="Qué viste">
-              <input {...fieldProps(r.errors, `fallos[${i}][detalle]`)} />
+            <Field errors={r.errors} name={`failures[${i}][detail]`} label="Qué viste">
+              <input {...fieldProps(r.errors, `failures[${i}][detail]`)} />
             </Field>
-            <button type="button" className="boton-secundario" onClick={() => setFailures(failures.filter((f) => f !== key))}>
+            <button type="button" className="button-secondary" onClick={() => setFailures(failures.filter((f) => f !== key))}>
               Quitar
             </button>
           </div>
         ))}
         <p>
-          <button type="button" className="boton-secundario" onClick={addFailure}>
+          <button type="button" className="button-secondary" onClick={addFailure}>
             Añadir un fallo
           </button>
         </p>
-        <FieldError errors={r.errors} field="fallos" />
+        <FieldError errors={r.errors} field="failures" />
       </fieldset>
 
-      <OptionalGroup name="medicion" label="Medí los FPS">
-        <p className="pequeno tenue">Sin medición el reporte no guarda FPS; nunca se convierte en cero.</p>
-        <div className="fila campos-en-linea">
-          <Field errors={r.errors} name="medicion[fps_promedio]" label="FPS promedio">
-            <input {...fieldProps(r.errors, 'medicion[fps_promedio]')} type="number" inputMode="decimal" min="0" step="0.01" />
+      <OptionalGroup name="measurement" label="Medí los FPS">
+        <p className="small muted">Sin medición el reporte no guarda FPS; nunca se convierte en cero.</p>
+        <div className="row inline-fields">
+          <Field errors={r.errors} name="measurement[avg_fps]" label="FPS promedio">
+            <input {...fieldProps(r.errors, 'measurement[avg_fps]')} type="number" inputMode="decimal" min="0" step="0.01" />
           </Field>
-          <Field errors={r.errors} name="medicion[resolucion]" label="Resolución">
-            <input {...fieldProps(r.errors, 'medicion[resolucion]')} placeholder="1920x1080" />
+          <Field errors={r.errors} name="measurement[resolution]" label="Resolución">
+            <input {...fieldProps(r.errors, 'measurement[resolution]')} placeholder="1920x1080" />
           </Field>
-          <Field errors={r.errors} name="medicion[calidad_grafica]" label="Calidad gráfica">
-            <input {...fieldProps(r.errors, 'medicion[calidad_grafica]')} placeholder="Medio" />
+          <Field errors={r.errors} name="measurement[graphics_quality]" label="Calidad gráfica">
+            <input {...fieldProps(r.errors, 'measurement[graphics_quality]')} placeholder="Medio" />
           </Field>
         </div>
-        <Field errors={r.errors} name="medicion[metodo_medicion]" label="Cómo mediste">
-          <input {...fieldProps(r.errors, 'medicion[metodo_medicion]')} placeholder="MangoHud · escena · duración" />
+        <Field errors={r.errors} name="measurement[measurement_method]" label="Cómo mediste">
+          <input {...fieldProps(r.errors, 'measurement[measurement_method]')} placeholder="MangoHud · escena · duración" />
         </Field>
       </OptionalGroup>
 
-      <Field errors={r.errors} name="observaciones" label="Observaciones" help="Resultado, limitaciones y cualquier ajuste extra que hiciste fuera del perfil.">
-        <textarea {...fieldProps(r.errors, 'observaciones')} rows={4} />
+      <Field errors={r.errors} name="observations" label="Observaciones" help="Resultado, limitaciones y cualquier ajuste extra que hiciste fuera del perfil.">
+        <textarea {...fieldProps(r.errors, 'observations')} rows={4} />
       </Field>
 
       <button type="submit" disabled={r.submitting}>

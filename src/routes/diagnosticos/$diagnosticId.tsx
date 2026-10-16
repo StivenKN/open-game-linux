@@ -23,12 +23,12 @@ export const Route = createFileRoute('/diagnosticos/$diagnosticId')({
 function SavedDiagnosticPage() {
   const d = Route.useLoaderData()
   return (
-    <main className="envoltura pila">
-      <p className="migas">
+    <main className="wrapper stack">
+      <p className="breadcrumbs">
         <Link to="/diagnostico">Diagnóstico</Link> / {d.alias}
       </p>
       <h1>Diagnóstico de «{d.alias}»</h1>
-      <p className="tenue">Solo tú ves este diagnóstico. Los reportes que publiques mostrarán su contexto técnico, no tu correo.</p>
+      <p className="muted">Solo tú ves este diagnóstico. Los reportes que publiques mostrarán su contexto técnico, no tu correo.</p>
       <CaptureSummary capture={d.capture} />
       <GraphicsCardOnLinux machine={d.machine} pci={d.capture.gpu_pci_id} />
       <MachineGames rows={d.matrix} library={d.library} approximate={d.capture.operating_system === 'Windows'} />

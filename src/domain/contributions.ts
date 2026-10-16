@@ -22,7 +22,7 @@ import { Diagnostic, Distribution, Machine, Game, Profile, Report, Solution, Tex
 
 export const LayerVersionRef = Schema.Union([
   Schema.TaggedStruct('existente', { id: LayerVersionId }),
-  Schema.TaggedStruct('nueva', { familia: LayerFamily, variante: LayerVersion.fields.variant, version: LayerVersion.fields.version }),
+  Schema.TaggedStruct('nueva', { family: LayerFamily, variant: LayerVersion.fields.variant, version: LayerVersion.fields.version }),
 ])
 
 export const TargetMachine = Schema.Union([
@@ -31,13 +31,13 @@ export const TargetMachine = Schema.Union([
 ])
 
 export const FpsMeasurement = Schema.Struct({
-  fps_promedio: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 99999.99 }, { message: 'Escribe un promedio de FPS entre 0 y 99999.99.' })),
-  resolucion: TextUpTo(maxLengths.report.resolution),
-  calidad_grafica: TextUpTo(maxLengths.report.graphics_quality),
-  metodo_medicion: RequiredText,
+  avg_fps: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 99999.99 }, { message: 'Escribe un promedio de FPS entre 0 y 99999.99.' })),
+  resolution: TextUpTo(maxLengths.report.resolution),
+  graphics_quality: TextUpTo(maxLengths.report.graphics_quality),
+  measurement_method: RequiredText,
 })
 
-export const ObservedFailure = Schema.Struct({ tipo_fallo_id: FailureTypeId, detalle: RequiredText })
+export const ObservedFailure = Schema.Struct({ failure_type_id: FailureTypeId, detail: RequiredText })
 
 // FormData cannot express an empty array, so a form with no failure rows posts no `fallos` key (probe a).
 const OptionalFailures = Schema.Array(ObservedFailure).pipe(Schema.withDecodingDefaultKey(Effect.succeed([])))
@@ -49,15 +49,15 @@ const RequiredFailures = Schema.Array(ObservedFailure).pipe(
 )
 
 const reportFields = {
-  edicion_id: EditionId,
-  diagnostico_id: DiagnosticId,
-  version_capa: LayerVersionRef,
-  perfil_id: Schema.NullOr(ProfileId),
-  version_juego: Report.fields.game_version,
-  version_lanzador: OptionalTextUpTo(maxLengths.report.launcher_version),
-  fecha_prueba: Schema.DateFromString, // the form's datetime-local value, read in the browser's own zone
-  medicion: Schema.NullOr(FpsMeasurement),
-  observaciones: RequiredText,
+  edition_id: EditionId,
+  diagnostic_id: DiagnosticId,
+  layer_version: LayerVersionRef,
+  profile_id: Schema.NullOr(ProfileId),
+  game_version: Report.fields.game_version,
+  launcher_version: OptionalTextUpTo(maxLengths.report.launcher_version),
+  tested_at: Schema.DateFromString, // the form's datetime-local value, read in the browser's own zone
+  measurement: Schema.NullOr(FpsMeasurement),
+  observations: RequiredText,
 }
 
 /**
@@ -65,32 +65,32 @@ const reportFields = {
  * literal field; with a literal set it would try every member and report all their issues.
  */
 export const NewReport = Schema.Union([
-  ...WorkingOutcome.members.map((outcome) => Schema.Struct({ ...reportFields, resultado: outcome, fallos: OptionalFailures })),
-  ...FailingOutcome.members.map((outcome) => Schema.Struct({ ...reportFields, resultado: outcome, fallos: RequiredFailures })),
+  ...WorkingOutcome.members.map((outcome) => Schema.Struct({ ...reportFields, outcome, failures: OptionalFailures })),
+  ...FailingOutcome.members.map((outcome) => Schema.Struct({ ...reportFields, outcome, failures: RequiredFailures })),
 ])
 export type NewReport = typeof NewReport.Type
 
 export const NewSolution = Schema.Struct({
-  reporte_id: ReportId,
-  tipo_fallo_id: FailureTypeId,
-  perfil_id: Schema.NullOr(ProfileId),
-  titulo: Solution.fields.title,
-  instrucciones: RequiredText,
+  report_id: ReportId,
+  failure_type_id: FailureTypeId,
+  profile_id: Schema.NullOr(ProfileId),
+  title: Solution.fields.title,
+  instructions: RequiredText,
 })
 export type NewSolution = typeof NewSolution.Type
 
 export const NewGame = Schema.Struct({
-  titulo: Game.fields.title,
-  descripcion: RequiredText,
-  ediciones: Schema.NonEmptyArray(
-    Schema.Struct({ lanzador_id: LauncherId, identificador_externo: OptionalTextUpTo(maxLengths.game_edition.external_id) }),
+  title: Game.fields.title,
+  description: RequiredText,
+  editions: Schema.NonEmptyArray(
+    Schema.Struct({ launcher_id: LauncherId, external_id: OptionalTextUpTo(maxLengths.game_edition.external_id) }),
   ),
   // Checkboxes named `apis[]`; with none checked the form posts no `apis` key at all.
   apis: Schema.Array(GraphicsApi).pipe(
     Schema.refine(Arr.isReadonlyArrayNonEmpty, { message: 'Marca al menos una API gráfica.' }),
     Schema.withDecodingDefaultKey(Effect.succeed([])),
   ),
-  nivel_x86_min: Game.fields.x86_level_min,
+  x86_level_min: Game.fields.x86_level_min,
 })
 export type NewGame = typeof NewGame.Type
 
@@ -174,7 +174,7 @@ export const DiagnosticInput = Schema.Union([
 ])
 export type DiagnosticInput = typeof DiagnosticInput.Type
 
-export const SaveDiagnostic = Schema.Struct({ equipo: TargetMachine, entrada: DiagnosticInput, con_biblioteca: Checkbox })
+export const SaveDiagnostic = Schema.Struct({ machine: TargetMachine, input: DiagnosticInput, with_library: Checkbox })
 
 export const CatalogFilter = Schema.Struct({
   q: Schema.optionalKey(Schema.String),

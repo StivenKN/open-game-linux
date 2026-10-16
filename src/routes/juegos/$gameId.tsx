@@ -24,75 +24,75 @@ export const Route = createFileRoute('/juegos/$gameId')({
 function GamePage() {
   const { game, editions, summary, protondb, demo, pending, profiles, causes, diagnostic, personal } = Route.useLoaderData()
   const reportLink = (
-    <Link to="/juegos/$gameId/reportar" params={{ gameId: game.id }} className="boton">
+    <Link to="/juegos/$gameId/reportar" params={{ gameId: game.id }} className="button">
       Reportar un resultado
     </Link>
   )
   return (
-    <main className="envoltura">
-      <header className="ficha-banner">
+    <main className="wrapper">
+      <header className="game-page-banner">
         <Artwork title={game.title} width={1320} height={420} />
-        <div className="ficha-banner-texto">
-          <nav className="migas" aria-label="Migas de pan">
+        <div className="game-page-banner-text">
+          <nav className="breadcrumbs" aria-label="Migas de pan">
             <Link to="/">Catálogo</Link> / {game.title}
           </nav>
-          <h1 className="titulo-ficha">{game.title}</h1>
-          <div className="fila" aria-label="Ediciones">
+          <h1 className="game-page-title">{game.title}</h1>
+          <div className="row" aria-label="Ediciones">
             {editions.map((e) => (
-              <span key={e.id} className="etiqueta">
+              <span key={e.id} className="label">
                 {e.launcher}
-                {e.external_id && <span className="tenue"> {e.external_id}</span>}
+                {e.external_id && <span className="muted"> {e.external_id}</span>}
               </span>
             ))}
             {demo && <DemoStamp />}
           </div>
-          <p className="ficha-descripcion">{game.description}</p>
-          <p className="ficha-descripcion pequeno fila">
+          <p className="game-page-description">{game.description}</p>
+          <p className="game-page-description small row">
             <span>{game.apis.length === 0 ? 'APIs gráficas sin declarar' : `Gráficos: ${game.apis.map((api) => graphicsApi[api]).join(' · ')}`}</span>
             {game.x86_level_min !== null && <span>CPU mínima: {x86Level[game.x86_level_min]}</span>}
           </p>
         </div>
-        <div className="ficha-accion">{reportLink}</div>
+        <div className="game-page-action">{reportLink}</div>
       </header>
 
-      <div className="ficha-cuerpo">
+      <div className="game-page-body">
         <GameStatus summary={summary} pending={pending} />
         <VerdictForMe personal={personal}>
           {diagnostic && (
-            <p className="pequeno tenue">
+            <p className="small muted">
               Según tu diagnóstico más reciente: {diagnostic.machine}, {date(diagnostic.captured_at)}.
             </p>
           )}
         </VerdictForMe>
       </div>
 
-      <section className="seccion" aria-labelledby="entornos">
-        <h2 id="entornos">Dónde lo probaron</h2>
-        <p className="tenue">Cada fila es un entorno con reportes aprobados.</p>
+      <section className="section" aria-labelledby="setups">
+        <h2 id="setups">Dónde lo probaron</h2>
+        <p className="muted">Cada fila es un entorno con reportes aprobados.</p>
         <EnvironmentMatrix setups={summary.setups} myDistribution={diagnostic?.distribution_id ?? null} />
       </section>
 
-      <section className="seccion" aria-labelledby="protondb">
+      <section className="section" aria-labelledby="protondb">
         <h2 id="protondb">Otras fuentes: ProtonDB</h2>
         <ProtonDbSection protondb={protondb} />
       </section>
 
-      <div className="seccion dos">
-        <section aria-labelledby="perfiles">
-          <h2 id="perfiles">Perfiles de configuración</h2>
+      <div className="section columns-2">
+        <section aria-labelledby="profiles">
+          <h2 id="profiles">Perfiles de configuración</h2>
           {profiles.length === 0 ? (
-            <p className="tarjeta tenue">Todavía no hay perfiles para este juego.</p>
+            <p className="card muted">Todavía no hay perfiles para este juego.</p>
           ) : (
-            <ul className="lista-tarjetas">
+            <ul className="card-list">
               {profiles.map((p) => (
-                <li key={p.id} className="tarjeta pila">
-                  <div className="fila">
-                    <Link to="/perfiles/$profileId" params={{ profileId: p.id }} className="nombre-juego">
+                <li key={p.id} className="card stack">
+                  <div className="row">
+                    <Link to="/perfiles/$profileId" params={{ profileId: p.id }} className="game-name">
                       {p.title} r{p.revision}
                     </Link>
                     {p.review_status === 'pendiente' && <Chip tone="gris">en prueba</Chip>}
                   </div>
-                  <div className="fila-chips">
+                  <div className="chip-row">
                     <span className="chip">{p.launcher}</span>
                     <span className="chip">{p.distribution}</span>
                     <span className="chip">{p.layer}</span>
@@ -100,10 +100,10 @@ function GamePage() {
                     {p.demo && <DemoStamp />}
                   </div>
                   {p.review_status === 'pendiente' ? (
-                    <p className="pequeno tenue">Aún no está aprobado. Puedes probarlo: tu reporte aporta la evidencia que su aprobación necesita.</p>
+                    <p className="small muted">Aún no está aprobado. Puedes probarlo: tu reporte aporta la evidencia que su aprobación necesita.</p>
                   ) : (
                     p.evaluation && (
-                      <div className="fila pequeno">
+                      <div className="row small">
                         <span>Tu equipo:</span>
                         <Badge label={requirementsVerdict[p.evaluation.verdict]} shape="punteado" />
                       </div>
@@ -115,32 +115,32 @@ function GamePage() {
           )}
         </section>
 
-        <section aria-labelledby="causas">
-          <h2 id="causas">Causas y soluciones</h2>
+        <section aria-labelledby="causes">
+          <h2 id="causes">Causas y soluciones</h2>
           {causes.length === 0 ? (
-            <p className="tarjeta tenue">Ningún reporte aprobado registra un fallo.</p>
+            <p className="card muted">Ningún reporte aprobado registra un fallo.</p>
           ) : (
-            <ul className="lista-tarjetas">
+            <ul className="card-list">
               {causes.map((c) => {
                 const label = failureType(c.code)
                 return (
-                  <li key={c.code} className="tarjeta pila">
-                    <div className="fila">
+                  <li key={c.code} className="card stack">
+                    <div className="row">
                       <Chip tone={label.tone}>{label.text}</Chip>
-                      <span className="pequeno tenue">{count(c.reports, 'reporte aprobado', 'reportes aprobados')}</span>
+                      <span className="small muted">{count(c.reports, 'reporte aprobado', 'reportes aprobados')}</span>
                     </div>
                     {c.description && <p>{c.description}</p>}
                     {c.solutions.length === 0 ? (
-                      <p className="pequeno tenue">Sin soluciones verificadas todavía.</p>
+                      <p className="small muted">Sin soluciones verificadas todavía.</p>
                     ) : (
                       c.solutions.map((s) => (
-                        <div key={s.id} className="solucion pila">
-                          <div className="fila">
+                        <div key={s.id} className="solution stack">
+                          <div className="row">
                             <b>{s.title}</b>
                             {s.demo && <DemoStamp />}
                           </div>
-                          <p className="texto-largo pequeno">{s.instructions}</p>
-                          <p className="pequeno tenue">
+                          <p className="long-text small">{s.instructions}</p>
+                          <p className="small muted">
                             Aportada por {s.author}
                             {s.profile && <>. Recomienda el perfil {s.profile}</>}.
                           </p>
@@ -148,7 +148,7 @@ function GamePage() {
                       ))
                     )}
                     {c.reply !== null && (
-                      <p className="pequeno">
+                      <p className="small">
                         <Link
                           to="/reportes/$reportId/solucion"
                           params={{ reportId: c.reply.report_id }}
@@ -166,10 +166,10 @@ function GamePage() {
         </section>
       </div>
 
-      <section className="reportar" aria-labelledby="reportar">
+      <section className="report" aria-labelledby="report">
         <div>
-          <h2 id="reportar">¿Lo jugaste en Linux?</h2>
-          <p className="tenue">Cuenta en qué distribución y con qué configuración. Un revisor lo aprueba y pasa a contar.</p>
+          <h2 id="report">¿Lo jugaste en Linux?</h2>
+          <p className="muted">Cuenta en qué distribución y con qué configuración. Un revisor lo aprueba y pasa a contar.</p>
         </div>
         {reportLink}
       </section>

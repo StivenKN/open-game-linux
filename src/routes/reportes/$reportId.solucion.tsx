@@ -33,14 +33,14 @@ function ProposeSolutionPage() {
   const r = useAction(NewSolution, submitSolutionFn, { onFailure: ruleErrors, onComplete: () => setSubmitted(true) })
 
   return (
-    <main className="envoltura">
-      <p className="rotulo">Proponer solución</p>
+    <main className="wrapper">
+      <p className="caption">Proponer solución</p>
       <h1>{report.game}</h1>
-      <section className="tarjeta pila">
-        <p className="fila">
+      <section className="card stack">
+        <p className="row">
           <Badge label={outcome[report.outcome]} />
           <Badge label={reviewStatus[report.review_status]} />
-          <span className="dato">
+          <span className="datum">
             {report.launcher} · {report.distribution} · {report.layer} · versión {report.game_version} · {dateTime(report.tested_at)}
           </span>
         </p>
@@ -48,7 +48,7 @@ function ProposeSolutionPage() {
       </section>
 
       {submitted ? (
-        <section className="tarjeta pila" aria-live="polite">
+        <section className="card stack" aria-live="polite">
           <h2>Solución enviada</h2>
           <p>
             Queda <strong>pendiente de revisión</strong>. Para publicarla, un revisor necesita evidencia de que resuelve el fallo, no solo que el fallo existe.
@@ -60,11 +60,11 @@ function ProposeSolutionPage() {
           </p>
         </section>
       ) : (
-        <form className="tarjeta formulario formulario-ancho" {...r.form}>
-          <FieldError errors={r.errors} field="formulario" />
-          <input type="hidden" name="reporte_id" value={report.id} />
-          <Field errors={r.errors} name="tipo_fallo_id" label="Fallo que resuelve">
-            <select {...fieldProps(r.errors, 'tipo_fallo_id')} defaultValue={failures.find((f) => f.failure_type_id === preselected)?.failure_type_id}>
+        <form className="card form form-wide" {...r.form}>
+          <FieldError errors={r.errors} field="form" />
+          <input type="hidden" name="report_id" value={report.id} />
+          <Field errors={r.errors} name="failure_type_id" label="Fallo que resuelve">
+            <select {...fieldProps(r.errors, 'failure_type_id')} defaultValue={failures.find((f) => f.failure_type_id === preselected)?.failure_type_id}>
               {failures.map((f) => (
                 <option key={f.failure_type_id} value={f.failure_type_id}>
                   {failureType(f.code).text}: {f.detail}
@@ -74,11 +74,11 @@ function ProposeSolutionPage() {
           </Field>
           <Field
             errors={r.errors}
-            name="perfil_id"
+            name="profile_id"
             label="Perfil que recomiendas (opcional)"
             help="Solo perfiles de la misma edición. Si recomiendas uno pendiente, la solución no se aprueba hasta que el perfil lo esté."
           >
-            <select {...fieldProps(r.errors, 'perfil_id')} defaultValue={nullText}>
+            <select {...fieldProps(r.errors, 'profile_id')} defaultValue={nullText}>
               <option value={nullText}>Ninguno: describo otra acción</option>
               {profiles.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -87,11 +87,11 @@ function ProposeSolutionPage() {
               ))}
             </select>
           </Field>
-          <Field errors={r.errors} name="titulo" label="Título">
-            <input {...fieldProps(r.errors, 'titulo')} placeholder="Reinstalar el lanzador dentro del prefijo" />
+          <Field errors={r.errors} name="title" label="Título">
+            <input {...fieldProps(r.errors, 'title')} placeholder="Reinstalar el lanzador dentro del prefijo" />
           </Field>
-          <Field errors={r.errors} name="instrucciones" label="Instrucciones" help="Pasos concretos para resolver el fallo o aplicar la alternativa.">
-            <textarea {...fieldProps(r.errors, 'instrucciones')} rows={6} />
+          <Field errors={r.errors} name="instructions" label="Instrucciones" help="Pasos concretos para resolver el fallo o aplicar la alternativa.">
+            <textarea {...fieldProps(r.errors, 'instructions')} rows={6} />
           </Field>
           <button type="submit" disabled={r.submitting}>
             {r.submitting ? 'Enviando…' : 'Enviar solución'}

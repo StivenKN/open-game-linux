@@ -40,25 +40,25 @@ function NewGamePage() {
   }
 
   return (
-    <main className="envoltura">
-      <p className="rotulo">Catálogo</p>
+    <main className="wrapper">
+      <p className="caption">Catálogo</p>
       <h1>Nuevo juego</h1>
-      <form className="tarjeta formulario formulario-ancho" {...r.form}>
-        <FieldError errors={r.errors} field="formulario" />
-        <Field errors={r.errors} name="titulo" label="Título">
-          <input {...fieldProps(r.errors, 'titulo')} />
+      <form className="card form form-wide" {...r.form}>
+        <FieldError errors={r.errors} field="form" />
+        <Field errors={r.errors} name="title" label="Título">
+          <input {...fieldProps(r.errors, 'title')} />
         </Field>
-        <Field errors={r.errors} name="descripcion" label="Descripción">
-          <textarea {...fieldProps(r.errors, 'descripcion')} />
+        <Field errors={r.errors} name="description" label="Descripción">
+          <textarea {...fieldProps(r.errors, 'description')} />
         </Field>
 
-        <fieldset className="grupo">
+        <fieldset className="group">
           <legend>Ediciones</legend>
-          <p className="pequeno tenue">Una por lanzador. El identificador es el de la tienda (por ejemplo, el App ID de Steam), si lo conoces.</p>
+          <p className="small muted">Una por lanzador. El identificador es el de la tienda (por ejemplo, el App ID de Steam), si lo conoces.</p>
           {editions.map((key, i) => (
-            <div key={key} className="fila campos-en-linea">
-              <Field errors={r.errors} name={`ediciones[${i}][lanzador_id]`} label="Lanzador">
-                <select {...fieldProps(r.errors, `ediciones[${i}][lanzador_id]`)} defaultValue={launchers[i % launchers.length]?.id}>
+            <div key={key} className="row inline-fields">
+              <Field errors={r.errors} name={`editions[${i}][launcher_id]`} label="Lanzador">
+                <select {...fieldProps(r.errors, `editions[${i}][launcher_id]`)} defaultValue={launchers[i % launchers.length]?.id}>
                   {launchers.map((l) => (
                     <option key={l.id} value={l.id}>
                       {l.name}
@@ -66,12 +66,12 @@ function NewGamePage() {
                   ))}
                 </select>
               </Field>
-              <Field errors={r.errors} name={`ediciones[${i}][identificador_externo]`} label="Identificador (opcional)">
-                <input {...fieldProps(r.errors, `ediciones[${i}][identificador_externo]`)} />
+              <Field errors={r.errors} name={`editions[${i}][external_id]`} label="Identificador (opcional)">
+                <input {...fieldProps(r.errors, `editions[${i}][external_id]`)} />
               </Field>
               <button
                 type="button"
-                className="boton-secundario"
+                className="button-secondary"
                 disabled={editions.length === 1}
                 onClick={() => setEditions(editions.filter((e) => e !== key))}
               >
@@ -80,19 +80,19 @@ function NewGamePage() {
             </div>
           ))}
           <p>
-            <button type="button" className="boton-secundario" onClick={addEdition} disabled={editions.length >= launchers.length}>
+            <button type="button" className="button-secondary" onClick={addEdition} disabled={editions.length >= launchers.length}>
               Añadir una edición
             </button>
           </p>
-          <FieldError errors={r.errors} field="ediciones" />
+          <FieldError errors={r.errors} field="editions" />
         </fieldset>
 
-        <fieldset className="grupo">
+        <fieldset className="group">
           <legend>APIs gráficas</legend>
-          <p className="pequeno tenue">Marca cada API con la que el juego puede dibujar, aunque sea un modo alternativo.</p>
-          <div className="fila">
+          <p className="small muted">Marca cada API con la que el juego puede dibujar, aunque sea un modo alternativo.</p>
+          <div className="row">
             {GraphicsApi.literals.map((api) => (
-              <label key={api} className="casilla">
+              <label key={api} className="checkbox">
                 <input type="checkbox" name="apis[]" value={api} />
                 {graphicsApi[api]}
               </label>
@@ -101,8 +101,8 @@ function NewGamePage() {
           <FieldError errors={r.errors} field="apis" />
         </fieldset>
 
-        <Field errors={r.errors} name="nivel_x86_min" label="CPU mínima" help="Solo si el juego exige un conjunto de instrucciones, como SSE4.2 en Counter-Strike 2.">
-          <select {...fieldProps(r.errors, 'nivel_x86_min')} defaultValue={nullText}>
+        <Field errors={r.errors} name="x86_level_min" label="CPU mínima" help="Solo si el juego exige un conjunto de instrucciones, como SSE4.2 en Counter-Strike 2.">
+          <select {...fieldProps(r.errors, 'x86_level_min')} defaultValue={nullText}>
             <option value={nullText}>Sin requisito</option>
             {minimumLevels.map((n) => (
               <option key={n} value={n}>

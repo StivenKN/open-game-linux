@@ -8,7 +8,7 @@ type Recent = Pick<ProtonDbSummary, 'recent' | 'recent_working' | 'total_reports
 /** The license asks for this on every page that shows ProtonDB data. */
 export function ProtonDbAttribution() {
   return (
-    <p className="pequeno tenue">
+    <p className="small muted">
       Datos de <a href="https://www.protondb.com">ProtonDB</a>, licencia{' '}
       <a href="https://opendatacommons.org/licenses/odbl/">ODbL</a>.
     </p>
@@ -20,7 +20,7 @@ const workingLine = (n: number, total: number) =>
 
 export function ProtonDbLine({ summary }: { summary: Recent }) {
   return (
-    <p className="juego-meta">
+    <p className="game-card-meta">
       {summary.recent === 0
         ? `ProtonDB: sin reportes en el último año (${summary.total_reports} en total)`
         : `ProtonDB: ${workingLine(summary.recent_working, summary.recent)} en el último año`}
@@ -33,14 +33,14 @@ const layer = (variant: ProtonVariant, version: string | null) =>
 
 /** The game page's section: aggregates only, never individual reports (8.9). */
 export function ProtonDbSection({ protondb: p }: { protondb: (ProtonDbSummary & { readonly app_id: string }) | null }) {
-  if (p === null) return <p className="tarjeta tenue">Sin datos de ProtonDB para este juego todavía.</p>
+  if (p === null) return <p className="card muted">Sin datos de ProtonDB para este juego todavía.</p>
   return (
-    <div className="tarjeta pila">
-      <p className="pequeno tenue">
+    <div className="card stack">
+      <p className="small muted">
         Reportes de la comunidad de ProtonDB sobre la edición de Steam. Son otra fuente: no cuentan para el estado de
         OpenGame.
       </p>
-      <ul className="pila sin-margen">
+      <ul className="stack no-margin">
         <li>
           Último año: <b>{workingLine(p.recent_working, p.recent)}</b>
         </li>
@@ -58,7 +58,7 @@ export function ProtonDbSection({ protondb: p }: { protondb: (ProtonDbSummary & 
           </li>
         )}
       </ul>
-      <p className="pequeno tenue">
+      <p className="small muted">
         «Último año» son los 12 meses antes del export de ProtonDB del {date(p.exported_at)}.{' '}
         <a href={`https://www.protondb.com/app/${encodeURIComponent(p.app_id)}`}>Ver el juego en ProtonDB</a>
       </p>

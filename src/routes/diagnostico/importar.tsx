@@ -44,35 +44,35 @@ function ImportPage() {
 
   if (state === 'vacio')
     return (
-      <main className="envoltura pila">
+      <main className="wrapper stack">
         <h1>No hay un diagnóstico para mostrar</h1>
-        <p className="tenue">
+        <p className="muted">
           Ejecuta el detector con <code>--open</code>, o pega su salida en <Link to="/diagnostico">Diagnóstico</Link>.
         </p>
       </main>
     )
   if (state === null || state.evaluated === null)
     return (
-      <main className="envoltura">
+      <main className="wrapper">
         <p role="status">Leyendo tu equipo…</p>
       </main>
     )
   const r = state.evaluated
   if (!r.ok)
     return (
-      <main className="envoltura pila">
+      <main className="wrapper stack">
         <h1>No pudimos leer este diagnóstico</h1>
         <p role="alert">
           {payloadReason[r.error.reason]}
-          {r.error.field !== null && <span className="dato"> ({r.error.field})</span>}
+          {r.error.field !== null && <span className="datum"> ({r.error.field})</span>}
         </p>
         <Link to="/diagnostico">Volver a Diagnóstico</Link>
       </main>
     )
   return (
-    <main className="envoltura pila">
+    <main className="wrapper stack">
       <h1>Tu equipo frente al catálogo</h1>
-      <p className="tenue">
+      <p className="muted">
         Esta evaluación no se ha guardado. Compara RAM, VRAM y Vulkan con el perfil aprobado sugerido para cada juego; no
         predice FPS.
       </p>
@@ -85,7 +85,7 @@ function ImportPage() {
   )
 }
 
-const SaveTarget = Schema.Struct({ equipo: TargetMachine, con_biblioteca: Checkbox })
+const SaveTarget = Schema.Struct({ machine: TargetMachine, with_library: Checkbox })
 type Saved = { readonly id: DiagnosticId; readonly inserted: boolean }
 
 function SavePanel({ input, libraryGameCount }: { input: Input; libraryGameCount: number }) {
@@ -93,7 +93,7 @@ function SavePanel({ input, libraryGameCount }: { input: Input; libraryGameCount
   const machines = Route.useLoaderData()
   const [target, setTarget] = useState(() => (machines[0] === undefined ? 'nuevo' : String(machines[0].id)))
   const [saved, setSaved] = useState<Saved | null>(null)
-  const r = useAction(SaveTarget, ({ data }) => saveDiagnosticFn({ data: { equipo: data.equipo, con_biblioteca: data.con_biblioteca, entrada: input } }), {
+  const r = useAction(SaveTarget, ({ data }) => saveDiagnosticFn({ data: { machine: data.machine, with_library: data.with_library, input } }), {
     onFailure: (f) =>
       f._tag === 'ReglaIncumplida'
         ? { 'equipo[id]': 'Ese equipo no es tuyo. Elige uno de tu lista.' }
@@ -106,9 +106,9 @@ function SavePanel({ input, libraryGameCount }: { input: Input; libraryGameCount
 
   if (visitor === null)
     return (
-      <section className="tarjeta fila" aria-label="Guardar">
+      <section className="card row" aria-label="Guardar">
         <span>Para guardar este diagnóstico en tu equipo necesitas una cuenta.</span>
-        <Link to="/entrar" search={{ volver: '/diagnostico/importar' }} className="boton">
+        <Link to="/entrar" search={{ volver: '/diagnostico/importar' }} className="button">
           Entrar para guardar
         </Link>
         <Link to="/registro" search={{ volver: '/diagnostico/importar' }}>
@@ -118,12 +118,12 @@ function SavePanel({ input, libraryGameCount }: { input: Input; libraryGameCount
     )
 
   return (
-    <section className="tarjeta" aria-label="Guardar">
-      <form className="pila" {...r.form}>
-        <div className="fila">
-          <input type="hidden" name="equipo[_tag]" value={target === 'nuevo' ? 'nuevo' : 'existente'} />
-          <label htmlFor="equipo[id]">Guardar en</label>
-          <select {...fieldProps(r.errors, 'equipo[id]')} value={target} onChange={(e) => setTarget(e.currentTarget.value)}>
+    <section className="card" aria-label="Guardar">
+      <form className="stack" {...r.form}>
+        <div className="row">
+          <input type="hidden" name="machine[_tag]" value={target === 'nuevo' ? 'nuevo' : 'existente'} />
+          <label htmlFor="machine[id]">Guardar en</label>
+          <select {...fieldProps(r.errors, 'machine[id]')} value={target} onChange={(e) => setTarget(e.currentTarget.value)}>
             {machines.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.alias}
@@ -133,7 +133,7 @@ function SavePanel({ input, libraryGameCount }: { input: Input; libraryGameCount
           </select>
           {target === 'nuevo' && (
             <input
-              {...fieldProps(r.errors, 'equipo[alias]')}
+              {...fieldProps(r.errors, 'machine[alias]')}
               aria-label="Nombre del equipo nuevo"
               defaultValue={machines.length === 0 ? 'Mi equipo' : ''}
               placeholder="Portátil del trabajo"
@@ -144,17 +144,17 @@ function SavePanel({ input, libraryGameCount }: { input: Input; libraryGameCount
           </button>
         </div>
         {libraryGameCount > 0 && (
-          <label className="casilla">
-            <input type="checkbox" name="con_biblioteca" value="true" />
+          <label className="checkbox">
+            <input type="checkbox" name="with_library" value="true" />
             Guardar también mi lista de juegos de Steam ({libraryGameCount}). Solo tú la ves.
           </label>
         )}
       </form>
-      <FieldError errors={r.errors} field="equipo[id]" />
-      <FieldError errors={r.errors} field="equipo[alias]" />
-      <FieldError errors={r.errors} field="formulario" />
+      <FieldError errors={r.errors} field="machine[id]" />
+      <FieldError errors={r.errors} field="machine[alias]" />
+      <FieldError errors={r.errors} field="form" />
       {saved && (
-        <p role="status" className="pequeno">
+        <p role="status" className="small">
           {saved.inserted ? 'Guardado.' : 'Ya estaba guardado; no se creó una copia.'}{' '}
           <Link to="/diagnosticos/$diagnosticId" params={{ diagnosticId: saved.id }}>
             Ver el diagnóstico guardado

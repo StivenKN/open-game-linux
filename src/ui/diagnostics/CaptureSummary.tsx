@@ -25,20 +25,20 @@ export function CaptureSummary({ capture }: { capture: Capture }) {
     ],
   ] as const
   return (
-    <section className="pila" aria-label="Tu equipo">
-      <dl className="mosaico">
+    <section className="stack" aria-label="Tu equipo">
+      <dl className="mosaic">
         {rows.map(([caption, value, detail]) => (
-          <div key={caption} className="tarjeta">
-            <dt className="rotulo">{caption}</dt>
+          <div key={caption} className="card">
+            <dt className="caption">{caption}</dt>
             <dd>
               <strong>{value}</strong>
-              {detail && <span className="pequeno tenue dato">{detail}</span>}
+              {detail && <span className="small muted datum">{detail}</span>}
             </dd>
           </div>
         ))}
       </dl>
-      <p className="pequeno tenue">Capturado el {dateTime(capture.captured_at)}.</p>
-      <p className="pequeno">
+      <p className="small muted">Capturado el {dateTime(capture.captured_at)}.</p>
+      <p className="small">
         Para elegir una distribución, instalarla o hacer arranque dual con Windows, consulta las <Link to="/guias">guías de adopción</Link>.
       </p>
     </section>

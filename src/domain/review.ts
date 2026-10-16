@@ -18,9 +18,9 @@ export type Role = typeof Role.Type
 export const canReview = { usuario: false, revisor: true, administrador: true } as const satisfies Record<Role, boolean>
 
 export const Decision = Schema.Union([
-  Schema.TaggedStruct('Aprobar', { motivo: RequiredText, evidencia: RequiredText }),
-  Schema.TaggedStruct('Rechazar', { motivo: RequiredText }),
-  Schema.TaggedStruct('Retirar', { motivo: RequiredText }),
+  Schema.TaggedStruct('Aprobar', { reason: RequiredText, evidence: RequiredText }),
+  Schema.TaggedStruct('Rechazar', { reason: RequiredText }),
+  Schema.TaggedStruct('Retirar', { reason: RequiredText }),
 ])
 export type Decision = typeof Decision.Type
 

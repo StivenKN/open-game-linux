@@ -1,9 +1,9 @@
 import { describe, expect, it } from '@effect/vitest'
 import { type Decision, type ReviewStatus, planTransition } from './review.ts'
 
-const approve: Decision = { _tag: 'Aprobar', motivo: 'Probado', evidencia: 'Reporte #12' }
-const reject: Decision = { _tag: 'Rechazar', motivo: 'Sin evidencia' }
-const withdraw: Decision = { _tag: 'Retirar', motivo: 'Obsoleto' }
+const approve: Decision = { _tag: 'Aprobar', reason: 'Probado', evidence: 'Reporte #12' }
+const reject: Decision = { _tag: 'Rechazar', reason: 'Sin evidencia' }
+const withdraw: Decision = { _tag: 'Retirar', reason: 'Obsoleto' }
 
 describe('planTransition', () => {
   const cases: ReadonlyArray<readonly [ReviewStatus, Decision, ReturnType<typeof planTransition>]> = [

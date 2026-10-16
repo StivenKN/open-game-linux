@@ -35,17 +35,17 @@ describe('readForm', () => {
   it('returns the encoded value the server validator expects', () => {
     const parsed = readForm(NewReport, form({}))
     expect(Result.isSuccess(parsed) && parsed.success).toEqual({
-      edicion_id: 1,
-      diagnostico_id: 2,
-      version_capa: { _tag: 'existente', id: 3 },
-      perfil_id: null,
-      version_juego: '1.0.3',
-      version_lanzador: null,
-      fecha_prueba: '2026-10-01T00:00:00.000Z',
-      resultado: 'no_inicia',
-      fallos: [{ tipo_fallo_id: 4, detalle: 'Pantalla negra al lanzar' }],
-      medicion: null,
-      observaciones: 'Probado dos veces',
+      edition_id: 1,
+      diagnostic_id: 2,
+      layer_version: { _tag: 'existente', id: 3 },
+      profile_id: null,
+      game_version: '1.0.3',
+      launcher_version: null,
+      tested_at: '2026-10-01T00:00:00.000Z',
+      outcome: 'no_inicia',
+      failures: [{ failure_type_id: 4, detail: 'Pantalla negra al lanzar' }],
+      measurement: null,
+      observations: 'Probado dos veces',
     })
   })
 

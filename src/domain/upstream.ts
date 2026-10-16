@@ -363,7 +363,7 @@ export const protonReport = (input: ReportInput): ProtonReport => {
  * is no status to keep in sync: the row is the claim and the PR link its evidence. `Anular` undoes a mistaken note.
  */
 export const FixNote = Schema.Union([
-  Schema.TaggedStruct('Aceptado', { perfil_id: ProfileId, pr: ProtonfixesPr }),
+  Schema.TaggedStruct('Aceptado', { profile_id: ProfileId, pr: ProtonfixesPr }),
   Schema.TaggedStruct('Anular', { pr: PrNumber }),
 ])
 export type FixNote = typeof FixNote.Type

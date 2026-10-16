@@ -85,7 +85,7 @@ export function Artwork({ title, width, height }: { title: string; width: number
   const { hue, motif, strokeSeed } = coverDesign(title)
   const color = (hueShift: number, saturation: number, lightness: number) => `hsl(${(hue + hueShift + 360) % 360} ${saturation}% ${lightness}%)`
   return (
-    <svg className="arte" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <svg className="artwork" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
         <linearGradient id={`${id}fondo`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor={color(0, 42, 26)} />
@@ -107,13 +107,13 @@ export function Artwork({ title, width, height }: { title: string; width: number
 export function Cover({ title, status, sample = false }: { title: string; status?: CompatibilityStatus; sample?: boolean }) {
   const { caption } = coverDesign(title)
   return (
-    <div className="portada" data-estado={status}>
+    <div className="cover" data-state={status}>
       <Artwork title={title} width={300} height={400} />
       {sample && <DemoStamp />}
       <div
-        className="portada-rotulo"
-        data-letra={caption.narrow ? 'estrecha' : 'ancha'}
-        data-arriba={caption.atTop || undefined}
+        className="cover-caption"
+        data-font={caption.narrow ? 'estrecha' : 'ancha'}
+        data-top={caption.atTop || undefined}
         style={{ fontSize: `${caption.size}cqi` }}
         aria-hidden="true"
       >
@@ -127,8 +127,8 @@ export function Cover({ title, status, sample = false }: { title: string; status
 function StatusBand({ status }: { status: CompatibilityStatus }) {
   const label = compatibilityStatus[status]
   return (
-    <div className="banda" data-tono={label.tone} data-forma="relleno" data-estado={status}>
-      <span className="banda-icono" aria-hidden="true">
+    <div className="band" data-tone={label.tone} data-shape="relleno" data-state={status}>
+      <span className="band-icon" aria-hidden="true">
         {label.icon}
       </span>
       {label.text}

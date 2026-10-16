@@ -12,27 +12,27 @@ export function GraphicsPath({ path, minX86Level, approximate }: { path: GamePat
   const visible = path.status === 'con_ruta' ? path.path : path.status === 'sin_datos' ? path.at_least : null
   const { note, option, tone } = visible === null ? { note: null, option: null, tone: null } : renderPath[visible]
   return (
-    <div className="pila">
-      <div className="fila">
-        <span className="rotulo">Ruta gráfica</span>
+    <div className="stack">
+      <div className="row">
+        <span className="caption">Ruta gráfica</span>
         <Badge label={gamePathLabel(path)} shape="punteado" />
       </div>
       {gamePathSentences(path, minX86Level).map((sentence) => (
-        <p key={sentence} className="pequeno">
+        <p key={sentence} className="small">
           {sentence}
         </p>
       ))}
       {note && (
-        <p className="pequeno nota" data-tono={tone === 'verde' ? 'azul' : 'amarillo'}>
+        <p className="small note" data-tone={tone === 'verde' ? 'azul' : 'amarillo'}>
           {note}
         </p>
       )}
       {option && (
-        <p className="pequeno tenue">
+        <p className="small muted">
           Opción de lanzamiento en Steam: <code>{option}</code>
         </p>
       )}
-      {approximate && <p className="pequeno tenue">Calculada desde un diagnóstico de Windows: sirve de orientación.</p>}
+      {approximate && <p className="small muted">Calculada desde un diagnóstico de Windows: sirve de orientación.</p>}
     </div>
   )
 }

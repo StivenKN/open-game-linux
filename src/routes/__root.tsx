@@ -61,12 +61,12 @@ function SiteHeader() {
     if (n && current) n.scrollLeft = Math.max(0, current.offsetLeft + current.offsetWidth - n.offsetLeft - n.clientWidth + 16)
   }, [pathname])
   return (
-    <header className="cabecera">
-      <Link to="/" className="marca">
+    <header className="header">
+      <Link to="/" className="brand">
         <Brand />
         OpenGame Linux
       </Link>
-      <nav ref={nav} aria-label="Principal" className="navegacion">
+      <nav ref={nav} aria-label="Principal" className="nav">
         <Link to="/" activeOptions={{ exact: true }}>
           Inicio
         </Link>
@@ -79,13 +79,13 @@ function SiteHeader() {
           </>
         )}
       </nav>
-      <div className="cuenta">
+      <div className="account">
         {visitor === null ? (
           <>
-            <Link to="/entrar" className="boton-secundario">
+            <Link to="/entrar" className="button-secondary">
               Entrar
             </Link>
-            <Link to="/registro" className="boton">
+            <Link to="/registro" className="button">
               Crear cuenta
             </Link>
           </>
@@ -123,7 +123,7 @@ function SignOutButton() {
     setSigningOut(false)
   }
   return (
-    <button type="button" className="boton-secundario" onClick={() => void signOut()} disabled={signingOut}>
+    <button type="button" className="button-secondary" onClick={() => void signOut()} disabled={signingOut}>
       Salir
     </button>
   )
@@ -131,9 +131,9 @@ function SignOutButton() {
 
 function NotFoundPage() {
   return (
-    <main className="envoltura">
+    <main className="wrapper">
       <h1>No encontramos esa página</h1>
-      <p className="tenue">Puede que el enlace esté mal escrito o que el contenido ya no exista.</p>
+      <p className="muted">Puede que el enlace esté mal escrito o que el contenido ya no exista.</p>
       <Link to="/">Volver al inicio</Link>
     </main>
   )
@@ -141,9 +141,9 @@ function NotFoundPage() {
 
 function ErrorPage() {
   return (
-    <main className="envoltura">
+    <main className="wrapper">
       <h1>Algo falló de nuestro lado</h1>
-      <p className="tenue">Intenta de nuevo en unos segundos.</p>
+      <p className="muted">Intenta de nuevo en unos segundos.</p>
     </main>
   )
 }

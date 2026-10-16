@@ -18,20 +18,20 @@ export const Route = createFileRoute('/_muestras')({
 function SamplesPage() {
   return (
     <>
-      <main className="envoltura">
-        <p className="fila">
-          <span className="sello">Datos de ejemplo</span>
-          <span className="pequeno tenue">Muestras de veredicto · solo en desarrollo</span>
+      <main className="wrapper">
+        <p className="row">
+          <span className="stamp">Datos de ejemplo</span>
+          <span className="small muted">Muestras de veredicto · solo en desarrollo</span>
         </p>
-        <p className="dato tenue">Tu diagnóstico: {diagnostic.summary}</p>
+        <p className="datum muted">Tu diagnóstico: {diagnostic.summary}</p>
         {samples.map((m, i) => (
           <SampleCard key={m.key} sample={m} number={i + 1} />
         ))}
 
-        <h2 className="titulo-seccion">Otros estados</h2>
-        <div className="rejilla-2">
+        <h2 className="section-title">Otros estados</h2>
+        <div className="grid-2">
           <VerdictForMe personal={null} />
-          <div className="tarjeta">
+          <div className="card">
             <CopyBox label={launchOptions.label} text={launchOptions.text} />
           </div>
         </div>
@@ -42,26 +42,26 @@ function SamplesPage() {
 
 function SampleCard({ sample, number }: { sample: Sample; number: number }) {
   return (
-    <article className="ficha" aria-labelledby={`ficha-${sample.key}`}>
-      <h2 className="titulo-seccion">
+    <article className="sample-card" aria-labelledby={`ficha-${sample.key}`}>
+      <h2 className="section-title">
         ({number}) {sample.scenario}
       </h2>
-      <div className="migas">Catálogo / {sample.studio}</div>
-      <h3 id={`ficha-${sample.key}`} className="titulo-juego">
+      <div className="breadcrumbs">Catálogo / {sample.studio}</div>
+      <h3 id={`ficha-${sample.key}`} className="game-title">
         {sample.title}
       </h3>
-      <div className="fila-chips">
+      <div className="chip-row">
         {sample.editions.map((e) => (
           <span key={e} className="chip">
             {e}
           </span>
         ))}
       </div>
-      <div className="ficha-cuerpo">
+      <div className="game-page-body">
         <GameStatus summary={sample.summary} pending={sample.pending} />
         <VerdictForMe personal={sample.personal} />
       </div>
-      <h4 className="titulo-seccion">Entornos probados</h4>
+      <h4 className="section-title">Entornos probados</h4>
       <EnvironmentMatrix setups={sample.summary.setups} myDistribution={diagnostic.distribution_id} />
     </article>
   )

@@ -14,14 +14,14 @@ export function GameStatus({ summary, pending }: { summary: CompatibilitySummary
     return n > 0 ? [{ outcome: r, n }] : []
   })
   return (
-    <section className="veredicto" data-tono={label.tone} aria-label="Estado de compatibilidad">
-      <div className="veredicto-cabeza">
-        <span className="veredicto-icono" data-tono={label.tone} data-forma="relleno" data-estado={summary.status} aria-hidden="true">
+    <section className="verdict" data-tone={label.tone} aria-label="Estado de compatibilidad">
+      <div className="verdict-head">
+        <span className="verdict-icon" data-tone={label.tone} data-shape="relleno" data-state={summary.status} aria-hidden="true">
           {label.icon}
         </span>
         <div>
-          <p className="veredicto-estado">{label.text}</p>
-          <p className="veredicto-base">
+          <p className="verdict-status">{label.text}</p>
+          <p className="verdict-base">
             {summary.last_tested ? (
               <>
                 Según <b>{count(base, 'reporte aprobado', 'reportes aprobados')}</b>
@@ -34,29 +34,29 @@ export function GameStatus({ summary, pending }: { summary: CompatibilitySummary
           </p>
         </div>
       </div>
-      <p className="veredicto-significa">{statusMeaning[summary.status]}</p>
+      <p className="verdict-meaning">{statusMeaning[summary.status]}</p>
       {summary.no_recent_confirmation && (
-        <p className="nota pequeno" data-tono="amarillo">
+        <p className="note small" data-tone="amarillo">
           Sin confirmación en el último año: todos los reportes aprobados tienen más de 12 meses.
         </p>
       )}
       {summary.regressions.map((r) => (
-        <p key={r.edition_id} className="nota pequeno" data-tono="rojo">
+        <p key={r.edition_id} className="note small" data-tone="rojo">
           <b>Dejó de funcionar</b> en {r.launcher}: la prueba más reciente ({date(r.tested_at)}, versión {r.game_version},{' '}
           {r.layer}) dio «{outcome[r.outcome].text}» después de reportes que funcionaban.
         </p>
       ))}
       {breakdown.length > 0 && (
         <>
-          <div className="reparto" aria-hidden="true">
+          <div className="breakdown" aria-hidden="true">
             {breakdown.map((x) => (
-              <span key={x.outcome} data-tono={outcome[x.outcome].tone} data-forma="relleno" style={{ flexGrow: x.n }} />
+              <span key={x.outcome} data-tone={outcome[x.outcome].tone} data-shape="relleno" style={{ flexGrow: x.n }} />
             ))}
           </div>
-          <ul className="leyenda-reparto" aria-label="Resultados aprobados">
+          <ul className="breakdown-legend" aria-label="Resultados aprobados">
             {breakdown.map((x) => (
               <li key={x.outcome}>
-                <i data-tono={outcome[x.outcome].tone} data-forma="relleno" />
+                <i data-tone={outcome[x.outcome].tone} data-shape="relleno" />
                 {x.n} {outcome[x.outcome].text.toLowerCase()}
               </li>
             ))}
@@ -64,18 +64,18 @@ export function GameStatus({ summary, pending }: { summary: CompatibilitySummary
         </>
       )}
       {summary.failures.length > 0 && (
-        <p className="pequeno">
+        <p className="small">
           Causas observadas: <FailureChips failures={summary.failures} />
         </p>
       )}
       {pending > 0 && (
-        <p className="pendiente">
+        <p className="pending">
           {pending === 1
             ? '1 reporte más espera revisión y todavía no cuenta.'
             : `${pending} reportes más esperan revisión y todavía no cuentan.`}
         </p>
       )}
-      <p className="pequeno tenue">
+      <p className="small muted">
         El estado se calcula al consultar a partir de los reportes aprobados del último año, o de todos si ninguno es tan
         reciente. Un resultado favorable no garantiza que funcione en cualquier equipo.
       </p>

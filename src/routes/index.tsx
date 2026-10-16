@@ -68,20 +68,20 @@ function CatalogPage() {
   }
 
   return (
-    <main className="envoltura">
-      <section className="presentacion">
+    <main className="wrapper">
+      <section className="intro">
         <div>
           <h1>Lleva tu biblioteca de Windows a Linux.</h1>
-          <p className="bajada">
+          <p className="lede">
             Busca un juego y mira cómo les fue a jugadores que ya lo probaron, en su distribución y con su configuración.
             Solo cuenta lo que un revisor aprobó, y el estado usa los reportes del último año cuando los hay.
           </p>
-          <form role="search" className="buscador" method="get" action="/" onSubmit={onSearch}>
+          <form role="search" className="search" method="get" action="/" onSubmit={onSearch}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
               <circle cx="11" cy="11" r="7" />
               <path d="m20 20-4-4" />
             </svg>
-            <label htmlFor="q" className="solo-lector">
+            <label htmlFor="q" className="sr-only">
               Buscar un juego por título
             </label>
             <input id="q" name="q" type="search" placeholder="¿Qué quieres jugar?" defaultValue={filter.q ?? ''} key={filter.q} />
@@ -92,16 +92,16 @@ function CatalogPage() {
             <button type="submit">Buscar</button>
           </form>
           {featured.length > 0 && (
-            <p className="sugerencias">
-              <span className="tenue">Prueba:</span>
+            <p className="suggestions">
+              <span className="muted">Prueba:</span>
               {featured.map((j) => (
-                <Link key={j.id} to="/" search={{ q: j.title }} className="sugerencia">
+                <Link key={j.id} to="/" search={{ q: j.title }} className="suggestion">
                   {j.title}
                 </Link>
               ))}
             </p>
           )}
-          <p className="cifras">
+          <p className="figures">
             Hasta hoy hay <b>{count(counters.approved_reports, 'reporte aprobado', 'reportes aprobados')}</b> sobre{' '}
             <b>{count(counters.verified_games, 'juego verificado', 'juegos verificados')}</b>, en{' '}
             <b>{count(counters.tested_distributions, 'distribución', 'distribuciones')}</b>,{' '}
@@ -109,30 +109,30 @@ function CatalogPage() {
             <b>{count(counters.upstream_fixes, 'arreglo aceptado', 'arreglos aceptados')}</b> en umu-protonfixes.
           </p>
         </div>
-        <div className="abanico" aria-hidden="true">
+        <div className="fan" aria-hidden="true">
           {featured.map((j, i) => (
-            <div key={j.id} className="abanico-carta" data-posicion={positions[i]}>
+            <div key={j.id} className="fan-card" data-position={positions[i]}>
               <Cover title={j.title} status={j.summary.status} sample={j.demo} />
             </div>
           ))}
         </div>
       </section>
 
-      <div className="biblioteca">
-        <aside className="lateral" aria-label="Filtros">
-          <section aria-labelledby="filtro-estado">
-            <h2 id="filtro-estado" className="lateral-titulo">
+      <div className="library">
+        <aside className="sidebar" aria-label="Filtros">
+          <section aria-labelledby="status-filter">
+            <h2 id="status-filter" className="sidebar-title">
               Estado
             </h2>
-            <ul className="opciones">
+            <ul className="options">
               {CompatibilityStatus.literals.map((e) => {
                 const label = compatibilityStatus[e]
                 return (
                   <li key={e}>
                     <FilterLink active={filter.estado === e} search={toggle(filter, 'estado', e)} total={byStatus[e]}>
-                      <span className="punto" data-tono={label.tone} data-forma="relleno" data-estado={e} />
-                      <span className="opcion-nombre">{label.text}</span>
-                      <span className="opcion-que">{statusMeaning[e]}</span>
+                      <span className="dot" data-tone={label.tone} data-shape="relleno" data-state={e} />
+                      <span className="option-name">{label.text}</span>
+                      <span className="option-what">{statusMeaning[e]}</span>
                     </FilterLink>
                   </li>
                 )
@@ -141,20 +141,20 @@ function CatalogPage() {
             {/* Narrow screens hide each option's meaning and show only the active one here; screen readers
                 still get it from the active link itself. */}
             {filter.estado !== undefined && (
-              <p className="estado-significado" aria-hidden="true">
+              <p className="status-meaning" aria-hidden="true">
                 {statusMeaning[filter.estado]}
               </p>
             )}
           </section>
-          <section aria-labelledby="filtro-lanzador">
-            <h2 id="filtro-lanzador" className="lateral-titulo">
+          <section aria-labelledby="launcher-filter">
+            <h2 id="launcher-filter" className="sidebar-title">
               Lanzador
             </h2>
-            <ul className="opciones">
+            <ul className="options">
               {launchers.map((l) => (
                 <li key={l.id}>
                   <FilterLink active={filter.lanzador === l.id} search={toggle(filter, 'lanzador', l.id)}>
-                    <span className="opcion-nombre">{l.name}</span>
+                    <span className="option-name">{l.name}</span>
                   </FilterLink>
                 </li>
               ))}
@@ -164,10 +164,10 @@ function CatalogPage() {
             to="/"
             search={toggle(filter, 'sin_anti_cheat', true)}
             activeOptions={exactOnly}
-            className="interruptor"
+            className="switch"
             aria-current={filter.sin_anti_cheat === true || undefined}
           >
-            <span className="pista" />
+            <span className="track" />
             <span>
               <b>Sin bloqueo anti-cheat</b>
               <small>Oculta los juegos con reportes bloqueados por un anti-cheat.</small>
@@ -175,30 +175,30 @@ function CatalogPage() {
           </Link>
         </aside>
 
-        <section aria-labelledby="titulo-rejilla">
-          <div className="barra-rejilla">
-            <h2 id="titulo-rejilla">{count(games.length, 'juego', 'juegos')}</h2>
-            <span className="tenue">{active.length > 0 ? active.join(', ') : 'en el catálogo'}</span>
+        <section aria-labelledby="grid-title">
+          <div className="grid-bar">
+            <h2 id="grid-title">{count(games.length, 'juego', 'juegos')}</h2>
+            <span className="muted">{active.length > 0 ? active.join(', ') : 'en el catálogo'}</span>
             {filtered && (
-              <Link to="/" search={{}} activeOptions={exactOnly} className="limpiar">
+              <Link to="/" search={{}} activeOptions={exactOnly} className="clean">
                 Quitar filtros
               </Link>
             )}
           </div>
           {games.length === 0 ? (
-            <p className="vacio">
+            <p className="empty">
               {filtered ? 'Ningún juego coincide con estos filtros. Quita alguno o busca otro título.' : 'Todavía no hay juegos en el catálogo.'}
             </p>
           ) : (
-            <ul className="rejilla-juegos">
+            <ul className="game-grid">
               {games.map((j) => (
-                <li key={j.id} className="juego">
-                  <Link to="/juegos/$gameId" params={{ gameId: j.id }} className="juego-enlace">
-                    <span className="juego-nombre">{j.title}</span>
+                <li key={j.id} className="game-card">
+                  <Link to="/juegos/$gameId" params={{ gameId: j.id }} className="game-card-link">
+                    <span className="game-card-name">{j.title}</span>
                     <Cover title={j.title} status={j.summary.status} sample={j.demo} />
                   </Link>
-                  <p className="juego-meta">
-                    <span className="juego-lanzadores">{j.launchers.join(', ')}</span>
+                  <p className="game-card-meta">
+                    <span className="game-card-launchers">{j.launchers.join(', ')}</span>
                     <br />
                     {j.summary.last_tested
                       ? `${count(j.summary.test_count, 'reporte aprobado', 'reportes aprobados')} · última prueba ${date(j.summary.last_tested)}`
@@ -231,12 +231,12 @@ function CatalogPage() {
 
 function FilterLink({ active, search, total, children }: { active: boolean; search: CatalogFilter; total?: number; children: ReactNode }) {
   return (
-    <Link to="/" search={search} activeOptions={exactOnly} className="opcion" aria-current={active || undefined}>
+    <Link to="/" search={search} activeOptions={exactOnly} className="option" aria-current={active || undefined}>
       {children}
       {total !== undefined && (
-        <span className="opcion-cuenta">
+        <span className="option-count">
           {total}
-          <span className="solo-lector"> {total === 1 ? 'juego' : 'juegos'}</span>
+          <span className="sr-only"> {total === 1 ? 'juego' : 'juegos'}</span>
         </span>
       )}
     </Link>

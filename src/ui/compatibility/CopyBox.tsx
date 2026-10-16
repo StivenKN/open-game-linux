@@ -27,18 +27,18 @@ export function CopyBox({ text, label }: { text: string; label: string }) {
     )
 
   return (
-    <figure className="caja-copiar">
-      <figcaption className="rotulo">{label}</figcaption>
-      <div className="caja-copiar-cuerpo">
+    <figure className="copy-box">
+      <figcaption className="caption">{label}</figcaption>
+      <div className="copy-box-body">
         {/* Focusable so a keyboard user can scroll a command wider than the box. */}
         <pre tabIndex={0}>
           <code>{text}</code>
         </pre>
-        <button type="button" onClick={copy} aria-label={`Copiar ${label.toLowerCase()}`} data-estado={state}>
+        <button type="button" onClick={copy} aria-label={`Copiar ${label.toLowerCase()}`} data-state={state}>
           <span aria-hidden="true">{state === 'copiado' ? '✓ Copiado' : 'Copiar'}</span>
         </button>
       </div>
-      <p className="pequeno" role="status" data-tono={state === 'fallo' ? 'rojo' : 'verde'}>
+      <p className="small" role="status" data-tone={state === 'fallo' ? 'rojo' : 'verde'}>
         {notice[state]}
       </p>
     </figure>

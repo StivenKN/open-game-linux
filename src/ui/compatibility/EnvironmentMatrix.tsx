@@ -11,19 +11,19 @@ const initial = (distribution: string) =>
   (distribution.split(' ').find((p) => /^\p{L}/u.test(p) && p !== 'Linux') ?? distribution).charAt(0).toUpperCase()
 
 export function EnvironmentMatrix({ setups, myDistribution }: { setups: ReadonlyArray<TestedSetup>; myDistribution: DistributionId | null }) {
-  if (setups.length === 0) return <p className="tarjeta tenue">Sin entornos con evidencia aprobada.</p>
+  if (setups.length === 0) return <p className="card muted">Sin entornos con evidencia aprobada.</p>
   return (
-    <ul className="entornos" aria-label="Entornos probados con reportes aprobados">
+    <ul className="setups" aria-label="Entornos probados con reportes aprobados">
       {setups.map((e) => {
         const mine = e.distribution_id === myDistribution
         const status = compatibilityStatus[e.status]
         return (
-          <li key={e.key} className="entorno" data-mia={mine || undefined}>
-            <span className="entorno-franja" data-tono={status.tone} data-forma="relleno" data-estado={e.status} />
-            <span className="entorno-inicial" aria-hidden="true">
+          <li key={e.key} className="setup" data-mine={mine || undefined}>
+            <span className="setup-stripe" data-tone={status.tone} data-shape="relleno" data-state={e.status} />
+            <span className="setup-initial" aria-hidden="true">
               {initial(e.distribution)}
             </span>
-            <div className="entorno-que">
+            <div className="setup-what">
               <h3>
                 {e.distribution}
                 {mine && (
@@ -36,20 +36,20 @@ export function EnvironmentMatrix({ setups, myDistribution }: { setups: Readonly
                 {e.layer} · {e.launcher} · versión {e.game_version}
               </p>
             </div>
-            <dl className="entorno-datos">
+            <dl className="setup-data">
               <div>
                 <dt>Perfil</dt>
-                <dd>{e.profile ?? <span className="tenue">sin perfil</span>}</dd>
+                <dd>{e.profile ?? <span className="muted">sin perfil</span>}</dd>
               </div>
               <div>
                 <dt>FPS medido por la comunidad</dt>
                 {e.fps.length === 0 ? (
-                  <dd className="tenue">no medido</dd>
+                  <dd className="muted">no medido</dd>
                 ) : (
                   e.fps.map((f) => (
                     <dd key={`${f.resolution}|${f.quality}`}>
                       <b className="fps">{fps(f.average)}</b>{' '}
-                      <span className="pequeno tenue">
+                      <span className="small muted">
                         FPS · {f.resolution} · {f.quality} · {count(f.samples, 'medición', 'mediciones')}
                       </span>
                     </dd>
@@ -57,10 +57,10 @@ export function EnvironmentMatrix({ setups, myDistribution }: { setups: Readonly
                 )}
               </div>
             </dl>
-            <div className="entorno-resultado">
+            <div className="setup-outcome">
               <Badge label={status} />
               {e.status === 'resultados_variables' && (
-                <span className="pequeno tenue">
+                <span className="small muted">
                   {Outcome.literals
                     .flatMap((r) => {
                       const n = e.by_outcome[r]
@@ -70,10 +70,10 @@ export function EnvironmentMatrix({ setups, myDistribution }: { setups: Readonly
                 </span>
               )}
               {e.failures.length > 0 && <FailureChips failures={e.failures} />}
-              <span className="pequeno tenue">
+              <span className="small muted">
                 {count(e.test_count, 'prueba', 'pruebas')} · última {date(e.last_tested)}
               </span>
-              {e.recent_count === 0 && <span className="pequeno tenue">ninguna del último año</span>}
+              {e.recent_count === 0 && <span className="small muted">ninguna del último año</span>}
             </div>
           </li>
         )

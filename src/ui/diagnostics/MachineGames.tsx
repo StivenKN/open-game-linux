@@ -16,7 +16,7 @@ export function MachineGames({
   if (library === null)
     return (
       <>
-        <h2 className="titulo-seccion">Juegos</h2>
+        <h2 className="section-title">Juegos</h2>
         <DiagnosticMatrix rows={rows} approximate={approximate} />
       </>
     )
@@ -25,23 +25,23 @@ export function MachineGames({
   const { unknown } = library
   return (
     <>
-      <section className="pila" aria-labelledby="biblioteca-steam">
-        <h2 id="biblioteca-steam" className="titulo-seccion">
+      <section className="stack" aria-labelledby="steam-library">
+        <h2 id="steam-library" className="section-title">
           Tu biblioteca de Steam
         </h2>
-        <p className="tenue">
+        <p className="muted">
           {count(library.total, 'juego instalado', 'juegos instalados')}, {owned.length} en el catálogo.
         </p>
         {owned.length > 0 ? (
           <DiagnosticMatrix rows={owned} approximate={approximate} />
         ) : (
-          <p className="pequeno nota">Ninguno de tus juegos instalados está todavía en el catálogo.</p>
+          <p className="small note">Ninguno de tus juegos instalados está todavía en el catálogo.</p>
         )}
         {unknown.length > 0 && (
-          <details className="tarjeta" open={unknown.length <= OPEN_UP_TO}>
-            <summary className="panel-titulo">Juegos que todavía no conocemos ({unknown.length})</summary>
-            <p className="pequeno tenue">Aún no están en el catálogo, así que no sabemos cómo funcionan en Linux. Cada nombre abre su página en Steam.</p>
-            <ul className="lista-biblioteca">
+          <details className="card" open={unknown.length <= OPEN_UP_TO}>
+            <summary className="panel-title">Juegos que todavía no conocemos ({unknown.length})</summary>
+            <p className="small muted">Aún no están en el catálogo, así que no sabemos cómo funcionan en Linux. Cada nombre abre su página en Steam.</p>
+            <ul className="library-list">
               {unknown.map((j) => (
                 <li key={j.app_id}>
                   <a href={`https://store.steampowered.com/app/${j.app_id}`} target="_blank" rel="noreferrer">
@@ -53,7 +53,7 @@ export function MachineGames({
           </details>
         )}
       </section>
-      <h2 className="titulo-seccion">Resto del catálogo</h2>
+      <h2 className="section-title">Resto del catálogo</h2>
       <DiagnosticMatrix rows={rest} approximate={approximate} />
     </>
   )

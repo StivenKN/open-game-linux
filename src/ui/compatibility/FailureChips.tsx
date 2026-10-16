@@ -5,7 +5,7 @@ import { failureType } from '../vocabulary.ts'
 
 export function FailureChips({ failures }: { failures: ReadonlyArray<FailureCount> }) {
   return (
-    <span className="fila-chips">
+    <span className="chip-row">
       {failures.map((f) => {
         const label = failureType(f.code)
         return (

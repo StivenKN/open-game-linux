@@ -16,18 +16,18 @@ export const submitDiagnostic = (
 ): Write<{ readonly id: typeof Diagnostic.Type.id; readonly inserted: boolean }, RuleViolated | InvalidPayload> =>
   Effect.gen(function* () {
     const user = yield* requireUser
-    const capture = yield* captureOf(g.entrada)
+    const capture = yield* captureOf(g.input)
     const sql = yield* SqlClient.SqlClient
     yield* sql`SELECT 1 FROM app_user WHERE id = ${user.id} FOR UPDATE`
 
     const [machine] =
-      g.equipo._tag === 'existente'
-        ? yield* rows(MachineIdRow, sql`SELECT id FROM machine WHERE id = ${g.equipo.id} AND user_id = ${user.id}`)
+      g.machine._tag === 'existente'
+        ? yield* rows(MachineIdRow, sql`SELECT id FROM machine WHERE id = ${g.machine.id} AND user_id = ${user.id}`)
         : yield* rows(
             MachineIdRow,
             sql`
-              WITH previous AS (SELECT id FROM machine WHERE user_id = ${user.id} AND lower(alias) = lower(${g.equipo.alias}) ORDER BY id LIMIT 1),
-                   created AS (INSERT INTO machine (user_id, alias) SELECT ${user.id}, ${g.equipo.alias} WHERE NOT EXISTS (SELECT 1 FROM previous) RETURNING id)
+              WITH previous AS (SELECT id FROM machine WHERE user_id = ${user.id} AND lower(alias) = lower(${g.machine.alias}) ORDER BY id LIMIT 1),
+                   created AS (INSERT INTO machine (user_id, alias) SELECT ${user.id}, ${g.machine.alias} WHERE NOT EXISTS (SELECT 1 FROM previous) RETURNING id)
               SELECT id FROM previous UNION ALL SELECT id FROM created`,
           )
     if (machine === undefined) return yield* Effect.fail(new RuleViolated({ rule: 'equipo_ajeno' }))
@@ -60,7 +60,7 @@ export const submitDiagnostic = (
       ...linuxOnly,
       gpu_pci_id: capture.gpu_pci_id,
       // Sent as JSON text: the untyped parameter takes the jsonb column's type.
-      steam_library: g.con_biblioteca && capture.steam_library !== null ? JSON.stringify(capture.steam_library) : null,
+      steam_library: g.with_library && capture.steam_library !== null ? JSON.stringify(capture.steam_library) : null,
     }
     return yield* oneRow(
       Saved,

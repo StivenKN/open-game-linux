@@ -25,34 +25,34 @@ export const Route = createFileRoute('/diagnostico/')({
 function DiagnosticPage() {
   const { siteOrigin, machines } = Route.useLoaderData()
   return (
-    <main className="envoltura pila">
+    <main className="wrapper stack">
       <h1>Diagnóstico de tu equipo</h1>
-      <p className="tenue">
+      <p className="muted">
         Compara la RAM, la VRAM y el soporte de Vulkan de tu computador con los perfiles aprobados de cada juego. Puedes
         hacerlo sin cuenta: no guardamos nada hasta que pulses «Guardar en mi equipo».
       </p>
-      <div className="rejilla-2">
+      <div className="grid-2">
         <Detector siteOrigin={siteOrigin} />
         <Manual />
       </div>
       {machines.length > 0 && (
-        <section className="pila" aria-labelledby="mis-equipos">
-          <h2 id="mis-equipos" className="titulo-seccion">
+        <section className="stack" aria-labelledby="my-machines">
+          <h2 id="my-machines" className="section-title">
             Tus equipos
           </h2>
           {machines.map((e) => (
-            <div key={e.id} className="tarjeta pila">
-              <h3 className="sin-margen">{e.alias}</h3>
+            <div key={e.id} className="card stack">
+              <h3 className="no-margin">{e.alias}</h3>
               {e.diagnostics.length === 0 ? (
-                <p className="pequeno tenue">Sin diagnósticos todavía.</p>
+                <p className="small muted">Sin diagnósticos todavía.</p>
               ) : (
-                <ul className="pila">
+                <ul className="stack">
                   {e.diagnostics.map((d) => (
                     <li key={d.id}>
                       <Link to="/diagnosticos/$diagnosticId" params={{ diagnosticId: d.id }}>
                         {dateTime(d.captured_at)}
                       </Link>{' '}
-                      <span className="pequeno tenue dato">
+                      <span className="small muted datum">
                         {d.distribution ?? operatingSystemLabel[d.operating_system]} · {d.gpu_model} · {memory(d.ram_mb)} RAM
                       </span>
                     </li>
@@ -94,48 +94,48 @@ function Detector({ siteOrigin }: { siteOrigin: string }) {
     pasteBox.current?.scrollIntoView({ block: 'center' })
   }, [pegar])
   const evaluate = useEvaluate()
-  const r = useAction(Pasted, ({ data }) => evaluate({ _tag: 'detector', texto: data.texto }), {
+  const r = useAction(Pasted, ({ data }) => evaluate({ _tag: 'detector', texto: data.text }), {
     onFailure: payloadErrors('texto'),
     onComplete: () => undefined,
   })
   return (
-    <section className="tarjeta pila" aria-labelledby="detector">
-      <h2 id="detector" className="sin-margen">
+    <section className="card stack" aria-labelledby="detector">
+      <h2 id="detector" className="no-margin">
         Detector automático
       </h2>
-      <p className="pequeno tenue">
+      <p className="small muted">
         Un script que lee tu hardware y los juegos que tienes instalados en Steam, sin permisos de administrador. Al terminar
         abre esta página con el resultado en la dirección (después de «#»), que tu navegador no envía a ningún servidor.
       </p>
       <CopyBox label="Ejecuta en PowerShell (Windows 10 u 11, sin administrador)" text={`irm ${siteOrigin}/opengame-detect.ps1 | iex`} />
-      <p className="pequeno">
+      <p className="small">
         <a href="/opengame-detect.ps1" download="opengame-detect.ps1">
           Descargar opengame-detect.ps1
         </a>{' '}
-        <span className="tenue">para leerlo antes de ejecutarlo con</span> <code>powershell -ExecutionPolicy Bypass -File .\opengame-detect.ps1</code>
+        <span className="muted">para leerlo antes de ejecutarlo con</span> <code>powershell -ExecutionPolicy Bypass -File .\opengame-detect.ps1</code>
       </p>
       <CopyBox label="Ejecuta en una terminal de Linux" text={`curl -fsSL ${siteOrigin}/opengame-detect.sh | bash -s -- --open`} />
-      <p className="pequeno">
+      <p className="small">
         <a href="/opengame-detect.sh" download="opengame-detect.sh">
           Descargar opengame-detect.sh
         </a>{' '}
-        <span className="tenue">para leerlo antes de ejecutarlo con</span> <code>bash opengame-detect.sh --open</code>
+        <span className="muted">para leerlo antes de ejecutarlo con</span> <code>bash opengame-detect.sh --open</code>
       </p>
-      <form className="formulario" {...r.form}>
-        <label htmlFor="texto">¿Sin navegador en ese equipo? Pega aquí lo que imprimió el detector</label>
+      <form className="form" {...r.form}>
+        <label htmlFor="text">¿Sin navegador en ese equipo? Pega aquí lo que imprimió el detector</label>
         {pegar !== undefined && (
-          <p className="pequeno nota" data-tono="verde">
+          <p className="small note" data-tone="verde">
             El detector copió el resultado al portapapeles: pégalo aquí (Ctrl+V)
           </p>
         )}
-        <textarea {...fieldProps(r.errors, 'texto')} ref={pasteBox} className="campo-codigo" spellCheck={false} placeholder='{"version_esquema":1,…} o la dirección completa con #d=' />
-        <FieldError errors={r.errors} field="texto" />
-        <FieldError errors={r.errors} field="formulario" />
+        <textarea {...fieldProps(r.errors, 'text')} ref={pasteBox} className="code-field" spellCheck={false} placeholder='{"version_esquema":1,…} o la dirección completa con #d=' />
+        <FieldError errors={r.errors} field="text" />
+        <FieldError errors={r.errors} field="form" />
         <button type="submit" disabled={r.submitting}>
           {r.submitting ? 'Evaluando…' : 'Evaluar lo pegado'}
         </button>
       </form>
-      <p className="pequeno tenue">
+      <p className="small muted">
         En Linux, ¿Vulkan aparece como «Desconocido»? Instala <code>vulkan-tools</code> y vuelve a ejecutar el detector, o compruébalo a
         mano:
       </p>
@@ -160,14 +160,14 @@ function Manual() {
     onComplete: () => undefined,
   })
   return (
-    <section className="tarjeta pila" aria-labelledby="manual">
-      <h2 id="manual" className="sin-margen">
+    <section className="card stack" aria-labelledby="manual">
+      <h2 id="manual" className="no-margin">
         Descripción manual
       </h2>
-      <p className="pequeno tenue">¿No puedes ejecutar el detector? Escribe lo que sabes de tu equipo.</p>
-      <form className="formulario" {...r.form}>
-        <FieldError errors={r.errors} field="formulario" />
-        <div className="campos-2">
+      <p className="small muted">¿No puedes ejecutar el detector? Escribe lo que sabes de tu equipo.</p>
+      <form className="form" {...r.form}>
+        <FieldError errors={r.errors} field="form" />
+        <div className="fields-2">
           <div>
             <label htmlFor="sistema">Sistema</label>
             <select {...fieldProps(r.errors, 'sistema')} value={os} onChange={(e) => isOperatingSystem(e.currentTarget.value) && setOs(e.currentTarget.value)}>
@@ -185,7 +185,7 @@ function Manual() {
           </div>
         </div>
         {os === 'Linux' && (
-          <div className="campos-2">
+          <div className="fields-2">
             <div>
               <label htmlFor="distribucion[nombre]">Distribución</label>
               <input {...fieldProps(r.errors, 'distribucion[nombre]')} placeholder="Linux Mint" />
@@ -204,7 +204,7 @@ function Manual() {
         <label htmlFor="gpu_modelo">Tarjeta gráfica (GPU)</label>
         <input {...fieldProps(r.errors, 'gpu_modelo')} placeholder="NVIDIA GeForce GTX 1050" />
         <FieldError errors={r.errors} field="gpu_modelo" />
-        <div className="campos-2">
+        <div className="fields-2">
           <div>
             <label htmlFor="ram_mb">Memoria RAM</label>
             <select {...fieldProps(r.errors, 'ram_mb')} defaultValue="8192">
@@ -228,7 +228,7 @@ function Manual() {
           </div>
         </div>
         {os === 'Linux' && (
-          <div className="campos-2">
+          <div className="fields-2">
             <div>
               <label htmlFor="soporte_vulkan">Vulkan</label>
               <select {...fieldProps(r.errors, 'soporte_vulkan')} value={vulkan} onChange={(e) => isVulkanSupport(e.currentTarget.value) && setVulkan(e.currentTarget.value)}>

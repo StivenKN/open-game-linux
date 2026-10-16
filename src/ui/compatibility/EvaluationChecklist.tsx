@@ -33,20 +33,20 @@ const reason = (e: Evaluation): string => {
 export function EvaluationChecklist({ profile }: { profile: EvaluatedProfile | null }) {
   const evaluation = profile?.evaluation
   return (
-    <div className="pila">
-      <div className="fila">
+    <div className="stack">
+      <div className="row">
         <Badge label={requirementsVerdict[evaluation?.verdict ?? 'informacion_insuficiente']} shape="punteado" />
-        <span className="dato">{profile ? `perfil ${profile.title} r${profile.revision}` : 'sin perfil aprobado'}</span>
+        <span className="datum">{profile ? `perfil ${profile.title} r${profile.revision}` : 'sin perfil aprobado'}</span>
       </div>
       {evaluation && evaluation.checks.length > 0 && (
         <table className="checklist">
-          <caption className="solo-lector">Tu equipo frente al perfil</caption>
+          <caption className="sr-only">Tu equipo frente al perfil</caption>
           <thead>
             <tr>
               <th scope="col">Dato</th>
               <th scope="col">Tu equipo</th>
               <th scope="col">Mínimo conocido</th>
-              <th scope="col"><span className="solo-lector">Resultado</span></th>
+              <th scope="col"><span className="sr-only">Resultado</span></th>
             </tr>
           </thead>
           <tbody>
@@ -57,12 +57,12 @@ export function EvaluationChecklist({ profile }: { profile: EvaluatedProfile | n
                   <th scope="row">{requirement[c.requirement]}</th>
                   <td>
                     {c.detected === null ? 'desconocido' : displayValue(c, c.detected.value)}
-                    {c.requirement === 'vulkan' && c.detected !== null && <span className="pequeno"> · {vulkanOrigin[c.detected.origin]}</span>}
+                    {c.requirement === 'vulkan' && c.detected !== null && <span className="small"> · {vulkanOrigin[c.detected.origin]}</span>}
                   </td>
                   <td>{displayValue(c, c.required)}</td>
-                  <td data-tono={status.tone}>
+                  <td data-tone={status.tone}>
                     <span aria-hidden="true">{status.icon}</span>
-                    <span className="solo-lector">{status.text}</span>
+                    <span className="sr-only">{status.text}</span>
                   </td>
                 </tr>
               )
@@ -70,9 +70,9 @@ export function EvaluationChecklist({ profile }: { profile: EvaluatedProfile | n
           </tbody>
         </table>
       )}
-      <p className="pequeno tenue">{evaluation ? reason(evaluation) : 'No hay un perfil aprobado con condiciones conocidas.'}</p>
+      <p className="small muted">{evaluation ? reason(evaluation) : 'No hay un perfil aprobado con condiciones conocidas.'}</p>
       {evaluation?.advisory_only && (
-        <p className="pequeno nota" data-tono="azul">
+        <p className="small note" data-tone="azul">
           Diagnóstico hecho en Windows: Vulkan es una proyección para Linux según tu tarjeta gráfica; sirve de orientación.
         </p>
       )}
