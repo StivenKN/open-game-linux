@@ -93,11 +93,11 @@ function SavePanel({ input, libraryGameCount }: { input: Input; libraryGameCount
   const machines = Route.useLoaderData()
   const [target, setTarget] = useState(() => (machines[0] === undefined ? 'nuevo' : String(machines[0].id)))
   const [saved, setSaved] = useState<Saved | null>(null)
-  const r = useAction(SaveTarget, ({ data }) => saveDiagnosticFn({ data: { machine: data.machine, with_library: data.with_library, input } }), {
+  const r = useAction(SaveTarget, ({ data }) => saveDiagnosticFn({ data: { ...data, input } }), {
     onFailure: (f) =>
       f._tag === 'ReglaIncumplida'
-        ? { 'equipo[id]': 'Ese equipo no es tuyo. Elige uno de tu lista.' }
-        : { formulario: payloadReason[f.reason] },
+        ? { 'machine[id]': 'Ese equipo no es tuyo. Elige uno de tu lista.' }
+        : { form: payloadReason[f.reason] },
     onComplete: (value) => {
       forgetPending()
       setSaved(value)

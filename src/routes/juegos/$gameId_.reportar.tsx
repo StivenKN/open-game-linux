@@ -116,7 +116,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
   const [editionId, setEditionId] = useState(selected?.edition_id ?? editions.at(0)?.id)
   const [layerType, setLayerType] = useState<'existente' | 'nueva'>('existente')
   const [layerId, setLayerId] = useState(selected?.layer_version_id ?? layers.at(0)?.id)
-  const [newLayer, setNewLayer] = useState<{ readonly familia: LayerFamily; readonly variante: string }>({ familia: 'Wine', variante: '' })
+  const [newLayer, setNewLayer] = useState<{ readonly family: LayerFamily; readonly variant: string }>({ family: 'Wine', variant: '' })
   const [gameVersion, setGameVersion] = useState(selected?.target_game_version ?? '')
   const [profileId, setProfileId] = useState(selected === undefined ? nullText : String(selected.id))
   const [outcome, setOutcome] = useState<Outcome>('funciona')
@@ -148,7 +148,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
       }
     },
     onComplete: (v) => {
-      const layer = layerType === 'existente' ? layers.find((c) => c.id === layerId) : { family: newLayer.familia, variant: newLayer.variante }
+      const layer = layerType === 'existente' ? layers.find((c) => c.id === layerId) : newLayer
       const launcher = editions.find((e) => e.id === editionId)?.launcher
       const proton = layer !== undefined && launcher !== undefined && protonReportPossible({ launcher, family: layer.family, variant: layer.variant.trim(), outcome })
       onSubmitted({ id: v.id, hasFailures: failures.length > 0, proton })
@@ -211,8 +211,8 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
             <Field errors={r.errors} name="layer_version[family]" label="Familia">
               <select
                 {...fieldProps(r.errors, 'layer_version[family]')}
-                value={newLayer.familia}
-                onChange={(e) => setNewLayer({ ...newLayer, familia: LayerFamily.literals.find((f) => f === e.currentTarget.value) ?? newLayer.familia })}
+                value={newLayer.family}
+                onChange={(e) => setNewLayer({ ...newLayer, family: LayerFamily.literals.find((f) => f === e.currentTarget.value) ?? newLayer.family })}
               >
                 {LayerFamily.literals.map((f) => (
                   <option key={f}>{f}</option>
@@ -222,8 +222,8 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
             <Field errors={r.errors} name="layer_version[variant]" label="Variante">
               <input
                 {...fieldProps(r.errors, 'layer_version[variant]')}
-                value={newLayer.variante}
-                onChange={(e) => setNewLayer({ ...newLayer, variante: e.currentTarget.value })}
+                value={newLayer.variant}
+                onChange={(e) => setNewLayer({ ...newLayer, variant: e.currentTarget.value })}
                 placeholder="GE"
               />
             </Field>

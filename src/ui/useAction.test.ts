@@ -5,19 +5,19 @@ import { User } from '../domain/tables.ts'
 import { readForm } from './useAction.ts'
 
 const report: Record<string, string> = {
-  edicion_id: '1',
-  diagnostico_id: '2',
-  'version_capa[_tag]': 'existente',
-  'version_capa[id]': '3',
-  perfil_id: 'null',
-  version_juego: '  1.0.3  ',
-  version_lanzador: '',
-  fecha_prueba: '2026-10-01',
-  resultado: 'no_inicia',
-  'fallos[0][tipo_fallo_id]': '4',
-  'fallos[0][detalle]': 'Pantalla negra al lanzar',
-  medicion: 'null',
-  observaciones: 'Probado dos veces',
+  edition_id: '1',
+  diagnostic_id: '2',
+  'layer_version[_tag]': 'existente',
+  'layer_version[id]': '3',
+  profile_id: 'null',
+  game_version: '  1.0.3  ',
+  launcher_version: '',
+  tested_at: '2026-10-01',
+  outcome: 'no_inicia',
+  'failures[0][failure_type_id]': '4',
+  'failures[0][detail]': 'Pantalla negra al lanzar',
+  measurement: 'null',
+  observations: 'Probado dos veces',
 }
 
 const form = (changes: Record<string, string | null>) => {
@@ -50,22 +50,22 @@ describe('readForm', () => {
   })
 
   it('a blank required text gets the Text message', () => {
-    expect(errorsFor({ observaciones: '   ' })).toEqual({ observaciones: 'Este campo es obligatorio.' })
+    expect(errorsFor({ observations: '   ' })).toEqual({ observations: 'Este campo es obligatorio.' })
   })
 
   it('a missing field is required', () => {
-    expect(errorsFor({ perfil_id: null })).toEqual({ perfil_id: 'Este campo es obligatorio.' })
+    expect(errorsFor({ profile_id: null })).toEqual({ profile_id: 'Este campo es obligatorio.' })
   })
 
   it('a nested error lands on the name of the input that produced it', () => {
-    expect(errorsFor({ 'fallos[0][detalle]': '' })).toEqual({ 'fallos[0][detalle]': 'Este campo es obligatorio.' })
+    expect(errorsFor({ 'failures[0][detail]': '' })).toEqual({ 'failures[0][detail]': 'Este campo es obligatorio.' })
   })
 
   it('reports every invalid field at once, not only the first', () => {
-    expect(errorsFor({ observaciones: '', version_juego: '', perfil_id: null })).toEqual({
-      observaciones: 'Este campo es obligatorio.',
-      version_juego: 'Este campo es obligatorio.',
-      perfil_id: 'Este campo es obligatorio.',
+    expect(errorsFor({ observations: '', game_version: '', profile_id: null })).toEqual({
+      observations: 'Este campo es obligatorio.',
+      game_version: 'Este campo es obligatorio.',
+      profile_id: 'Este campo es obligatorio.',
     })
   })
 
@@ -77,14 +77,14 @@ describe('readForm', () => {
   })
 
   it('an unknown union member lands on the union name, in Spanish', () => {
-    expect(errorsFor({ 'version_capa[_tag]': 'inventada' })).toEqual({ version_capa: 'Revisa este valor.' })
+    expect(errorsFor({ 'layer_version[_tag]': 'inventada' })).toEqual({ layer_version: 'Revisa este valor.' })
   })
 
   it('an outcome outside the list shows no English type dump', () => {
-    expect(errorsFor({ resultado: 'regular' })).toEqual({ formulario: 'Revisa este valor.' })
+    expect(errorsFor({ outcome: 'regular' })).toEqual({ form: 'Revisa este valor.' })
   })
 
   it('a malformed value gets the generic Spanish notice', () => {
-    expect(errorsFor({ 'version_capa[id]': 'abc' })).toEqual({ 'version_capa[id]': 'Revisa este valor.' })
+    expect(errorsFor({ 'layer_version[id]': 'abc' })).toEqual({ 'layer_version[id]': 'Revisa este valor.' })
   })
 })

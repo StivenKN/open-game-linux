@@ -81,47 +81,47 @@ const asUser =
 
 const newReport = (e: Scenario, overrides: Record<string, unknown> = {}) =>
   Schema.decodeUnknownSync(NewReport)({
-    edicion_id: e.ed,
-    diagnostico_id: e.diagAna,
-    version_capa: { _tag: 'existente', id: e.layerVersion },
-    perfil_id: null,
-    version_juego: '1.0',
-    version_lanzador: null,
-    fecha_prueba: '2026-10-03T10:00:00.000Z',
-    resultado: 'funciona',
-    medicion: null,
-    observaciones: 'Probado una hora sin problemas',
+    edition_id: e.ed,
+    diagnostic_id: e.diagAna,
+    layer_version: { _tag: 'existente', id: e.layerVersion },
+    profile_id: null,
+    game_version: '1.0',
+    launcher_version: null,
+    tested_at: '2026-10-03T10:00:00.000Z',
+    outcome: 'funciona',
+    measurement: null,
+    observations: 'Probado una hora sin problemas',
     ...overrides,
   })
 
 const fileReport = (e: Scenario, overrides: Record<string, unknown> = {}, user: SignedInUser = e.ana) => asUser(user)(submitReport(newReport(e, overrides)))
 
 const ref = (type: 'perfil' | 'reporte' | 'solucion', id: number) => Schema.decodeUnknownSync(ContributionRef)({ _tag: type, id })
-const approve = Schema.decodeUnknownSync(Decision)({ _tag: 'Aprobar', motivo: 'Coincide con la evidencia', evidencia: 'Captura de MangoHud #7' })
-const reject = Schema.decodeUnknownSync(Decision)({ _tag: 'Rechazar', motivo: 'Sin datos suficientes' })
-const withdraw = Schema.decodeUnknownSync(Decision)({ _tag: 'Retirar', motivo: 'Versión obsoleta' })
+const approve = Schema.decodeUnknownSync(Decision)({ _tag: 'Aprobar', reason: 'Coincide con la evidencia', evidence: 'Captura de MangoHud #7' })
+const reject = Schema.decodeUnknownSync(Decision)({ _tag: 'Rechazar', reason: 'Sin datos suficientes' })
+const withdraw = Schema.decodeUnknownSync(Decision)({ _tag: 'Retirar', reason: 'Versión obsoleta' })
 
-const fileSolution = (e: Scenario, reporte_id: number, overrides: Record<string, unknown> = {}, user: SignedInUser = e.bruno) =>
+const fileSolution = (e: Scenario, report_id: number, overrides: Record<string, unknown> = {}, user: SignedInUser = e.bruno) =>
   asUser(user)(
     submitSolution(
       Schema.decodeUnknownSync(NewSolution)({
-        reporte_id,
-        tipo_fallo_id: e.lanzadorFallo,
-        perfil_id: null,
-        titulo: 'Reinstalar el lanzador',
-        instrucciones: 'Borra la carpeta del lanzador y vuelve a instalarlo.',
+        report_id,
+        failure_type_id: e.lanzadorFallo,
+        profile_id: null,
+        title: 'Reinstalar el lanzador',
+        instructions: 'Borra la carpeta del lanzador y vuelve a instalarlo.',
         ...overrides,
       }),
     ),
   )
 
 const newGame = (
-  titulo: string,
-  ediciones: ReadonlyArray<{ lanzador_id: number; identificador_externo: string }>,
-  graphics: { apis: ReadonlyArray<string>; nivel_x86_min: string | null } = { apis: ['d3d11'], nivel_x86_min: null },
-) => Schema.decodeUnknownSync(NewGame)({ titulo, descripcion: 'Un juego de prueba', ediciones, ...graphics })
+  title: string,
+  editions: ReadonlyArray<{ launcher_id: number; external_id: string }>,
+  graphics: { apis: ReadonlyArray<string>; x86_level_min: string | null } = { apis: ['d3d11'], x86_level_min: null },
+) => Schema.decodeUnknownSync(NewGame)({ title, description: 'Un juego de prueba', editions, ...graphics })
 
-const withFailure = (e: Scenario) => ({ resultado: 'no_inicia', fallos: [{ tipo_fallo_id: e.lanzadorFallo, detalle: 'El lanzador se cierra' }] })
+const withFailure = (e: Scenario) => ({ outcome: 'no_inicia', failures: [{ failure_type_id: e.lanzadorFallo, detail: 'El lanzador se cierra' }] })
 
 const inScenario = (test: (e: Scenario) => Effect.Effect<void, unknown, SqlClient.SqlClient>) => () =>
   inRollback(Effect.flatMap(scenario, test))
@@ -135,26 +135,26 @@ layer(PgTest)('aportes', (it) => {
   describe('la aplicación rechaza', () => {
     it.effect('un reporte desde el diagnóstico de un equipo ajeno', inScenario((e) =>
       Effect.gen(function* () {
-        expect(yield* Effect.flip(fileReport(e, { diagnostico_id: e.diagBruno }))).toEqual(rule('equipo_ajeno'))
+        expect(yield* Effect.flip(fileReport(e, { diagnostic_id: e.diagBruno }))).toEqual(rule('equipo_ajeno'))
         // A missing diagnosis answers the same, so ids reveal nothing.
-        expect(yield* Effect.flip(fileReport(e, { diagnostico_id: 999999 }))).toEqual(rule('equipo_ajeno'))
+        expect(yield* Effect.flip(fileReport(e, { diagnostic_id: 999999 }))).toEqual(rule('equipo_ajeno'))
       })))
 
     it.effect('un reporte desde un diagnóstico de Windows', inScenario((e) =>
       Effect.gen(function* () {
-        expect(yield* Effect.flip(fileReport(e, { diagnostico_id: e.diagAnaWindows }))).toEqual(rule('diagnostico_no_linux'))
+        expect(yield* Effect.flip(fileReport(e, { diagnostic_id: e.diagAnaWindows }))).toEqual(rule('diagnostico_no_linux'))
       })))
 
     it.effect('una prueba anterior al diagnóstico', inScenario((e) =>
       Effect.gen(function* () {
-        expect(yield* Effect.flip(fileReport(e, { fecha_prueba: '2026-10-01T09:59:00.000Z' }))).toEqual(rule('fecha_antes_del_diagnostico'))
+        expect(yield* Effect.flip(fileReport(e, { tested_at: '2026-10-01T09:59:00.000Z' }))).toEqual(rule('fecha_antes_del_diagnostico'))
         // The capture instant itself is allowed: "no anterior al diagnóstico".
-        yield* fileReport(e, { fecha_prueba: '2026-10-01T10:00:00.000Z' })
+        yield* fileReport(e, { tested_at: '2026-10-01T10:00:00.000Z' })
       })))
 
     it.effect('un perfil de otra edición, antes de que lo note la FK', inScenario((e) =>
       Effect.gen(function* () {
-        expect(yield* Effect.flip(fileReport(e, { edicion_id: e.edGog, perfil_id: e.perfilMint }))).toEqual(
+        expect(yield* Effect.flip(fileReport(e, { edition_id: e.edGog, profile_id: e.perfilMint }))).toEqual(
           incomparable([{ aspect: 'edicion', expected: e.ed, actual: e.edGog }]),
         )
       })))
@@ -162,7 +162,7 @@ layer(PgTest)('aportes', (it) => {
     it.effect('un perfil de otro entorno: capa, distribución, arquitectura y versión del juego', inScenario((e) =>
       Effect.gen(function* () {
         const fedora = yield* e.profile({ distribution_id: e.fedora, architecture: 'aarch64', target_game_version: '2.0' })
-        const failure = yield* Effect.flip(fileReport(e, { perfil_id: fedora, version_capa: { _tag: 'existente', id: e.capa8 } }))
+        const failure = yield* Effect.flip(fileReport(e, { profile_id: fedora, layer_version: { _tag: 'existente', id: e.capa8 } }))
         expect(failure).toEqual(
           incomparable([
             { aspect: 'capa', expected: e.layerVersion, actual: e.capa8 },
@@ -176,23 +176,23 @@ layer(PgTest)('aportes', (it) => {
     it.effect('un perfil rechazado o inexistente', inScenario((e) =>
       Effect.gen(function* () {
         yield* asUser(e.rita)(decide(ref('perfil', e.perfilMint), reject))
-        expect(yield* Effect.flip(fileReport(e, { perfil_id: e.perfilMint }))).toEqual(rule('perfil_no_disponible'))
-        expect(yield* Effect.flip(fileReport(e, { perfil_id: 999999 }))).toEqual(rule('perfil_no_disponible'))
+        expect(yield* Effect.flip(fileReport(e, { profile_id: e.perfilMint }))).toEqual(rule('perfil_no_disponible'))
+        expect(yield* Effect.flip(fileReport(e, { profile_id: 999999 }))).toEqual(rule('perfil_no_disponible'))
       })))
 
     it.effect('una versión de capa nueva escrita como «latest»', inScenario((e) =>
       Effect.gen(function* () {
-        const failure = yield* Effect.flip(fileReport(e, { version_capa: { _tag: 'nueva', familia: 'Proton', variante: 'GE', version: ' Latest ' } }))
+        const failure = yield* Effect.flip(fileReport(e, { layer_version: { _tag: 'nueva', family: 'Proton', variant: 'GE', version: ' Latest ' } }))
         expect(failure).toEqual(rule('version_capa_no_exacta'))
       })))
 
     it.effect('el mismo tipo de fallo dos veces, sin dejar el reporte a medias', inScenario((e) =>
       Effect.gen(function* () {
-        const fallos = [
-          { tipo_fallo_id: e.otro, detalle: 'pantalla negra' },
-          { tipo_fallo_id: e.otro, detalle: 'se cierra' },
+        const failures = [
+          { failure_type_id: e.otro, detail: 'pantalla negra' },
+          { failure_type_id: e.otro, detail: 'se cierra' },
         ]
-        expect(yield* Effect.flip(fileReport(e, { resultado: 'no_inicia', fallos }))).toEqual(rule('fallo_duplicado'))
+        expect(yield* Effect.flip(fileReport(e, { outcome: 'no_inicia', failures }))).toEqual(rule('fallo_duplicado'))
         expect(yield* e.sql`SELECT count(*)::int AS n FROM report`).toEqual([{ n: 0 }])
       })))
 
@@ -200,20 +200,20 @@ layer(PgTest)('aportes', (it) => {
       Effect.gen(function* () {
         const { id } = yield* fileReport(e, withFailure(e))
         const gog = yield* e.profile({ edition_id: e.edGog })
-        expect(yield* Effect.flip(fileSolution(e, id, { perfil_id: gog }))).toEqual(rule('solucion_perfil_otra_edicion'))
+        expect(yield* Effect.flip(fileSolution(e, id, { profile_id: gog }))).toEqual(rule('solucion_perfil_otra_edicion'))
       })))
 
     it.effect('una solución para un fallo que el reporte no tiene', inScenario((e) =>
       Effect.gen(function* () {
         const { id } = yield* fileReport(e, withFailure(e))
-        expect(yield* Effect.flip(fileSolution(e, id, { tipo_fallo_id: e.otro }))).toEqual(rule('solucion_sin_fallo'))
+        expect(yield* Effect.flip(fileSolution(e, id, { failure_type_id: e.otro }))).toEqual(rule('solucion_sin_fallo'))
       })))
 
     it.effect('que un revisor apruebe su propio reporte, perfil o solución', inScenario((e) =>
       Effect.gen(function* () {
-        // rita reviews, but she is also a user: her own equipo, report, profile and solution.
+        // rita reviews, but she is also a user: her own machine, report, profile and solution.
         const diagRita = yield* e.diagnostic(yield* idOf(e.sql`INSERT INTO machine (user_id, alias) VALUES ('rita', 'r') RETURNING id`), '2026-10-01T10:00:00Z')
-        const { id: report } = yield* fileReport(e, { diagnostico_id: diagRita, ...withFailure(e) }, e.rita)
+        const { id: report } = yield* fileReport(e, { diagnostic_id: diagRita, ...withFailure(e) }, e.rita)
         const profile = yield* e.profile({ author_id: 'rita', revision: 2 })
         const { id: solution } = yield* fileSolution(e, report, {}, e.rita)
         for (const r of [ref('reporte', report), ref('perfil', profile), ref('solucion', solution)])
@@ -225,11 +225,11 @@ layer(PgTest)('aportes', (it) => {
         const blocked = new ApprovalBlocked({ blockers: ['perfil_sin_reporte_funcional_aprobado'] })
         expect(yield* Effect.flip(asUser(e.rita)(decide(ref('perfil', e.perfilMint), approve)))).toEqual(blocked)
 
-        const { id: failing } = yield* fileReport(e, { perfil_id: e.perfilMint, ...withFailure(e) })
+        const { id: failing } = yield* fileReport(e, { profile_id: e.perfilMint, ...withFailure(e) })
         yield* asUser(e.rita)(decide(ref('reporte', failing), approve))
         expect(yield* Effect.flip(asUser(e.rita)(decide(ref('perfil', e.perfilMint), approve)))).toEqual(blocked)
 
-        const { id: pending } = yield* fileReport(e, { perfil_id: e.perfilMint, fecha_prueba: '2026-10-04T10:00:00.000Z' })
+        const { id: pending } = yield* fileReport(e, { profile_id: e.perfilMint, tested_at: '2026-10-04T10:00:00.000Z' })
         expect(yield* Effect.flip(asUser(e.rita)(decide(ref('perfil', e.perfilMint), approve)))).toEqual(blocked)
 
         yield* asUser(e.rita)(decide(ref('reporte', pending), approve))
@@ -238,8 +238,8 @@ layer(PgTest)('aportes', (it) => {
 
     it.effect('aprobar una solución con el fallo de origen pendiente o un perfil recomendado pendiente', inScenario((e) =>
       Effect.gen(function* () {
-        const { id: report } = yield* fileReport(e, { perfil_id: e.perfilMint, ...withFailure(e) })
-        const { id: solution } = yield* fileSolution(e, report, { perfil_id: e.perfilMint }, e.ana)
+        const { id: report } = yield* fileReport(e, { profile_id: e.perfilMint, ...withFailure(e) })
+        const { id: solution } = yield* fileSolution(e, report, { profile_id: e.perfilMint }, e.ana)
         expect(yield* approvalBlockers(ref('solucion', solution))).toEqual(['solucion_fallo_origen_no_aprobado', 'solucion_perfil_no_aprobado'])
         yield* asUser(e.rita)(decide(ref('reporte', report), approve))
         expect(yield* Effect.flip(asUser(e.rita)(decide(ref('solucion', solution), approve)))).toEqual(
@@ -269,7 +269,7 @@ layer(PgTest)('aportes', (it) => {
 
     it.effect('que un usuario o un invitado registre un juego, sin escribir nada', inScenario((e) =>
       Effect.gen(function* () {
-        const game = newGame('Hades', [{ lanzador_id: e.launcher, identificador_externo: '1145360' }])
+        const game = newGame('Hades', [{ launcher_id: e.launcher, external_id: '1145360' }])
         expect(yield* Effect.flip(asUser(e.ana)(createGame(game)))).toEqual(new Forbidden())
         expect(yield* Effect.flip(asUser(null)(createGame(game)))).toEqual(new Unauthenticated())
         expect(yield* e.sql`SELECT title FROM game WHERE title = 'Hades'`).toEqual([])
@@ -278,12 +278,12 @@ layer(PgTest)('aportes', (it) => {
     it.effect('dos ediciones en el mismo lanzador, o un identificador de tienda que ya usa otro juego', inScenario((e) =>
       Effect.gen(function* () {
         const duplicate = newGame('Hades', [
-          { lanzador_id: e.launcher, identificador_externo: '' },
-          { lanzador_id: e.launcher, identificador_externo: '' },
+          { launcher_id: e.launcher, external_id: '' },
+          { launcher_id: e.launcher, external_id: '' },
         ])
         expect(yield* Effect.flip(asUser(e.rita)(createGame(duplicate)))).toEqual(rule('edicion_repetida'))
-        yield* asUser(e.rita)(createGame(newGame('Hades', [{ lanzador_id: e.launcher, identificador_externo: '1145360' }])))
-        const foreign = newGame('Hades II', [{ lanzador_id: e.launcher, identificador_externo: '1145360' }])
+        yield* asUser(e.rita)(createGame(newGame('Hades', [{ launcher_id: e.launcher, external_id: '1145360' }])))
+        const foreign = newGame('Hades II', [{ launcher_id: e.launcher, external_id: '1145360' }])
         expect(yield* Effect.flip(asUser(e.rita)(createGame(foreign)))).toEqual(rule('identificador_en_uso'))
         expect(yield* e.sql`SELECT title FROM game WHERE title LIKE 'Hades%' ORDER BY title`).toEqual([{ title: 'Hades' }])
       })))
@@ -292,7 +292,7 @@ layer(PgTest)('aportes', (it) => {
   describe('la aplicación permite', () => {
     it.effect('que un revisor registre un juego con sus APIs gráficas y CPU mínima, y la ficha las devuelve en orden', inScenario((e) =>
       Effect.gen(function* () {
-        const game = newGame('Hades', [{ lanzador_id: e.launcher, identificador_externo: '1145360' }], { apis: ['vulkan', 'd3d11', 'd3d11'], nivel_x86_min: 'v2' })
+        const game = newGame('Hades', [{ launcher_id: e.launcher, external_id: '1145360' }], { apis: ['vulkan', 'd3d11', 'd3d11'], x86_level_min: 'v2' })
         const { id } = yield* asUser(e.rita)(createGame(game))
         const page = yield* asUser(null)(gamePage(id))
         expect(page.game).toMatchObject({ apis: ['d3d11', 'vulkan'], x86_level_min: 'v2' })
@@ -303,8 +303,8 @@ layer(PgTest)('aportes', (it) => {
         const { id } = yield* asUser(e.rita)(
           createGame(
             newGame('  Hades  ', [
-              { lanzador_id: e.launcher, identificador_externo: '1145360' },
-              { lanzador_id: e.lanzador2, identificador_externo: '   ' },
+              { launcher_id: e.launcher, external_id: '1145360' },
+              { launcher_id: e.lanzador2, external_id: '   ' },
             ]),
           ),
         )
@@ -319,15 +319,15 @@ layer(PgTest)('aportes', (it) => {
       Effect.gen(function* () {
         const later = yield* e.diagnostic(e.equipoAna, '2026-10-05T10:00:00Z', { ram_mb: 32768 })
         yield* fileReport(e)
-        yield* fileReport(e, { diagnostico_id: later, fecha_prueba: '2026-10-06T10:00:00.000Z' })
+        yield* fileReport(e, { diagnostic_id: later, tested_at: '2026-10-06T10:00:00.000Z' })
         const rows = yield* e.sql`SELECT diagnostic_id FROM report ORDER BY tested_at`
         expect(rows).toEqual([{ diagnostic_id: e.diagAna }, { diagnostic_id: later }])
       })))
 
     it.effect('un reporte sin perfil, con su medición y sus fallos', inScenario((e) =>
       Effect.gen(function* () {
-        const medicion = { fps_promedio: 54.5, resolucion: '1280x720', calidad_grafica: 'Bajo', metodo_medicion: 'MangoHud, 5 min' }
-        const { id } = yield* fileReport(e, { resultado: 'falla_en_ejecucion', medicion, fallos: [{ tipo_fallo_id: e.otro, detalle: 'Se cierra a los 10 min' }] })
+        const measurement = { avg_fps: 54.5, resolution: '1280x720', graphics_quality: 'Bajo', measurement_method: 'MangoHud, 5 min' }
+        const { id } = yield* fileReport(e, { outcome: 'falla_en_ejecucion', measurement, failures: [{ failure_type_id: e.otro, detail: 'Se cierra a los 10 min' }] })
         const report = Schema.decodeUnknownSync(Rows)(yield* e.sql`SELECT profile_id, avg_fps, resolution, review_status FROM report WHERE id = ${id}`)
         expect(report).toEqual([{ profile_id: null, avg_fps: '54.50', resolution: '1280x720', review_status: 'pendiente' }])
         expect(yield* e.sql`SELECT failure_type_id, detail FROM report_failure WHERE report_id = ${id}`).toEqual([
@@ -337,9 +337,9 @@ layer(PgTest)('aportes', (it) => {
 
     it.effect('una versión de capa nueva se crea una sola vez', inScenario((e) =>
       Effect.gen(function* () {
-        const newLayer = { _tag: 'nueva', familia: 'Proton', variante: 'GE', version: '9-20' }
-        yield* fileReport(e, { version_capa: newLayer })
-        yield* fileReport(e, { version_capa: newLayer, fecha_prueba: '2026-10-04T10:00:00.000Z' })
+        const newLayer = { _tag: 'nueva', family: 'Proton', variant: 'GE', version: '9-20' }
+        yield* fileReport(e, { layer_version: newLayer })
+        yield* fileReport(e, { layer_version: newLayer, tested_at: '2026-10-04T10:00:00.000Z' })
         const layers = yield* e.sql`SELECT count(*)::int AS n, count(DISTINCT r.layer_version_id)::int AS usadas
                                    FROM layer_version c JOIN report r ON r.layer_version_id = c.id WHERE c.variant = 'GE'`
         expect(layers).toEqual([{ n: 2, usadas: 1 }])
@@ -350,19 +350,19 @@ layer(PgTest)('aportes', (it) => {
         const { id } = yield* fileReport(e)
         expect(yield* asUser(e.rita)(decide(ref('reporte', id), approve))).toEqual({ changed: true })
         const before = yield* e.sql`SELECT reviewer_id, reviewed_at, review_reason, review_evidence FROM report WHERE id = ${id}`
-        const otherDecision = Schema.decodeUnknownSync(Decision)({ _tag: 'Aprobar', motivo: 'otro motivo', evidencia: 'otra evidencia' })
+        const otherDecision = Schema.decodeUnknownSync(Decision)({ _tag: 'Aprobar', reason: 'otro motivo', evidence: 'otra evidencia' })
         expect(yield* asUser(e.rita)(decide(ref('reporte', id), otherDecision))).toEqual({ changed: false })
         expect(yield* e.sql`SELECT reviewer_id, reviewed_at, review_reason, review_evidence FROM report WHERE id = ${id}`).toEqual(before)
       })))
 
     it.effect('probar un perfil pendiente y aprobarlo con ese reporte; luego publicar una solución', inScenario((e) =>
       Effect.gen(function* () {
-        const { id: working } = yield* fileReport(e, { perfil_id: e.perfilMint })
-        const { id: failing } = yield* fileReport(e, { perfil_id: e.perfilMint, fecha_prueba: '2026-10-04T10:00:00.000Z', ...withFailure(e) })
+        const { id: working } = yield* fileReport(e, { profile_id: e.perfilMint })
+        const { id: failing } = yield* fileReport(e, { profile_id: e.perfilMint, tested_at: '2026-10-04T10:00:00.000Z', ...withFailure(e) })
         yield* asUser(e.rita)(decide(ref('reporte', working), approve))
         yield* asUser(e.rita)(decide(ref('perfil', e.perfilMint), approve))
         yield* asUser(e.rita)(decide(ref('reporte', failing), approve))
-        const { id: solution } = yield* fileSolution(e, failing, { perfil_id: e.perfilMint })
+        const { id: solution } = yield* fileSolution(e, failing, { profile_id: e.perfilMint })
         expect(yield* asUser(e.rita)(decide(ref('solucion', solution), approve))).toEqual({ changed: true })
         const statuses = yield* e.sql`SELECT review_status, reviewer_id, review_evidence FROM solution WHERE id = ${solution}`
         expect(statuses).toEqual([{ review_status: 'aprobado', reviewer_id: 'rita', review_evidence: 'Captura de MangoHud #7' }])

@@ -24,7 +24,7 @@ describe('form conventions', () => {
   })
 
   it('apis[] checkboxes arrive as a list, even with one ticked', () => {
-    const game = formData({ titulo: 'Hades', descripcion: 'd', 'ediciones[0][lanzador_id]': '1', 'ediciones[0][identificador_externo]': '', nivel_x86_min: 'null' })
+    const game = formData({ title: 'Hades', description: 'd', 'editions[0][launcher_id]': '1', 'editions[0][external_id]': '', x86_level_min: 'null' })
     const read = (...apis: ReadonlyArray<string>) => {
       const f = new FormData()
       for (const [k, v] of game) f.append(k, v)
@@ -43,42 +43,42 @@ describe('form conventions', () => {
 
 describe('column limits in the report', () => {
   const report = {
-    edicion_id: '1',
-    diagnostico_id: '2',
-    'version_capa[_tag]': 'nueva',
-    'version_capa[familia]': 'Proton',
-    'version_capa[variante]': 'GE',
-    'version_capa[version]': '9-20',
-    perfil_id: 'null',
-    version_juego: '1.0',
-    version_lanzador: '',
-    fecha_prueba: '2026-10-01T10:00',
-    resultado: 'funciona',
-    'medicion[fps_promedio]': '60',
-    'medicion[resolucion]': '1920x1080',
-    'medicion[calidad_grafica]': 'Alta',
-    'medicion[metodo_medicion]': 'MangoHud',
-    observaciones: 'Sin problemas',
+    edition_id: '1',
+    diagnostic_id: '2',
+    'layer_version[_tag]': 'nueva',
+    'layer_version[family]': 'Proton',
+    'layer_version[variant]': 'GE',
+    'layer_version[version]': '9-20',
+    profile_id: 'null',
+    game_version: '1.0',
+    launcher_version: '',
+    tested_at: '2026-10-01T10:00',
+    outcome: 'funciona',
+    'measurement[avg_fps]': '60',
+    'measurement[resolution]': '1920x1080',
+    'measurement[graphics_quality]': 'Alta',
+    'measurement[measurement_method]': 'MangoHud',
+    observations: 'Sin problemas',
   }
 
   it('a text longer than its column is a field error, not a failed insert', () => {
     const tooLong = readForm(
       NewReport,
-      formData({ ...report, version_juego: 'v'.repeat(81), version_lanzador: 'l'.repeat(81), 'medicion[resolucion]': 'r'.repeat(31), 'version_capa[version]': 'x'.repeat(61) }),
+      formData({ ...report, game_version: 'v'.repeat(81), launcher_version: 'l'.repeat(81), 'measurement[resolution]': 'r'.repeat(31), 'layer_version[version]': 'x'.repeat(61) }),
     )
     expect(tooLong).toEqual(
       Result.fail({
-        version_juego: 'Usa como máximo 80 caracteres.',
-        version_lanzador: 'Usa como máximo 80 caracteres.',
-        'medicion[resolucion]': 'Usa como máximo 30 caracteres.',
-        'version_capa[version]': 'Usa como máximo 60 caracteres.',
+        game_version: 'Usa como máximo 80 caracteres.',
+        launcher_version: 'Usa como máximo 80 caracteres.',
+        'measurement[resolution]': 'Usa como máximo 30 caracteres.',
+        'layer_version[version]': 'Usa como máximo 60 caracteres.',
       }),
     )
   })
 
   it('an FPS average that does not fit numeric(7,2) states the range', () => {
-    expect(readForm(NewReport, formData({ ...report, 'medicion[fps_promedio]': '100000' }))).toEqual(
-      Result.fail({ 'medicion[fps_promedio]': 'Escribe un promedio de FPS entre 0 y 99999.99.' }),
+    expect(readForm(NewReport, formData({ ...report, 'measurement[avg_fps]': '100000' }))).toEqual(
+      Result.fail({ 'measurement[avg_fps]': 'Escribe un promedio de FPS entre 0 y 99999.99.' }),
     )
   })
 })

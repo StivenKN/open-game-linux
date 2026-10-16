@@ -69,9 +69,7 @@ export const submitReport = (n: NewReport): Write<{ readonly id: ReportId }, Rul
       })} RETURNING id`,
     )
     if (Arr.isReadonlyArrayNonEmpty(n.failures))
-      yield* withDbRules(
-        sql`INSERT INTO report_failure ${sql.insert(n.failures.map((f) => ({ report_id: created.id, failure_type_id: f.failure_type_id, detail: f.detail })))}`,
-      )
+      yield* withDbRules(sql`INSERT INTO report_failure ${sql.insert(n.failures.map((f) => ({ report_id: created.id, ...f })))}`)
     return { id: created.id }
   })
 
@@ -141,9 +139,7 @@ export const createGame = (j: NewGame): Write<{ readonly id: GameId }, RuleViola
       GameIdRow,
       sql`INSERT INTO game ${sql.insert({ title: j.title, description: j.description, x86_level_min: j.x86_level_min })} RETURNING id`,
     )
-    yield* withDbRules(
-      sql`INSERT INTO game_edition ${sql.insert(j.editions.map((e) => ({ game_id: created.id, launcher_id: e.launcher_id, external_id: e.external_id })))}`,
-    )
+    yield* withDbRules(sql`INSERT INTO game_edition ${sql.insert(j.editions.map((e) => ({ game_id: created.id, ...e })))}`)
     yield* sql`INSERT INTO game_api ${sql.insert(Arr.dedupe(j.apis).map((api) => ({ game_id: created.id, api })))}`
     return { id: created.id }
   })

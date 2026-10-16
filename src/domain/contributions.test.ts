@@ -55,49 +55,49 @@ const fromForm = <S extends Schema.Top & { readonly DecodingServices: never }>(s
 describe('NewReport from the report form', () => {
   const decode = fromForm(NewReport)
   const base = {
-    edicion_id: '1',
-    diagnostico_id: '2',
-    'version_capa[_tag]': 'existente',
-    'version_capa[id]': '3',
-    perfil_id: 'null',
-    version_juego: '1.0.3',
-    version_lanzador: '',
-    fecha_prueba: '2026-10-01',
-    resultado: 'funciona',
-    medicion: 'null',
-    observaciones: 'Probado dos veces',
+    edition_id: '1',
+    diagnostic_id: '2',
+    'layer_version[_tag]': 'existente',
+    'layer_version[id]': '3',
+    profile_id: 'null',
+    game_version: '1.0.3',
+    launcher_version: '',
+    tested_at: '2026-10-01',
+    outcome: 'funciona',
+    measurement: 'null',
+    observations: 'Probado dos veces',
   }
 
-  it('a working result with no failure rows decodes with fallos []', () => {
+  it('a working result with no failure rows decodes with failures []', () => {
     const r = decode(base)
     expect(Result.isSuccess(r) && r.success).toMatchObject({ outcome: 'funciona', failures: [], profile_id: null, launcher_version: null })
   })
 
-  it('a failing result with no fallos fails on the fallos field (8.7)', () => {
-    expect(decode({ ...base, resultado: 'no_inicia' })).toEqual(
-      Result.fail([[['fallos'], 'Si no inicia o falla, indica al menos un tipo de fallo (usa «otro» si no sabes la causa).']]),
+  it('a failing result with no failures fails on the failures field (8.7)', () => {
+    expect(decode({ ...base, outcome: 'no_inicia' })).toEqual(
+      Result.fail([[['failures'], 'Si no inicia o falla, indica al menos un tipo de fallo (usa «otro» si no sabes la causa).']]),
     )
   })
 
-  it('a failing result with a fallo decodes, and its fallos type is non-empty', () => {
-    const r = decode({ ...base, resultado: 'falla_en_ejecucion', 'fallos[0][tipo_fallo_id]': '4', 'fallos[0][detalle]': 'Se cierra' })
+  it('a failing result with a failure decodes, and its failures type is non-empty', () => {
+    const r = decode({ ...base, outcome: 'falla_en_ejecucion', 'failures[0][failure_type_id]': '4', 'failures[0][detail]': 'Se cierra' })
     expect(Result.isSuccess(r) && r.success).toMatchObject({ failures: [{ failure_type_id: 4, detail: 'Se cierra' }] })
   })
 
-  it('perfil_id "null" is no profile, a number is a profile', () => {
+  it('profile_id "null" is no profile, a number is a profile', () => {
     const withoutProfile = decode(base)
-    const withProfile = decode({ ...base, perfil_id: '7' })
+    const withProfile = decode({ ...base, profile_id: '7' })
     expect([Result.isSuccess(withoutProfile) && withoutProfile.success.profile_id, Result.isSuccess(withProfile) && withProfile.success.profile_id]).toEqual([null, 7])
   })
 
   it('required text is trimmed, and blank after trimming is rejected (8.9)', () => {
-    const r = decode({ ...base, version_juego: '  1.0.3  ' })
+    const r = decode({ ...base, game_version: '  1.0.3  ' })
     expect(Result.isSuccess(r) && r.success.game_version).toBe('1.0.3')
-    expect(decode({ ...base, version_juego: '   ' })).toEqual(Result.fail([[['version_juego'], 'Este campo es obligatorio.']]))
+    expect(decode({ ...base, game_version: '   ' })).toEqual(Result.fail([[['game_version'], 'Este campo es obligatorio.']]))
   })
 
-  it('a new native layer version decodes (familia Nativo)', () => {
-    const r = decode({ ...base, 'version_capa[_tag]': 'nueva', 'version_capa[familia]': 'Nativo', 'version_capa[variante]': 'Linux', 'version_capa[version]': '1.50' })
+  it('a new native layer version decodes (family Nativo)', () => {
+    const r = decode({ ...base, 'layer_version[_tag]': 'nueva', 'layer_version[family]': 'Nativo', 'layer_version[variant]': 'Linux', 'layer_version[version]': '1.50' })
     expect(Result.isSuccess(r) && r.success.layer_version).toEqual({ _tag: 'nueva', family: 'Nativo', variant: 'Linux', version: '1.50' })
   })
 })

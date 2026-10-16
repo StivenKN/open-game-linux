@@ -12,7 +12,7 @@ const STEAM = 'Steam'
 /** Past this GitHub refuses the URL, so the issue link carries only the title and the body goes through the copy box. */
 const URL_LIMIT = 8000
 
-/** `edicion_juego.identificador_externo` is free text; this is the only place it becomes an AppID. */
+/** `game_edition.external_id` is free text; this is the only place it becomes an AppID. */
 export const SteamAppId = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,9}$/)).pipe(Schema.brand('AppIdSteam'))
 export type SteamAppId = typeof SteamAppId.Type
 

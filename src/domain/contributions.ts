@@ -39,7 +39,7 @@ export const FpsMeasurement = Schema.Struct({
 
 export const ObservedFailure = Schema.Struct({ failure_type_id: FailureTypeId, detail: RequiredText })
 
-// FormData cannot express an empty array, so a form with no failure rows posts no `fallos` key (probe a).
+// FormData cannot express an empty array, so a form with no failure rows posts no `failures` key (probe a).
 const OptionalFailures = Schema.Array(ObservedFailure).pipe(Schema.withDecodingDefaultKey(Effect.succeed([])))
 const RequiredFailures = Schema.Array(ObservedFailure).pipe(
   Schema.refine(Arr.isReadonlyArrayNonEmpty, {

@@ -274,7 +274,7 @@ td {
   color: color-mix(in srgb, var(--t) 80%, white);
 }
 
-/* Zero specificity, so a .stack stack's gap still reaches the figure. */
+/* Zero specificity, so a .stack's gap still reaches the figure. */
 :where(.copy-box) {
   margin: 0;
 }

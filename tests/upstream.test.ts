@@ -109,7 +109,7 @@ const asUser =
     Effect.flatMap(SqlClient.SqlClient, (sql) => sql.withTransaction(program)).pipe(Effect.provideService(Visitor, Option.fromNullOr(user)))
 
 const accepted = (profile_id: number, pr = 512) =>
-  Schema.decodeUnknownSync(FixNote)({ _tag: 'Aceptado', perfil_id: profile_id, pr: `https://github.com/Open-Wine-Components/umu-protonfixes/pull/${pr}/files` })
+  Schema.decodeUnknownSync(FixNote)({ _tag: 'Aceptado', profile_id, pr: `https://github.com/Open-Wine-Components/umu-protonfixes/pull/${pr}/files` })
 const cancel = (pr: number) => Schema.decodeUnknownSync(FixNote)({ _tag: 'Anular', pr })
 const rule = (r: RuleViolated['rule']) => new RuleViolated({ rule: r })
 

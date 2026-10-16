@@ -8,49 +8,49 @@ import { NewReport } from '../../src/domain/contributions.ts'
 type Par = readonly [string, string]
 
 const base: ReadonlyArray<Par> = [
-  ['edicion_id', '1'],
-  ['diagnostico_id', '2'],
-  ['version_juego', '  1.0.3  '],
-  ['version_lanzador', ''],
-  ['fecha_prueba', '2026-10-01'],
-  ['resultado', 'no_inicia'],
-  ['fallos[0][tipo_fallo_id]', '4'],
-  ['fallos[0][detalle]', 'Pantalla negra al lanzar'],
-  ['fallos[1][tipo_fallo_id]', '5'],
-  ['fallos[1][detalle]', 'Se cierra el lanzador'],
-  ['observaciones', 'Probado dos veces'],
-  ['version_capa[_tag]', 'existente'],
-  ['version_capa[id]', '3'],
+  ['edition_id', '1'],
+  ['diagnostic_id', '2'],
+  ['game_version', '  1.0.3  '],
+  ['launcher_version', ''],
+  ['tested_at', '2026-10-01'],
+  ['outcome', 'no_inicia'],
+  ['failures[0][failure_type_id]', '4'],
+  ['failures[0][detail]', 'Pantalla negra al lanzar'],
+  ['failures[1][failure_type_id]', '5'],
+  ['failures[1][detail]', 'Se cierra el lanzador'],
+  ['observations', 'Probado dos veces'],
+  ['layer_version[_tag]', 'existente'],
+  ['layer_version[id]', '3'],
 ]
-const sinFallos = base.filter(([k]) => !k.startsWith('fallos'))
+const sinFallos = base.filter(([k]) => !k.startsWith('failures'))
 const con = (pares: ReadonlyArray<Par>, cambios: Record<string, string>): ReadonlyArray<Par> => [
   ...pares.filter(([k]) => !(k in cambios)),
   ...Object.entries(cambios),
 ]
 
 const casos: ReadonlyArray<readonly [string, Schema.Codec<unknown, unknown>, ReadonlyArray<Par>]> = [
-  ['perfil_id "" y medicion ""', NewReport, con(base, { perfil_id: '', medicion: '' })],
+  ['profile_id "" y measurement ""', NewReport, con(base, { profile_id: '', measurement: '' })],
   ['perfil_id y medicion ausentes', NewReport, base],
-  ['perfil_id "null" y medicion "null" (nulo canónico de StringTree)', NewReport, con(base, { perfil_id: 'null', medicion: 'null' })],
+  ['profile_id "null" y measurement "null" (nulo canónico de StringTree)', NewReport, con(base, { profile_id: 'null', measurement: 'null' })],
   [
     'version_capa nueva, perfil 7, medición completa',
     NewReport,
-    con(base.filter(([k]) => !k.startsWith('version_capa')), {
-      'version_capa[_tag]': 'nueva',
-      'version_capa[familia]': 'Proton',
-      'version_capa[variante]': 'GE',
-      'version_capa[version]': '9-20',
-      perfil_id: '7',
-      'medicion[fps_promedio]': '61.5',
-      'medicion[resolucion]': '1920x1080',
-      'medicion[calidad_grafica]': 'alta',
-      'medicion[metodo_medicion]': 'MangoHud',
+    con(base.filter(([k]) => !k.startsWith('layer_version')), {
+      'layer_version[_tag]': 'nueva',
+      'layer_version[family]': 'Proton',
+      'layer_version[variant]': 'GE',
+      'layer_version[version]': '9-20',
+      profile_id: '7',
+      'measurement[avg_fps]': '61.5',
+      'measurement[resolution]': '1920x1080',
+      'measurement[graphics_quality]': 'alta',
+      'measurement[measurement_method]': 'MangoHud',
     }),
   ],
-  ['funciona sin fallos, fallos con defecto []', NewReport, con(sinFallos, { resultado: 'funciona', perfil_id: 'null', medicion: 'null' })],
-  ['no_inicia sin fallos, fallos con defecto [] (regla 8.7)', NewReport, con(sinFallos, { perfil_id: 'null', medicion: 'null' })],
-  ['id no numérico', NewReport, con(base, { 'version_capa[id]': 'abc', perfil_id: 'null', medicion: 'null' })],
-  ['texto opcional escrito "null"', NewReport, con(base, { version_lanzador: 'null', perfil_id: 'null', medicion: 'null' })],
+  ['funciona sin fallos, fallos con defecto []', NewReport, con(sinFallos, { outcome: 'funciona', profile_id: 'null', measurement: 'null' })],
+  ['no_inicia sin fallos, fallos con defecto [] (regla 8.7)', NewReport, con(sinFallos, { profile_id: 'null', measurement: 'null' })],
+  ['id no numérico', NewReport, con(base, { 'layer_version[id]': 'abc', profile_id: 'null', measurement: 'null' })],
+  ['texto opcional escrito "null"', NewReport, con(base, { launcher_version: 'null', profile_id: 'null', measurement: 'null' })],
 ]
 
 for (const [nombre, esquema, pares] of casos) {

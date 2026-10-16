@@ -46,7 +46,7 @@ function ReviewPage() {
       </nav>
       <p className="small muted">{count(pendingCount, 'pendiente', 'pendientes')}</p>
       {queue.items.length === 0 && <p className="card">No hay {tabs[queue.type].toLowerCase()} pendientes ni aprobados.</p>}
-      {/* Keyed by state too, so a decided row remounts with an empty form instead of keeping the old motivo. */}
+      {/* Keyed by state too, so a decided row remounts with an empty form instead of keeping the old reason. */}
       <div className="stack">
         {queue.type === 'reporte' &&
           queue.items.map((e) => (

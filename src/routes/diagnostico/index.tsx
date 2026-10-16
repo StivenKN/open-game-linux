@@ -95,7 +95,7 @@ function Detector({ siteOrigin }: { siteOrigin: string }) {
   }, [pegar])
   const evaluate = useEvaluate()
   const r = useAction(Pasted, ({ data }) => evaluate({ _tag: 'detector', texto: data.text }), {
-    onFailure: payloadErrors('texto'),
+    onFailure: payloadErrors('text'),
     onComplete: () => undefined,
   })
   return (
@@ -156,7 +156,7 @@ function Manual() {
   const [os, setOs] = useState<OperatingSystem>('Windows')
   const [vulkan, setVulkan] = useState<VulkanSupport>('desconocido')
   const r = useAction(ManualForm, ({ data }) => evaluate(manualInput(data)), {
-    onFailure: payloadErrors('formulario'),
+    onFailure: payloadErrors('form'),
     onComplete: () => undefined,
   })
   return (

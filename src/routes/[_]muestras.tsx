@@ -42,12 +42,12 @@ function SamplesPage() {
 
 function SampleCard({ sample, number }: { sample: Sample; number: number }) {
   return (
-    <article className="sample-card" aria-labelledby={`ficha-${sample.key}`}>
+    <article className="sample-card" aria-labelledby={`sample-card-${sample.key}`}>
       <h2 className="section-title">
         ({number}) {sample.scenario}
       </h2>
       <div className="breadcrumbs">Catálogo / {sample.studio}</div>
-      <h3 id={`ficha-${sample.key}`} className="game-title">
+      <h3 id={`sample-card-${sample.key}`} className="game-title">
         {sample.title}
       </h3>
       <div className="chip-row">

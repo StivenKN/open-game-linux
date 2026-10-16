@@ -35,9 +35,9 @@ const messages: Readonly<Partial<Record<string, FieldErrors>>> = {
   DOMINIO_RESERVADO: { email: 'Ese dominio está reservado para los datos de ejemplo. Usa otro correo.' },
   PASSWORD_TOO_SHORT: { password: 'Usa al menos 8 caracteres.' },
   PASSWORD_TOO_LONG: { password: 'Usa como máximo 128 caracteres.' },
-  INVALID_EMAIL_OR_PASSWORD: { formulario: 'El correo o la contraseña no coinciden.' },
-  DEMASIADOS_INTENTOS: { formulario: 'Demasiados intentos seguidos. Espera unos segundos y vuelve a intentarlo.' },
+  INVALID_EMAIL_OR_PASSWORD: { form: 'El correo o la contraseña no coinciden.' },
+  DEMASIADOS_INTENTOS: { form: 'Demasiados intentos seguidos. Espera unos segundos y vuelve a intentarlo.' },
 }
 
 export const accountErrors = (f: AccountFailure): FieldErrors =>
-  (f.code === undefined ? undefined : messages[f.code]) ?? { formulario: 'No pudimos completar la operación. Intenta de nuevo.' }
+  (f.code === undefined ? undefined : messages[f.code]) ?? { form: 'No pudimos completar la operación. Intenta de nuevo.' }

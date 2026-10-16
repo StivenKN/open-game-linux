@@ -28,7 +28,7 @@ describe('registro público', () => {
     const response = await signUpOverHttp(email)
     expect(response.status).toBe(400)
     const { code } = Schema.decodeUnknownSync(ErrorResponse)(await response.json())
-    expect(accountErrors({ code })).toEqual({ correo: 'Ese dominio está reservado para los datos de ejemplo. Usa otro correo.' })
+    expect(accountErrors({ code })).toEqual({ email: 'Ese dominio está reservado para los datos de ejemplo. Usa otro correo.' })
     expect(await accountsWith(email)).toEqual([{ n: 0 }])
   })
 

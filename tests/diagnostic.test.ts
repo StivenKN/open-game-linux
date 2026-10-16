@@ -24,7 +24,7 @@ const windowsLibrary = [
 const asUser = (id: string) => Effect.provideService(Visitor, Option.some({ id: Schema.decodeSync(UserId)(id), alias: id, role: 'usuario' as const }))
 const asGuest = Effect.provideService(Visitor, Option.none())
 
-const save = (g: Omit<Parameters<typeof submitDiagnostic>[0], 'with_library'> & { readonly con_biblioteca?: boolean }) =>
+const save = (g: Omit<Parameters<typeof submitDiagnostic>[0], 'with_library'> & { readonly with_library?: boolean }) =>
   submitDiagnostic({ with_library: false, ...g })
 
 const newMachine = (alias: string) => ({ _tag: 'nuevo' as const, alias })
@@ -54,8 +54,8 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       const b = yield* save({ machine: existingMachine(f.machine), input: payload({ capturado_en: '2026-10-09T10:00:00Z', ram_mb: 32768 }) }).pipe(asUser(f.author))
       expect(a.id).not.toBe(b.id)
       expect(yield* count(f, 'diagnostic')).toBe(before + 2)
-      const [equipo] = yield* myMachines().pipe(asUser(f.author))
-      expect(equipo?.diagnostics.map((d) => [d.id, d.ram_mb])).toEqual([[b.id, 32768], [a.id, 15766], [f.diag, 8192]])
+      const [machine] = yield* myMachines().pipe(asUser(f.author))
+      expect(machine?.diagnostics.map((d) => [d.id, d.ram_mb])).toEqual([[b.id, 32768], [a.id, 15766], [f.diag, 8192]])
     })))
 
   it.effect('saves the normalized PCI id and myDiagnostic returns it in the capture', withSeed((f) =>
@@ -67,7 +67,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
 
   it.effect('guarda un payload de Windows con su biblioteca de Steam solo si se pide', withSeed((f) =>
     Effect.gen(function* () {
-      const full = yield* save({ con_biblioteca: true, machine: newMachine('PC con Windows'), input: windowsPayload() }).pipe(asUser(f.author))
+      const full = yield* save({ with_library: true, machine: newMachine('PC con Windows'), input: windowsPayload() }).pipe(asUser(f.author))
       const bare = yield* save({ machine: newMachine('PC con Windows'), input: windowsPayload({ capturado_en: '2026-10-16T10:00:00Z' }) }).pipe(asUser(f.author))
       const row = (id: number) =>
         f.sql`SELECT operating_system, distribution_id, driver, vulkan_support, gpu_pci_id, steam_library FROM diagnostic WHERE id = ${id}`
@@ -80,7 +80,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
   it.effect('guardar otra vez la misma captura conserva la elección de la primera vez', withSeed((f) =>
     Effect.gen(function* () {
       const first = yield* save({ machine: existingMachine(f.machine), input: windowsPayload() }).pipe(asUser(f.author))
-      const second = yield* save({ con_biblioteca: true, machine: existingMachine(f.machine), input: windowsPayload() }).pipe(asUser(f.author))
+      const second = yield* save({ with_library: true, machine: existingMachine(f.machine), input: windowsPayload() }).pipe(asUser(f.author))
       expect(second).toEqual({ id: first.id, inserted: false })
       expect(yield* f.sql`SELECT steam_library FROM diagnostic WHERE id = ${first.id}`).toEqual([{ steam_library: null }])
     })))
@@ -88,8 +88,8 @@ layer(PgTest)('registrarDiagnostico', (it) => {
   it.effect('rechaza guardar en un equipo ajeno o inexistente, sin escribir nada', withSeed((f) =>
     Effect.gen(function* () {
       const before = yield* count(f, 'diagnostic')
-      for (const equipo of [existingMachine(f.machine), existingMachine(999999)]) {
-        const failure = yield* Effect.flip(save({ machine: equipo, input: payload() }).pipe(asUser(f.revisor)))
+      for (const machine of [existingMachine(f.machine), existingMachine(999999)]) {
+        const failure = yield* Effect.flip(save({ machine, input: payload() }).pipe(asUser(f.revisor)))
         expect(failure).toMatchObject({ _tag: 'ReglaIncumplida', rule: 'equipo_ajeno' })
       }
       expect(yield* count(f, 'diagnostic')).toBe(before)
@@ -150,8 +150,8 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
 
   it.effect('evaluateWithoutSaving projects the GPU to Linux from the PCI id when there is no vulkaninfo', withSeed(() =>
     Effect.gen(function* () {
-      const { machine: equipo } = yield* evaluateWithoutSaving(payload({ gpu_pci_id: '8086:9a49', controlador: 'i915' }))
-      expect(equipo).toMatchObject({
+      const { machine } = yield* evaluateWithoutSaving(payload({ gpu_pci_id: '8086:9a49', controlador: 'i915' }))
+      expect(machine).toMatchObject({
         vulkan: { support: 'si', origin: 'proyectado', range: { from: { text: '1.3' }, to: { text: '1.4' } } },
         gpu: { family: 'intel_gen9_o_posterior', driver: 'i915', warnings: [] },
         paths: { d3d9_11: 'dxvk_2', d3d12: true },
@@ -164,15 +164,15 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       yield* f.sql`INSERT INTO game_api (game_id, api) SELECT game_id, 'vulkan' FROM game_edition WHERE id = ${f.ed2}`
       yield* f.sql`UPDATE game SET x86_level_min = 'v2' WHERE id = (SELECT game_id FROM game_edition WHERE id = ${f.ed2})`
       // A Kepler without vulkaninfo on an x86-64-v1 CPU.
-      const entrada = payload({ gpu_pci_id: '10de:1187', controlador: 'nouveau', nivel_x86: 'v1' })
+      const input = payload({ gpu_pci_id: '10de:1187', controlador: 'nouveau', nivel_x86: 'v1' })
       const paths = (matrix: ReadonlyArray<MatrixRow>) => matrix.map((m) => [m.title, m.path])
       const expected = [
         ['Juego', { status: 'con_ruta', path: 'dxvk_sarek' }],
         ['Otro juego', { status: 'sin_ruta', reason: 'cpu' }],
       ]
-      const evaluated = yield* evaluateWithoutSaving(entrada)
+      const evaluated = yield* evaluateWithoutSaving(input)
       expect(paths(evaluated.matrix)).toEqual(expected)
-      const { id } = yield* save({ machine: existingMachine(f.machine), input: entrada }).pipe(asUser(f.author))
+      const { id } = yield* save({ machine: existingMachine(f.machine), input }).pipe(asUser(f.author))
       const saved = yield* myDiagnostic(id).pipe(asUser(f.author))
       expect(paths(saved.matrix)).toEqual(expected)
       expect(saved.distributions.evaluated.map((d) => [d.key, d.verdict])).toEqual([
@@ -198,7 +198,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
   it.effect('myDiagnostic splits the saved library into catalog games and unknown games', withSeed((f) =>
     Effect.gen(function* () {
       yield* catalogWithSteam(f)
-      const { id } = yield* save({ con_biblioteca: true, machine: existingMachine(f.machine), input: windowsPayload() }).pipe(asUser(f.author))
+      const { id } = yield* save({ with_library: true, machine: existingMachine(f.machine), input: windowsPayload() }).pipe(asUser(f.author))
       const saved = yield* myDiagnostic(id).pipe(asUser(f.author))
       expect(inLibrary(saved.matrix)).toEqual(['Grand Theft Auto V'])
       expect(saved.matrix.map((m) => m.title)).toEqual(['Grand Theft Auto V', 'Juego', 'Otro juego'])

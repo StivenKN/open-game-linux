@@ -16,7 +16,7 @@ const url = process.env.DATABASE_URL
 // Without this, pg silently falls back to PGHOST/localhost:5432 and auth talks to some other database.
 if (url === undefined || url === '') throw new Error('DATABASE_URL is not set')
 
-// Queries label content "Datos de ejemplo" when its author's correo is in this domain (queries/labels.ts).
+// Queries label content "Datos de ejemplo" when its author's email is in this domain (queries/labels.ts).
 export const demoDomain = 'demo.opengame.test'
 
 export const auth = betterAuth({

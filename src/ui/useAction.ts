@@ -29,7 +29,7 @@ const checkMessage = (issue: SchemaIssue.Filter): string =>
 /**
  * Flattens an issue tree into Spanish messages with their paths. Effect's own formatter falls back to
  * an English type dump for a union that matches no member (a bad `_tag`, a checkbox posting "on");
- * here every node has a Spanish message. Such a union reports at its own name (`version_capa`).
+ * here every node has a Spanish message. Such a union reports at its own name (`layer_version`).
  */
 const flatten = (issue: SchemaIssue.Issue, path: ReadonlyArray<PropertyKey>): ReadonlyArray<readonly [ReadonlyArray<PropertyKey>, string]> => {
   switch (issue._tag) {
@@ -52,7 +52,7 @@ const flatten = (issue: SchemaIssue.Issue, path: ReadonlyArray<PropertyKey>): Re
 
 const fieldName = (path: ReadonlyArray<PropertyKey>): string => {
   const [first, ...rest] = path.map(String)
-  return first === undefined ? 'formulario' : first + rest.map((k) => `[${k}]`).join('')
+  return first === undefined ? 'form' : first + rest.map((k) => `[${k}]`).join('')
 }
 
 export const issueErrors = (issue: SchemaIssue.Issue): FieldErrors => {
@@ -85,8 +85,8 @@ export function useAction<T, E, A, F>(
   const onThrow = async (e: unknown) => {
     // runRead/runAction turn Unauthenticated into a redirect; outside a loader nobody else follows it.
     if (isRedirect(e)) await router.navigate(router.resolveRedirect(e).options)
-    else if (isNotFound(e)) setErrors({ formulario: 'Lo que intentas modificar ya no existe o no tienes acceso.' })
-    else setErrors({ formulario: 'Algo falló de nuestro lado. Intenta de nuevo.' })
+    else if (isNotFound(e)) setErrors({ form: 'Lo que intentas modificar ya no existe o no tienes acceso.' })
+    else setErrors({ form: 'Algo falló de nuestro lado. Intenta de nuevo.' })
   }
 
   const run = async (data: E) => {

@@ -405,7 +405,7 @@ type ReporteDemo = {
   version_juego: string
   fecha_prueba: string
   resultado: Outcome
-  medicion: { fps_promedio: number; resolucion: string; calidad_grafica: string; metodo_medicion: string } | null
+  medicion: { avg_fps: number; resolution: string; graphics_quality: string; measurement_method: string } | null
   fallos: ReadonlyArray<readonly [keyof typeof tiposFallo, string]>
   observaciones: string
   aprobar: boolean
@@ -415,7 +415,7 @@ const reportes: ReadonlyArray<ReporteDemo> = [
   {
     machine: 'anaPortatil', edicion: ['gta5', 'steam'], layer: 'proton8', conPerfil: true, version_juego: '1.0.3179',
     fecha_prueba: '2026-09-28T20:00:00Z', resultado: 'funciona',
-    medicion: { fps_promedio: 54, resolucion: '1280x720', calidad_grafica: 'Bajo', metodo_medicion: 'MangoHud · misión Prólogo · 5 min' },
+    medicion: { avg_fps: 54, resolution: '1280x720', graphics_quality: 'Bajo', measurement_method: 'MangoHud · misión Prólogo · 5 min' },
     fallos: [], observaciones: 'Seguí el perfil al pie de la letra. Historia y GTA Online sin cierres en dos horas.', aprobar: true,
   },
   {
@@ -426,7 +426,7 @@ const reportes: ReadonlyArray<ReporteDemo> = [
   {
     machine: 'brunoPc', edicion: ['gta5', 'epic'], layer: 'ge94', conPerfil: false, version_juego: '1.0.3179',
     fecha_prueba: '2026-09-02T21:00:00Z', resultado: 'funciona_con_ajustes',
-    medicion: { fps_promedio: 60, resolucion: '1920x1080', calidad_grafica: 'Medio', metodo_medicion: 'MangoHud · conducción en ciudad · 10 min' },
+    medicion: { avg_fps: 60, resolution: '1920x1080', graphics_quality: 'Medio', measurement_method: 'MangoHud · conducción en ciudad · 10 min' },
     fallos: [], observaciones: 'Desde Heroic. Hubo que desactivar la superposición de Epic para que el juego pasara del menú.', aprobar: true,
   },
   {
@@ -483,8 +483,8 @@ const solucionDemo = {
 const aprobacionDemo = (que: string) =>
   Schema.decodeUnknownSync(Decision)({
     _tag: 'Aprobar',
-    motivo: `${que} coherente con su entorno; aprobado para la demostración.`,
-    evidencia: 'Datos de ejemplo: aporte sembrado por pnpm db:sembrar en una cuenta demo, no una prueba real.',
+    reason: `${que} coherente con su entorno; aprobado para la demostración.`,
+    evidence: 'Datos de ejemplo: aporte sembrado por pnpm db:sembrar en una cuenta demo, no una prueba real.',
   })
 
 const ConId = Schema.Struct({ id: Schema.Int })
@@ -628,8 +628,8 @@ const programa = Effect.gen(function* () {
           ...eq.diagnostic,
         }
         const guardar = yield* Schema.decodeUnknownEffect(SaveDiagnostic)({
-          equipo: { _tag: 'nuevo', alias: eq.alias },
-          entrada: { _tag: 'detector', texto: JSON.stringify(payload) },
+          machine: { _tag: 'nuevo', alias: eq.alias },
+          input: { _tag: 'detector', texto: JSON.stringify(payload) },
         })
         const { id, inserted } = yield* como(eq.dueno, submitDiagnostic(guardar))
         if (inserted) contar('diagnostic')
@@ -639,45 +639,45 @@ const programa = Effect.gen(function* () {
       const reporteDe = new Map<number, number>()
       for (const [i, r] of reportes.entries()) {
         const eq = equipos[r.machine]
-        const diagnostico_id = yield* de(diagnosticoDe, r.machine)
-        const edicion_id = yield* de(edicion, r.edicion.join('/'))
+        const diagnostic_id = yield* de(diagnosticoDe, r.machine)
+        const edition_id = yield* de(edicion, r.edicion.join('/'))
         const [existente] = yield* rows(
           ConId,
-          sql`SELECT id FROM report WHERE diagnostic_id = ${diagnostico_id} AND edition_id = ${edicion_id} AND tested_at = ${r.fecha_prueba}`,
+          sql`SELECT id FROM report WHERE diagnostic_id = ${diagnostic_id} AND edition_id = ${edition_id} AND tested_at = ${r.fecha_prueba}`,
         )
         if (existente !== undefined) {
           reporteDe.set(i, existente.id)
           continue
         }
-        const fallos: Array<{ tipo_fallo_id: number; detalle: string }> = []
-        for (const [code, detalle] of r.fallos) fallos.push({ tipo_fallo_id: yield* de(tipoFallo, code), detalle })
+        const failures: Array<{ failure_type_id: number; detail: string }> = []
+        for (const [code, detail] of r.fallos) failures.push({ failure_type_id: yield* de(tipoFallo, code), detail })
         const inserted = yield* Schema.decodeUnknownEffect(NewReport)({
-          edicion_id,
-          diagnostico_id,
-          version_capa: { _tag: 'existente', id: yield* de(layer, r.layer) },
-          perfil_id: r.conPerfil ? yield* de(perfilDe, clavePerfil({ edicion: r.edicion, distribution: eq.distribution, layer: r.layer })) : null,
-          version_juego: r.version_juego,
-          version_lanzador: null,
-          fecha_prueba: r.fecha_prueba,
-          resultado: r.resultado,
-          medicion: r.medicion,
-          fallos,
-          observaciones: r.observaciones,
+          edition_id,
+          diagnostic_id,
+          layer_version: { _tag: 'existente', id: yield* de(layer, r.layer) },
+          profile_id: r.conPerfil ? yield* de(perfilDe, clavePerfil({ edicion: r.edicion, distribution: eq.distribution, layer: r.layer })) : null,
+          game_version: r.version_juego,
+          launcher_version: null,
+          tested_at: r.fecha_prueba,
+          outcome: r.resultado,
+          measurement: r.medicion,
+          failures,
+          observations: r.observaciones,
         })
         reporteDe.set(i, (yield* como(eq.dueno, submitReport(inserted))).id)
         contar('report')
       }
 
       const sol = solucionDemo
-      const reporte_id = yield* de(reporteDe, sol.reporte)
-      const tipo_fallo_id = yield* de(tipoFallo, sol.tipoFallo)
+      const report_id = yield* de(reporteDe, sol.reporte)
+      const failure_type_id = yield* de(tipoFallo, sol.tipoFallo)
       const [solucionExistente] = yield* rows(
         ConId,
-        sql`SELECT id FROM solution WHERE report_id = ${reporte_id} AND failure_type_id = ${tipo_fallo_id} AND title = ${sol.titulo}`,
+        sql`SELECT id FROM solution WHERE report_id = ${report_id} AND failure_type_id = ${failure_type_id} AND title = ${sol.titulo}`,
       )
       let solucion_id = solucionExistente?.id
       if (solucion_id === undefined) {
-        const nueva = yield* Schema.decodeUnknownEffect(NewSolution)({ reporte_id, tipo_fallo_id, perfil_id: null, titulo: sol.titulo, instrucciones: sol.instrucciones })
+        const nueva = yield* Schema.decodeUnknownEffect(NewSolution)({ report_id, failure_type_id, profile_id: null, title: sol.titulo, instructions: sol.instrucciones })
         solucion_id = (yield* como('demo_bruno', submitSolution(nueva))).id
         contar('solution')
       }
