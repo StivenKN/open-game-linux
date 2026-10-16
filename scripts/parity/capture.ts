@@ -252,11 +252,16 @@ const captureAll = async (browser: Browser, port: number, dir: string) => {
         await page.setViewportSize({ width, height: 800 })
         await page.goto(ORIGIN + route, { waitUntil: 'networkidle' })
         await page.evaluate(() => document.fonts.ready)
-        // Chromium can keep the pixel snapping it chose for a composited layer while the page was still
-        // loading, so a backdrop-filtered label at a fractional y sometimes lands on the whole pixel. A
-        // resize after load re-rasters the layers from the settled layout.
-        await page.setViewportSize({ width, height: 801 })
-        await page.setViewportSize({ width, height: 800 })
+        // Playwright's fullPage capture grows the viewport inside Chromium's Page.captureScreenshot, and those
+        // captures vary: under load a backdrop-filter layer can lose its pixel snapping, and the monospace fallback
+        // font can switch mid-capture. Sizing the viewport to the page first leaves fullPage nothing to resize unless
+        // the page overflows sideways. The three frames let Chromium raster every layer after the resize; capturing
+        // sooner can draw one blank.
+        const height = await page.evaluate(() => Math.max(document.body.scrollHeight, document.documentElement.scrollHeight))
+        await page.setViewportSize({ width, height: Math.max(800, height) })
+        await page.evaluate(async () => {
+          for (let frame = 0; frame < 3; frame++) await new Promise(requestAnimationFrame)
+        })
         await page.screenshot({ path: `${name}.${width}.png`, fullPage: true, animations: 'disabled', caret: 'hide' })
       }
     }
