@@ -172,11 +172,22 @@ Each side seeds its database with a frozen clock and seeded randomness. Then `de
 The comparison passes only when every check below passes:
 
 - Screenshots are identical pixel for pixel. ImageMagick measures a pair whose files differ.
-- The HTML is byte-identical after the harness removes every `<script>` element and replaces `/assets/` file names. For each pair of names in `scripts/parity/markup-map.json`, the harness changes the new name in the head's tags back to the old name.
-- The router data in the page has the same values in the same order, with the same number of object keys. The key names can differ.
+- The HTML is byte-identical after the harness removes every `<script>` element and replaces `/assets/` file names. Before it compares, the harness changes each renamed name in the head back to the old name, as `scripts/parity/markup-map.json` lists it. Each section of the map applies to one place only:
+  - `classes` applies to names in `class`.
+  - `ids` applies to `id`, `for` and the `aria-*` attributes that refer to an `id`, such as `aria-labelledby`.
+  - `customProperties` applies to `--` names in `style`.
+  - `dataAttributes` applies to the names of `data-*` attributes. Their values are not changed.
+  - `formFields` applies to `name` on `input`, `select`, `textarea` and `button`.
+
+  URLs, query strings, form values and text are never changed, so a map entry cannot hide a change to them.
+- The router data in the page has the same values in the same order, with the same number of object keys. Most key names can differ. These keys must match, because they carry data:
+  - Numeric keys.
+  - Route ids, which start with `/`. Route param names such as `$juegoId` can differ.
+  - Values that a CHECK constraint in the base database allows, such as `funciona`. The harness reads them from the base database into `frozen-literals.json`.
+- The sign-in JSON is byte-identical after the harness replaces each `token` or `secret` value with its length. A token depends on how many random values the app drew before sign-in.
 - Every other file is byte-identical.
 
-The command prints one block for each difference, then one line like `parity: 0 differences across 506 captures`. It exits with 1 if it finds a difference. The output directory keeps both captures, the logs, and a diff image for each screenshot that differs. To capture a side once and reuse it, run `pnpm parity capture --ref <ref> --out <dir>`, then pass that directory as `--base` or `--head`.
+The command prints one block for each difference, then one line like `parity: 0 differences across 506 captures`. The next line, `harness: <hash>`, is the SHA-256 of the files in `scripts/parity/`, so a reviewer can see when a change edits the harness. It exits with 1 if it finds a difference. The output directory keeps both captures, the logs, and a diff image for each screenshot that differs. To capture a side once and reuse it, run `pnpm parity capture --ref <ref> --out <dir>`, then pass that directory as `--base` or `--head`.
 
 ## Production
 

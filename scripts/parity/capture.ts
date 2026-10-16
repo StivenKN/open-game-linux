@@ -95,6 +95,7 @@ export const capture = async (source: Source, out: string, label: string) => {
     await run('sh', ['-c', script(app, ['db:migrate', 'db:migrar'])], { cwd: app, env: frozen, log: join(logs, 'migrate.log') })
     await run('sh', ['-c', script(app, ['db:seed', 'db:sembrar'])], { cwd: app, env: frozen, log: join(logs, 'seed.log') })
     await pinTimes(env.DATABASE_URL)
+    writeFileSync(join(out, 'frozen-literals.json'), `${JSON.stringify(await frozenLiterals(env.DATABASE_URL))}\n`)
 
     const server = spawn('sh', ['-c', `exec ${script(app, ['start'])}`], { cwd: app, env: frozen, detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
     const serverLog = createWriteStream(join(logs, 'server.log'))
@@ -157,6 +158,20 @@ const pinTimes = async (databaseUrl: string) => {
   try {
     await client.query(`SET parity.frozen = '${FREEZE_AT}'`)
     await client.query(readFileSync(join(HARNESS, 'pin-times.sql'), 'utf8'))
+  } finally {
+    await client.end()
+  }
+}
+
+const frozenLiterals = async (databaseUrl: string) => {
+  const client = new pg.Client({ connectionString: databaseUrl })
+  await client.connect()
+  try {
+    const { rows } = await client.query<{ def: string }>(
+      `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE contype = 'c' AND connamespace = 'public'::regnamespace`,
+    )
+    const literals = rows.flatMap(({ def }) => [...def.matchAll(/'((?:[^']|'')*)'/g)].map((m) => m[1].replaceAll("''", "'")))
+    return [...new Set(literals)].filter((l) => l !== '').sort()
   } finally {
     await client.end()
   }

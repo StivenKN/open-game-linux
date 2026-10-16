@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 
 type Check = 'missing' | 'bytes' | 'pixels' | 'markup' | 'payload'
 type Difference = { readonly file: string; readonly check: Check; readonly detail: string }
@@ -8,7 +9,8 @@ type Difference = { readonly file: string; readonly check: Check; readonly detai
 const HARNESS = dirname(new URL(import.meta.url).pathname)
 
 export const compare = async (base: string, head: string, diffDir: string) => {
-  const map = markupMap()
+  const map = parseMarkupMap(JSON.parse(readFileSync(join(HARNESS, 'markup-map.json'), 'utf8')))
+  const literals = readFrozenLiterals(base)
   const files = [...new Set([...list(join(base, 'captures')), ...list(join(head, 'captures'))])].sort()
   const differences: Array<Difference> = []
   for (const file of files) {
@@ -22,25 +24,30 @@ export const compare = async (base: string, head: string, diffDir: string) => {
       const detail = await pixels(a, b, join(diffDir, file))
       if (detail !== null) differences.push({ file, check: 'pixels', detail })
     } else if (file.endsWith('.html')) {
-      differences.push(...html(file, readFileSync(a, 'utf8'), unmapMarkup(readFileSync(b, 'utf8'), map)))
+      differences.push(...html(file, readFileSync(a, 'utf8'), unmapMarkup(readFileSync(b, 'utf8'), map), literals))
     } else {
-      const detail = firstDifference(readFileSync(a, 'utf8'), readFileSync(b, 'utf8'))
+      const read = (path: string) => {
+        const text = readFileSync(path, 'utf8')
+        return basename(file) === 'signin.json' ? withSecretLengthsOnly(text) : text
+      }
+      const detail = firstDifference(read(a), read(b))
       if (detail !== null) differences.push({ file, check: 'bytes', detail })
     }
   }
   for (const d of differences) console.log(`✗ ${d.file} [${d.check}]\n${d.detail}`)
   console.log(`parity: ${differences.length} differences across ${files.length} captures`)
+  console.log(`harness: ${harnessHash()}`)
   return differences.length
 }
 
 const list = (dir: string): Array<string> =>
   existsSync(dir) ? readdirSync(dir, { recursive: true, withFileTypes: true }).filter((e) => e.isFile()).map((e) => join(e.parentPath, e.name).slice(dir.length + 1)) : []
 
-const html = (file: string, a: string, b: string): Array<Difference> => {
+const html = (file: string, a: string, b: string, literals: ReadonlySet<string>): Array<Difference> => {
   const differences: Array<Difference> = []
   const markup = firstDifference(withoutScripts(a), withoutScripts(b))
   if (markup !== null) differences.push({ file, check: 'markup', detail: markup })
-  const [pa, pb] = [erasedKeys(a), erasedKeys(b)]
+  const [pa, pb] = [eraseIdentifierKeys(a, literals), eraseIdentifierKeys(b, literals)]
   const values = firstDifference(pa.values, pb.values)
   if (values !== null || pa.keys !== pb.keys) differences.push({ file, check: 'payload', detail: `  keys ${pa.keys} vs ${pb.keys}${values === null ? '' : `\n${values}`}` })
   return differences
@@ -52,38 +59,98 @@ const withoutScripts = (html: string) => eraseAssetNames(html.replaceAll(/<scrip
 
 const inlineScripts = (html: string) => [...html.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join('\n')
 
-const token = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`|([{,])\s*([A-Za-z_$][\w$]*|\d+|"(?:[^"\\]|\\.)*")\s*:|[^"'`{,]+|[\s\S]/gy
+const withoutParamNames = (text: string) => text.replaceAll(/\$[A-Za-z_]\w*/g, '$')
+
+const isDataKey = (name: string, literals: ReadonlySet<string>) => /^\d+$/.test(name) || literals.has(name)
 
 // The dehydrated router state is JavaScript (seroval), not JSON.
-// TanStack route ids in strings carry param names (`#juegos#$juegoId#juegos#1`), which P5 renames.
-const erasedKeys = (html: string) => {
+const token = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`|([{,])\s*([A-Za-z_$][\w$]*|\d+|"(?:[^"\\]|\\.)*")\s*:|[^"'`{,]+|[\s\S]/gy
+
+export const eraseIdentifierKeys = (html: string, literals: ReadonlySet<string>) => {
   let keys = 0
-  const values = eraseAssetNames(inlineScripts(html)).replaceAll(token, (match, opener: string | undefined) => {
-    if (opener !== undefined) {
-      keys++
-      return `${opener}:`
-    }
-    return /^"[#/]|^"__root__/.test(match) ? match.replaceAll(/\$[A-Za-z_]\w*/g, '$') : match
+  const values = eraseAssetNames(inlineScripts(html)).replaceAll(token, (match, opener: string | undefined, key: string | undefined) => {
+    if (opener === undefined || key === undefined) return /^"[#/]|^"__root__/.test(match) ? withoutParamNames(match) : match
+    keys++
+    const name = key.startsWith('"') ? key.slice(1, -1) : key
+    if (isDataKey(name, literals)) return `${opener}${key}:`
+    if (name.startsWith('/')) return `${opener}${withoutParamNames(key)}:`
+    return `${opener}:`
   })
   return { keys, values }
 }
 
-const markupMap = (): ReadonlyMap<string, string> => {
-  const raw: unknown = JSON.parse(readFileSync(join(HARNESS, 'markup-map.json'), 'utf8'))
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new Error('markup-map.json must be an object of old name to new name')
-  const inverse = new Map<string, string>()
-  for (const [old, renamed] of Object.entries(raw)) {
-    if (typeof renamed !== 'string') throw new Error(`markup-map.json: ${old} must map to a string`)
-    inverse.set(renamed, old)
-  }
-  return inverse
+const readFrozenLiterals = (base: string): ReadonlySet<string> => {
+  const file = join(base, 'frozen-literals.json')
+  if (!existsSync(file)) throw new Error(`${file} is missing; capture the base again with this harness`)
+  const raw: unknown = JSON.parse(readFileSync(file, 'utf8'))
+  if (!Array.isArray(raw) || !raw.every((l) => typeof l === 'string')) throw new Error(`${file} must be an array of strings`)
+  return new Set(raw)
 }
 
-const unmapMarkup = (html: string, inverse: ReadonlyMap<string, string>) => {
-  if (inverse.size === 0) return html
-  const names = [...inverse.keys()].sort((x, y) => y.length - x.length).map((n) => n.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  const name = new RegExp(`(?<![\\w-])(?:${names.join('|')})(?![\\w-])`, 'g')
-  return html.replaceAll(/<[^>]+>/g, (tag) => tag.replaceAll(name, (n) => inverse.get(n) ?? n))
+const sections = ['classes', 'ids', 'customProperties', 'dataAttributes', 'formFields'] as const
+type Section = (typeof sections)[number]
+export type HeadToBaseNames = Readonly<Record<Section, ReadonlyMap<string, string>>>
+
+const prefixes: Partial<Record<Section, string>> = { customProperties: '--', dataAttributes: 'data-' }
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+
+export const parseMarkupMap = (raw: unknown): HeadToBaseNames => {
+  if (!isRecord(raw)) throw new Error('markup-map.json must be an object')
+  const unknown = Object.keys(raw).filter((k) => !sections.some((s) => s === k))
+  if (unknown.length > 0) throw new Error(`markup-map.json: unknown sections ${unknown.join(', ')}; use ${sections.join(', ')}`)
+  const inverse = (section: Section) => {
+    const pairs = raw[section] ?? {}
+    if (!isRecord(pairs)) throw new Error(`markup-map.json: ${section} must be an object of old name to new name`)
+    const prefix = prefixes[section] ?? ''
+    const back = new Map<string, string>()
+    for (const [old, renamed] of Object.entries(pairs)) {
+      if (typeof renamed !== 'string') throw new Error(`markup-map.json: ${section}.${old} must map to a string`)
+      if (!old.startsWith(prefix) || !renamed.startsWith(prefix)) throw new Error(`markup-map.json: ${section} names start with ${prefix}`)
+      if (back.has(renamed)) throw new Error(`markup-map.json: ${section} maps two names to ${renamed}`)
+      back.set(renamed, old)
+    }
+    return back
+  }
+  return {
+    classes: inverse('classes'),
+    ids: inverse('ids'),
+    customProperties: inverse('customProperties'),
+    dataAttributes: inverse('dataAttributes'),
+    formFields: inverse('formFields'),
+  }
+}
+
+const idReferences = new Set(['id', 'for', 'aria-labelledby', 'aria-describedby', 'aria-controls', 'aria-owns', 'aria-activedescendant', 'aria-details', 'aria-errormessage', 'aria-flowto'])
+const formControls = new Set(['input', 'select', 'textarea', 'button'])
+
+export const unmapMarkup = (html: string, map: HeadToBaseNames) => {
+  const back = (names: ReadonlyMap<string, string>) => (name: string) => names.get(name) ?? name
+  const each = (value: string, names: ReadonlyMap<string, string>) => value.replaceAll(/\S+/g, back(names))
+  return html.replaceAll(/<([A-Za-z][\w-]*)([^>]*)>/g, (_, element: string, attributes: string) => {
+    const mapped = attributes.replaceAll(/([^\s"'=/]+)(?:="([^"]*)")?/g, (whole, name: string, value: string | undefined) => {
+      if (name.startsWith('data-')) return back(map.dataAttributes)(name) + whole.slice(name.length)
+      if (value === undefined) return whole
+      if (name === 'class') return `class="${each(value, map.classes)}"`
+      if (idReferences.has(name)) return `${name}="${each(value, map.ids)}"`
+      if (name === 'style') return `style="${value.replaceAll(/--[\w-]+/g, back(map.customProperties))}"`
+      if (name === 'name' && formControls.has(element)) return `name="${back(map.formFields)(value)}"`
+      return whole
+    })
+    return `<${element}${mapped}>`
+  })
+}
+
+const withSecretLengthsOnly = (text: string) => {
+  const [status, body] = text.split('\n', 2)
+  const masked = JSON.stringify(JSON.parse(body), (key, value: unknown) => (/token|secret/i.test(key) && typeof value === 'string' ? `<${value.length} characters>` : value))
+  return `${status}\n${masked}\n`
+}
+
+const harnessHash = () => {
+  const hash = createHash('sha256')
+  for (const file of readdirSync(HARNESS).sort()) hash.update(readFileSync(join(HARNESS, file)))
+  return hash.digest('hex')
 }
 
 const firstDifference = (a: string, b: string) => {
