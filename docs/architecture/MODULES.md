@@ -101,7 +101,7 @@ Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names 
 | Rule | Home |
 |---|---|
 | PK, FK, UQ, composite keys, no duplicate dependencia / fallo | DB keys |
-| enumerated domains, magnitudes, ranges | DB CHECK (lists from dominio Schemas) |
+| enumerated domains, magnitudes, ranges | DB CHECK (lists from domain Schemas) |
 | blank strings | DB CHECK *_no_vacio (+ Texto on input) |
 | review block shape per state, approval needs evidence, valid estado_revision | DB CHECK *_bloque_revision |
 | revisado_en >= creado_en | DB CHECK *_revision_posterior |

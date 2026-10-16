@@ -98,14 +98,14 @@ discrepancias(prueba, perfil)                          // ['perfil_otra_distribu
 
 ## Shape
 
-**Four directories and one dependency direction.** The direction runs `routes`/`ui` → `fns` → `servidor` → `dominio`, and `routes`/`ui` → `dominio` directly. `src/boundaries.test.ts` enforces it (MODULES.md).
+**Four directories and one dependency direction.** The direction runs `routes`/`ui` → `fns` → `server` → `domain`, and `routes`/`ui` → `domain` directly. `src/boundaries.test.ts` enforces it (MODULES.md).
 
 - `domain/` is pure and isomorphic, importing only `effect`. It holds Schemas and pure functions: the result-set rule, the summary, the evaluation, the state machine, comparability, input schemas and failure classes. The browser imports it too.
 - `server/` holds the Effect programs: read models (`queries/`), the two single writers (`commands/contributions.ts`, `commands/review.ts`), auth, the migrations, the one payload parser, and `run.ts`.
 - `fns/` is the network boundary. It holds only `createServerFn` exports, each one a validator plus a handler that calls `leer(...)` or `accion(...)`. This layer is forced by gotcha 3, and the test keeps it that way: a top-level line that is not an import or a `createServerFn` export fails the build with the fix in the message.
 - `routes/` and `ui/` are plain React. No Effect runtime runs in the browser. Only `Schema` ships there, for forms and search params, at about 29 kB gzip as measured.
 
-A request crosses three files: route → `fns/x.ts` → `server/.../program.ts`, plus pure `dominio` calls. `run.ts` is infrastructure every handler shares, not a per-request layer.
+A request crosses three files: route → `fns/x.ts` → `server/.../program.ts`, plus pure `domain` calls. `run.ts` is infrastructure every handler shares, not a per-request layer.
 
 **Start-native boundary, with two runners.** `server/run.ts` exports exactly two functions. Both resolve the better-auth session once into the per-request `Visitante` service (`Option<Usuario>`, where a deactivated account becomes `None`).
 
@@ -121,7 +121,7 @@ A request crosses three files: route → `fns/x.ts` → `server/.../program.ts`,
 
 Structural input errors never travel at all. The browser decodes the form with the same schema the validator uses, so the validator's JSON-in-`Error.message` failure (gotcha 6) only reaches a tampered client.
 
-**One Schema source of truth, end to end.** Each `dominio` Schema plays every role:
+**One Schema source of truth, end to end.** Each `domain` Schema plays every role:
 
 - The DB `CHECK (col IN …)` lists come from `Literals.literals` in `migrations.ts`.
 - Row decoding uses `SqlSchema.findAll({ Result })`.

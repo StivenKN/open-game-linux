@@ -1,5 +1,5 @@
 // The one home of the 365-day window. Callers pass the reference instant: OpenGame's reports use the
-// request time, ProtonDB's export uses its own export date. Nothing in dominio reads the clock.
+// request time, ProtonDB's export uses its own export date. Nothing in domain/ reads the clock.
 const DIAS_VIGENCIA = 365
 const MS_POR_DIA = 86_400_000
 

@@ -12,17 +12,17 @@ const leer = (p: string) => readFileSync(join(raiz, p), 'utf8')
 const importsDe = (codigo: string) => [...codigo.matchAll(/^\s*import\s[^'"]*['"]([^'"]+)['"]/gm)].map((m) => m[1] ?? '')
 
 const capas = {
-  'src/domain/': { permitidos: ['effect', 'src/domain/'], arreglo: 'dominio is pure and isomorphic; move I/O to server/' },
+  'src/domain/': { permitidos: ['effect', 'src/domain/'], arreglo: 'domain is pure and isomorphic; move I/O to server/' },
   'src/server/': {
     permitidos: ['effect', '@effect/', 'better-auth', 'pg', '@tanstack/react-start/server', '@tanstack/react-router', 'src/domain/', 'src/server/'],
-    arreglo: 'servidor must not reach fns/, routes/ or ui/',
+    arreglo: 'server must not reach fns/, routes/ or ui/',
   },
   'src/fns/': { permitidos: ['@tanstack/react-start', 'effect', 'src/domain/', 'src/server/'], arreglo: 'fns/ is the server-fn boundary only' },
   'src/routes/': {
     permitidos: ['@tanstack/', 'react', 'effect', 'src/domain/', 'src/fns/', 'src/ui/', 'src/routes/', 'src/detector/', 'src/styles.css', 'assets/', '@fontsource-variable/', 'better-auth/react'],
     arreglo: 'routes call server fns from src/fns/; never import src/server/ (it would ship pg to the browser)',
   },
-  'src/ui/': { permitidos: ['react', 'effect', '@tanstack/react-router', 'src/domain/', 'src/ui/'], arreglo: 'ui is plain React over dominio types' },
+  'src/ui/': { permitidos: ['react', 'effect', '@tanstack/react-router', 'src/domain/', 'src/ui/'], arreglo: 'ui is plain React over domain types' },
 } as const
 
 const excepciones = new Set(['src/routes/api/auth/$.ts', 'src/routes/opengame-detect[.]sh.ts', 'src/routes/opengame-detect[.]ps1.ts'])
