@@ -1,7 +1,5 @@
-// Prints the DDL better-auth would create for authSchema on an empty database, to compare against the migrated
-// schema. Never paste it into a migration: migrations 1 to 6 are frozen, and tests/schema.test.ts already fails
-// when better-auth finds anything to migrate after all of them.
-// Run: pnpm db:auth-sql. It compiles against an empty schema, so it resets `public` and refuses any database not named *_test.
+// Prints the DDL better-auth would create for authSchema, to compare against the migrated schema. Never paste it into a migration.
+// It resets `public` of DATABASE_URL_TEST, so it refuses any database not named *_test.
 import { getMigrations } from 'better-auth/db/migration'
 import { Schema } from 'effect'
 import { Pool } from 'pg'

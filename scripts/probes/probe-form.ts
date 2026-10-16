@@ -1,7 +1,5 @@
 // Probe (a): can the report form post its FormData straight into NewReport?
 // Run: node scripts/probes/probe-form.ts
-// U2 folded the probe's fix into NewReport (failures defaults to [], the 8.7 rule lands on `failures`),
-// so the sketch-schema case is gone and the "defaults to []" cases run against NewReport itself.
 import { Schema } from 'effect'
 import { NewReport } from '../../src/domain/contributions.ts'
 
