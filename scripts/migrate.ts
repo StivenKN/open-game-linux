@@ -1,4 +1,4 @@
-// `pnpm db:migrar` applies pending migrations and is idempotent: a second run logs `[]`.
+// `pnpm db:migrate` applies pending migrations and is idempotent: a second run logs `[]`.
 // `pnpm db:reset <base>` drops the public schema first, only when <base> names the database DATABASE_URL reaches.
 import { Effect } from 'effect'
 import { NodeServices } from '@effect/platform-node'

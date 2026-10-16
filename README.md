@@ -30,13 +30,13 @@ Created in [T3 Code](https://t3.codes).
 4. Apply the migrations. A second run applies nothing.
 
    ```sh
-   pnpm db:migrar
+   pnpm db:migrate
    ```
 
 5. Load the demo catalog, profiles, guides, accounts and reports. A second run adds nothing.
 
    ```sh
-   pnpm db:sembrar
+   pnpm db:seed
    ```
 
 6. Start the dev server and open <http://localhost:3000>.
@@ -60,10 +60,10 @@ The seed creates four accounts. They all use the password `opengame-demo`.
 
 Content written by these accounts shows the "Datos de ejemplo" stamp. You can also create your own account at `/registro`.
 
-To change an account's role, run `pnpm rol <email> <usuario|revisor|administrador>`. The new role applies on the account's next request.
+To change an account's role, run `pnpm set-role <email> <usuario|revisor|administrador>`. The new role applies on the account's next request.
 
 ```sh
-pnpm rol demo_ana@demo.opengame.test revisor
+pnpm set-role demo_ana@demo.opengame.test revisor
 ```
 
 ## Import ProtonDB data
@@ -130,7 +130,7 @@ The diagnosis projects what a GPU can do on Linux from its PCI id. The id table,
 To recognize newer GPUs, bump the pins in `scripts/generate-gpus.ts`, then regenerate the table. Review the printed counts and the diff before you commit.
 
 ```sh
-pnpm gpu:generar
+pnpm gpu:generate
 ```
 
 The run downloads the sources and fails if a source has a line or a chip it cannot read, or fewer ids than expected.
@@ -216,7 +216,7 @@ The stack reads four variables, listed in `.env.prod.example`:
 3. In Environment Variables, fill in the variables above. Coolify blocks the deploy until the required ones have a value.
 4. Set the domain of the `app` service to `https://<domain>:3000`. The `:3000` tells Coolify which container port receives the requests. You can also let Coolify generate an sslip.io domain. Set `BETTER_AUTH_URL` to the same https address, without the port.
 5. Deploy.
-6. Load the demo data once. Open the `app` container's Terminal tab in Coolify and run `pnpm db:sembrar`. Promote an account from the same terminal with `pnpm rol <correo> revisor`.
+6. Load the demo data once. Open the `app` container's Terminal tab in Coolify and run `pnpm db:seed`. Promote an account from the same terminal with `pnpm set-role <email> revisor`.
 
 Every later deploy rebuilds the image and keeps the database.
 
@@ -235,7 +235,7 @@ Every later deploy rebuilds the image and keeps the database.
 
    ```sh
    docker compose -p opengame-prod --env-file .env.prod -f compose.prod.yaml -f compose.local.yaml up -d --build
-   docker compose -p opengame-prod --env-file .env.prod -f compose.prod.yaml -f compose.local.yaml exec app pnpm db:sembrar
+   docker compose -p opengame-prod --env-file .env.prod -f compose.prod.yaml -f compose.local.yaml exec app pnpm db:seed
    ```
 
 4. Serve it over https from the host's reverse proxy. With Caddy, the whole site entry is `opengame.example.com { reverse_proxy 127.0.0.1:3000 }`.

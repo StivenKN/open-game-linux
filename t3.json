@@ -28,7 +28,7 @@
     },
     {
       "name": "DB up + migrate",
-      "command": "pnpm db:up && pnpm db:migrar",
+      "command": "pnpm db:up && pnpm db:migrate",
       "icon": "configure"
     }
   ]

@@ -26,7 +26,7 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?}
       BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
-    command: ["sh", "-c", "pnpm db:migrar && exec pnpm start"]
+    command: ["sh", "-c", "pnpm db:migrate && exec pnpm start"]
     init: true
     expose: ["3000"]
     restart: unless-stopped
