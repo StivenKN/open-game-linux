@@ -145,7 +145,7 @@ This runs route generation, `tsc`, oxlint, Vitest, `vite build` and a guard that
 
 ## Parity harness
 
-The parity harness proves that a change leaves everything a player sees and sends exactly as it was. It builds two versions of the app, gives each its own database, and compares what each one serves.
+The parity harness is a visual and markup regression test for any two versions of the app. It proves that a change, such as a refactor or a dependency upgrade, leaves everything a player sees and sends exactly as it was. It builds the two versions, gives each its own database, and compares what each one serves.
 
 1. Start the database container with `pnpm db:up`.
 2. Install the browser that the harness uses. Run this command once per machine.
@@ -154,13 +154,19 @@ The parity harness proves that a change leaves everything a player sees and send
    pnpm exec playwright-core install chromium-headless-shell
    ```
 
-3. Compare your working tree, uncommitted edits included, with a base commit.
+3. Compare your working tree, uncommitted edits included, with a base ref.
 
    ```sh
-   pnpm parity compare --base abde5bf
+   pnpm parity compare --base main
    ```
 
-`--head` takes a git ref or a directory, and the default is the current directory. `--seed` takes the same values. Each side runs in a temporary copy, with its own database named `opengame_parity_*` and its own port. The harness deletes both when the run ends.
+   To compare two commits, pass both.
+
+   ```sh
+   pnpm parity compare --base main --head my-branch
+   ```
+
+`--base` and `--head` each take a git ref or a directory, and `--head` defaults to the current directory. `--out` names the output directory, and the default is a new directory in the system temporary directory. Each side runs in a temporary copy, with its own database named `opengame_parity_*` and its own port. The harness deletes both when the run ends.
 
 Each side seeds its database with a frozen clock and seeded randomness. Then `demo_ana` files a report and `demo_revisor` approves it. The harness requests every route in `scripts/parity/capture.ts` as an anonymous visitor, as `demo_ana` and as `demo_revisor`. It saves the following:
 
@@ -187,7 +193,7 @@ The comparison passes only when every check below passes:
 - The sign-in JSON is byte-identical after the harness replaces each `token` or `secret` value with its length. A token depends on how many random values the app drew before sign-in.
 - Every other file is byte-identical.
 
-The command prints one block for each difference, then one line like `parity: 0 differences across 506 captures`. The next line, `harness: <hash>`, is the SHA-256 of the files in `scripts/parity/`, so a reviewer can see when a change edits the harness. It exits with 1 if it finds a difference. The output directory keeps both captures, the logs, and a diff image for each screenshot that differs. To capture a side once and reuse it, run `pnpm parity capture --ref <ref> --out <dir>`, then pass that directory as `--seed` or `--head`.
+The command prints one block for each difference, then one line like `parity: 0 differences across 506 captures`. The next line, `harness: <hash>`, is the SHA-256 of the files in `scripts/parity/`, so a reviewer can see when a change edits the harness. It exits with 1 if it finds a difference. The output directory keeps both captures, the logs, and a diff image for each screenshot that differs. To capture a side once and reuse it, run `pnpm parity capture --ref <ref> --out <dir>`, then pass that directory as `--base` or `--head`.
 
 ## Production
 

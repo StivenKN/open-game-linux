@@ -24,12 +24,10 @@ layer(PgTest)('vaciarEsquema', (it) => {
   )
 })
 
-const DatabaseMap = Schema.Struct({
-  database: Schema.Struct(
-    Object.fromEntries(['tables', 'columns', 'aliases', 'words', 'constraints', 'indexes', 'triggers', 'functions'].map((s) => [s, Schema.Record(Schema.String, Schema.String)])),
-  ),
-})
-const { database } = Schema.decodeUnknownSync(Schema.fromJsonString(DatabaseMap))(readFileSync(new URL('../scripts/rename/map.json', import.meta.url), 'utf8'))
+const EnglishNames = Schema.Struct(
+  Object.fromEntries(['tables', 'columns', 'aliases', 'words', 'constraints', 'indexes', 'triggers', 'functions'].map((s) => [s, Schema.Record(Schema.String, Schema.String)])),
+)
+const database = Schema.decodeUnknownSync(Schema.fromJsonString(EnglishNames))(readFileSync(new URL('./fixtures/english-names.json', import.meta.url), 'utf8'))
 const spanishWords = Object.values(database).flatMap(Object.keys)
 
 const carriesSpanish = (name: string) =>
