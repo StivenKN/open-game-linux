@@ -9,10 +9,10 @@ if (existsSync('.env')) process.loadEnvFile('.env')
 export default defineConfig({
   test: {
     projects: [
-      { test: { name: 'dominio', include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'] } },
+      { test: { name: 'unit', include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'] } },
       {
         test: {
-          name: 'bd',
+          name: 'db',
           include: ['tests/**/*.test.ts'],
           globalSetup: ['tests/setup.ts'],
           // server/runtime.ts and server/auth.ts read DATABASE_URL; point them at the test database.
