@@ -77,9 +77,9 @@ export const assignRole = (email: string, role: Role) =>
     const [row] = yield* rows(
       RoleChange,
       sql`
-      WITH previo AS (SELECT id, alias, rol AS antes FROM usuario WHERE correo = lower(btrim(${email})) FOR UPDATE),
-           cambio AS (UPDATE usuario u SET rol = ${role} FROM previo WHERE u.id = previo.id AND previo.antes <> ${role} RETURNING u.id)
-      SELECT alias, antes FROM previo`,
+      WITH previous AS (SELECT id, alias, role AS before FROM app_user WHERE email = lower(btrim(${email})) FOR UPDATE),
+           change AS (UPDATE app_user u SET role = ${role} FROM previous WHERE u.id = previous.id AND previous.before <> ${role} RETURNING u.id)
+      SELECT alias, before FROM previous`,
     )
     if (row === undefined) return yield* Effect.fail(new NotFound())
     return { alias: row.alias, role, changed: row.antes !== role }

@@ -5,11 +5,11 @@ import { SqlError } from 'effect/sql'
 import { RuleViolated, type Rule } from '../../domain/errors.ts'
 
 export const ruleByConstraint = {
-  reporte_fallo_pkey: 'fallo_duplicado',
-  version_capa_version_exacta: 'version_capa_no_exacta',
-  og_solo_revision: 'contenido_inmutable',
-  edicion_juego_juego_lanzador_uq: 'edicion_repetida',
-  edicion_juego_externo_uq: 'identificador_en_uso',
+  report_failure_pkey: 'fallo_duplicado',
+  layer_version_exact_version: 'version_capa_no_exacta',
+  og_review_only: 'contenido_inmutable',
+  game_edition_game_launcher_uq: 'edicion_repetida',
+  game_edition_external_uq: 'identificador_en_uso',
 } as const satisfies Record<string, Rule>
 
 const PgCause = Schema.Struct({ constraint: Schema.String })

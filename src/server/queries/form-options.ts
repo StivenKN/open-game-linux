@@ -31,29 +31,29 @@ export const reportOptions = (gameId: GameId, profile: ProfileId | null) =>
   Effect.gen(function* () {
     const user = yield* requireUser
     const sql = yield* SqlClient.SqlClient
-    const [game] = yield* rows(GameRow, sql`SELECT id, titulo FROM juego WHERE id = ${gameId}`)
+    const [game] = yield* rows(GameRow, sql`SELECT id, title FROM game WHERE id = ${gameId}`)
     if (game === undefined) return yield* Effect.fail(new NotFound())
 
     const editions = yield* rows(
       EditionRow,
-      sql`SELECT e.id, l.nombre AS lanzador FROM edicion_juego e JOIN lanzador l ON l.id = e.lanzador_id
-          WHERE e.juego_id = ${gameId} ORDER BY l.nombre`,
+      sql`SELECT e.id, l.name AS launcher FROM game_edition e JOIN launcher l ON l.id = e.launcher_id
+          WHERE e.game_id = ${gameId} ORDER BY l.name`,
     )
     const diagnostics = yield* rows(
       DiagnosticRow,
-      sql`SELECT d.id, eq.alias AS equipo, ${sql.literal(distributionLabel('di'))} AS distribucion, d.distribucion_id, d.arquitectura, d.capturado_en
-          FROM diagnostico d JOIN equipo eq ON eq.id = d.equipo_id JOIN distribucion di ON di.id = d.distribucion_id
-          WHERE eq.usuario_id = ${user.id} ORDER BY d.capturado_en DESC`,
+      sql`SELECT d.id, eq.alias AS machine, ${sql.literal(distributionLabel('di'))} AS distribution, d.distribution_id, d.architecture, d.captured_at
+          FROM diagnostic d JOIN machine eq ON eq.id = d.machine_id JOIN distribution di ON di.id = d.distribution_id
+          WHERE eq.user_id = ${user.id} ORDER BY d.captured_at DESC`,
     )
-    const layers = yield* rows(LayerVersion, sql`SELECT id, familia, variante, version FROM version_capa ORDER BY familia, variante, version`)
+    const layers = yield* rows(LayerVersion, sql`SELECT id, family, variant, version FROM layer_version ORDER BY family, variant, version`)
     const profiles = yield* rows(
       ProfileRow,
-      sql`SELECT p.id, p.titulo, p.revision, p.estado_revision, p.edicion_id, p.version_capa_id, p.distribucion_id, p.arquitectura,
-                 p.version_juego_objetivo, ${sql.literal(distributionLabel('di'))} AS distribucion
-          FROM perfil_configuracion p JOIN edicion_juego e ON e.id = p.edicion_id JOIN distribucion di ON di.id = p.distribucion_id
-          WHERE e.juego_id = ${gameId} AND p.estado_revision IN ${sql.in(activeStatuses)} ORDER BY p.titulo, p.revision`,
+      sql`SELECT p.id, p.title, p.revision, p.review_status, p.edition_id, p.layer_version_id, p.distribution_id, p.architecture,
+                 p.target_game_version, ${sql.literal(distributionLabel('di'))} AS distribution
+          FROM profile p JOIN game_edition e ON e.id = p.edition_id JOIN distribution di ON di.id = p.distribution_id
+          WHERE e.game_id = ${gameId} AND p.review_status IN ${sql.in(activeStatuses)} ORDER BY p.title, p.revision`,
     )
-    const failureTypes = yield* rows(FailureType, sql`SELECT id, codigo, descripcion FROM tipo_fallo ORDER BY id`)
+    const failureTypes = yield* rows(FailureType, sql`SELECT id, code, description FROM failure_type ORDER BY id`)
     return { game, editions, diagnostics, layers, profiles, failureTypes, selectedProfile: profiles.find((p) => p.id === profile)?.id ?? null }
   })
 
@@ -74,25 +74,25 @@ export const solutionOptions = (reportId: ReportId) =>
     const sql = yield* SqlClient.SqlClient
     const [report] = yield* rows(
       SourceReport,
-      sql`SELECT r.id, r.edicion_id, r.resultado, r.version_juego, r.fecha_prueba, r.observaciones, r.estado_revision,
-                 j.id AS juego_id, j.titulo AS juego, l.nombre AS lanzador, ${sql.literal(distributionLabel('di'))} AS distribucion,
-                 ${sql.literal(layerLabel('c'))} AS capa
-          FROM reporte r JOIN edicion_juego e ON e.id = r.edicion_id JOIN juego j ON j.id = e.juego_id JOIN lanzador l ON l.id = e.lanzador_id
-            JOIN diagnostico d ON d.id = r.diagnostico_id JOIN distribucion di ON di.id = d.distribucion_id
-            JOIN version_capa c ON c.id = r.version_capa_id
-          WHERE r.id = ${reportId} AND r.estado_revision IN ${sql.in(activeStatuses)}`,
+      sql`SELECT r.id, r.edition_id, r.outcome, r.game_version, r.tested_at, r.observations, r.review_status,
+                 j.id AS game_id, j.title AS game, l.name AS launcher, ${sql.literal(distributionLabel('di'))} AS distribution,
+                 ${sql.literal(layerLabel('c'))} AS layer
+          FROM report r JOIN game_edition e ON e.id = r.edition_id JOIN game j ON j.id = e.game_id JOIN launcher l ON l.id = e.launcher_id
+            JOIN diagnostic d ON d.id = r.diagnostic_id JOIN distribution di ON di.id = d.distribution_id
+            JOIN layer_version c ON c.id = r.layer_version_id
+          WHERE r.id = ${reportId} AND r.review_status IN ${sql.in(activeStatuses)}`,
     )
     if (report === undefined) return yield* Effect.fail(new NotFound())
     const failures = yield* rows(
       SourceFailure,
-      sql`SELECT f.tipo_fallo_id, t.codigo, f.detalle FROM reporte_fallo f JOIN tipo_fallo t ON t.id = f.tipo_fallo_id
-          WHERE f.reporte_id = ${reportId} ORDER BY t.id`,
+      sql`SELECT f.failure_type_id, t.code, f.detail FROM report_failure f JOIN failure_type t ON t.id = f.failure_type_id
+          WHERE f.report_id = ${reportId} ORDER BY t.id`,
     )
     if (failures.length === 0) return yield* Effect.fail(new NotFound())
     const profiles = yield* rows(
       EditionProfile,
-      sql`SELECT id, titulo, revision, estado_revision FROM perfil_configuracion
-          WHERE edicion_id = ${report.edicion_id} AND estado_revision IN ${sql.in(activeStatuses)} ORDER BY titulo, revision`,
+      sql`SELECT id, title, revision, review_status FROM profile
+          WHERE edition_id = ${report.edicion_id} AND review_status IN ${sql.in(activeStatuses)} ORDER BY title, revision`,
     )
     return { report, failures, profiles }
   })
@@ -102,5 +102,5 @@ const LauncherRow = Launcher.mapFields(Struct.pick(['id', 'nombre']))
 export const gameOptions = Effect.gen(function* () {
   yield* requireReviewer
   const sql = yield* SqlClient.SqlClient
-  return { launchers: yield* rows(LauncherRow, sql`SELECT id, nombre FROM lanzador ORDER BY nombre`) }
+  return { launchers: yield* rows(LauncherRow, sql`SELECT id, name FROM launcher ORDER BY name`) }
 })

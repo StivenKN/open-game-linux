@@ -19,7 +19,7 @@ const scenario = Effect.gen(function* () {
   const insert = (table: string, row: Record<string, Value>) => idOf(sql`INSERT INTO ${sql(table)} ${sql.insert(row)} RETURNING id`)
   const insertUser = (alias: string, email: string, role: Role) =>
     Effect.as(
-      sql`INSERT INTO usuario (id, alias, correo, correo_verificado, rol, activo) VALUES (${alias}, ${alias}, ${email}, false, ${role}, true)`,
+      sql`INSERT INTO app_user (id, alias, email, email_verified, role, active) VALUES (${alias}, ${alias}, ${email}, false, ${role}, true)`,
       { id: UserId.make(alias), alias, rol: role } satisfies SignedInUser,
     )
   // Ids no other test file uses: bd files run in parallel, and two transactions inserting the same ids deadlock.
@@ -84,7 +84,7 @@ const scenario = Effect.gen(function* () {
     observaciones: 'Pantalla negra al iniciar.',
   })
   const lanzadorFallo = yield* insert('tipo_fallo', { codigo: 'lanzador', descripcion: 'El lanzador no abre.' })
-  yield* sql`INSERT INTO reporte_fallo (reporte_id, tipo_fallo_id, detalle) VALUES (${fallido}, ${lanzadorFallo}, 'El lanzador se cierra.')`
+  yield* sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${fallido}, ${lanzadorFallo}, 'El lanzador se cierra.')`
 
   return {
     sql,
@@ -164,7 +164,7 @@ layer(PgTest)('arreglo_upstream', (it) => {
   it.effect('un registro no se reescribe', inScenario((e) =>
     Effect.gen(function* () {
       yield* asUser(e.rita)(noteFix(accepted(e.exportable)))
-      expect(yield* constraintOf(e.sql`UPDATE arreglo_upstream SET pr = 513`)).toEqual(Option.some('og_inmutable'))
+      expect(yield* constraintOf(e.sql`UPDATE upstream_fix SET pr = 513`)).toEqual(Option.some('og_immutable'))
     })))
 })
 

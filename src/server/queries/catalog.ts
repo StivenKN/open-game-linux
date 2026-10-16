@@ -31,21 +31,21 @@ export const catalog = (filter: CatalogFilter) =>
       Request: Schema.Void,
       Result: GameRow,
       execute: () => sql`
-        SELECT j.id, j.titulo,
-               COALESCE(array_agg(l.nombre ORDER BY l.nombre) FILTER (WHERE l.id IS NOT NULL), '{}') AS lanzadores,
-               (SELECT count(*)::int FROM reporte r JOIN edicion_juego x ON x.id = r.edicion_id
-                 WHERE x.juego_id = j.id AND r.estado_revision = 'pendiente') AS pendientes
-        FROM juego j
-        LEFT JOIN edicion_juego e ON e.juego_id = j.id
-        LEFT JOIN lanzador l ON l.id = e.lanzador_id
+        SELECT j.id, j.title,
+               COALESCE(array_agg(l.name ORDER BY l.name) FILTER (WHERE l.id IS NOT NULL), '{}') AS launchers,
+               (SELECT count(*)::int FROM report r JOIN game_edition x ON x.id = r.edition_id
+                 WHERE x.game_id = j.id AND r.review_status = 'pendiente') AS pending
+        FROM game j
+        LEFT JOIN game_edition e ON e.game_id = j.id
+        LEFT JOIN launcher l ON l.id = e.launcher_id
         WHERE ${sql.and([
-          ...(q === '' ? [] : [sql`j.titulo ILIKE ${literalLike(q)}`]),
+          ...(q === '' ? [] : [sql`j.title ILIKE ${literalLike(q)}`]),
           ...(filter.lanzador === undefined
             ? []
-            : [sql`EXISTS (SELECT 1 FROM edicion_juego x WHERE x.juego_id = j.id AND x.lanzador_id = ${filter.lanzador})`]),
+            : [sql`EXISTS (SELECT 1 FROM game_edition x WHERE x.game_id = j.id AND x.launcher_id = ${filter.lanzador})`]),
         ])}
         GROUP BY j.id
-        ORDER BY j.titulo`,
+        ORDER BY j.title`,
     })(undefined)
 
     const now = new Date(yield* Clock.currentTimeMillis)
@@ -81,21 +81,21 @@ export const catalog = (filter: CatalogFilter) =>
     const counters = yield* oneRow(
       Counters,
       sql`
-        SELECT count(DISTINCT e.juego_id)::int AS juegos_verificados,
-               count(*)::int AS reportes_aprobados,
-               (SELECT count(*)::int FROM perfil_configuracion WHERE estado_revision = 'aprobado') AS perfiles_aprobados,
-               count(DISTINCT d.distribucion_id)::int AS distribuciones_probadas,
-               (SELECT count(*)::int FROM arreglo_upstream) AS arreglos_upstream
-        FROM reporte r
-        JOIN edicion_juego e ON e.id = r.edicion_id
-        JOIN diagnostico d ON d.id = r.diagnostico_id
-        WHERE r.estado_revision = 'aprobado'`,
+        SELECT count(DISTINCT e.game_id)::int AS verified_games,
+               count(*)::int AS approved_reports,
+               (SELECT count(*)::int FROM profile WHERE review_status = 'aprobado') AS approved_profiles,
+               count(DISTINCT d.distribution_id)::int AS tested_distributions,
+               (SELECT count(*)::int FROM upstream_fix) AS upstream_fixes
+        FROM report r
+        JOIN game_edition e ON e.id = r.edition_id
+        JOIN diagnostic d ON d.id = r.diagnostic_id
+        WHERE r.review_status = 'aprobado'`,
     )
 
     const launchers = yield* SqlSchema.findAll({
       Request: Schema.Void,
       Result: Launcher.mapFields(Struct.pick(['id', 'nombre'])),
-      execute: () => sql`SELECT id, nombre FROM lanzador ORDER BY nombre`,
+      execute: () => sql`SELECT id, name FROM launcher ORDER BY name`,
     })(undefined)
 
     return { games, by_status, launchers, counters }

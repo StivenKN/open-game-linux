@@ -17,28 +17,28 @@ const scenario = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
   const insertUser = (alias: string, role: Role) =>
     Effect.as(
-      sql`INSERT INTO usuario (id, alias, correo, correo_verificado, rol, activo) VALUES (${alias}, ${alias}, ${`${alias}@demo.opengame.test`}, false, ${role}, true)`,
+      sql`INSERT INTO app_user (id, alias, email, email_verified, role, active) VALUES (${alias}, ${alias}, ${`${alias}@demo.opengame.test`}, false, ${role}, true)`,
       { id: Schema.decodeSync(UserId)(alias), alias, rol: role } satisfies SignedInUser,
     )
   const ana = yield* insertUser('ana', 'usuario')
   const bruno = yield* insertUser('bruno', 'usuario')
   const rita = yield* insertUser('rita', 'revisor')
 
-  const lanzador = yield* idOf(sql`INSERT INTO lanzador (nombre) VALUES ('Steam') RETURNING id`)
-  const lanzador2 = yield* idOf(sql`INSERT INTO lanzador (nombre) VALUES ('GOG') RETURNING id`)
-  const juego = yield* idOf(sql`INSERT INTO juego (titulo, descripcion) VALUES ('Juego', 'd') RETURNING id`)
-  const ed = yield* idOf(sql`INSERT INTO edicion_juego (juego_id, lanzador_id) VALUES (${juego}, ${lanzador}) RETURNING id`)
-  const edGog = yield* idOf(sql`INSERT INTO edicion_juego (juego_id, lanzador_id) VALUES (${juego}, ${lanzador2}) RETURNING id`)
-  const mint = yield* idOf(sql`INSERT INTO distribucion (nombre, version) VALUES ('Linux Mint', '22') RETURNING id`)
-  const fedora = yield* idOf(sql`INSERT INTO distribucion (nombre, version) VALUES ('Fedora', '40') RETURNING id`)
-  const capa = yield* idOf(sql`INSERT INTO version_capa (familia, variante, version) VALUES ('Proton', 'Valve', '9.0-4') RETURNING id`)
-  const capa8 = yield* idOf(sql`INSERT INTO version_capa (familia, variante, version) VALUES ('Proton', 'Valve', '8.0-5') RETURNING id`)
-  const otro = yield* idOf(sql`INSERT INTO tipo_fallo (codigo, descripcion) VALUES ('otro', 'Causa no identificada') RETURNING id`)
-  const lanzadorFallo = yield* idOf(sql`INSERT INTO tipo_fallo (codigo, descripcion) VALUES ('lanzador', 'El lanzador no abre') RETURNING id`)
+  const lanzador = yield* idOf(sql`INSERT INTO launcher (name) VALUES ('Steam') RETURNING id`)
+  const lanzador2 = yield* idOf(sql`INSERT INTO launcher (name) VALUES ('GOG') RETURNING id`)
+  const juego = yield* idOf(sql`INSERT INTO game (title, description) VALUES ('Juego', 'd') RETURNING id`)
+  const ed = yield* idOf(sql`INSERT INTO game_edition (game_id, launcher_id) VALUES (${juego}, ${lanzador}) RETURNING id`)
+  const edGog = yield* idOf(sql`INSERT INTO game_edition (game_id, launcher_id) VALUES (${juego}, ${lanzador2}) RETURNING id`)
+  const mint = yield* idOf(sql`INSERT INTO distribution (name, version) VALUES ('Linux Mint', '22') RETURNING id`)
+  const fedora = yield* idOf(sql`INSERT INTO distribution (name, version) VALUES ('Fedora', '40') RETURNING id`)
+  const capa = yield* idOf(sql`INSERT INTO layer_version (family, variant, version) VALUES ('Proton', 'Valve', '9.0-4') RETURNING id`)
+  const capa8 = yield* idOf(sql`INSERT INTO layer_version (family, variant, version) VALUES ('Proton', 'Valve', '8.0-5') RETURNING id`)
+  const otro = yield* idOf(sql`INSERT INTO failure_type (code, description) VALUES ('otro', 'Causa no identificada') RETURNING id`)
+  const lanzadorFallo = yield* idOf(sql`INSERT INTO failure_type (code, description) VALUES ('lanzador', 'El lanzador no abre') RETURNING id`)
 
-  const insertMachine = (owner: SignedInUser) => idOf(sql`INSERT INTO equipo (usuario_id, alias) VALUES (${owner.id}, 'equipo') RETURNING id`)
+  const insertMachine = (owner: SignedInUser) => idOf(sql`INSERT INTO machine (user_id, alias) VALUES (${owner.id}, 'equipo') RETURNING id`)
   const diagnostico = (equipo_id: number, capturado_en: string, overrides: Record<string, string | number | null> = {}) =>
-    idOf(sql`INSERT INTO diagnostico ${sql.insert({
+    idOf(sql`INSERT INTO diagnostic ${sql.insert({
       equipo_id,
       capturado_en: new Date(capturado_en),
       sistema: 'Linux',
@@ -57,7 +57,7 @@ const scenario = Effect.gen(function* () {
   const diagBruno = yield* diagnostico(yield* insertMachine(bruno), '2026-10-01T10:00:00Z')
 
   const perfil = (overrides: Record<string, string | number | null> = {}) =>
-    idOf(sql`INSERT INTO perfil_configuracion ${sql.insert({
+    idOf(sql`INSERT INTO profile ${sql.insert({
       edicion_id: ed,
       distribucion_id: mint,
       version_capa_id: capa,
@@ -193,7 +193,7 @@ layer(PgTest)('aportes', (it) => {
           { tipo_fallo_id: e.otro, detalle: 'se cierra' },
         ]
         expect(yield* Effect.flip(fileReport(e, { resultado: 'no_inicia', fallos }))).toEqual(rule('fallo_duplicado'))
-        expect(yield* e.sql`SELECT count(*)::int AS n FROM reporte`).toEqual([{ n: 0 }])
+        expect(yield* e.sql`SELECT count(*)::int AS n FROM report`).toEqual([{ n: 0 }])
       })))
 
     it.effect('una solución con un perfil de otra edición', inScenario((e) =>
@@ -212,7 +212,7 @@ layer(PgTest)('aportes', (it) => {
     it.effect('que un revisor apruebe su propio reporte, perfil o solución', inScenario((e) =>
       Effect.gen(function* () {
         // rita reviews, but she is also a user: her own equipo, report, profile and solution.
-        const diagRita = yield* e.diagnostico(yield* idOf(e.sql`INSERT INTO equipo (usuario_id, alias) VALUES ('rita', 'r') RETURNING id`), '2026-10-01T10:00:00Z')
+        const diagRita = yield* e.diagnostico(yield* idOf(e.sql`INSERT INTO machine (user_id, alias) VALUES ('rita', 'r') RETURNING id`), '2026-10-01T10:00:00Z')
         const { id: report } = yield* fileReport(e, { diagnostico_id: diagRita, ...withFailure(e) }, e.rita)
         const profile = yield* e.perfil({ autor_id: 'rita', revision: 2 })
         const { id: solution } = yield* fileSolution(e, report, {}, e.rita)
@@ -272,7 +272,7 @@ layer(PgTest)('aportes', (it) => {
         const game = newGame('Hades', [{ lanzador_id: e.lanzador, identificador_externo: '1145360' }])
         expect(yield* Effect.flip(asUser(e.ana)(createGame(game)))).toEqual(new Forbidden())
         expect(yield* Effect.flip(asUser(null)(createGame(game)))).toEqual(new Unauthenticated())
-        expect(yield* e.sql`SELECT titulo FROM juego WHERE titulo = 'Hades'`).toEqual([])
+        expect(yield* e.sql`SELECT title FROM game WHERE title = 'Hades'`).toEqual([])
       })))
 
     it.effect('dos ediciones en el mismo lanzador, o un identificador de tienda que ya usa otro juego', inScenario((e) =>
@@ -285,7 +285,7 @@ layer(PgTest)('aportes', (it) => {
         yield* asUser(e.rita)(createGame(newGame('Hades', [{ lanzador_id: e.lanzador, identificador_externo: '1145360' }])))
         const foreign = newGame('Hades II', [{ lanzador_id: e.lanzador, identificador_externo: '1145360' }])
         expect(yield* Effect.flip(asUser(e.rita)(createGame(foreign)))).toEqual(rule('identificador_en_uso'))
-        expect(yield* e.sql`SELECT titulo FROM juego WHERE titulo LIKE 'Hades%' ORDER BY titulo`).toEqual([{ titulo: 'Hades' }])
+        expect(yield* e.sql`SELECT title FROM game WHERE title LIKE 'Hades%' ORDER BY title`).toEqual([{ titulo: 'Hades' }])
       })))
   })
 
@@ -308,8 +308,8 @@ layer(PgTest)('aportes', (it) => {
             ]),
           ),
         )
-        expect(yield* e.sql`SELECT titulo, descripcion FROM juego WHERE id = ${id}`).toEqual([{ titulo: 'Hades', descripcion: 'Un juego de prueba' }])
-        expect(yield* e.sql`SELECT lanzador_id, identificador_externo FROM edicion_juego WHERE juego_id = ${id} ORDER BY lanzador_id`).toEqual([
+        expect(yield* e.sql`SELECT title, description FROM game WHERE id = ${id}`).toEqual([{ titulo: 'Hades', descripcion: 'Un juego de prueba' }])
+        expect(yield* e.sql`SELECT launcher_id, external_id FROM game_edition WHERE game_id = ${id} ORDER BY launcher_id`).toEqual([
           { lanzador_id: e.lanzador, identificador_externo: '1145360' },
           { lanzador_id: e.lanzador2, identificador_externo: null },
         ])
@@ -320,7 +320,7 @@ layer(PgTest)('aportes', (it) => {
         const later = yield* e.diagnostico(e.equipoAna, '2026-10-05T10:00:00Z', { ram_mb: 32768 })
         yield* fileReport(e)
         yield* fileReport(e, { diagnostico_id: later, fecha_prueba: '2026-10-06T10:00:00.000Z' })
-        const rows = yield* e.sql`SELECT diagnostico_id FROM reporte ORDER BY fecha_prueba`
+        const rows = yield* e.sql`SELECT diagnostic_id FROM report ORDER BY tested_at`
         expect(rows).toEqual([{ diagnostico_id: e.diagAna }, { diagnostico_id: later }])
       })))
 
@@ -328,9 +328,9 @@ layer(PgTest)('aportes', (it) => {
       Effect.gen(function* () {
         const medicion = { fps_promedio: 54.5, resolucion: '1280x720', calidad_grafica: 'Bajo', metodo_medicion: 'MangoHud, 5 min' }
         const { id } = yield* fileReport(e, { resultado: 'falla_en_ejecucion', medicion, fallos: [{ tipo_fallo_id: e.otro, detalle: 'Se cierra a los 10 min' }] })
-        const report = Schema.decodeUnknownSync(Rows)(yield* e.sql`SELECT perfil_id, fps_promedio, resolucion, estado_revision FROM reporte WHERE id = ${id}`)
+        const report = Schema.decodeUnknownSync(Rows)(yield* e.sql`SELECT profile_id, avg_fps, resolution, review_status FROM report WHERE id = ${id}`)
         expect(report).toEqual([{ perfil_id: null, fps_promedio: '54.50', resolucion: '1280x720', estado_revision: 'pendiente' }])
-        expect(yield* e.sql`SELECT tipo_fallo_id, detalle FROM reporte_fallo WHERE reporte_id = ${id}`).toEqual([
+        expect(yield* e.sql`SELECT failure_type_id, detail FROM report_failure WHERE report_id = ${id}`).toEqual([
           { tipo_fallo_id: e.otro, detalle: 'Se cierra a los 10 min' },
         ])
       })))
@@ -340,8 +340,8 @@ layer(PgTest)('aportes', (it) => {
         const newLayer = { _tag: 'nueva', familia: 'Proton', variante: 'GE', version: '9-20' }
         yield* fileReport(e, { version_capa: newLayer })
         yield* fileReport(e, { version_capa: newLayer, fecha_prueba: '2026-10-04T10:00:00.000Z' })
-        const layers = yield* e.sql`SELECT count(*)::int AS n, count(DISTINCT r.version_capa_id)::int AS usadas
-                                   FROM version_capa c JOIN reporte r ON r.version_capa_id = c.id WHERE c.variante = 'GE'`
+        const layers = yield* e.sql`SELECT count(*)::int AS n, count(DISTINCT r.layer_version_id)::int AS usadas
+                                   FROM layer_version c JOIN report r ON r.layer_version_id = c.id WHERE c.variant = 'GE'`
         expect(layers).toEqual([{ n: 2, usadas: 1 }])
       })))
 
@@ -349,10 +349,10 @@ layer(PgTest)('aportes', (it) => {
       Effect.gen(function* () {
         const { id } = yield* fileReport(e)
         expect(yield* asUser(e.rita)(decide(ref('reporte', id), approve))).toEqual({ changed: true })
-        const before = yield* e.sql`SELECT revisor_id, revisado_en, motivo_revision, evidencia_revision FROM reporte WHERE id = ${id}`
+        const before = yield* e.sql`SELECT reviewer_id, reviewed_at, review_reason, review_evidence FROM report WHERE id = ${id}`
         const otherDecision = Schema.decodeUnknownSync(Decision)({ _tag: 'Aprobar', motivo: 'otro motivo', evidencia: 'otra evidencia' })
         expect(yield* asUser(e.rita)(decide(ref('reporte', id), otherDecision))).toEqual({ changed: false })
-        expect(yield* e.sql`SELECT revisor_id, revisado_en, motivo_revision, evidencia_revision FROM reporte WHERE id = ${id}`).toEqual(before)
+        expect(yield* e.sql`SELECT reviewer_id, reviewed_at, review_reason, review_evidence FROM report WHERE id = ${id}`).toEqual(before)
       })))
 
     it.effect('probar un perfil pendiente y aprobarlo con ese reporte; luego publicar una solución', inScenario((e) =>
@@ -364,7 +364,7 @@ layer(PgTest)('aportes', (it) => {
         yield* asUser(e.rita)(decide(ref('reporte', failing), approve))
         const { id: solution } = yield* fileSolution(e, failing, { perfil_id: e.perfilMint })
         expect(yield* asUser(e.rita)(decide(ref('solucion', solution), approve))).toEqual({ changed: true })
-        const statuses = yield* e.sql`SELECT estado_revision, revisor_id, evidencia_revision FROM solucion WHERE id = ${solution}`
+        const statuses = yield* e.sql`SELECT review_status, reviewer_id, review_evidence FROM solution WHERE id = ${solution}`
         expect(statuses).toEqual([{ estado_revision: 'aprobado', revisor_id: 'rita', evidencia_revision: 'Captura de MangoHud #7' }])
       })))
 
@@ -373,7 +373,7 @@ layer(PgTest)('aportes', (it) => {
         const { id } = yield* fileReport(e)
         yield* asUser(e.rita)(decide(ref('reporte', id), approve))
         yield* asUser(e.rita)(decide(ref('reporte', id), withdraw))
-        expect(yield* e.sql`SELECT estado_revision, motivo_revision, evidencia_revision FROM reporte WHERE id = ${id}`).toEqual([
+        expect(yield* e.sql`SELECT review_status, review_reason, review_evidence FROM report WHERE id = ${id}`).toEqual([
           { estado_revision: 'retirado', motivo_revision: 'Versión obsoleta', evidencia_revision: 'Captura de MangoHud #7' },
         ])
       })))

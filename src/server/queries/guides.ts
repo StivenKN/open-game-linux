@@ -18,13 +18,13 @@ export const guides = Effect.flatMap(SqlClient.SqlClient, (sql) =>
     Request: Schema.Void,
     Result: GuideRow,
     execute: () => sql`
-      SELECT g.id, g.tipo, g.titulo, g.actualizado_en, ${sql.literal(distributionLabel('d'))} AS distribucion,
-             ${sql.literal(isDemo('u'))} AS ejemplo
-      FROM guia_adopcion g
-      JOIN usuario u ON u.id = g.autor_id
-      LEFT JOIN distribucion d ON d.id = g.distribucion_id
-      WHERE g.estado = 'publicada'
-      ORDER BY g.tipo, g.titulo`,
+      SELECT g.id, g.type, g.title, g.updated_at, ${sql.literal(distributionLabel('d'))} AS distribution,
+             ${sql.literal(isDemo('u'))} AS demo
+      FROM adoption_guide g
+      JOIN app_user u ON u.id = g.author_id
+      LEFT JOIN distribution d ON d.id = g.distribution_id
+      WHERE g.status = 'publicada'
+      ORDER BY g.type, g.title`,
   })(undefined),
 )
 
@@ -35,12 +35,12 @@ export const guide = (id: GuideId) =>
       Request: GuideId,
       Result: GuideDetail,
       execute: (id) => sql`
-        SELECT g.id, g.tipo, g.titulo, g.contenido, g.revision, g.actualizado_en, ${sql.literal(distributionLabel('d'))} AS distribucion,
-               u.alias AS autor, ${sql.literal(isDemo('u'))} AS ejemplo
-        FROM guia_adopcion g
-        JOIN usuario u ON u.id = g.autor_id
-        LEFT JOIN distribucion d ON d.id = g.distribucion_id
-        WHERE g.id = ${id} AND g.estado = 'publicada'`,
+        SELECT g.id, g.type, g.title, g.content, g.revision, g.updated_at, ${sql.literal(distributionLabel('d'))} AS distribution,
+               u.alias AS author, ${sql.literal(isDemo('u'))} AS demo
+        FROM adoption_guide g
+        JOIN app_user u ON u.id = g.author_id
+        LEFT JOIN distribution d ON d.id = g.distribution_id
+        WHERE g.id = ${id} AND g.status = 'publicada'`,
     })(id)
     if (Option.isNone(row)) return yield* new NotFound()
     return row.value

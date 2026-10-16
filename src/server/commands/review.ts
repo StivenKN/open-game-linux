@@ -30,14 +30,14 @@ const ReportTest = Schema.Struct({
 const reviewables = {
   perfil: {
     table: 'perfil_configuracion',
-    lock: (sql, id) => sql`SELECT estado_revision, autor_id FROM perfil_configuracion WHERE id = ${id} FOR UPDATE`,
+    lock: (sql, id) => sql`SELECT review_status, author_id FROM profile WHERE id = ${id} FOR UPDATE`,
     blockers: (id) =>
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient
         const [row] = yield* rows(
           Exists,
-          sql`SELECT EXISTS (SELECT 1 FROM reporte WHERE perfil_id = ${id} AND estado_revision = ${approved}
-                AND resultado IN ${sql.in(WorkingOutcome.literals)} LIMIT 1 FOR SHARE) AS hay`,
+          sql`SELECT EXISTS (SELECT 1 FROM report WHERE profile_id = ${id} AND review_status = ${approved}
+                AND outcome IN ${sql.in(WorkingOutcome.literals)} LIMIT 1 FOR SHARE) AS found`,
         )
         return row?.hay === true ? [] : ['perfil_sin_reporte_funcional_aprobado']
       }),
@@ -45,37 +45,37 @@ const reviewables = {
   reporte: {
     table: 'reporte',
     lock: (sql, id) =>
-      sql`SELECT r.estado_revision, e.usuario_id AS autor_id
-          FROM reporte r JOIN diagnostico d ON d.id = r.diagnostico_id JOIN equipo e ON e.id = d.equipo_id
+      sql`SELECT r.review_status, e.user_id AS author_id
+          FROM report r JOIN diagnostic d ON d.id = r.diagnostic_id JOIN machine e ON e.id = d.machine_id
           WHERE r.id = ${id} FOR UPDATE OF r`,
     blockers: (id) =>
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient
         const [test] = yield* rows(
           ReportTest,
-          sql`SELECT r.edicion_id, r.version_capa_id, r.version_juego, r.perfil_id, d.distribucion_id, d.arquitectura
-              FROM reporte r JOIN diagnostico d ON d.id = r.diagnostico_id WHERE r.id = ${id}`,
+          sql`SELECT r.edition_id, r.layer_version_id, r.game_version, r.profile_id, d.distribution_id, d.architecture
+              FROM report r JOIN diagnostic d ON d.id = r.diagnostic_id WHERE r.id = ${id}`,
         )
         if (test === undefined || test.perfil_id === null) return []
         const [profile] = yield* rows(
           TargetProfile,
-          sql`SELECT edicion_id, version_capa_id, distribucion_id, arquitectura, version_juego_objetivo
-              FROM perfil_configuracion WHERE id = ${test.perfil_id}`,
+          sql`SELECT edition_id, layer_version_id, distribution_id, architecture, target_game_version
+              FROM profile WHERE id = ${test.perfil_id}`,
         )
         return profile !== undefined && mismatches(test, profile).length > 0 ? ['reporte_incomparable'] : []
       }),
   },
   solucion: {
     table: 'solucion',
-    lock: (sql, id) => sql`SELECT estado_revision, autor_id FROM solucion WHERE id = ${id} FOR UPDATE`,
+    lock: (sql, id) => sql`SELECT review_status, author_id FROM solution WHERE id = ${id} FOR UPDATE`,
     blockers: (id) =>
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient
         const [statuses] = yield* rows(
           SolutionStatuses,
-          sql`SELECT r.estado_revision AS reporte,
-                     (SELECT p.estado_revision FROM perfil_configuracion p WHERE p.id = s.perfil_id FOR SHARE) AS perfil
-              FROM solucion s JOIN reporte r ON r.id = s.reporte_id
+          sql`SELECT r.review_status AS report,
+                     (SELECT p.review_status FROM profile p WHERE p.id = s.profile_id FOR SHARE) AS profile
+              FROM solution s JOIN report r ON r.id = s.report_id
               WHERE s.id = ${id} FOR SHARE OF r`,
         )
         if (statuses === undefined) return []
@@ -120,8 +120,8 @@ export const decide = (
 
     const evidence = decision._tag === 'Aprobar' ? decision.evidencia : null
     yield* sql`UPDATE ${sql(reviewable.table)}
-               SET estado_revision = ${target}, revisor_id = ${reviewer.id}, revisado_en = now(),
-                   motivo_revision = ${decision.motivo}, evidencia_revision = COALESCE(${evidence}, evidencia_revision)
+               SET review_status = ${target}, reviewer_id = ${reviewer.id}, reviewed_at = now(),
+                   review_reason = ${decision.motivo}, review_evidence = COALESCE(${evidence}, review_evidence)
                WHERE id = ${ref.id}`
     return { changed: true }
   })

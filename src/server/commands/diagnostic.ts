@@ -18,17 +18,17 @@ export const submitDiagnostic = (
     const user = yield* requireUser
     const capture = yield* captureOf(g.entrada)
     const sql = yield* SqlClient.SqlClient
-    yield* sql`SELECT 1 FROM usuario WHERE id = ${user.id} FOR UPDATE`
+    yield* sql`SELECT 1 FROM app_user WHERE id = ${user.id} FOR UPDATE`
 
     const [machine] =
       g.equipo._tag === 'existente'
-        ? yield* rows(MachineIdRow, sql`SELECT id FROM equipo WHERE id = ${g.equipo.id} AND usuario_id = ${user.id}`)
+        ? yield* rows(MachineIdRow, sql`SELECT id FROM machine WHERE id = ${g.equipo.id} AND user_id = ${user.id}`)
         : yield* rows(
             MachineIdRow,
             sql`
-              WITH previo AS (SELECT id FROM equipo WHERE usuario_id = ${user.id} AND lower(alias) = lower(${g.equipo.alias}) ORDER BY id LIMIT 1),
-                   creado AS (INSERT INTO equipo (usuario_id, alias) SELECT ${user.id}, ${g.equipo.alias} WHERE NOT EXISTS (SELECT 1 FROM previo) RETURNING id)
-              SELECT id FROM previo UNION ALL SELECT id FROM creado`,
+              WITH previous AS (SELECT id FROM machine WHERE user_id = ${user.id} AND lower(alias) = lower(${g.equipo.alias}) ORDER BY id LIMIT 1),
+                   created AS (INSERT INTO machine (user_id, alias) SELECT ${user.id}, ${g.equipo.alias} WHERE NOT EXISTS (SELECT 1 FROM previous) RETURNING id)
+              SELECT id FROM previous UNION ALL SELECT id FROM created`,
           )
     if (machine === undefined) return yield* Effect.fail(new RuleViolated({ rule: 'equipo_ajeno' }))
 
@@ -65,10 +65,10 @@ export const submitDiagnostic = (
     return yield* oneRow(
       Saved,
       sql`
-        WITH nuevo AS (INSERT INTO diagnostico ${sql.insert(row)} ON CONFLICT (equipo_id, capturado_en) DO NOTHING RETURNING id)
-        SELECT id, true AS nuevo FROM nuevo
+        WITH inserted AS (INSERT INTO diagnostic ${sql.insert(row)} ON CONFLICT (machine_id, captured_at) DO NOTHING RETURNING id)
+        SELECT id, true AS inserted FROM inserted
         UNION ALL
-        SELECT id, false AS nuevo FROM diagnostico WHERE equipo_id = ${machine.id} AND capturado_en = ${capture.capturado_en}`,
+        SELECT id, false AS inserted FROM diagnostic WHERE machine_id = ${machine.id} AND captured_at = ${capture.capturado_en}`,
     )
   })
 
@@ -82,7 +82,7 @@ type CapturedDistribution = Extract<Capture, { readonly sistema: 'Linux' }>['dis
 const distributionIdOf = (d: CapturedDistribution) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    yield* sql`INSERT INTO distribucion (nombre, version) VALUES (${d.nombre}, ${d.version}) ON CONFLICT (nombre, version) DO NOTHING`
-    const row = yield* oneRow(Schema.Struct({ id: Distribution.fields.id }), sql`SELECT id FROM distribucion WHERE nombre = ${d.nombre} AND version = ${d.version}`)
+    yield* sql`INSERT INTO distribution (name, version) VALUES (${d.nombre}, ${d.version}) ON CONFLICT (name, version) DO NOTHING`
+    const row = yield* oneRow(Schema.Struct({ id: Distribution.fields.id }), sql`SELECT id FROM distribution WHERE name = ${d.nombre} AND version = ${d.version}`)
     return row.id
   })

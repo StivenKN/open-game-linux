@@ -45,28 +45,28 @@ const matrix = (machine: MachineOnLinux, setup: Setup, inLibrary: ReadonlySet<Ga
     const games = yield* rows(
       GameRow,
       sql`
-        SELECT j.id, j.titulo, j.nivel_x86_min, COALESCE(array_agg(ja.api) FILTER (WHERE ja.api IS NOT NULL), '{}') AS apis
-        FROM juego j LEFT JOIN juego_api ja ON ja.juego_id = j.id
+        SELECT j.id, j.title, j.x86_level_min, COALESCE(array_agg(ja.api) FILTER (WHERE ja.api IS NOT NULL), '{}') AS apis
+        FROM game j LEFT JOIN game_api ja ON ja.game_id = j.id
         GROUP BY j.id
-        ORDER BY j.titulo, j.id`,
+        ORDER BY j.title, j.id`,
     )
     const outcomes = yield* rows(
       ApprovedOutcome,
       sql`
-        SELECT ej.juego_id, r.resultado FROM reporte r JOIN edicion_juego ej ON ej.id = r.edicion_id
-        WHERE r.estado_revision = 'aprobado'`,
+        SELECT ej.game_id, r.outcome FROM report r JOIN game_edition ej ON ej.id = r.edition_id
+        WHERE r.review_status = 'aprobado'`,
     )
     const profiles = yield* rows(
       ApprovedProfile,
       sql`
-        SELECT p.id, ej.juego_id, p.titulo, p.revision, p.distribucion_id, p.arquitectura,
-               p.ram_min_mb, p.vram_min_mb, p.requiere_vulkan, p.version_vulkan_min,
-               ${sql.literal(layerLabel('vc'))} AS capa, ${sql.literal(distributionLabel('d'))} AS distribucion
-        FROM perfil_configuracion p
-        JOIN edicion_juego ej ON ej.id = p.edicion_id
-        JOIN version_capa vc ON vc.id = p.version_capa_id
-        JOIN distribucion d ON d.id = p.distribucion_id
-        WHERE p.estado_revision = 'aprobado'
+        SELECT p.id, ej.game_id, p.title, p.revision, p.distribution_id, p.architecture,
+               p.ram_min_mb, p.vram_min_mb, p.requires_vulkan, p.vulkan_version_min,
+               ${sql.literal(layerLabel('vc'))} AS layer, ${sql.literal(distributionLabel('d'))} AS distribution
+        FROM profile p
+        JOIN game_edition ej ON ej.id = p.edition_id
+        JOIN layer_version vc ON vc.id = p.layer_version_id
+        JOIN distribution d ON d.id = p.distribution_id
+        WHERE p.review_status = 'aprobado'
         ORDER BY p.id`,
     )
     return games.map((game) => {
@@ -102,8 +102,8 @@ const splitLibrary = (games: SteamLibrary) =>
         : yield* rows(
             SteamEdition,
             sql`
-              SELECT ej.identificador_externo AS app_id, ej.juego_id FROM edicion_juego ej JOIN lanzador l ON l.id = ej.lanzador_id
-              WHERE l.nombre = ${STEAM_LAUNCHER} AND ej.identificador_externo IN ${sql.in(games.map((j) => String(j.app_id)))}`,
+              SELECT ej.external_id AS app_id, ej.game_id FROM game_edition ej JOIN launcher l ON l.id = ej.launcher_id
+              WHERE l.name = ${STEAM_LAUNCHER} AND ej.external_id IN ${sql.in(games.map((j) => String(j.app_id)))}`,
           )
     const known = new Set(editions.map((e) => e.app_id))
     return {
@@ -120,7 +120,7 @@ const evaluateMachine = (machine: MachineOnLinux, setup: Setup, games: SteamLibr
     const split = games === null ? null : yield* splitLibrary(games)
     const [guide] = yield* rows(
       DistributionGuide,
-      sql`SELECT id FROM guia_adopcion WHERE tipo = 'eleccion_distribucion' AND estado = 'publicada' ORDER BY id LIMIT 1`,
+      sql`SELECT id FROM adoption_guide WHERE type = 'eleccion_distribucion' AND status = 'publicada' ORDER BY id LIMIT 1`,
     )
     return {
       matrix: yield* matrix(machine, setup, split?.inCatalog ?? new Set()),
@@ -149,7 +149,7 @@ export const evaluateWithoutSaving = (
       capture.sistema === 'Linux'
         ? yield* rows(
             Schema.Struct({ id: Distribution.fields.id }),
-            sql`SELECT id FROM distribucion WHERE nombre = ${capture.distribucion.nombre} AND version = ${capture.distribucion.version}`,
+            sql`SELECT id FROM distribution WHERE name = ${capture.distribucion.nombre} AND version = ${capture.distribucion.version}`,
           )
         : []
     const machine = machineOnLinux(capture)
@@ -201,11 +201,11 @@ export const myDiagnostic = (id: DiagnosticId) =>
       SavedDiagnostic,
       sql`
         SELECT d.*, e.alias,
-               CASE WHEN dist.id IS NULL THEN NULL ELSE json_build_object('nombre', dist.nombre, 'version', dist.version) END AS distribucion
-        FROM diagnostico d
-        JOIN equipo e ON e.id = d.equipo_id
-        LEFT JOIN distribucion dist ON dist.id = d.distribucion_id
-        WHERE d.id = ${id} AND e.usuario_id = ${user.id}`,
+               CASE WHEN dist.id IS NULL THEN NULL ELSE json_build_object('nombre', dist.name, 'version', dist.version) END AS distribution
+        FROM diagnostic d
+        JOIN machine e ON e.id = d.machine_id
+        LEFT JOIN distribution dist ON dist.id = d.distribution_id
+        WHERE d.id = ${id} AND e.user_id = ${user.id}`,
     )
     if (d === undefined) return yield* Effect.fail(new NotFound())
     const machine = machineOnLinux(d)
@@ -230,17 +230,17 @@ export const myMachines = () =>
     const sql = yield* SqlClient.SqlClient
     const machines = yield* rows(
       MachineRow,
-      sql`SELECT id, alias FROM equipo WHERE usuario_id = ${visitor.value.id} ORDER BY creado_en, id`,
+      sql`SELECT id, alias FROM machine WHERE user_id = ${visitor.value.id} ORDER BY created_at, id`,
     )
     const captures = yield* rows(
       CaptureSummary,
       sql`
-        SELECT d.id, d.equipo_id, d.capturado_en, d.sistema, d.gpu_modelo, d.ram_mb, ${sql.literal(distributionLabel('dist'))} AS distribucion
-        FROM diagnostico d
-        JOIN equipo e ON e.id = d.equipo_id
-        LEFT JOIN distribucion dist ON dist.id = d.distribucion_id
-        WHERE e.usuario_id = ${visitor.value.id}
-        ORDER BY d.capturado_en DESC, d.id DESC`,
+        SELECT d.id, d.machine_id, d.captured_at, d.operating_system, d.gpu_model, d.ram_mb, ${sql.literal(distributionLabel('dist'))} AS distribution
+        FROM diagnostic d
+        JOIN machine e ON e.id = d.machine_id
+        LEFT JOIN distribution dist ON dist.id = d.distribution_id
+        WHERE e.user_id = ${visitor.value.id}
+        ORDER BY d.captured_at DESC, d.id DESC`,
     )
     return machines.map((e) => ({ ...e, diagnostics: captures.filter((c) => c.equipo_id === e.id) }))
   })

@@ -32,23 +32,23 @@ export const myProtonReport = (reportId: ReportId) =>
     const sql = yield* SqlClient.SqlClient
     const [row] = yield* rows(
       ProtonReportRow,
-      sql`SELECT j.id AS juego_id, j.titulo AS juego, l.nombre AS lanzador, e.identificador_externo,
-                 vc.familia, vc.variante, vc.version, r.resultado, r.version_juego, r.fecha_prueba, r.observaciones,
-                 d.gpu_modelo, d.controlador, d.version_controlador, d.version_sistema,
-                 ${sql.literal(distributionLabel('di'))} AS distribucion, ${sql.literal(isDemo('u'))} AS ejemplo
-          FROM reporte r
-          JOIN edicion_juego e ON e.id = r.edicion_id
-          JOIN juego j ON j.id = e.juego_id
-          JOIN lanzador l ON l.id = e.lanzador_id
-          JOIN version_capa vc ON vc.id = r.version_capa_id
-          JOIN diagnostico d ON d.id = r.diagnostico_id
-          JOIN distribucion di ON di.id = d.distribucion_id
-          JOIN equipo eq ON eq.id = d.equipo_id
-          JOIN usuario u ON u.id = eq.usuario_id
-          WHERE r.id = ${reportId} AND eq.usuario_id = ${user.id} AND r.estado_revision IN ${sql.in(activeStatuses)}`,
+      sql`SELECT j.id AS game_id, j.title AS game, l.name AS launcher, e.external_id,
+                 vc.family, vc.variant, vc.version, r.outcome, r.game_version, r.tested_at, r.observations,
+                 d.gpu_model, d.driver, d.driver_version, d.os_version,
+                 ${sql.literal(distributionLabel('di'))} AS distribution, ${sql.literal(isDemo('u'))} AS demo
+          FROM report r
+          JOIN game_edition e ON e.id = r.edition_id
+          JOIN game j ON j.id = e.game_id
+          JOIN launcher l ON l.id = e.launcher_id
+          JOIN layer_version vc ON vc.id = r.layer_version_id
+          JOIN diagnostic d ON d.id = r.diagnostic_id
+          JOIN distribution di ON di.id = d.distribution_id
+          JOIN machine eq ON eq.id = d.machine_id
+          JOIN app_user u ON u.id = eq.user_id
+          WHERE r.id = ${reportId} AND eq.user_id = ${user.id} AND r.review_status IN ${sql.in(activeStatuses)}`,
     )
     if (row === undefined) return yield* Effect.fail(new NotFound())
-    const failures = yield* rows(FailureRow, sql`SELECT detalle FROM reporte_fallo WHERE reporte_id = ${reportId} ORDER BY tipo_fallo_id`)
+    const failures = yield* rows(FailureRow, sql`SELECT detail FROM report_failure WHERE report_id = ${reportId} ORDER BY failure_type_id`)
     return {
       report: { id: reportId, juego_id: row.juego_id, juego: row.juego },
       protonReport: protonReport({ ...row, failures: failures.map((f) => f.detalle) }),

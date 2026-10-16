@@ -29,18 +29,18 @@ export const noteFix = (note: FixNote): Write<{ readonly changed: boolean }, Rul
     const reviewer = yield* requireReviewer
     const sql = yield* SqlClient.SqlClient
     if (note._tag === 'Anular') {
-      const deleted = yield* rows(IdRow, sql`DELETE FROM arreglo_upstream WHERE pr = ${note.pr} RETURNING id`)
+      const deleted = yield* rows(IdRow, sql`DELETE FROM upstream_fix WHERE pr = ${note.pr} RETURNING id`)
       return { changed: deleted.length > 0 }
     }
 
     const [profile] = yield* rows(
       ExportableProfile,
-      sql`SELECT p.estado_revision, l.nombre AS lanzador, e.identificador_externo, vc.familia, ${sql.literal(isDemo('u'))} AS ejemplo
-          FROM perfil_configuracion p
-          JOIN edicion_juego e ON e.id = p.edicion_id
-          JOIN lanzador l ON l.id = e.lanzador_id
-          JOIN version_capa vc ON vc.id = p.version_capa_id
-          JOIN usuario u ON u.id = p.autor_id
+      sql`SELECT p.review_status, l.name AS launcher, e.external_id, vc.family, ${sql.literal(isDemo('u'))} AS demo
+          FROM profile p
+          JOIN game_edition e ON e.id = p.edition_id
+          JOIN launcher l ON l.id = e.launcher_id
+          JOIN layer_version vc ON vc.id = p.layer_version_id
+          JOIN app_user u ON u.id = p.author_id
           WHERE p.id = ${note.perfil_id}
           FOR SHARE OF p`,
     )
@@ -50,11 +50,11 @@ export const noteFix = (note: FixNote): Write<{ readonly changed: boolean }, Rul
 
     const created = yield* rows(
       IdRow,
-      sql`INSERT INTO arreglo_upstream ${sql.insert({ pr: note.pr, perfil_id: note.perfil_id, registrado_por: reviewer.id })}
-          ON CONFLICT ON CONSTRAINT arreglo_upstream_pr_uq DO NOTHING RETURNING id`,
+      sql`INSERT INTO upstream_fix ${sql.insert({ pr: note.pr, perfil_id: note.perfil_id, registrado_por: reviewer.id })}
+          ON CONFLICT ON CONSTRAINT upstream_fix_pr_uq DO NOTHING RETURNING id`,
     )
     if (created.length > 0) return { changed: true }
-    const [existing] = yield* rows(PrOwner, sql`SELECT perfil_id FROM arreglo_upstream WHERE pr = ${note.pr}`)
+    const [existing] = yield* rows(PrOwner, sql`SELECT profile_id FROM upstream_fix WHERE pr = ${note.pr}`)
     if (existing?.perfil_id !== note.perfil_id) return yield* Effect.fail(new RuleViolated({ rule: 'arreglo_pr_de_otro_perfil' }))
     return { changed: false }
   })

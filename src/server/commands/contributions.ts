@@ -27,8 +27,8 @@ export const submitReport = (n: NewReport): Write<{ readonly id: ReportId }, Rul
 
     const [d] = yield* rows(
       ReportDiagnostic,
-      sql`SELECT e.usuario_id, d.sistema, d.distribucion_id, d.arquitectura, d.capturado_en
-          FROM diagnostico d JOIN equipo e ON e.id = d.equipo_id WHERE d.id = ${n.diagnostico_id}`,
+      sql`SELECT e.user_id, d.operating_system, d.distribution_id, d.architecture, d.captured_at
+          FROM diagnostic d JOIN machine e ON e.id = d.machine_id WHERE d.id = ${n.diagnostico_id}`,
     )
     if (d === undefined || d.usuario_id !== user.id) return yield* violate('equipo_ajeno')
     if (d.sistema !== 'Linux' || d.distribucion_id === null) return yield* violate('diagnostico_no_linux')
@@ -39,8 +39,8 @@ export const submitReport = (n: NewReport): Write<{ readonly id: ReportId }, Rul
     if (n.perfil_id !== null) {
       const [profile] = yield* rows(
         TargetProfile,
-        sql`SELECT edicion_id, version_capa_id, distribucion_id, arquitectura, version_juego_objetivo
-            FROM perfil_configuracion WHERE id = ${n.perfil_id} AND estado_revision IN ${sql.in(activeStatuses)}`,
+        sql`SELECT edition_id, layer_version_id, distribution_id, architecture, target_game_version
+            FROM profile WHERE id = ${n.perfil_id} AND review_status IN ${sql.in(activeStatuses)}`,
       )
       if (profile === undefined) return yield* violate('perfil_no_disponible')
       const found = mismatches(
@@ -52,7 +52,7 @@ export const submitReport = (n: NewReport): Write<{ readonly id: ReportId }, Rul
 
     const created = yield* oneRow(
       ReportIdRow,
-      sql`INSERT INTO reporte ${sql.insert({
+      sql`INSERT INTO report ${sql.insert({
         edicion_id: n.edicion_id,
         diagnostico_id: n.diagnostico_id,
         version_capa_id,
@@ -70,7 +70,7 @@ export const submitReport = (n: NewReport): Write<{ readonly id: ReportId }, Rul
     )
     if (Arr.isReadonlyArrayNonEmpty(n.fallos))
       yield* withDbRules(
-        sql`INSERT INTO reporte_fallo ${sql.insert(n.fallos.map((f) => ({ reporte_id: created.id, tipo_fallo_id: f.tipo_fallo_id, detalle: f.detalle })))}`,
+        sql`INSERT INTO report_failure ${sql.insert(n.fallos.map((f) => ({ reporte_id: created.id, tipo_fallo_id: f.tipo_fallo_id, detalle: f.detalle })))}`,
       )
     return { id: created.id }
   })
@@ -85,8 +85,8 @@ const resolveLayerVersion = (ref: NewReport['version_capa']) =>
     const layer = yield* withDbRules(
       oneRow(
         LayerVersionIdRow,
-        sql`INSERT INTO version_capa (familia, variante, version) VALUES (${ref.familia}, ${ref.variante}, ${ref.version})
-            ON CONFLICT ON CONSTRAINT version_capa_uq DO UPDATE SET familia = EXCLUDED.familia RETURNING id`,
+        sql`INSERT INTO layer_version (family, variant, version) VALUES (${ref.familia}, ${ref.variante}, ${ref.version})
+            ON CONFLICT ON CONSTRAINT layer_version_uq DO UPDATE SET family = EXCLUDED.family RETURNING id`,
       ),
     )
     return layer.id
@@ -103,15 +103,15 @@ export const submitSolution = (s: NewSolution): Write<{ readonly id: SolutionId 
 
     const [origin] = yield* rows(
       SolutionOrigin,
-      sql`SELECT r.edicion_id FROM reporte_fallo f JOIN reporte r ON r.id = f.reporte_id
-          WHERE f.reporte_id = ${s.reporte_id} AND f.tipo_fallo_id = ${s.tipo_fallo_id} AND r.estado_revision IN ${sql.in(activeStatuses)}`,
+      sql`SELECT r.edition_id FROM report_failure f JOIN report r ON r.id = f.report_id
+          WHERE f.report_id = ${s.reporte_id} AND f.failure_type_id = ${s.tipo_fallo_id} AND r.review_status IN ${sql.in(activeStatuses)}`,
     )
     if (origin === undefined) return yield* violate('solucion_sin_fallo')
 
     if (s.perfil_id !== null) {
       const [profile] = yield* rows(
         RecommendedProfile,
-        sql`SELECT edicion_id FROM perfil_configuracion WHERE id = ${s.perfil_id} AND estado_revision IN ${sql.in(activeStatuses)}`,
+        sql`SELECT edition_id FROM profile WHERE id = ${s.perfil_id} AND review_status IN ${sql.in(activeStatuses)}`,
       )
       if (profile === undefined) return yield* violate('perfil_no_disponible')
       if (profile.edicion_id !== origin.edicion_id) return yield* violate('solucion_perfil_otra_edicion')
@@ -119,7 +119,7 @@ export const submitSolution = (s: NewSolution): Write<{ readonly id: SolutionId 
 
     const created = yield* oneRow(
       SolutionIdRow,
-      sql`INSERT INTO solucion ${sql.insert({
+      sql`INSERT INTO solution ${sql.insert({
         reporte_id: s.reporte_id,
         tipo_fallo_id: s.tipo_fallo_id,
         autor_id: user.id,
@@ -139,9 +139,9 @@ export const createGame = (j: NewGame): Write<{ readonly id: GameId }, RuleViola
     const sql = yield* SqlClient.SqlClient
     const created = yield* oneRow(
       GameIdRow,
-      sql`INSERT INTO juego ${sql.insert({ titulo: j.titulo, descripcion: j.descripcion, nivel_x86_min: j.nivel_x86_min })} RETURNING id`,
+      sql`INSERT INTO game ${sql.insert({ titulo: j.titulo, descripcion: j.descripcion, nivel_x86_min: j.nivel_x86_min })} RETURNING id`,
     )
-    yield* withDbRules(sql`INSERT INTO edicion_juego ${sql.insert(j.ediciones.map((e) => ({ juego_id: created.id, ...e })))}`)
-    yield* sql`INSERT INTO juego_api ${sql.insert(Arr.dedupe(j.apis).map((api) => ({ juego_id: created.id, api })))}`
+    yield* withDbRules(sql`INSERT INTO game_edition ${sql.insert(j.ediciones.map((e) => ({ juego_id: created.id, ...e })))}`)
+    yield* sql`INSERT INTO game_api ${sql.insert(Arr.dedupe(j.apis).map((api) => ({ juego_id: created.id, api })))}`
     return { id: created.id }
   })

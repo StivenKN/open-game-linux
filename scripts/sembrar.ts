@@ -517,7 +517,7 @@ const programa = Effect.gen(function* () {
   const usuario = new Map<Cuenta, string>()
   for (const [alias, rol] of Record.toEntries(cuentas)) {
     const correo = correoDe(alias)
-    const [existente] = yield* rows(ConIdTexto, sql`SELECT id FROM usuario WHERE correo = ${correo}`)
+    const [existente] = yield* rows(ConIdTexto, sql`SELECT id FROM app_user WHERE email = ${correo}`)
     if (existente === undefined) contar('usuario')
     const id =
       existente?.id ?? (yield* Effect.promise(() => auth.api.signUpEmail({ body: { name: alias, email: correo, password: contrasenaDemo } }))).user.id
@@ -548,9 +548,9 @@ const programa = Effect.gen(function* () {
       for (const [k, j] of Record.toEntries(juegos)) {
         const juego_id = yield* idDe('juego', { titulo: j.titulo }, { descripcion: j.descripcion })
         // Converges on reruns: fills the level on a database seeded before the column existed.
-        const nivel = yield* sql`UPDATE juego SET nivel_x86_min = ${j.nivel_x86_min} WHERE id = ${juego_id} AND nivel_x86_min IS DISTINCT FROM ${j.nivel_x86_min} RETURNING id`
+        const nivel = yield* sql`UPDATE game SET x86_level_min = ${j.nivel_x86_min} WHERE id = ${juego_id} AND x86_level_min IS DISTINCT FROM ${j.nivel_x86_min} RETURNING id`
         if (nivel.length > 0) contar('juego.nivel_x86_min')
-        const apis = yield* sql`INSERT INTO juego_api ${sql.insert(j.apis.map((api) => ({ juego_id, api })))} ON CONFLICT DO NOTHING RETURNING api`
+        const apis = yield* sql`INSERT INTO game_api ${sql.insert(j.apis.map((api) => ({ juego_id, api })))} ON CONFLICT DO NOTHING RETURNING api`
         for (const _ of apis) contar('juego_api')
         const ediciones: Partial<Record<keyof typeof lanzadores, string | null>> = j.ediciones
         for (const l of Record.keys(lanzadores)) {
@@ -585,12 +585,12 @@ const programa = Effect.gen(function* () {
         perfilDe.set(clavePerfil(p), perfil.id)
         if (!perfil.nuevo) continue
         for (const [i, [titulo, instruccion]] of p.pasos.entries()) {
-          yield* sql`INSERT INTO paso_configuracion ${sql.insert({ perfil_id: perfil.id, orden: i + 1, titulo, instruccion })}`
+          yield* sql`INSERT INTO profile_step ${sql.insert({ perfil_id: perfil.id, orden: i + 1, titulo, instruccion })}`
           contar('paso_configuracion')
         }
         for (const d of p.dependencias) {
           const fila = { perfil_id: perfil.id, dependencia_id: yield* de(dependencia, d.dependencia), obligatoria: d.obligatoria, instruccion_instalacion: d.instruccion_instalacion }
-          yield* sql`INSERT INTO perfil_dependencia ${sql.insert(fila)}`
+          yield* sql`INSERT INTO profile_dependency ${sql.insert(fila)}`
           contar('perfil_dependencia')
         }
       }
@@ -643,7 +643,7 @@ const programa = Effect.gen(function* () {
         const edicion_id = yield* de(edicion, r.edicion.join('/'))
         const [existente] = yield* rows(
           ConId,
-          sql`SELECT id FROM reporte WHERE diagnostico_id = ${diagnostico_id} AND edicion_id = ${edicion_id} AND fecha_prueba = ${r.fecha_prueba}`,
+          sql`SELECT id FROM report WHERE diagnostic_id = ${diagnostico_id} AND edition_id = ${edicion_id} AND tested_at = ${r.fecha_prueba}`,
         )
         if (existente !== undefined) {
           reporteDe.set(i, existente.id)
@@ -673,7 +673,7 @@ const programa = Effect.gen(function* () {
       const tipo_fallo_id = yield* de(tipoFallo, sol.tipoFallo)
       const [solucionExistente] = yield* rows(
         ConId,
-        sql`SELECT id FROM solucion WHERE reporte_id = ${reporte_id} AND tipo_fallo_id = ${tipo_fallo_id} AND titulo = ${sol.titulo}`,
+        sql`SELECT id FROM solution WHERE report_id = ${reporte_id} AND failure_type_id = ${tipo_fallo_id} AND title = ${sol.titulo}`,
       )
       let solucion_id = solucionExistente?.id
       if (solucion_id === undefined) {

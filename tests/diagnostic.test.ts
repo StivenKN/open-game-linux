@@ -43,7 +43,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       const second = yield* save({ equipo: newMachine('torre de CASA'), entrada: payload() }).pipe(asUser(f.autor))
       expect([first.nuevo, second.nuevo]).toEqual([true, false])
       expect(second.id).toBe(first.id)
-      const machines = yield* f.sql`SELECT count(*)::int AS n FROM equipo WHERE usuario_id = ${f.autor} AND lower(alias) = 'torre de casa'`
+      const machines = yield* f.sql`SELECT count(*)::int AS n FROM machine WHERE user_id = ${f.autor} AND lower(alias) = 'torre de casa'`
       expect(machines).toEqual([{ n: 1 }])
     })))
 
@@ -61,7 +61,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
   it.effect('saves the normalized PCI id and myDiagnostic returns it in the capture', withSeed((f) =>
     Effect.gen(function* () {
       const { id } = yield* save({ equipo: existingMachine(f.equipo), entrada: payload({ gpu_pci_id: ' 10DE:128B ' }) }).pipe(asUser(f.autor))
-      expect(yield* f.sql`SELECT gpu_pci_id FROM diagnostico WHERE id = ${id}`).toEqual([{ gpu_pci_id: '10de:128b' }])
+      expect(yield* f.sql`SELECT gpu_pci_id FROM diagnostic WHERE id = ${id}`).toEqual([{ gpu_pci_id: '10de:128b' }])
       expect((yield* myDiagnostic(id).pipe(asUser(f.autor))).capture.gpu_pci_id).toBe('10de:128b')
     })))
 
@@ -70,7 +70,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       const full = yield* save({ con_biblioteca: true, equipo: newMachine('PC con Windows'), entrada: windowsPayload() }).pipe(asUser(f.autor))
       const bare = yield* save({ equipo: newMachine('PC con Windows'), entrada: windowsPayload({ capturado_en: '2026-10-16T10:00:00Z' }) }).pipe(asUser(f.autor))
       const row = (id: number) =>
-        f.sql`SELECT sistema, distribucion_id, controlador, soporte_vulkan, gpu_pci_id, biblioteca_steam FROM diagnostico WHERE id = ${id}`
+        f.sql`SELECT operating_system, distribution_id, driver, vulkan_support, gpu_pci_id, steam_library FROM diagnostic WHERE id = ${id}`
       expect(yield* row(full.id)).toEqual([
         { sistema: 'Windows', distribucion_id: null, controlador: null, soporte_vulkan: 'desconocido', gpu_pci_id: '10de:1380', biblioteca_steam: windowsLibrary },
       ])
@@ -82,7 +82,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       const first = yield* save({ equipo: existingMachine(f.equipo), entrada: windowsPayload() }).pipe(asUser(f.autor))
       const second = yield* save({ con_biblioteca: true, equipo: existingMachine(f.equipo), entrada: windowsPayload() }).pipe(asUser(f.autor))
       expect(second).toEqual({ id: first.id, nuevo: false })
-      expect(yield* f.sql`SELECT biblioteca_steam FROM diagnostico WHERE id = ${first.id}`).toEqual([{ biblioteca_steam: null }])
+      expect(yield* f.sql`SELECT steam_library FROM diagnostic WHERE id = ${first.id}`).toEqual([{ biblioteca_steam: null }])
     })))
 
   it.effect('rechaza guardar en un equipo ajeno o inexistente, sin escribir nada', withSeed((f) =>
@@ -100,9 +100,9 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       const arch = (capturado_en: string) => payload({ capturado_en, distribucion: { nombre: 'Arch Linux', version: '20261004.0.606936' } })
       const { id } = yield* save({ equipo: newMachine('Arch'), entrada: arch('2026-10-08T10:00:00Z') }).pipe(asUser(f.autor))
       yield* save({ equipo: newMachine('Arch'), entrada: arch('2026-10-09T10:00:00Z') }).pipe(asUser(f.autor))
-      const rows = yield* f.sql`SELECT dist.version FROM diagnostico d JOIN distribucion dist ON dist.id = d.distribucion_id WHERE d.id = ${id}`
+      const rows = yield* f.sql`SELECT dist.version FROM diagnostic d JOIN distribution dist ON dist.id = d.distribution_id WHERE d.id = ${id}`
       expect(rows).toEqual([{ version: 'rolling' }])
-      expect(yield* f.sql`SELECT count(*)::int AS n FROM distribucion WHERE nombre = 'Arch Linux'`).toEqual([{ n: 1 }])
+      expect(yield* f.sql`SELECT count(*)::int AS n FROM distribution WHERE name = 'Arch Linux'`).toEqual([{ n: 1 }])
     })))
 
   it.effect('saves the system facts and myDiagnostic returns them; a payload without them stays null', withSeed((f) =>
@@ -122,16 +122,16 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       const unreadable = yield* Effect.flip(save({ equipo: newMachine('x'), entrada: { _tag: 'detector', texto: 'no es un payload' } }).pipe(asUser(f.autor)))
       expect(unreadable).toMatchObject({ _tag: 'PayloadInvalido', reason: 'ilegible' })
       expect(yield* count(f, 'diagnostico')).toBe(before)
-      expect(yield* f.sql`SELECT count(*)::int AS n FROM equipo WHERE alias = 'x'`).toEqual([{ n: 0 }])
+      expect(yield* f.sql`SELECT count(*)::int AS n FROM machine WHERE alias = 'x'`).toEqual([{ n: 0 }])
     })))
 })
 
 layer(PgTest)('consultas de diagnóstico', (it) => {
   const addProfiles = (f: Seed) =>
     Effect.gen(function* () {
-      yield* f.sql`UPDATE perfil_configuracion SET ram_min_mb = 32768, vram_min_mb = 2048 WHERE id = ${f.perfil}`
-      yield* f.sql`UPDATE perfil_configuracion SET ${f.sql.update({ estado_revision: 'aprobado', revisor_id: f.revisor, revisado_en: new Date(), motivo_revision: 'probado', evidencia_revision: 'reporte' })} WHERE id = ${f.perfil}`
-      yield* f.sql`INSERT INTO perfil_configuracion (edicion_id, distribucion_id, version_capa_id, autor_id, arquitectura, revision, titulo, ram_min_mb)
+      yield* f.sql`UPDATE profile SET ram_min_mb = 32768, vram_min_mb = 2048 WHERE id = ${f.perfil}`
+      yield* f.sql`UPDATE profile SET ${f.sql.update({ estado_revision: 'aprobado', revisor_id: f.revisor, revisado_en: new Date(), motivo_revision: 'probado', evidencia_revision: 'reporte' })} WHERE id = ${f.perfil}`
+      yield* f.sql`INSERT INTO profile (edition_id, distribution_id, layer_version_id, author_id, architecture, revision, title, ram_min_mb)
                    VALUES (${f.ed2}, ${f.dist}, ${f.capa}, ${f.autor}, 'x86_64', 1, 'pendiente', 1024)`
     })
 
@@ -160,9 +160,9 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
 
   it.effect('sin reportes, cada juego recibe su ruta gráfica, igual al evaluar y al releer lo guardado', withSeed((f) =>
     Effect.gen(function* () {
-      yield* f.sql`INSERT INTO juego_api (juego_id, api) SELECT juego_id, api FROM edicion_juego, unnest(ARRAY['d3d11', 'd3d12']) AS api WHERE id = ${f.ed}`
-      yield* f.sql`INSERT INTO juego_api (juego_id, api) SELECT juego_id, 'vulkan' FROM edicion_juego WHERE id = ${f.ed2}`
-      yield* f.sql`UPDATE juego SET nivel_x86_min = 'v2' WHERE id = (SELECT juego_id FROM edicion_juego WHERE id = ${f.ed2})`
+      yield* f.sql`INSERT INTO game_api (game_id, api) SELECT game_id, api FROM game_edition, unnest(ARRAY['d3d11', 'd3d12']) AS api WHERE id = ${f.ed}`
+      yield* f.sql`INSERT INTO game_api (game_id, api) SELECT game_id, 'vulkan' FROM game_edition WHERE id = ${f.ed2}`
+      yield* f.sql`UPDATE game SET x86_level_min = 'v2' WHERE id = (SELECT game_id FROM game_edition WHERE id = ${f.ed2})`
       // A Kepler without vulkaninfo on an x86-64-v1 CPU.
       const entrada = payload({ gpu_pci_id: '10de:1187', controlador: 'nouveau', nivel_x86: 'v1' })
       const paths = (matrix: ReadonlyArray<MatrixRow>) => matrix.map((m) => [m.titulo, m.path])
@@ -187,10 +187,10 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
 
   const catalogWithSteam = (f: Seed) =>
     Effect.gen(function* () {
-      const gta = yield* idOf(f.sql`INSERT INTO juego (titulo, descripcion) VALUES ('Grand Theft Auto V', 'd') RETURNING id`)
-      yield* f.sql`INSERT INTO edicion_juego (juego_id, lanzador_id, identificador_externo) VALUES (${gta}, ${f.lanzador}, '271590')`
-      const epic = yield* idOf(f.sql`INSERT INTO lanzador (nombre) VALUES ('Epic Games Store') RETURNING id`)
-      yield* f.sql`INSERT INTO edicion_juego (juego_id, lanzador_id, identificador_externo) SELECT juego_id, ${epic}, '227300' FROM edicion_juego WHERE id = ${f.ed2}`
+      const gta = yield* idOf(f.sql`INSERT INTO game (title, description) VALUES ('Grand Theft Auto V', 'd') RETURNING id`)
+      yield* f.sql`INSERT INTO game_edition (game_id, launcher_id, external_id) VALUES (${gta}, ${f.lanzador}, '271590')`
+      const epic = yield* idOf(f.sql`INSERT INTO launcher (name) VALUES ('Epic Games Store') RETURNING id`)
+      yield* f.sql`INSERT INTO game_edition (game_id, launcher_id, external_id) SELECT game_id, ${epic}, '227300' FROM game_edition WHERE id = ${f.ed2}`
     })
   const inLibrary = (matrix: ReadonlyArray<{ readonly titulo: string; readonly in_library: boolean }>) =>
     matrix.filter((m) => m.in_library).map((m) => m.titulo)

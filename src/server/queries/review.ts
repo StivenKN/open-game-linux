@@ -63,24 +63,24 @@ export const queue = (type: ContributionType) =>
     const sql = yield* SqlClient.SqlClient
     const active = sql.in(activeStatuses)
     const demo = sql.literal(isDemo('u'))
-    const order = sql`(estado_revision = 'pendiente') DESC, creado_en`
+    const order = sql`(review_status = 'pendiente') DESC, created_at`
 
     switch (type) {
       case 'perfil': {
         const items = yield* rows(
           ProfileQueueItem,
           sql`SELECT * FROM (
-                SELECT p.id, p.titulo, p.revision, p.arquitectura, p.version_juego_objetivo, p.parametros_lanzamiento, p.creado_en, p.estado_revision,
-                       u.alias AS autor, ${demo} AS demo, p.autor_id = ${reviewer.id} AS es_propio,
-                       j.titulo AS juego, l.nombre AS lanzador, ${sql.literal(distributionLabel('di'))} AS distribucion,
-                       ${sql.literal(layerLabel('c'))} AS capa,
-                       (SELECT count(*)::int FROM paso_configuracion WHERE perfil_id = p.id) AS pasos,
-                       (SELECT count(*)::int FROM reporte r WHERE r.perfil_id = p.id AND r.estado_revision = 'aprobado'
-                          AND r.resultado IN ${sql.in(WorkingOutcome.literals)}) AS reportes_funcionales
-                FROM perfil_configuracion p JOIN usuario u ON u.id = p.autor_id
-                  JOIN edicion_juego e ON e.id = p.edicion_id JOIN juego j ON j.id = e.juego_id JOIN lanzador l ON l.id = e.lanzador_id
-                  JOIN distribucion di ON di.id = p.distribucion_id JOIN version_capa c ON c.id = p.version_capa_id
-                WHERE p.estado_revision IN ${active}) q
+                SELECT p.id, p.title, p.revision, p.architecture, p.target_game_version, p.launch_options, p.created_at, p.review_status,
+                       u.alias AS author, ${demo} AS demo, p.author_id = ${reviewer.id} AS is_own,
+                       j.title AS game, l.name AS launcher, ${sql.literal(distributionLabel('di'))} AS distribution,
+                       ${sql.literal(layerLabel('c'))} AS layer,
+                       (SELECT count(*)::int FROM profile_step WHERE profile_id = p.id) AS steps,
+                       (SELECT count(*)::int FROM report r WHERE r.profile_id = p.id AND r.review_status = 'aprobado'
+                          AND r.outcome IN ${sql.in(WorkingOutcome.literals)}) AS working_reports
+                FROM profile p JOIN app_user u ON u.id = p.author_id
+                  JOIN game_edition e ON e.id = p.edition_id JOIN game j ON j.id = e.game_id JOIN launcher l ON l.id = e.launcher_id
+                  JOIN distribution di ON di.id = p.distribution_id JOIN layer_version c ON c.id = p.layer_version_id
+                WHERE p.review_status IN ${active}) q
               ORDER BY ${order}`,
         )
         return { type, items: yield* withBlockers(items, (e) => ({ _tag: 'perfil', id: e.id })) }
@@ -89,19 +89,19 @@ export const queue = (type: ContributionType) =>
         const items = yield* rows(
           ReportQueueItem,
           sql`SELECT * FROM (
-                SELECT r.id, r.resultado, r.version_juego, r.fecha_prueba, r.fps_promedio, r.resolucion, r.calidad_grafica, r.metodo_medicion,
-                       r.observaciones, r.creado_en, r.estado_revision,
-                       u.alias AS autor, ${demo} AS demo, eq.usuario_id = ${reviewer.id} AS es_propio,
-                       j.titulo AS juego, l.nombre AS lanzador, ${sql.literal(distributionLabel('di'))} AS distribucion, d.distribucion_id, d.arquitectura,
-                       ${sql.literal(layerLabel('c'))} AS capa,
-                       ${sql.literal(profileLabel('p'))} AS perfil,
-                       COALESCE((SELECT json_agg(json_build_object('codigo', t.codigo, 'detalle', f.detalle) ORDER BY t.id)
-                                 FROM reporte_fallo f JOIN tipo_fallo t ON t.id = f.tipo_fallo_id WHERE f.reporte_id = r.id), '[]') AS fallos
-                FROM reporte r JOIN diagnostico d ON d.id = r.diagnostico_id JOIN equipo eq ON eq.id = d.equipo_id JOIN usuario u ON u.id = eq.usuario_id
-                  JOIN edicion_juego e ON e.id = r.edicion_id JOIN juego j ON j.id = e.juego_id JOIN lanzador l ON l.id = e.lanzador_id
-                  JOIN distribucion di ON di.id = d.distribucion_id JOIN version_capa c ON c.id = r.version_capa_id
-                  LEFT JOIN perfil_configuracion p ON p.id = r.perfil_id
-                WHERE r.estado_revision IN ${active}) q
+                SELECT r.id, r.outcome, r.game_version, r.tested_at, r.avg_fps, r.resolution, r.graphics_quality, r.measurement_method,
+                       r.observations, r.created_at, r.review_status,
+                       u.alias AS author, ${demo} AS demo, eq.user_id = ${reviewer.id} AS is_own,
+                       j.title AS game, l.name AS launcher, ${sql.literal(distributionLabel('di'))} AS distribution, d.distribution_id, d.architecture,
+                       ${sql.literal(layerLabel('c'))} AS layer,
+                       ${sql.literal(profileLabel('p'))} AS profile,
+                       COALESCE((SELECT json_agg(json_build_object('codigo', t.code, 'detalle', f.detail) ORDER BY t.id)
+                                 FROM report_failure f JOIN failure_type t ON t.id = f.failure_type_id WHERE f.report_id = r.id), '[]') AS failures
+                FROM report r JOIN diagnostic d ON d.id = r.diagnostic_id JOIN machine eq ON eq.id = d.machine_id JOIN app_user u ON u.id = eq.user_id
+                  JOIN game_edition e ON e.id = r.edition_id JOIN game j ON j.id = e.game_id JOIN launcher l ON l.id = e.launcher_id
+                  JOIN distribution di ON di.id = d.distribution_id JOIN layer_version c ON c.id = r.layer_version_id
+                  LEFT JOIN profile p ON p.id = r.profile_id
+                WHERE r.review_status IN ${active}) q
               ORDER BY ${order}`,
         )
         return { type, items: yield* withBlockers(items, (e) => ({ _tag: 'reporte', id: e.id })) }
@@ -110,16 +110,16 @@ export const queue = (type: ContributionType) =>
         const items = yield* rows(
           SolutionQueueItem,
           sql`SELECT * FROM (
-                SELECT s.id, s.titulo, s.instrucciones, s.reporte_id, s.creado_en, s.estado_revision,
-                       u.alias AS autor, ${demo} AS demo, s.autor_id = ${reviewer.id} AS es_propio,
-                       j.titulo AS juego, l.nombre AS lanzador, t.codigo AS tipo_fallo, f.detalle AS fallo, r.estado_revision AS estado_reporte,
-                       ${sql.literal(profileLabel('p'))} || ' (' || p.estado_revision || ')' AS perfil
-                FROM solucion s JOIN usuario u ON u.id = s.autor_id
-                  JOIN reporte_fallo f ON f.reporte_id = s.reporte_id AND f.tipo_fallo_id = s.tipo_fallo_id JOIN tipo_fallo t ON t.id = s.tipo_fallo_id
-                  JOIN reporte r ON r.id = s.reporte_id JOIN edicion_juego e ON e.id = r.edicion_id
-                  JOIN juego j ON j.id = e.juego_id JOIN lanzador l ON l.id = e.lanzador_id
-                  LEFT JOIN perfil_configuracion p ON p.id = s.perfil_id
-                WHERE s.estado_revision IN ${active}) q
+                SELECT s.id, s.title, s.instructions, s.report_id, s.created_at, s.review_status,
+                       u.alias AS author, ${demo} AS demo, s.author_id = ${reviewer.id} AS is_own,
+                       j.title AS game, l.name AS launcher, t.code AS failure_type, f.detail AS failure, r.review_status AS report_status,
+                       ${sql.literal(profileLabel('p'))} || ' (' || p.review_status || ')' AS profile
+                FROM solution s JOIN app_user u ON u.id = s.author_id
+                  JOIN report_failure f ON f.report_id = s.report_id AND f.failure_type_id = s.failure_type_id JOIN failure_type t ON t.id = s.failure_type_id
+                  JOIN report r ON r.id = s.report_id JOIN game_edition e ON e.id = r.edition_id
+                  JOIN game j ON j.id = e.game_id JOIN launcher l ON l.id = e.launcher_id
+                  LEFT JOIN profile p ON p.id = s.profile_id
+                WHERE s.review_status IN ${active}) q
               ORDER BY ${order}`,
         )
         return { type, items: yield* withBlockers(items, (e) => ({ _tag: 'solucion', id: e.id })) }

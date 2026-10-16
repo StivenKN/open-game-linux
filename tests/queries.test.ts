@@ -30,7 +30,7 @@ const scenario = Effect.gen(function* () {
   const aprobado = { ...reviewed, estado_revision: 'aprobado', evidencia_revision: 'captura de MangoHud' }
 
   for (const [id, email] of [['autor', 'autor@demo.opengame.test'], ['revisor', 'revisor@opengame.test'], ['ana', 'ana@opengame.test']])
-    yield* sql`INSERT INTO usuario (id, alias, correo, correo_verificado, rol, activo) VALUES (${id}, ${id}, ${email}, false, ${id === 'revisor' ? 'revisor' : 'usuario'}, true)`
+    yield* sql`INSERT INTO app_user (id, alias, email, email_verified, role, active) VALUES (${id}, ${id}, ${email}, false, ${id === 'revisor' ? 'revisor' : 'usuario'}, true)`
 
   const steam = yield* insertar('lanzador', { nombre: 'Steam' })
   const epic = yield* insertar('lanzador', { nombre: 'Epic Games Store' })
@@ -88,8 +88,8 @@ const scenario = Effect.gen(function* () {
     ...requirements, ...reviewed, estado_revision: 'retirado',
   })
   for (const [order, title] of [[2, 'Elige Proton 8.0-5'], [1, 'Activa Steam Play']] as const)
-    yield* sql`INSERT INTO paso_configuracion (perfil_id, orden, titulo, instruccion) VALUES (${perfilAprobado}, ${order}, ${title}, 'i')`
-  yield* sql`UPDATE perfil_configuracion SET ${sql.update(Struct.omit(aprobado, ['creado_en']))} WHERE id = ${perfilAprobado}`
+    yield* sql`INSERT INTO profile_step (profile_id, position, title, instruction) VALUES (${perfilAprobado}, ${order}, ${title}, 'i')`
+  yield* sql`UPDATE profile SET ${sql.update(Struct.omit(aprobado, ['creado_en']))} WHERE id = ${perfilAprobado}`
 
   const noFps = { fps_promedio: null, resolucion: null, calidad_grafica: null, metodo_medicion: null }
   const insertReport = (row: Record<string, Value>, review: Record<string, Value> = aprobado) =>
@@ -112,7 +112,7 @@ const scenario = Effect.gen(function* () {
     edicion_id: gtaSteam, diagnostico_id: enFedora, version_capa_id: proton9, version_juego: '1.0.3258',
     resultado: 'falla_en_ejecucion', fecha_prueba: new Date('2026-10-02T12:00:00Z'),
   })
-  yield* sql`INSERT INTO reporte_fallo (reporte_id, tipo_fallo_id, detalle) VALUES (${gtaFedora}, ${lanzadorFallo}, 'el lanzador no abre')`
+  yield* sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${gtaFedora}, ${lanzadorFallo}, 'el lanzador no abre')`
   const insertSolution = (titulo: string, perfil_id: number | null, review: Record<string, Value>) =>
     insertar('solucion', { reporte_id: gtaFedora, tipo_fallo_id: lanzadorFallo, autor_id: 'ana', titulo, instrucciones: 'i', perfil_id, ...review })
   yield* insertSolution('Volver a Proton 8.0-5', null, aprobado)
@@ -124,7 +124,7 @@ const scenario = Effect.gen(function* () {
   const valorantFallo = yield* insertReport({
     edicion_id: valorantSteam, diagnostico_id: enArch, version_capa_id: ge94, version_juego: '9.07', resultado: 'no_inicia', fecha_prueba: new Date('2026-08-03T12:00:00Z'),
   })
-  yield* sql`INSERT INTO reporte_fallo (reporte_id, tipo_fallo_id, detalle) VALUES (${valorantFallo}, ${antiCheat}, 'Vanguard')`
+  yield* sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${valorantFallo}, ${antiCheat}, 'Vanguard')`
   yield* insertReport({ edicion_id: cs2Steam, diagnostico_id: enArch, version_capa_id: ge94, version_juego: '1.0', resultado: 'funciona', fecha_prueba: new Date('2026-09-01T12:00:00Z') })
 
   const pcAna = yield* insertMachine('ana')
@@ -226,7 +226,7 @@ layer(PgTest)('consultas', (it) => {
             edicion_id: e.gtaSteam, distribucion_id: e.fedora, version_capa_id: e.proton9, autor_id: 'autor', revision: 1, titulo: 'GTAV-VULKAN',
             arquitectura: 'x86_64', ram_min_mb: 8192, requiere_vulkan: true, version_vulkan_min: '1.3', creado_en: e.aprobado.creado_en,
           })
-          yield* sql`UPDATE perfil_configuracion SET ${sql.update(Struct.omit(e.aprobado, ['creado_en']))} WHERE id = ${demanding}`
+          yield* sql`UPDATE profile SET ${sql.update(Struct.omit(e.aprobado, ['creado_en']))} WHERE id = ${demanding}`
           const page = yield* Effect.provideService(gamePage(e.gta), Visitor, ana)
           expect(page.profiles.find((p) => p.id === demanding)?.evaluation).toEqual({
             verdict: 'no_cumple',

@@ -121,9 +121,9 @@ const steamEditions = Effect.flatMap(SqlClient.SqlClient, (sql) =>
   rows(
     SteamEdition,
     sql`
-      SELECT e.id, e.identificador_externo AS app_id
-      FROM edicion_juego e JOIN lanzador l ON l.id = e.lanzador_id
-      WHERE l.nombre = 'Steam' AND e.identificador_externo IS NOT NULL`,
+      SELECT e.id, e.external_id AS app_id
+      FROM game_edition e JOIN launcher l ON l.id = e.launcher_id
+      WHERE l.name = 'Steam' AND e.external_id IS NOT NULL`,
   ),
 )
 
@@ -176,12 +176,12 @@ export const importProtonDb = (chunks: AsyncIterable<string>) =>
 
     yield* sql.withTransaction(
       Effect.gen(function* () {
-        yield* sql`LOCK TABLE protondb_resumen IN EXCLUSIVE MODE`
-        const previous = yield* oneRow(Previous, sql`SELECT max(exportado_en) AS exportado_en FROM protondb_resumen`)
+        yield* sql`LOCK TABLE protondb_summary IN EXCLUSIVE MODE`
+        const previous = yield* oneRow(Previous, sql`SELECT max(exported_at) AS exported_at FROM protondb_summary`)
         if (previous.exportado_en !== null && previous.exportado_en > exported_at)
           return yield* new InvalidExport({ reason: 'exportación más antigua que la importada' })
-        yield* sql`DELETE FROM protondb_resumen`
-        for (const batch of Arr.chunksOf(summaries, 500)) yield* sql`INSERT INTO protondb_resumen ${sql.insert(batch)}`
+        yield* sql`DELETE FROM protondb_summary`
+        for (const batch of Arr.chunksOf(summaries, 500)) yield* sql`INSERT INTO protondb_summary ${sql.insert(batch)}`
       }),
     )
 

@@ -56,7 +56,7 @@ const scenario = Effect.gen(function* () {
   return { uno: GameId.make(uno), tres: GameId.make(tres), unoSteam: EditionId.make(unoSteam), dosSteam: EditionId.make(dosSteam) }
 })
 
-const saved = Effect.flatMap(SqlClient.SqlClient, (sql) => rows(ProtonDbSummary, sql`SELECT * FROM protondb_resumen ORDER BY edicion_id`))
+const saved = Effect.flatMap(SqlClient.SqlClient, (sql) => rows(ProtonDbSummary, sql`SELECT * FROM protondb_summary ORDER BY edition_id`))
 
 const importText = (text: string) => importProtonDb(chunks(text))
 const reasonOf = (text: string) => Effect.map(Effect.flip(importText(text)), (e) => ('reason' in e ? e.reason : e._tag))

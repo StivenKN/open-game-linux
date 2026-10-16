@@ -13,8 +13,8 @@ export const protonDbSummaries = (game: GameId | null) =>
     rows(
       ProtonDbRow,
       sql`
-        SELECT p.*, e.juego_id, e.identificador_externo AS app_id
-        FROM protondb_resumen p JOIN edicion_juego e ON e.id = p.edicion_id
-        WHERE ${sql.and(game === null ? [] : [sql`e.juego_id = ${game}`])}`,
+        SELECT p.*, e.game_id, e.external_id AS app_id
+        FROM protondb_summary p JOIN game_edition e ON e.id = p.edition_id
+        WHERE ${sql.and(game === null ? [] : [sql`e.game_id = ${game}`])}`,
     ),
   )

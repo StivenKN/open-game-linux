@@ -57,19 +57,19 @@ export const profile = (id: ProfileId) =>
       Request: ProfileId,
       Result: ProfileRow,
       execute: (id) => sql`
-        SELECT p.id, p.titulo, p.revision, p.revisado_en, p.arquitectura, p.version_juego_objetivo, p.ram_min_mb, p.vram_min_mb,
-               p.requiere_vulkan, p.version_vulkan_min, p.condicion_cpu, p.condicion_gpu, p.parametros_lanzamiento, p.estado_revision,
-               j.id AS juego_id, j.titulo AS juego, l.nombre AS lanzador, e.identificador_externo, vc.familia,
-               ${sql.literal(distributionLabel('dist'))} AS distribucion, ${sql.literal(layerLabel('vc'))} AS capa,
-               u.alias AS autor, ${sql.literal(isDemo('u'))} AS ejemplo
-        FROM perfil_configuracion p
-        JOIN edicion_juego e ON e.id = p.edicion_id
-        JOIN juego j ON j.id = e.juego_id
-        JOIN lanzador l ON l.id = e.lanzador_id
-        JOIN distribucion dist ON dist.id = p.distribucion_id
-        JOIN version_capa vc ON vc.id = p.version_capa_id
-        JOIN usuario u ON u.id = p.autor_id
-        WHERE p.id = ${id} AND p.estado_revision IN ${sql.in(activeStatuses)}`,
+        SELECT p.id, p.title, p.revision, p.reviewed_at, p.architecture, p.target_game_version, p.ram_min_mb, p.vram_min_mb,
+               p.requires_vulkan, p.vulkan_version_min, p.cpu_requirement, p.gpu_requirement, p.launch_options, p.review_status,
+               j.id AS game_id, j.title AS game, l.name AS launcher, e.external_id, vc.family,
+               ${sql.literal(distributionLabel('dist'))} AS distribution, ${sql.literal(layerLabel('vc'))} AS layer,
+               u.alias AS author, ${sql.literal(isDemo('u'))} AS demo
+        FROM profile p
+        JOIN game_edition e ON e.id = p.edition_id
+        JOIN game j ON j.id = e.game_id
+        JOIN launcher l ON l.id = e.launcher_id
+        JOIN distribution dist ON dist.id = p.distribution_id
+        JOIN layer_version vc ON vc.id = p.layer_version_id
+        JOIN app_user u ON u.id = p.author_id
+        WHERE p.id = ${id} AND p.review_status IN ${sql.in(activeStatuses)}`,
     })(id)
     if (Option.isNone(row)) return yield* new NotFound()
     const p = row.value
@@ -77,17 +77,17 @@ export const profile = (id: ProfileId) =>
     const steps = yield* SqlSchema.findAll({
       Request: ProfileId,
       Result: StepRow,
-      execute: (id) => sql`SELECT orden, titulo, instruccion FROM paso_configuracion WHERE perfil_id = ${id} ORDER BY orden`,
+      execute: (id) => sql`SELECT position, title, instruction FROM profile_step WHERE profile_id = ${id} ORDER BY position`,
     })(id)
 
     const dependencies = yield* SqlSchema.findAll({
       Request: ProfileId,
       Result: DependencyRow,
       execute: (id) => sql`
-        SELECT pd.version_requerida, pd.obligatoria, pd.instruccion_instalacion, d.nombre, d.gestor, d.descripcion
-        FROM perfil_dependencia pd JOIN dependencia d ON d.id = pd.dependencia_id
-        WHERE pd.perfil_id = ${id}
-        ORDER BY pd.obligatoria DESC, d.nombre`,
+        SELECT pd.required_version, pd.required, pd.install_instruction, d.name, d.package_manager, d.description
+        FROM profile_dependency pd JOIN dependency d ON d.id = pd.dependency_id
+        WHERE pd.profile_id = ${id}
+        ORDER BY pd.required DESC, d.name`,
     })(id)
 
     const evaluation =
@@ -102,7 +102,7 @@ export const profile = (id: ProfileId) =>
     const fixes = yield* SqlSchema.findAll({
       Request: ProfileId,
       Result: FixRow,
-      execute: (id) => sql`SELECT pr, registrado_en FROM arreglo_upstream WHERE perfil_id = ${id} ORDER BY registrado_en, pr`,
+      execute: (id) => sql`SELECT pr, noted_at FROM upstream_fix WHERE profile_id = ${id} ORDER BY noted_at, pr`,
     })(id)
 
     return { profile: p, steps, dependencies, evaluation, fixExport, fixes }
