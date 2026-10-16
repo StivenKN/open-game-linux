@@ -36,7 +36,7 @@ const count = (f: Seed, table: 'diagnostic' | 'machine' | 'distribution') =>
 
 const withSeed = (test: (f: Seed) => Effect.Effect<void, unknown, SqlClient.SqlClient>) => () => inRollback(Effect.flatMap(seed, test))
 
-layer(PgTest)('registrarDiagnostico', (it) => {
+layer(PgTest)('submitDiagnostic', (it) => {
   it.effect('el mismo payload dos veces converge en un equipo y un diagnóstico', withSeed((f) =>
     Effect.gen(function* () {
       const first = yield* save({ machine: newMachine('Torre de casa'), input: payload() }).pipe(asUser(f.author))

@@ -204,9 +204,9 @@ const writeFlow = async (browser: Browser, logs: string) => {
   const ana = await newContext(browser)
   await signIn(ana, identities.demo_ana)
   const form = await ana.newPage()
-  const revisor = await newContext(browser)
-  await signIn(revisor, identities.demo_revisor)
-  const queue = await revisor.newPage()
+  const reviewer = await newContext(browser)
+  await signIn(reviewer, identities.demo_revisor)
+  const queue = await reviewer.newPage()
   try {
     await form.goto(`${ORIGIN}/juegos/1/reportar`, { waitUntil: 'networkidle' })
     await form.getByLabel('Versión o build del juego').fill('1.0.3179')
@@ -227,7 +227,7 @@ const writeFlow = async (browser: Browser, logs: string) => {
     throw e
   } finally {
     await ana.close()
-    await revisor.close()
+    await reviewer.close()
   }
 }
 

@@ -10,15 +10,15 @@ import { dropSchema, migrations } from '../src/server/schema/migrations.ts'
 import { seed, type Seed } from './fixtures.ts'
 import { inRollback, PgTest } from './support.ts'
 
-layer(PgTest)('vaciarEsquema', (it) => {
+layer(PgTest)('dropSchema', (it) => {
   // In a rollback, so a regressed guard drops nothing for the other test files.
   it.effect('con el nombre de otra base no borra nada', () =>
     inRollback(
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient
-        yield* sql`CREATE TABLE centinela (id integer)`
+        yield* sql`CREATE TABLE sentinel (id integer)`
         expect(Exit.isFailure(yield* Effect.exit(dropSchema('opengame')))).toBe(true)
-        expect(yield* sql`SELECT to_regclass('public.centinela') IS NOT NULL AS sigue`).toEqual([{ sigue: true }])
+        expect(yield* sql`SELECT to_regclass('public.sentinel') IS NOT NULL AS still_there`).toEqual([{ still_there: true }])
       }),
     ),
   )

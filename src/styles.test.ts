@@ -7,38 +7,38 @@ import { join } from 'node:path'
 
 const css = readFileSync(join(import.meta.dirname, 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
 
-const reglas = () => {
-  const abiertos: Array<string> = []
-  const encontradas: Array<{ readonly preludio: string; readonly dentroDe: ReadonlyArray<string> }> = []
-  let inicio = 0
+const rules = () => {
+  const open: Array<string> = []
+  const found: Array<{ readonly prelude: string; readonly within: ReadonlyArray<string> }> = []
+  let start = 0
   for (let i = 0; i < css.length; i++) {
     const c = css[i]
     if (c === '{') {
-      const preludio = css.slice(inicio, i).trim().replace(/\s+/g, ' ')
-      encontradas.push({ preludio, dentroDe: [...abiertos] })
-      abiertos.push(preludio)
-      inicio = i + 1
+      const prelude = css.slice(start, i).trim().replace(/\s+/g, ' ')
+      found.push({ prelude, within: [...open] })
+      open.push(prelude)
+      start = i + 1
     } else if (c === '}') {
-      abiertos.pop()
-      inicio = i + 1
-    } else if (c === ';') inicio = i + 1
+      open.pop()
+      start = i + 1
+    } else if (c === ';') start = i + 1
   }
-  return { encontradas, sinCerrar: abiertos }
+  return { found, unclosed: open }
 }
 
 it('styles.css closes every rule before the next one starts', () => {
-  const { encontradas, sinCerrar } = reglas()
-  const anidadas = encontradas.filter((r) => r.dentroDe.some((p) => !p.startsWith('@'))).map((r) => [...r.dentroDe, r.preludio].join(' > '))
-  expect(anidadas, 'a rule above is missing its closing brace').toEqual([])
-  expect(sinCerrar, 'unclosed rules at the end of styles.css').toEqual([])
+  const { found, unclosed } = rules()
+  const nested = found.filter((r) => r.within.some((p) => !p.startsWith('@'))).map((r) => [...r.within, r.prelude].join(' > '))
+  expect(nested, 'a rule above is missing its closing brace').toEqual([])
+  expect(unclosed, 'unclosed rules at the end of styles.css').toEqual([])
 })
 
 it('styles.css styles each selector in one rule', () => {
-  const vistos = new Map<string, number>()
-  for (const r of reglas().encontradas.filter((r) => !r.preludio.startsWith('@')))
-    for (const selector of r.preludio.split(',')) {
-      const clave = [...r.dentroDe, selector.trim()].join(' > ')
-      vistos.set(clave, (vistos.get(clave) ?? 0) + 1)
+  const seen = new Map<string, number>()
+  for (const r of rules().found.filter((r) => !r.prelude.startsWith('@')))
+    for (const selector of r.prelude.split(',')) {
+      const key = [...r.within, selector.trim()].join(' > ')
+      seen.set(key, (seen.get(key) ?? 0) + 1)
     }
-  expect([...vistos].filter(([, n]) => n > 1).map(([s]) => s), 'merge these into the rule that already styles them').toEqual([])
+  expect([...seen].filter(([, n]) => n > 1).map(([s]) => s), 'merge these into the rule that already styles them').toEqual([])
 })

@@ -13,10 +13,10 @@ const STEAM = 'Steam'
 const URL_LIMIT = 8000
 
 /** `game_edition.external_id` is free text; this is the only place it becomes an AppID. */
-export const SteamAppId = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,9}$/)).pipe(Schema.brand('AppIdSteam'))
+export const SteamAppId = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,9}$/)).pipe(Schema.brand('SteamAppId'))
 export type SteamAppId = typeof SteamAppId.Type
 
-export const PrNumber = Schema.Int.check(Schema.isGreaterThan(0)).pipe(Schema.brand('NumeroPr'))
+export const PrNumber = Schema.Int.check(Schema.isGreaterThan(0)).pipe(Schema.brand('PrNumber'))
 export type PrNumber = typeof PrNumber.Type
 
 export const prUrl = (pr: number) => `https://github.com/${PROTONFIXES}/pull/${pr}`
@@ -52,9 +52,9 @@ const appIdOf = (e: Edition): { readonly _tag: 'steam'; readonly appid: SteamApp
 // ── Fix file (umu-protonfixes) ──────────────────────────────────────────────
 
 // The renderer only interpolates these brands, so escaping `\` and the quote is enough to stay inside a Python string.
-const EnvName = Schema.String.check(Schema.isPattern(/^[A-Za-z_][A-Za-z0-9_]*$/)).pipe(Schema.brand('NombreEntorno'))
-const WinetricksVerb = Schema.String.check(Schema.isPattern(/^[a-z0-9][a-z0-9_.=-]*$/)).pipe(Schema.brand('VerboWinetricks'))
-const PlainText = Schema.String.check(Schema.isPattern(/^\P{Cc}*$/u)).pipe(Schema.brand('TextoPlano'))
+const EnvName = Schema.String.check(Schema.isPattern(/^[A-Za-z_][A-Za-z0-9_]*$/)).pipe(Schema.brand('EnvName'))
+const WinetricksVerb = Schema.String.check(Schema.isPattern(/^[a-z0-9][a-z0-9_.=-]*$/)).pipe(Schema.brand('WinetricksVerb'))
+const PlainText = Schema.String.check(Schema.isPattern(/^\P{Cc}*$/u)).pipe(Schema.brand('PlainText'))
 type EnvName = typeof EnvName.Type
 type WinetricksVerb = typeof WinetricksVerb.Type
 type PlainText = typeof PlainText.Type

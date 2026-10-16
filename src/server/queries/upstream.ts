@@ -24,7 +24,7 @@ const FailureRow = ReportFailure.mapFields(Struct.pick(['detail']))
 
 /**
  * The Proton report for one of the visitor's own reports. It embeds the diagnosis hardware, which only its
- * owner sees, and needs the steam-<appid>.log that only the tester has, so anyone else gets NoEncontrado.
+ * owner sees, and needs the steam-<appid>.log that only the tester has, so anyone else gets NotFound.
  */
 export const myProtonReport = (reportId: ReportId) =>
   Effect.gen(function* () {

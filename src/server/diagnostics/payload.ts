@@ -92,7 +92,7 @@ const libraryOf = (games: ReadonlyArray<typeof SentGame.Type>): typeof SteamLibr
   return games
     .flatMap(({ app_id, nombre }) => {
       const readable = nombre.toWellFormed().replace(/\p{Cc}/gu, '').trim()
-      const cleaned = readable.slice(0, maxLengths.biblioteca.name).replace(/[\uD800-\uDBFF]$/, '').trim()
+      const cleaned = readable.slice(0, maxLengths.library.name).replace(/[\uD800-\uDBFF]$/, '').trim()
       if (cleaned === '' || isSteamTool(cleaned) || !Number.isSafeInteger(app_id) || app_id <= 0 || seen.has(app_id)) return []
       seen.add(app_id)
       return [{ app_id, nombre: cleaned }]

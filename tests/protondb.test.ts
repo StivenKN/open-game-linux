@@ -64,7 +64,7 @@ const reasonOf = (text: string) => Effect.map(Effect.flip(importText(text)), (e)
 const today = new Date('2026-10-15T00:00:00Z')
 const exportedAt = new Date('2026-10-01T00:00:00Z')
 
-layer(PgTest)('importarProtonDb', (it) => {
+layer(PgTest)('importProtonDb', (it) => {
   describe('un export de octubre', () => {
     it.effect('guarda un resumen por edición de Steam del catálogo, sin duplicados ni reportes futuros', () =>
       inRollback(

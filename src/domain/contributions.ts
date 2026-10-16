@@ -166,7 +166,7 @@ export type ManualCapture = typeof ManualCapture.Type
 
 // About 30 characters of JSON around each name, then ×2 for base64url (4/3) and the hardware fields.
 // PowerShell writes non-ASCII as \uXXXX, so a full library of long non-ASCII names can still exceed it.
-const MAX_DETECTOR_TEXT = MAX_LIBRARY_GAMES * (30 + maxLengths.biblioteca.name) * 2
+const MAX_DETECTOR_TEXT = MAX_LIBRARY_GAMES * (30 + maxLengths.library.name) * 2
 
 export const DiagnosticInput = Schema.Union([
   Schema.TaggedStruct('detector', { texto: Schema.String.pipe(Schema.check(Schema.isMaxLength(MAX_DETECTOR_TEXT))) }),

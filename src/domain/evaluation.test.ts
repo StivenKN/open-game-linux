@@ -38,7 +38,7 @@ describe('atLeast', () => {
     ['1.3.0', '1.3', true],
     ['1.2.999', '1.3', false],
     ['2', '1.3', true],
-  ])('alMenos(%s, %s) is %s', (version, minimum, expected) => {
+  ])('atLeast(%s, %s) is %s', (version, minimum, expected) => {
     expect(atLeast(v(version), v(minimum))).toBe(expected)
   })
 })

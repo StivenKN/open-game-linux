@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
 import { mesaChipsets, withFloor, crocusFamily, irisFamily, amdgpuIds, nvidiaIds, tableOf } from './gpu-sources.ts'
 
-describe('chipsetsMesa', () => {
+describe('mesaChipsets', () => {
   it('reads every CHIPSET line and skips blank ones', () => {
     const text = `CHIPSET(0x0412, hsw_gt2, "HSW GT2", "Intel(R) HD Graphics 4600")
 
@@ -42,7 +42,7 @@ describe('Intel tokens', () => {
   })
 })
 
-describe('idsAmdgpu', () => {
+describe('amdgpuIds', () => {
   const pciidList = (body: string) => `static const u16 amdgpu_unsupported_pciidlist[] = {
 \t0x4354,
 };
@@ -74,7 +74,7 @@ ${body}
   })
 })
 
-describe('idsNvidia', () => {
+describe('nvidiaIds', () => {
   const text = `# comment
 10de  NVIDIA Corporation
 \t0de1  GF108 [GeForce GT 430]
@@ -111,14 +111,14 @@ describe('idsNvidia', () => {
   })
 })
 
-describe('conPiso', () => {
+describe('withFloor', () => {
   it('fails below the floor and passes at it', () => {
     expect(() => withFloor('iris', 3, [1, 2])).toThrow('iris: 2 ids, under the floor of 3')
     expect(withFloor('iris', 2, [1, 2])).toEqual([1, 2])
   })
 })
 
-describe('tablaDe', () => {
+describe('tableOf', () => {
   it('groups ids per vendor and family as sorted hex runs', () => {
     expect(
       tableOf([

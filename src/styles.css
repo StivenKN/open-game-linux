@@ -502,13 +502,13 @@ button:disabled {
   margin: 12px 0 0;
   display: grid;
   gap: 12px;
-  counter-reset: paso;
+  counter-reset: step;
 }
 .steps > li {
-  counter-increment: paso;
+  counter-increment: step;
 }
 .steps > li > b::before {
-  content: counter(paso) '. ';
+  content: counter(step) '. ';
   color: var(--muted);
 }
 .steps > li[data-done] > :not(label) {

@@ -86,9 +86,9 @@ describe('runAction', () => {
     expect(await countLaunchers(name)).toEqual([{ n: 1 }])
   })
 
-  it('no compila si el programa puede fallar con algo que `fallos` no declara', () => {
+  it('no compila si el programa puede fallar con algo que `errors` no declara', () => {
     const undeclared = () =>
-      // @ts-expect-error AprobacionBloqueada is not listed in fallos, so the browser could not narrow it
+      // @ts-expect-error
       runAction(RuleViolated, Effect.fail(new ApprovalBlocked({ blockers: ['reporte_incomparable'] })))
     expect(undeclared).toBeTypeOf('function')
   })

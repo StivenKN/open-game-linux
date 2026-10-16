@@ -31,7 +31,7 @@ const check = (t: string, name: string, expr: string) => `ALTER TABLE ${t} ADD C
 const initialStatus: ReviewStatus = 'pendiente'
 
 const reviewColumns = `
-  estado_revision varchar(${L.bloque_revision.review_status}) NOT NULL DEFAULT '${initialStatus}',
+  estado_revision varchar(${L.review_block.review_status}) NOT NULL DEFAULT '${initialStatus}',
   revisor_id text REFERENCES usuario(id) ON DELETE RESTRICT,
   revisado_en timestamptz,
   motivo_revision text,

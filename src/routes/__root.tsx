@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react'
 import bigShoulders from '@fontsource-variable/big-shoulders-display/files/big-shoulders-display-latin-wght-normal.woff2?url'
 import onest from '@fontsource-variable/onest/files/onest-latin-wght-normal.woff2?url'
 import unbounded from '@fontsource-variable/unbounded/files/unbounded-latin-wght-normal.woff2?url'
-import icono from '../../assets/icon.svg?url'
+import icon from '../../assets/icon.svg?url'
 import { visitorFn } from '../fns/session.ts'
 import appCss from '../styles.css?url'
 import { authClient } from './-auth-client.ts'
@@ -17,7 +17,7 @@ export const Route = createRootRoute({
       // The stylesheet only discovers its fonts after it parses; preloading the Latin files lets SSR text
       // paint in its real face instead of swapping.
       ...[onest, unbounded, bigShoulders].map((href) => ({ rel: 'preload', as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' as const, href })),
-      { rel: 'icon', type: 'image/svg+xml', href: icono },
+      { rel: 'icon', type: 'image/svg+xml', href: icon },
     ],
   }),
   shellComponent: RootDocument,

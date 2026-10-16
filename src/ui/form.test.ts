@@ -10,17 +10,17 @@ const formData = (pairs: Record<string, string>) => {
   return f
 }
 
-const Sample = Schema.Struct({ vram_mb: OptionalNumber(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))), obligatoria: Checkbox })
+const Sample = Schema.Struct({ vram_mb: OptionalNumber(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))), required: Checkbox })
 
 describe('form conventions', () => {
   it('a blank number and an unticked checkbox arrive as null and false', () => {
-    expect(readForm(Sample, formData({ vram_mb: '  ' }))).toEqual(Result.succeed({ vram_mb: '', obligatoria: false }))
-    expect(Schema.decodeUnknownSync(Sample)({ vram_mb: '', obligatoria: false })).toEqual({ vram_mb: null, obligatoria: false })
+    expect(readForm(Sample, formData({ vram_mb: '  ' }))).toEqual(Result.succeed({ vram_mb: '', required: false }))
+    expect(Schema.decodeUnknownSync(Sample)({ vram_mb: '', required: false })).toEqual({ vram_mb: null, required: false })
   })
 
   it('a typed number and a ticked checkbox arrive with their value', () => {
-    expect(readForm(Sample, formData({ vram_mb: '4096', obligatoria: 'true' }))).toEqual(Result.succeed({ vram_mb: '4096', obligatoria: true }))
-    expect(Schema.decodeUnknownSync(Sample)({ vram_mb: '4096', obligatoria: true })).toEqual({ vram_mb: 4096, obligatoria: true })
+    expect(readForm(Sample, formData({ vram_mb: '4096', required: 'true' }))).toEqual(Result.succeed({ vram_mb: '4096', required: true }))
+    expect(Schema.decodeUnknownSync(Sample)({ vram_mb: '4096', required: true })).toEqual({ vram_mb: 4096, required: true })
   })
 
   it('apis[] checkboxes arrive as a list, even with one ticked', () => {

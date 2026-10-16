@@ -168,7 +168,7 @@ layer(PgTest)('arreglo_upstream', (it) => {
     })))
 })
 
-layer(PgTest)('informeProtonDe', (it) => {
+layer(PgTest)('myProtonReport', (it) => {
   it.effect('su autora recibe el informe; nadie más sabe que existe', inScenario((e) =>
     Effect.gen(function* () {
       const own = yield* Effect.provideService(myProtonReport(e.failed), Visitor, Option.some(e.ana))

@@ -322,10 +322,10 @@ describe('protonReport', () => {
 
   it('past the URL limit the link carries only the title; the body stays whole for the copy box', () => {
     const oversized = protonReport({ ...report3, observations: 'x'.repeat(8000) })
-    expect(oversized._tag === 'informe' && { abrir: oversized.open, cuerpo_en_enlace: oversized.body_in_link, cabe: oversized.body.includes('x'.repeat(8000)) }).toEqual({
-      abrir: { _tag: 'enlace', url: newIssue },
-      cuerpo_en_enlace: false,
-      cabe: true,
+    expect(oversized._tag === 'informe' && { open: oversized.open, body_in_link: oversized.body_in_link, fits: oversized.body.includes('x'.repeat(8000)) }).toEqual({
+      open: { _tag: 'enlace', url: newIssue },
+      body_in_link: false,
+      fits: true,
     })
   })
 

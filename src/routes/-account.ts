@@ -20,7 +20,7 @@ type AccountFailure = { readonly code: string | undefined }
 
 // Its rate limiter (production only) answers 429 with no code, so the status names that one.
 const reply = (error: { readonly code?: string | undefined; readonly status: number } | null): Reply<null, AccountFailure> =>
-  error === null ? { ok: true, value: null } : { ok: false, error: { code: error.code ?? (error.status === 429 ? 'DEMASIADOS_INTENTOS' : undefined) } }
+  error === null ? { ok: true, value: null } : { ok: false, error: { code: error.code ?? (error.status === 429 ? 'TOO_MANY_ATTEMPTS' : undefined) } }
 
 export const signUp = async ({ data }: { readonly data: typeof SignUp.Encoded }) =>
   reply((await authClient.signUp.email({ name: data.alias, email: data.email, password: data.password })).error)
@@ -36,7 +36,7 @@ const messages: Readonly<Partial<Record<string, FieldErrors>>> = {
   PASSWORD_TOO_SHORT: { password: 'Usa al menos 8 caracteres.' },
   PASSWORD_TOO_LONG: { password: 'Usa como máximo 128 caracteres.' },
   INVALID_EMAIL_OR_PASSWORD: { form: 'El correo o la contraseña no coinciden.' },
-  DEMASIADOS_INTENTOS: { form: 'Demasiados intentos seguidos. Espera unos segundos y vuelve a intentarlo.' },
+  TOO_MANY_ATTEMPTS: { form: 'Demasiados intentos seguidos. Espera unos segundos y vuelve a intentarlo.' },
 }
 
 export const accountErrors = (f: AccountFailure): FieldErrors =>
