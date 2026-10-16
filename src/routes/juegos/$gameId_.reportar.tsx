@@ -1,4 +1,4 @@
-// `$gameId_` keeps this page out of the ficha's layout (it renders on its own).
+// `$gameId_` keeps this page out of the game page's layout (it renders on its own).
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useState } from 'react'
@@ -12,7 +12,7 @@ import { FieldError } from '../../ui/FieldError.tsx'
 import { dateTime } from '../../ui/format.ts'
 import { Field, fieldProps, OptionalGroup, nullText } from '../../ui/form.tsx'
 import { ruleErrors, type FieldErrors, useAction } from '../../ui/useAction.ts'
-import { reviewStatus, outcome as etiquetaResultado, failureType } from '../../ui/vocabulary.ts'
+import { reviewStatus, outcome as outcomeLabel, failureType } from '../../ui/vocabulary.ts'
 import { routeIdParser } from '../-ids.ts'
 import { returnHere } from '../-return-to.ts'
 
@@ -270,7 +270,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
           {Outcome.literals.map((value) => (
             <label key={value} className="casilla">
               <input type="radio" name="resultado" value={value} checked={outcome === value} onChange={() => setOutcome(value)} />
-              {etiquetaResultado[value].text}
+              {outcomeLabel[value].text}
             </label>
           ))}
         </div>

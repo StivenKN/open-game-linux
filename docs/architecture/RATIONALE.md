@@ -47,7 +47,7 @@ A missing game makes the program fail with `NotFound`. `runRead` turns that into
 **A report breaks a rule, and the field shows the error.**
 
 ```tsx
-// src/routes/juegos/$gameId.reportar.tsx
+// src/routes/juegos/$gameId_.reportar.tsx
 const r = useAccion(NewReport, submitReportFn, {
   alFallar: erroresDeRegla,                   // error: { _tag: 'ReglaIncumplida'; rule: Rule }, the only failure submitReport returns
   alCompletar: () => navigate({ to: '/juegos/$gameId', params: { gameId } }),
@@ -114,7 +114,7 @@ A request crosses three files: route → `fns/x.ts` → `server/.../program.ts`,
 
 **Domain-error transport: returned typed union, not a serialization adapter.** The evidence:
 
-1. With an adapter, a server fn still returns `Promise<A>` and the rejection is `unknown`. The compiler cannot make the report form handle `RuleViolated`. With `Reply`, `r.valor` cannot be read without narrowing `r.ok`, and `alFallar`'s switch is exhaustive over the exact tags the program can produce. I verified both failure directions with `tsc`.
+1. With an adapter, a server fn still returns `Promise<A>` and the rejection is `unknown`. The compiler cannot make the report form handle `RuleViolated`. With `Reply`, `r.value` cannot be read without narrowing `r.ok`, and `onFailure`'s switch is exhaustive over the exact tags the program can produce. I verified both failure directions with `tsc`.
 2. An adapter is a global registry: one `createSerializationAdapter` per class, about 7 lines each, a dev-server restart on change (gotcha 9), and `instanceof` across bundles. A union member is just `Schema.encodeSync(Fallos)(e)`, a plain `{ _tag, ... }` that seroval carries (Q3 variant B, observed).
 3. In-process SSR hides a missing adapter (gotcha 4), so that bug only shows in the browser. A returned value behaves the same on every path.
 4. Control flow (not found, login, forbidden) uses the router's native throwables, and those already work.
@@ -201,7 +201,7 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 **U3** departs from the sketch as follows.
 
 - **`useAction` binds `onSubmit`, not `<form action>`.** React 19 resets an action form's fields after every action, so a field error would wipe what the user typed. `enviar` builds the FormData with the submitter, so `<button name="decision[_tag]" value="Aprobar">` still posts its value.
-- **Field errors are keyed by the input's name.** A nested issue lands on `fallos[0][detalle]`, not on `fallos`. A rule from `rules` still lands on its `campo`. Decoding reports every invalid field at once.
+- **Field errors are keyed by the input's name.** A nested issue lands on `fallos[0][detalle]`, not on `fallos`. A rule from `rules` still lands on its `field`. Decoding reports every invalid field at once.
 - **No better-auth cookie cache.** With it, `pnpm rol` and deactivation would take up to five minutes to apply. Each request reads the session from the database instead.
 - **`assignRole` lives in `server/auth.ts`.** `pnpm rol` and the seed share it, so role writes have one home.
 - **Demo content is marked by its author.** No table has a demo column. Every seeded profile and guide belongs to a `@demo.opengame.test` account (`demoDomain`), a reserved domain. A `hooks.before` in `server/auth.ts` rejects it on any `/sign-up/email` request that reaches `/api/auth` (`DOMINIO_RESERVADO`, shown under the correo field), while the seed's in-process `auth.api.signUpEmail` carries no request and passes. Queries can derive "Datos de ejemplo" from the author's correo.
@@ -267,7 +267,7 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 
 Found by the pre-PR comment audit. None is a correctness bug; each would make an illegal state unrepresentable or remove a hand-synced copy.
 
-- `RequirementCheck.exigido` and `detectado.valor` hold either MB or a Vulkan version in one string. A union tagged by requisito would remove the `Number()` parse in `EvaluationChecklist`.
+- `RequirementCheck.required` and `detected.value` hold either MB or a Vulkan version in one string. A union tagged by requisito would remove the `Number()` parse in `EvaluationChecklist`.
 - `Personal` (`VerdictForMe`) and the FPS fields of `ApprovedTest` are sets of nullables whose combinations mean different things. Each should be a tagged union or one nullable struct, like `FpsMeasurement`.
 - `FpsMeasurement.fps_promedio`'s maximum copies `numeric(7,2)` by hand, and the failure-type codes live in both `scripts/sembrar.ts` and `ui/vocabulary.ts`. Derive both from one source.
 - Migrations build their CHECK lists from today's literal Schemas, so an old migration renders different SQL after a literal changes. Snapshot the lists per migration before the first real deploy.

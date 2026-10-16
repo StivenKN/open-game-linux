@@ -5,7 +5,7 @@ import { renderPath, gamePathLabel, gamePathSentences } from '../vocabulary.ts'
 
 /**
  * The hardware-only graphics path for one game. It stands apart from the community state and the
- * profile check: it needs no reports. `minimo` is the game's minimum x86-64 level.
+ * profile check: it needs no reports.
  */
 export function GraphicsPath({ path, minX86Level, approximate }: { path: GamePath; minX86Level: X86Level | null; approximate: boolean }) {
   // The warning and launch option follow the path wherever it shows, a certain floor included.

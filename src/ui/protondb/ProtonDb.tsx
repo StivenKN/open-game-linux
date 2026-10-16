@@ -31,7 +31,7 @@ export function ProtonDbLine({ summary }: { summary: Recent }) {
 const layer = (variant: ProtonVariant, version: string | null) =>
   version === null ? protonVariant[variant] : `${protonVariant[variant]} (${version})`
 
-/** The ficha's section: aggregates only, never individual reports (8.9). */
+/** The game page's section: aggregates only, never individual reports (8.9). */
 export function ProtonDbSection({ protondb: p }: { protondb: (ProtonDbSummary & { readonly app_id: string }) | null }) {
   if (p === null) return <p className="tarjeta tenue">Sin datos de ProtonDB para este juego todavía.</p>
   return (

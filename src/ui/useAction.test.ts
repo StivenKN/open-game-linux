@@ -31,8 +31,8 @@ const errorsFor = (changes: Record<string, string | null>) => Result.match(readF
   onFailure: (e) => e,
 })
 
-describe('leerFormulario', () => {
-  it('entrega el valor codificado que espera el validador del servidor', () => {
+describe('readForm', () => {
+  it('returns the encoded value the server validator expects', () => {
     const parsed = readForm(NewReport, form({}))
     expect(Result.isSuccess(parsed) && parsed.success).toEqual({
       edicion_id: 1,
@@ -49,19 +49,19 @@ describe('leerFormulario', () => {
     })
   })
 
-  it('un texto obligatorio en blanco usa el mensaje de Texto', () => {
+  it('a blank required text gets the Text message', () => {
     expect(errorsFor({ observaciones: '   ' })).toEqual({ observaciones: 'Este campo es obligatorio.' })
   })
 
-  it('un campo ausente es obligatorio', () => {
+  it('a missing field is required', () => {
     expect(errorsFor({ perfil_id: null })).toEqual({ perfil_id: 'Este campo es obligatorio.' })
   })
 
-  it('un error anidado cae en el nombre del input que lo produjo', () => {
+  it('a nested error lands on the name of the input that produced it', () => {
     expect(errorsFor({ 'fallos[0][detalle]': '' })).toEqual({ 'fallos[0][detalle]': 'Este campo es obligatorio.' })
   })
 
-  it('informa todos los campos con error a la vez, no solo el primero', () => {
+  it('reports every invalid field at once, not only the first', () => {
     expect(errorsFor({ observaciones: '', version_juego: '', perfil_id: null })).toEqual({
       observaciones: 'Este campo es obligatorio.',
       version_juego: 'Este campo es obligatorio.',
@@ -69,22 +69,22 @@ describe('leerFormulario', () => {
     })
   })
 
-  it('un texto más largo que su columna dice el límite', () => {
+  it('a text longer than its column states the limit', () => {
     const data = new FormData()
     data.append('alias', 'a'.repeat(61))
     const parsed = readForm(Schema.Struct({ alias: User.fields.alias }), data)
     expect(Result.isFailure(parsed) && parsed.failure).toEqual({ alias: 'Usa como máximo 60 caracteres.' })
   })
 
-  it('una variante desconocida de una unión cae en el nombre de la unión, en español', () => {
+  it('an unknown union member lands on the union name, in Spanish', () => {
     expect(errorsFor({ 'version_capa[_tag]': 'inventada' })).toEqual({ version_capa: 'Revisa este valor.' })
   })
 
-  it('un resultado fuera de la lista no muestra el volcado de tipos en inglés', () => {
+  it('an outcome outside the list shows no English type dump', () => {
     expect(errorsFor({ resultado: 'regular' })).toEqual({ formulario: 'Revisa este valor.' })
   })
 
-  it('un valor mal formado recibe el aviso genérico en español', () => {
+  it('a malformed value gets the generic Spanish notice', () => {
     expect(errorsFor({ 'version_capa[id]': 'abc' })).toEqual({ 'version_capa[id]': 'Revisa este valor.' })
   })
 })

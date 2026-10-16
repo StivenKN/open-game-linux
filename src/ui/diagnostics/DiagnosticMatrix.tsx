@@ -20,7 +20,7 @@ export type MatrixRow = {
   readonly profile: (EvaluatedProfile & { readonly capa: string; readonly distribucion: string }) | null
 }
 
-/** `orientativa`: the capture came from Windows, so every verdict is a projection. */
+/** `approximate`: the capture came from Windows, so every verdict is a projection. */
 export function DiagnosticMatrix({ rows, approximate }: { rows: ReadonlyArray<MatrixRow>; approximate: boolean }) {
   return (
     <ul className="mosaico mosaico-ancho" aria-label="Juegos frente a tu equipo">

@@ -8,7 +8,7 @@ import { rules, type Rule, type Reply } from '../domain/errors.ts'
 
 export type FieldErrors = Readonly<Partial<Record<string, string>>>
 
-// Effect's length checks describe themselves in this annotation; TextoHasta(n) fields rely on it.
+// Effect's length checks describe themselves in this annotation.
 const LengthCheck = Schema.Struct({
   representation: Schema.Union([
     Schema.Struct({ id: Schema.Literal('effect/schema/isMaxLength'), payload: Schema.Struct({ maxLength: Schema.Number }) }),
@@ -83,7 +83,7 @@ export function useAction<T, E, A, F>(
   const inFlight = useRef(false)
 
   const onThrow = async (e: unknown) => {
-    // runRead/runAction turn NoAutenticado into a redirect; outside a loader nobody else follows it.
+    // runRead/runAction turn Unauthenticated into a redirect; outside a loader nobody else follows it.
     if (isRedirect(e)) await router.navigate(router.resolveRedirect(e).options)
     else if (isNotFound(e)) setErrors({ formulario: 'Lo que intentas modificar ya no existe o no tienes acceso.' })
     else setErrors({ formulario: 'Algo falló de nuestro lado. Intenta de nuevo.' })

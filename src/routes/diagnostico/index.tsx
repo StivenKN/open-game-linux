@@ -9,7 +9,7 @@ import { FieldError } from '../../ui/FieldError.tsx'
 import { memory, dateTime } from '../../ui/format.ts'
 import { fieldProps } from '../../ui/form.tsx'
 import { type FieldErrors, useAction } from '../../ui/useAction.ts'
-import { payloadReason, operatingSystem as etiquetaSistema, vulkanSupport } from '../../ui/vocabulary.ts'
+import { payloadReason, operatingSystem as operatingSystemLabel, vulkanSupport } from '../../ui/vocabulary.ts'
 import { type Input, manualInput, ManualForm, savePending, Pasted } from './-input.ts'
 
 export const Route = createFileRoute('/diagnostico/')({
@@ -53,7 +53,7 @@ function DiagnosticPage() {
                         {dateTime(d.capturado_en)}
                       </Link>{' '}
                       <span className="pequeno tenue dato">
-                        {d.distribucion ?? etiquetaSistema[d.sistema]} · {d.gpu_modelo} · {memory(d.ram_mb)} RAM
+                        {d.distribucion ?? operatingSystemLabel[d.sistema]} · {d.gpu_modelo} · {memory(d.ram_mb)} RAM
                       </span>
                     </li>
                   ))}
@@ -173,7 +173,7 @@ function Manual() {
             <select {...fieldProps(r.errors, 'sistema')} value={os} onChange={(e) => isOperatingSystem(e.currentTarget.value) && setOs(e.currentTarget.value)}>
               {OperatingSystem.literals.map((s) => (
                 <option key={s} value={s}>
-                  {etiquetaSistema[s]}
+                  {operatingSystemLabel[s]}
                 </option>
               ))}
             </select>

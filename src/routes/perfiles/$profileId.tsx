@@ -165,7 +165,7 @@ function ProfilePage() {
   )
 }
 
-type Step = ReturnType<typeof Route.useLoaderData>['pasos'][number]
+type Step = Awaited<ReturnType<typeof profileFn>>['steps'][number]
 
 function StepList({ storageKey, steps }: { storageKey: string; steps: ReadonlyArray<Step> }) {
   const { done, toggle, reset } = useProgress(storageKey)

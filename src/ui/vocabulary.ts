@@ -219,7 +219,6 @@ const missingData = {
   cpu: 'Falta el nivel x86-64 de tu procesador: lo mide la versión actual del detector de Linux.',
 } as const satisfies Record<Requirement, string>
 
-/** The verdict as sentences. `minimo` is the game's minimum x86-64 level, named when the CPU decides. */
 export const gamePathSentences = (r: GamePath, minX86Level: X86Level | null): ReadonlyArray<string> => {
   switch (r.status) {
     case 'con_ruta':

@@ -12,18 +12,18 @@ const formData = (pairs: Record<string, string>) => {
 
 const Sample = Schema.Struct({ vram_mb: OptionalNumber(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))), obligatoria: Checkbox })
 
-describe('convenciones de formulario', () => {
-  it('un número en blanco y una casilla sin marcar llegan como null y false', () => {
+describe('form conventions', () => {
+  it('a blank number and an unticked checkbox arrive as null and false', () => {
     expect(readForm(Sample, formData({ vram_mb: '  ' }))).toEqual(Result.succeed({ vram_mb: '', obligatoria: false }))
     expect(Schema.decodeUnknownSync(Sample)({ vram_mb: '', obligatoria: false })).toEqual({ vram_mb: null, obligatoria: false })
   })
 
-  it('un número escrito y una casilla marcada llegan con su valor', () => {
+  it('a typed number and a ticked checkbox arrive with their value', () => {
     expect(readForm(Sample, formData({ vram_mb: '4096', obligatoria: 'true' }))).toEqual(Result.succeed({ vram_mb: '4096', obligatoria: true }))
     expect(Schema.decodeUnknownSync(Sample)({ vram_mb: '4096', obligatoria: true })).toEqual({ vram_mb: 4096, obligatoria: true })
   })
 
-  it('las casillas apis[] llegan como lista, también con una sola marcada', () => {
+  it('apis[] checkboxes arrive as a list, even with one ticked', () => {
     const game = formData({ titulo: 'Hades', descripcion: 'd', 'ediciones[0][lanzador_id]': '1', 'ediciones[0][identificador_externo]': '', nivel_x86_min: 'null' })
     const read = (...apis: ReadonlyArray<string>) => {
       const f = new FormData()
@@ -36,12 +36,12 @@ describe('convenciones de formulario', () => {
     expect(read()).toEqual(Result.fail({ apis: 'Marca al menos una API gráfica.' }))
   })
 
-  it('un número inválido es un error del campo, no un null', () => {
+  it('an invalid number is a field error, not a null', () => {
     expect(readForm(Sample, formData({ vram_mb: '-1' }))).toEqual(Result.fail({ vram_mb: 'Revisa este valor.' }))
   })
 })
 
-describe('límites de columna en el reporte', () => {
+describe('column limits in the report', () => {
   const report = {
     edicion_id: '1',
     diagnostico_id: '2',
@@ -61,7 +61,7 @@ describe('límites de columna en el reporte', () => {
     observaciones: 'Sin problemas',
   }
 
-  it('un texto más largo que su columna es un error del campo, no un fallo del insert', () => {
+  it('a text longer than its column is a field error, not a failed insert', () => {
     const tooLong = readForm(
       NewReport,
       formData({ ...report, version_juego: 'v'.repeat(81), version_lanzador: 'l'.repeat(81), 'medicion[resolucion]': 'r'.repeat(31), 'version_capa[version]': 'x'.repeat(61) }),
@@ -76,7 +76,7 @@ describe('límites de columna en el reporte', () => {
     )
   })
 
-  it('un promedio de FPS que no cabe en numeric(7,2) dice el rango', () => {
+  it('an FPS average that does not fit numeric(7,2) states the range', () => {
     expect(readForm(NewReport, formData({ ...report, 'medicion[fps_promedio]': '100000' }))).toEqual(
       Result.fail({ 'medicion[fps_promedio]': 'Escribe un promedio de FPS entre 0 y 99999.99.' }),
     )

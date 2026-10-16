@@ -54,7 +54,7 @@ const destination = (text: unknown): Destination | undefined => {
 }
 
 /**
- * validateSearch for /entrar and /registro: `?volver=` keeps only a Destino. The key is always present:
+ * validateSearch for /entrar and /registro: `?volver=` keeps only a Destination. The key is always present:
  * router-core spreads the validated search over the raw query, so leaving it out would let the raw,
  * unchecked `volver` through to `useSearch()`.
  */

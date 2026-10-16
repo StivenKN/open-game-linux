@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
 import { ReturnTo } from './-return-to.ts'
 
-describe('Volver (?volver= on /entrar and /registro)', () => {
+describe('ReturnTo (?volver= on /entrar and /registro)', () => {
   it.each([
     ['/diagnostico/importar', '/diagnostico/importar'],
     ['/diagnosticos/12', '/diagnosticos/12'],
