@@ -5,7 +5,7 @@ const approve: Decision = { _tag: 'Aprobar', motivo: 'Probado', evidencia: 'Repo
 const reject: Decision = { _tag: 'Rechazar', motivo: 'Sin evidencia' }
 const withdraw: Decision = { _tag: 'Retirar', motivo: 'Obsoleto' }
 
-describe('planificar', () => {
+describe('planTransition', () => {
   const cases: ReadonlyArray<readonly [ReviewStatus, Decision, ReturnType<typeof planTransition>]> = [
     ['pendiente', approve, 'aplicar'],
     ['pendiente', reject, 'aplicar'],

@@ -7,7 +7,7 @@ import { isRecent } from './recency.ts'
 
 const now = new Date('2026-10-15T00:00:00Z')
 
-describe('estadoDe', () => {
+describe('statusOf', () => {
   const cases: ReadonlyArray<readonly [ReadonlyArray<Outcome>, CompatibilityStatus]> = [
     [[], 'sin_evidencia'],
     [['funciona', 'funciona'], 'funciona'],
@@ -23,7 +23,7 @@ describe('estadoDe', () => {
   })
 })
 
-describe('resumir on the veredicto fixture', () => {
+describe('summarize on the sample games', () => {
   it('GTA V: three environments with different results give resultados_variables', () => {
     const r = summarize(gtaV.tests, now)
     expect(r.status).toBe('resultados_variables')
@@ -65,7 +65,7 @@ describe('resumir on the veredicto fixture', () => {
   })
 })
 
-describe('resumir FPS', () => {
+describe('summarize FPS', () => {
   const base = gtaV.tests[0]
   const measured = (fps: number, resolution: string, quality: string): ApprovedTest =>
     ({ ...base, fps_promedio: fps, resolucion: resolution, calidad_grafica: quality })
@@ -86,7 +86,7 @@ describe('resumir FPS', () => {
   })
 })
 
-describe('enDistribucion', () => {
+describe('onDistribution', () => {
   it('the Linux Mint 21.3 slice of GTA V is funciona with its two tests', () => {
     const r = onDistribution(gtaV.tests, DistributionId.make(1), now)
     expect(r.status).toBe('funciona')
@@ -112,15 +112,15 @@ const [gtaMint] = gtaV.tests
 const approved = (reporte_id: number, resultado: Outcome, fecha_prueba: string, changes: Partial<ApprovedTest> = {}): ApprovedTest =>
   ({ ...gtaMint, ...changes, reporte_id: ReportId.make(reporte_id), resultado, fecha_prueba: new Date(fecha_prueba), fps_promedio: null, fallos: changes.fallos ?? [] })
 
-describe('esVigente', () => {
-  it('a test exactly 365 days old is vigente, one millisecond older is not', () => {
+describe('isRecent', () => {
+  it('a test exactly 365 days old is recent, one millisecond older is not', () => {
     const reference = new Date('2026-10-15T00:00:00Z')
     expect(isRecent(new Date('2025-10-15T00:00:00Z'), reference)).toBe(true)
     expect(isRecent(new Date('2025-10-14T23:59:59.999Z'), reference)).toBe(false)
   })
 })
 
-describe('resumir with the 365-day window', () => {
+describe('summarize with the 365-day window', () => {
   it('state and causes come only from the tests of the last year; totals and dates from all', () => {
     const r = summarize(gtaV.tests, new Date('2027-10-01T00:00:00Z'))
     expect([r.status, r.test_count, r.recent_count, r.no_recent_confirmation]).toEqual(['falla_en_ejecucion', 4, 1, false])
@@ -155,7 +155,7 @@ describe('resumir with the 365-day window', () => {
   })
 })
 
-describe('resumir regresiones', () => {
+describe('summarize regressions', () => {
   it('GTA V: the Steam edition newest test fails after earlier ones worked', () => {
     expect(summarize(gtaV.tests, now).regressions).toEqual([
       {

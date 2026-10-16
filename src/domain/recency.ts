@@ -3,6 +3,6 @@
 const RECENCY_DAYS = 365
 const MS_PER_DAY = 86_400_000
 
-/** No upper bound: a test dated after `referencia` is still vigente. */
+/** No upper bound: a test dated after `reference` is still recent. */
 export const isRecent = (date: Date, reference: Date): boolean =>
   date.getTime() >= reference.getTime() - RECENCY_DAYS * MS_PER_DAY

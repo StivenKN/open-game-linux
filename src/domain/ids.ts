@@ -1,4 +1,4 @@
-// usuario.id is better-auth's text id (spike Q7), the one recorded deviation from "Entero".
+// usuario.id is better-auth's text id (spike Q7), the one recorded deviation from integer ids.
 import { Effect, Schema, SchemaTransformation } from 'effect'
 
 export const GameId = Schema.Int.pipe(Schema.brand('JuegoId'))

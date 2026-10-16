@@ -3,7 +3,7 @@ import { Result, Schema, SchemaIssue } from 'effect'
 import { ManualCapture, type TestContext, mismatches, NewReport, type TargetProfile } from './contributions.ts'
 import { DistributionId, EditionId, LayerVersionId } from './ids.ts'
 
-describe('discrepancias (8.7 comparability)', () => {
+describe('mismatches (8.7 comparability)', () => {
   const profile: TargetProfile = {
     edicion_id: EditionId.make(1),
     version_capa_id: LayerVersionId.make(1),
@@ -52,7 +52,7 @@ const fromForm = <S extends Schema.Top & { readonly DecodingServices: never }>(s
   }
 }
 
-describe('NuevoReporte from the report form', () => {
+describe('NewReport from the report form', () => {
   const decode = fromForm(NewReport)
   const base = {
     edicion_id: '1',
@@ -68,7 +68,7 @@ describe('NuevoReporte from the report form', () => {
     observaciones: 'Probado dos veces',
   }
 
-  it('a working result with no fallos rows decodes with fallos []', () => {
+  it('a working result with no failure rows decodes with fallos []', () => {
     const r = decode(base)
     expect(Result.isSuccess(r) && r.success).toMatchObject({ resultado: 'funciona', fallos: [], perfil_id: null, version_lanzador: null })
   })
@@ -102,7 +102,7 @@ describe('NuevoReporte from the report form', () => {
   })
 })
 
-describe('CapturaManual from the manual form', () => {
+describe('ManualCapture from the manual form', () => {
   const decode = fromForm(ManualCapture)
   const common = {
     capturado_en: '2026-10-10T18:43:52Z',

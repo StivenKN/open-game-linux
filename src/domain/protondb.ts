@@ -1,4 +1,4 @@
-// ProtonDB's monthly export as external evidence. Nothing here feeds PruebaAprobada, estadoDe or resumir.
+// ProtonDB's monthly export as external evidence. Nothing here feeds ApprovedTest, statusOf or summarize.
 import { Option, Schema } from 'effect'
 import type { EditionId } from './ids.ts'
 import { maxLengths } from './max-lengths.ts'

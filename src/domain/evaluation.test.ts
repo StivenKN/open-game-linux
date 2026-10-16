@@ -17,7 +17,7 @@ const v = (text: string) => {
   return version
 }
 
-describe('versionVulkan', () => {
+describe('vulkanVersion', () => {
   it.each([
     ['1.3', [1, 3]],
     ['1.3.275', [1, 3, 275]],
@@ -30,7 +30,7 @@ describe('versionVulkan', () => {
   })
 })
 
-describe('alMenos', () => {
+describe('atLeast', () => {
   it.each([
     ['1.10', '1.9', true],
     ['1.9', '1.10', false],
@@ -43,7 +43,7 @@ describe('alMenos', () => {
   })
 })
 
-describe('evaluar (8.10, three outcomes)', () => {
+describe('evaluate (8.10, three outcomes)', () => {
   const machine: Capabilities = { sistema: 'Linux', ram_mb: 8192, vram_mb: 2048, vulkan: { support: 'si', origin: 'medido', range: { from: v('1.3'), to: v('1.3') } } }
   const none: KnownRequirements = { ram_min_mb: null, vram_min_mb: null, requiere_vulkan: null, version_vulkan_min: null }
 
@@ -114,13 +114,13 @@ describe('evaluar (8.10, three outcomes)', () => {
   })
 })
 
-describe('condiciones', () => {
+describe('requirements', () => {
   it('parses the profile minimum version', () => {
     expect(requirements({ ram_min_mb: null, vram_min_mb: null, requiere_vulkan: true, version_vulkan_min: '1.3' }).version_vulkan_min).toEqual(v('1.3'))
   })
 })
 
-describe('sugerirPerfil', () => {
+describe('suggestProfile', () => {
   const evaluation = (verdict: RequirementsVerdict): Evaluation => ({ verdict, checks: [], advisory_only: false })
   const profile = (name: string, distribucion_id: number, verdict: RequirementsVerdict | null, revision = 1, arquitectura = 'x86_64') => ({
     nombre: name,

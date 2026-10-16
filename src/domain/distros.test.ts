@@ -10,7 +10,7 @@ const machine = (pci: string | null) =>
 const summary = (pci: string | null, architecture = 'x86_64') =>
   screenDistros(machine(pci), architecture).map((d): [DistroKey, EvaluatedDistro['verdict'], EvaluatedDistro['objections']] => [d.key, d.verdict, d.objections])
 
-describe('descartarDistros', () => {
+describe('screenDistros', () => {
   it('Kepler: Bazzite is out; Ubuntu and Mint can keep 470 on kernel 6.8; the rest need NVK', () => {
     expect(summary('10de:128b')).toEqual([
       ['mint_22', 'con_ajustes', [{ code: 'kepler_470', kernel: 'kernel_6_8' }]],

@@ -22,7 +22,7 @@ export type Requirement = 'grafica' | 'cpu'
 
 /**
  * Hardware-only verdict for one game: no reports involved. `sin_datos` lists every missing fact
- * (an old diagnosis can lack both) and `al_menos` is the best path already certain.
+ * (an old diagnosis can lack both) and `at_least` is the best path already certain.
  */
 export type GamePath =
   | { readonly status: 'sin_apis' }

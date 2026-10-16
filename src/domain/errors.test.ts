@@ -2,7 +2,7 @@ import { describe, expect, it } from '@effect/vitest'
 import { Schema } from 'effect'
 import { DomainError, IncomparableProfile, InvalidTransition } from './errors.ts'
 
-describe('FalloDominio on the wire', () => {
+describe('DomainError on the wire', () => {
   const encode = Schema.encodeSync(DomainError)
   const decode = Schema.decodeUnknownSync(DomainError)
 

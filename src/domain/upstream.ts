@@ -142,7 +142,7 @@ export type NotExportableReason = 'no_es_steam' | 'sin_appid' | 'capa_sin_proton
 
 type NotExportable = { readonly _tag: 'no_exportable'; readonly reason: NotExportableReason }
 
-/** Whether a profile maps to gamefixes-steam/<appid>.py at all. Shared by exportarFix and the writer of arreglo_upstream. */
+/** Whether a profile maps to gamefixes-steam/<appid>.py at all. Shared by exportFix and the writer of arreglo_upstream. */
 export const exportableAppId = (
   e: Edition & { readonly familia: LayerFamily },
 ): NotExportable | { readonly _tag: 'exportable'; readonly appid: SteamAppId } => {

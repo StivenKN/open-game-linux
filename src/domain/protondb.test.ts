@@ -12,7 +12,7 @@ const record = (changes: { app?: unknown; timestamp?: unknown; systemInfo?: obje
     ...changes,
   })
 
-describe('interpretarReporte', () => {
+describe('parseReport', () => {
   it('reads a GE report on an integrated Intel GPU', () => {
     const text = record({
       systemInfo: { gpu: 'Intel Mesa Intel UHD 620 (KBL GT2)', ram: '16 GB' },
@@ -69,7 +69,7 @@ describe('interpretarReporte', () => {
   })
 })
 
-describe('resumirProtonDb', () => {
+describe('summarizeProtonDb', () => {
   const exportado_en = new Date('2026-10-01T00:00:00Z')
   const report = (fingerprint: string, date: string, works: boolean, modest_machine: boolean, layer: ProtonDbReport['layer']): ProtonDbReport => ({
     app_id: '1000',

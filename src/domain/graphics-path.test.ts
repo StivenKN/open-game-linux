@@ -28,7 +28,7 @@ const eldenRing = game(['d3d12'])
 const witcher3 = game(['d3d11', 'd3d12'])
 const cs2 = game(['vulkan', 'd3d11'], 'v2')
 
-describe('rutaJuego', () => {
+describe('gamePath', () => {
   it.each<[string, ColumnasEquipo, X86Level | null, ReturnType<typeof game>, GamePath]>([
     ['a D3D12 game on Haswell', haswell, 'v3', eldenRing, { status: 'sin_ruta', reason: 'grafica' }],
     ['a {D3D11, D3D12} game on Vulkan 1.2', kepler, null, witcher3, { status: 'con_ruta', path: 'dxvk_sarek' }],

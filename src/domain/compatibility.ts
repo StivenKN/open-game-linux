@@ -80,7 +80,7 @@ export type CompatibilitySummary = {
   readonly status: CompatibilityStatus
   readonly test_count: number
   readonly recent_count: number
-  /** Every approved test is older than a year, so `estado` comes from stale evidence. */
+  /** Every approved test is older than a year, so `status` comes from stale evidence. */
   readonly no_recent_confirmation: boolean
   readonly last_tested: Date | null
   readonly setups: ReadonlyArray<TestedSetup>
@@ -89,7 +89,7 @@ export type CompatibilitySummary = {
 }
 
 /**
- * The one state function for the ficha and the catalog. State, result counts and causes come from the
+ * The one state function for the game page and the catalog. State, result counts and causes come from the
  * tests of the last year when there is any, else from all of them; totals, dates and FPS from all.
  */
 export const summarize = (tests: ReadonlyArray<ApprovedTest>, now: Date): CompatibilitySummary => {

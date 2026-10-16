@@ -47,7 +47,7 @@ const parts = (x: FixExport) => {
   return { header: lines[0], lines: lines.slice(7, -1), skipped: x.skipped }
 }
 
-describe('exportarFix', () => {
+describe('exportFix', () => {
   it('Witcher 3 seed profile: exact file, local command, links and omissions', () => {
     expect(exportFix(witcher)).toEqual({
       _tag: 'archivo',
@@ -208,7 +208,7 @@ describe('exportarFix', () => {
   })
 })
 
-describe('AppIdSteam', () => {
+describe('SteamAppId', () => {
   const cases: ReadonlyArray<readonly [string, boolean]> = [
     ['292030', true],
     ['730', true],
@@ -225,7 +225,7 @@ describe('AppIdSteam', () => {
   })
 })
 
-describe('PrProtonfixes', () => {
+describe('ProtonfixesPr', () => {
   const cases: ReadonlyArray<readonly [string, number | null]> = [
     ['https://github.com/Open-Wine-Components/umu-protonfixes/pull/512', 512],
     ['https://github.com/Open-Wine-Components/umu-protonfixes/pull/512/files', 512],
@@ -305,7 +305,7 @@ Prepared with OpenGame Linux.
 
 const newIssue = 'https://github.com/ValveSoftware/Proton/issues/new?template=compatibility-report.md&title=Grand%20Theft%20Auto%20V%20(271590)'
 
-describe('informeProton', () => {
+describe('protonReport', () => {
   it("report #3 (GTA V, Proton 9.0-3, Ana's Fedora tower): exact issue body and links", () => {
     expect(protonReport(report3)).toEqual({
       _tag: 'informe',
@@ -366,7 +366,7 @@ describe('informeProton', () => {
   })
 })
 
-describe('informeProtonPosible', () => {
+describe('protonReportPossible', () => {
   const cases: ReadonlyArray<readonly [Parameters<typeof protonReportPossible>[0], boolean]> = [
     [{ lanzador: 'Steam', familia: 'Proton', variante: 'Valve', resultado: 'no_inicia' }, true],
     [{ lanzador: 'Steam', familia: 'Proton', variante: 'Valve', resultado: 'funciona_con_ajustes' }, true],
