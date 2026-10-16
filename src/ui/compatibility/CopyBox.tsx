@@ -1,45 +1,45 @@
 import { useEffect, useState } from 'react'
 
-type EstadoCopia = 'listo' | 'copiado' | 'fallo'
+type CopyState = 'listo' | 'copiado' | 'fallo'
 
-const aviso = {
+const notice = {
   listo: '',
   copiado: 'Copiado al portapapeles.',
   fallo: 'No se pudo copiar. Selecciona el texto y cópialo a mano.',
-} as const satisfies Record<EstadoCopia, string>
+} as const satisfies Record<CopyState, string>
 
-export function CajaCopiar({ texto, etiqueta }: { texto: string; etiqueta: string }) {
-  const [estado, setEstado] = useState<EstadoCopia>('listo')
+export function CopyBox({ text, label }: { text: string; label: string }) {
+  const [state, setState] = useState<CopyState>('listo')
 
   useEffect(() => {
-    if (estado === 'listo') return
-    const t = setTimeout(() => setEstado('listo'), 2500)
+    if (state === 'listo') return
+    const t = setTimeout(() => setState('listo'), 2500)
     return () => clearTimeout(t)
-  }, [estado])
+  }, [state])
 
   // navigator.clipboard is undefined outside secure contexts; the outer promise turns that into `fallo`.
-  const copiar = () =>
+  const copy = () =>
     Promise.resolve()
-      .then(() => navigator.clipboard.writeText(texto))
+      .then(() => navigator.clipboard.writeText(text))
       .then(
-      () => setEstado('copiado'),
-      () => setEstado('fallo'),
+      () => setState('copiado'),
+      () => setState('fallo'),
     )
 
   return (
     <figure className="caja-copiar">
-      <figcaption className="rotulo">{etiqueta}</figcaption>
+      <figcaption className="rotulo">{label}</figcaption>
       <div className="caja-copiar-cuerpo">
         {/* Focusable so a keyboard user can scroll a command wider than the box. */}
         <pre tabIndex={0}>
-          <code>{texto}</code>
+          <code>{text}</code>
         </pre>
-        <button type="button" onClick={copiar} aria-label={`Copiar ${etiqueta.toLowerCase()}`} data-estado={estado}>
-          <span aria-hidden="true">{estado === 'copiado' ? '✓ Copiado' : 'Copiar'}</span>
+        <button type="button" onClick={copy} aria-label={`Copiar ${label.toLowerCase()}`} data-estado={state}>
+          <span aria-hidden="true">{state === 'copiado' ? '✓ Copiado' : 'Copiar'}</span>
         </button>
       </div>
-      <p className="pequeno" role="status" data-tono={estado === 'fallo' ? 'rojo' : 'verde'}>
-        {aviso[estado]}
+      <p className="pequeno" role="status" data-tono={state === 'fallo' ? 'rojo' : 'verde'}>
+        {notice[state]}
       </p>
     </figure>
   )

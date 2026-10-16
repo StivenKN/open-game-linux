@@ -1,32 +1,32 @@
 import type { CompatibilitySummary } from '../../domain/compatibility.ts'
 import { Outcome } from '../../domain/literals.ts'
-import { contar, fecha } from '../format.ts'
-import { estadoCompatibilidad, resultado, significadoEstado } from '../vocabulary.ts'
-import { ChipsFallos } from './FailureChips.tsx'
+import { count, date } from '../format.ts'
+import { compatibilityStatus, outcome, statusMeaning } from '../vocabulary.ts'
+import { FailureChips } from './FailureChips.tsx'
 
-export function EstadoJuego({ resumen, pendientes }: { resumen: CompatibilitySummary; pendientes: number }) {
-  const etiqueta = estadoCompatibilidad[resumen.status]
-  const base = resumen.no_recent_confirmation ? resumen.test_count : resumen.recent_count
+export function GameStatus({ summary, pending }: { summary: CompatibilitySummary; pending: number }) {
+  const label = compatibilityStatus[summary.status]
+  const base = summary.no_recent_confirmation ? summary.test_count : summary.recent_count
   // The environments the state counts, so the bar adds up to `base`.
-  const contados = resumen.setups.filter((e) => e.recent_count > 0 || resumen.no_recent_confirmation)
-  const reparto = Outcome.literals.flatMap((r) => {
-    const n = contados.reduce((total, e) => total + (e.by_outcome[r] ?? 0), 0)
-    return n > 0 ? [{ resultado: r, n }] : []
+  const counted = summary.setups.filter((e) => e.recent_count > 0 || summary.no_recent_confirmation)
+  const breakdown = Outcome.literals.flatMap((r) => {
+    const n = counted.reduce((total, e) => total + (e.by_outcome[r] ?? 0), 0)
+    return n > 0 ? [{ outcome: r, n }] : []
   })
   return (
-    <section className="veredicto" data-tono={etiqueta.tono} aria-label="Estado de compatibilidad">
+    <section className="veredicto" data-tono={label.tone} aria-label="Estado de compatibilidad">
       <div className="veredicto-cabeza">
-        <span className="veredicto-icono" data-tono={etiqueta.tono} data-forma="relleno" data-estado={resumen.status} aria-hidden="true">
-          {etiqueta.icono}
+        <span className="veredicto-icono" data-tono={label.tone} data-forma="relleno" data-estado={summary.status} aria-hidden="true">
+          {label.icon}
         </span>
         <div>
-          <p className="veredicto-estado">{etiqueta.texto}</p>
+          <p className="veredicto-estado">{label.text}</p>
           <p className="veredicto-base">
-            {resumen.last_tested ? (
+            {summary.last_tested ? (
               <>
-                Según <b>{contar(base, 'reporte aprobado', 'reportes aprobados')}</b>
-                {base < resumen.test_count && <> del último año ({resumen.test_count} en total)</>}. Última prueba el{' '}
-                {fecha(resumen.last_tested)}.
+                Según <b>{count(base, 'reporte aprobado', 'reportes aprobados')}</b>
+                {base < summary.test_count && <> del último año ({summary.test_count} en total)</>}. Última prueba el{' '}
+                {date(summary.last_tested)}.
               </>
             ) : (
               'Todavía no hay reportes aprobados.'
@@ -34,45 +34,45 @@ export function EstadoJuego({ resumen, pendientes }: { resumen: CompatibilitySum
           </p>
         </div>
       </div>
-      <p className="veredicto-significa">{significadoEstado[resumen.status]}</p>
-      {resumen.no_recent_confirmation && (
+      <p className="veredicto-significa">{statusMeaning[summary.status]}</p>
+      {summary.no_recent_confirmation && (
         <p className="nota pequeno" data-tono="amarillo">
           Sin confirmación en el último año: todos los reportes aprobados tienen más de 12 meses.
         </p>
       )}
-      {resumen.regressions.map((r) => (
+      {summary.regressions.map((r) => (
         <p key={r.edicion_id} className="nota pequeno" data-tono="rojo">
-          <b>Dejó de funcionar</b> en {r.lanzador}: la prueba más reciente ({fecha(r.fecha_prueba)}, versión {r.version_juego},{' '}
-          {r.capa}) dio «{resultado[r.resultado].texto}» después de reportes que funcionaban.
+          <b>Dejó de funcionar</b> en {r.lanzador}: la prueba más reciente ({date(r.fecha_prueba)}, versión {r.version_juego},{' '}
+          {r.capa}) dio «{outcome[r.resultado].text}» después de reportes que funcionaban.
         </p>
       ))}
-      {reparto.length > 0 && (
+      {breakdown.length > 0 && (
         <>
           <div className="reparto" aria-hidden="true">
-            {reparto.map((x) => (
-              <span key={x.resultado} data-tono={resultado[x.resultado].tono} data-forma="relleno" style={{ flexGrow: x.n }} />
+            {breakdown.map((x) => (
+              <span key={x.outcome} data-tono={outcome[x.outcome].tone} data-forma="relleno" style={{ flexGrow: x.n }} />
             ))}
           </div>
           <ul className="leyenda-reparto" aria-label="Resultados aprobados">
-            {reparto.map((x) => (
-              <li key={x.resultado}>
-                <i data-tono={resultado[x.resultado].tono} data-forma="relleno" />
-                {x.n} {resultado[x.resultado].texto.toLowerCase()}
+            {breakdown.map((x) => (
+              <li key={x.outcome}>
+                <i data-tono={outcome[x.outcome].tone} data-forma="relleno" />
+                {x.n} {outcome[x.outcome].text.toLowerCase()}
               </li>
             ))}
           </ul>
         </>
       )}
-      {resumen.failures.length > 0 && (
+      {summary.failures.length > 0 && (
         <p className="pequeno">
-          Causas observadas: <ChipsFallos fallos={resumen.failures} />
+          Causas observadas: <FailureChips failures={summary.failures} />
         </p>
       )}
-      {pendientes > 0 && (
+      {pending > 0 && (
         <p className="pendiente">
-          {pendientes === 1
+          {pending === 1
             ? '1 reporte más espera revisión y todavía no cuenta.'
-            : `${pendientes} reportes más esperan revisión y todavía no cuentan.`}
+            : `${pending} reportes más esperan revisión y todavía no cuentan.`}
         </p>
       )}
       <p className="pequeno tenue">

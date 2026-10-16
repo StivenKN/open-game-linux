@@ -1,103 +1,103 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { GameId } from '../../domain/ids.ts'
 import { gamePageFn } from '../../fns/catalog.ts'
-import { EstadoJuego } from '../../ui/compatibility/GameStatus.tsx'
-import { MatrizEntornos } from '../../ui/compatibility/EnvironmentMatrix.tsx'
-import { VeredictoParaMi } from '../../ui/compatibility/VerdictForMe.tsx'
-import { contar, fecha } from '../../ui/format.ts'
-import { Chip, Insignia } from '../../ui/Badge.tsx'
-import { Arte } from '../../ui/Cover.tsx'
-import { SeccionProtonDb } from '../../ui/protondb/ProtonDb.tsx'
-import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
-import { apiGrafica, nivelX86, tipoFallo, veredictoRequisitos } from '../../ui/vocabulary.ts'
-import { idDeRuta } from '../-ids.ts'
+import { GameStatus } from '../../ui/compatibility/GameStatus.tsx'
+import { EnvironmentMatrix } from '../../ui/compatibility/EnvironmentMatrix.tsx'
+import { VerdictForMe } from '../../ui/compatibility/VerdictForMe.tsx'
+import { count, date } from '../../ui/format.ts'
+import { Chip, Badge } from '../../ui/Badge.tsx'
+import { Artwork } from '../../ui/Cover.tsx'
+import { ProtonDbSection } from '../../ui/protondb/ProtonDb.tsx'
+import { DemoStamp } from '../../ui/DemoStamp.tsx'
+import { graphicsApi, x86Level, failureType, requirementsVerdict } from '../../ui/vocabulary.ts'
+import { routeIdParser } from '../-ids.ts'
 
-const gameId = idDeRuta(GameId)
+const gameId = routeIdParser(GameId)
 
 export const Route = createFileRoute('/juegos/$gameId')({
   params: { parse: (p) => ({ gameId: gameId(p.gameId) }), stringify: (p) => ({ gameId: String(p.gameId) }) },
   loader: ({ params }) => gamePageFn({ data: params }),
   head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.game.titulo} · OpenGame Linux` : 'OpenGame Linux' }] }),
-  component: Ficha,
+  component: GamePage,
 })
 
-function Ficha() {
-  const { game: juego, editions: ediciones, summary: resumen, protondb, ejemplo, pending: pendientes, profiles: perfiles, causes: causas, diagnostic: diagnostico, personal } = Route.useLoaderData()
-  const reportar = (
-    <Link to="/juegos/$gameId/reportar" params={{ gameId: juego.id }} className="boton">
+function GamePage() {
+  const { game, editions, summary, protondb, ejemplo, pending, profiles, causes, diagnostic, personal } = Route.useLoaderData()
+  const reportLink = (
+    <Link to="/juegos/$gameId/reportar" params={{ gameId: game.id }} className="boton">
       Reportar un resultado
     </Link>
   )
   return (
     <main className="envoltura">
       <header className="ficha-banner">
-        <Arte titulo={juego.titulo} ancho={1320} alto={420} />
+        <Artwork title={game.titulo} width={1320} height={420} />
         <div className="ficha-banner-texto">
           <nav className="migas" aria-label="Migas de pan">
-            <Link to="/">Catálogo</Link> / {juego.titulo}
+            <Link to="/">Catálogo</Link> / {game.titulo}
           </nav>
-          <h1 className="titulo-ficha">{juego.titulo}</h1>
+          <h1 className="titulo-ficha">{game.titulo}</h1>
           <div className="fila" aria-label="Ediciones">
-            {ediciones.map((e) => (
+            {editions.map((e) => (
               <span key={e.id} className="etiqueta">
                 {e.lanzador}
                 {e.identificador_externo && <span className="tenue"> {e.identificador_externo}</span>}
               </span>
             ))}
-            {ejemplo && <SelloEjemplo />}
+            {ejemplo && <DemoStamp />}
           </div>
-          <p className="ficha-descripcion">{juego.descripcion}</p>
+          <p className="ficha-descripcion">{game.descripcion}</p>
           <p className="ficha-descripcion pequeno fila">
-            <span>{juego.apis.length === 0 ? 'APIs gráficas sin declarar' : `Gráficos: ${juego.apis.map((api) => apiGrafica[api]).join(' · ')}`}</span>
-            {juego.nivel_x86_min !== null && <span>CPU mínima: {nivelX86[juego.nivel_x86_min]}</span>}
+            <span>{game.apis.length === 0 ? 'APIs gráficas sin declarar' : `Gráficos: ${game.apis.map((api) => graphicsApi[api]).join(' · ')}`}</span>
+            {game.nivel_x86_min !== null && <span>CPU mínima: {x86Level[game.nivel_x86_min]}</span>}
           </p>
         </div>
-        <div className="ficha-accion">{reportar}</div>
+        <div className="ficha-accion">{reportLink}</div>
       </header>
 
       <div className="ficha-cuerpo">
-        <EstadoJuego resumen={resumen} pendientes={pendientes} />
-        <VeredictoParaMi personal={personal}>
-          {diagnostico && (
+        <GameStatus summary={summary} pending={pending} />
+        <VerdictForMe personal={personal}>
+          {diagnostic && (
             <p className="pequeno tenue">
-              Según tu diagnóstico más reciente: {diagnostico.equipo}, {fecha(diagnostico.capturado_en)}.
+              Según tu diagnóstico más reciente: {diagnostic.equipo}, {date(diagnostic.capturado_en)}.
             </p>
           )}
-        </VeredictoParaMi>
+        </VerdictForMe>
       </div>
 
       <section className="seccion" aria-labelledby="entornos">
         <h2 id="entornos">Dónde lo probaron</h2>
         <p className="tenue">Cada fila es un entorno con reportes aprobados.</p>
-        <MatrizEntornos entornos={resumen.setups} miDistribucion={diagnostico?.distribucion_id ?? null} />
+        <EnvironmentMatrix setups={summary.setups} myDistribution={diagnostic?.distribucion_id ?? null} />
       </section>
 
       <section className="seccion" aria-labelledby="protondb">
         <h2 id="protondb">Otras fuentes: ProtonDB</h2>
-        <SeccionProtonDb protondb={protondb} />
+        <ProtonDbSection protondb={protondb} />
       </section>
 
       <div className="seccion dos">
         <section aria-labelledby="perfiles">
           <h2 id="perfiles">Perfiles de configuración</h2>
-          {perfiles.length === 0 ? (
+          {profiles.length === 0 ? (
             <p className="tarjeta tenue">Todavía no hay perfiles para este juego.</p>
           ) : (
             <ul className="lista-tarjetas">
-              {perfiles.map((p) => (
+              {profiles.map((p) => (
                 <li key={p.id} className="tarjeta pila">
                   <div className="fila">
                     <Link to="/perfiles/$profileId" params={{ profileId: p.id }} className="nombre-juego">
                       {p.titulo} r{p.revision}
                     </Link>
-                    {p.estado_revision === 'pendiente' && <Chip tono="gris">en prueba</Chip>}
+                    {p.estado_revision === 'pendiente' && <Chip tone="gris">en prueba</Chip>}
                   </div>
                   <div className="fila-chips">
                     <span className="chip">{p.lanzador}</span>
                     <span className="chip">{p.distribucion}</span>
                     <span className="chip">{p.capa}</span>
                     <span className="chip">{p.arquitectura}</span>
-                    {p.ejemplo && <SelloEjemplo />}
+                    {p.ejemplo && <DemoStamp />}
                   </div>
                   {p.estado_revision === 'pendiente' ? (
                     <p className="pequeno tenue">Aún no está aprobado. Puedes probarlo: tu reporte aporta la evidencia que su aprobación necesita.</p>
@@ -105,7 +105,7 @@ function Ficha() {
                     p.evaluation && (
                       <div className="fila pequeno">
                         <span>Tu equipo:</span>
-                        <Insignia etiqueta={veredictoRequisitos[p.evaluation.verdict]} forma="punteado" />
+                        <Badge label={requirementsVerdict[p.evaluation.verdict]} shape="punteado" />
                       </div>
                     )
                   )}
@@ -117,17 +117,17 @@ function Ficha() {
 
         <section aria-labelledby="causas">
           <h2 id="causas">Causas y soluciones</h2>
-          {causas.length === 0 ? (
+          {causes.length === 0 ? (
             <p className="tarjeta tenue">Ningún reporte aprobado registra un fallo.</p>
           ) : (
             <ul className="lista-tarjetas">
-              {causas.map((c) => {
-                const etiqueta = tipoFallo(c.code)
+              {causes.map((c) => {
+                const label = failureType(c.code)
                 return (
                   <li key={c.code} className="tarjeta pila">
                     <div className="fila">
-                      <Chip tono={etiqueta.tono}>{etiqueta.texto}</Chip>
-                      <span className="pequeno tenue">{contar(c.reports, 'reporte aprobado', 'reportes aprobados')}</span>
+                      <Chip tone={label.tone}>{label.text}</Chip>
+                      <span className="pequeno tenue">{count(c.reports, 'reporte aprobado', 'reportes aprobados')}</span>
                     </div>
                     {c.descripcion && <p>{c.descripcion}</p>}
                     {c.solutions.length === 0 ? (
@@ -137,7 +137,7 @@ function Ficha() {
                         <div key={s.id} className="solucion pila">
                           <div className="fila">
                             <b>{s.titulo}</b>
-                            {s.ejemplo && <SelloEjemplo />}
+                            {s.ejemplo && <DemoStamp />}
                           </div>
                           <p className="texto-largo pequeno">{s.instrucciones}</p>
                           <p className="pequeno tenue">
@@ -171,7 +171,7 @@ function Ficha() {
           <h2 id="reportar">¿Lo jugaste en Linux?</h2>
           <p className="tenue">Cuenta en qué distribución y con qué configuración. Un revisor lo aprueba y pasa a contar.</p>
         </div>
-        {reportar}
+        {reportLink}
       </section>
     </main>
   )

@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { erroresDeCuenta } from '../src/routes/-account.ts'
+import { accountErrors } from '../src/routes/-account.ts'
 import { auth, demoDomain } from '../src/server/auth.ts'
 import { runtime } from '../src/server/runtime.ts'
 
@@ -28,7 +28,7 @@ describe('registro público', () => {
     const response = await signUpOverHttp(email)
     expect(response.status).toBe(400)
     const { code } = Schema.decodeUnknownSync(ErrorResponse)(await response.json())
-    expect(erroresDeCuenta({ codigo: code })).toEqual({ correo: 'Ese dominio está reservado para los datos de ejemplo. Usa otro correo.' })
+    expect(accountErrors({ code })).toEqual({ correo: 'Ese dominio está reservado para los datos de ejemplo. Usa otro correo.' })
     expect(await accountsWith(email)).toEqual([{ n: 0 }])
   })
 

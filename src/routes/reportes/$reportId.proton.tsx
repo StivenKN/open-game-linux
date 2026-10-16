@@ -1,39 +1,39 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { ReportId } from '../../domain/ids.ts'
 import { protonReportFn } from '../../fns/upstream.ts'
-import { CajaCopiar } from '../../ui/compatibility/CopyBox.tsx'
-import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
-import { motivoSinInforme } from '../../ui/vocabulary.ts'
-import { idDeRuta } from '../-ids.ts'
-import { volverAqui } from '../-return-to.ts'
+import { CopyBox } from '../../ui/compatibility/CopyBox.tsx'
+import { DemoStamp } from '../../ui/DemoStamp.tsx'
+import { noReportReason } from '../../ui/vocabulary.ts'
+import { routeIdParser } from '../-ids.ts'
+import { returnHere } from '../-return-to.ts'
 
-const reportId = idDeRuta(ReportId)
+const reportId = routeIdParser(ReportId)
 
 export const Route = createFileRoute('/reportes/$reportId/proton')({
   params: { parse: (p) => ({ reportId: reportId(p.reportId) }), stringify: (p) => ({ reportId: String(p.reportId) }) },
   beforeLoad: ({ context, location }) => {
-    if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
+    if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
   },
   loader: ({ params }) => protonReportFn({ data: { reportId: params.reportId } }),
   head: ({ loaderData }) => ({ meta: [{ title: `Informe para Valve · ${loaderData?.report.juego ?? 'OpenGame Linux'}` }] }),
-  component: InformeParaValve,
+  component: ValveReportPage,
 })
 
-function InformeParaValve() {
-  const { report: reporte, protonReport: x } = Route.useLoaderData()
-  const volver = (
-    <Link to="/juegos/$gameId" params={{ gameId: reporte.juego_id }}>
+function ValveReportPage() {
+  const { report, protonReport: x } = Route.useLoaderData()
+  const backLink = (
+    <Link to="/juegos/$gameId" params={{ gameId: report.juego_id }}>
       Volver a la ficha del juego
     </Link>
   )
   return (
     <main className="envoltura estrecha-lectura pila">
       <p className="rotulo">Informe para Valve</p>
-      <h1>{reporte.juego}</h1>
+      <h1>{report.juego}</h1>
       {x._tag === 'no_aplica' ? (
         <section className="tarjeta pila">
-          <p>{motivoSinInforme[x.reason]}</p>
-          <p>{volver}</p>
+          <p>{noReportReason[x.reason]}</p>
+          <p>{backLink}</p>
         </section>
       ) : (
         <>
@@ -51,12 +51,12 @@ function InformeParaValve() {
                 En Steam, clic derecho sobre el juego &gt; Propiedades &gt; General. Pon esto en «Opciones de lanzamiento» y juega hasta que
                 aparezca el fallo. Si ya tenías opciones, añade PROTON_LOG=1 al principio y deja %command% una sola vez.
               </p>
-              <CajaCopiar etiqueta="Opciones de lanzamiento" texto={x.log_command} />
+              <CopyBox label="Opciones de lanzamiento" text={x.log_command} />
             </li>
             <li className="tarjeta pila">
               <b>Comprime el registro</b>
               <p className="texto-largo">Proton lo deja en tu carpeta personal. Comprimido pesa mucho menos y GitHub lo acepta como adjunto.</p>
-              <CajaCopiar etiqueta="Comprimir el registro" texto={x.compress_command} />
+              <CopyBox label="Comprimir el registro" text={x.compress_command} />
             </li>
             <li className="tarjeta pila">
               <b>Busca si ya hay un informe</b>
@@ -82,7 +82,7 @@ function InformeParaValve() {
                   </a>
                 ) : (
                   <span className="fila pequeno tenue">
-                    <SelloEjemplo /> Los datos de ejemplo no se envían a Valve.
+                    <DemoStamp /> Los datos de ejemplo no se envían a Valve.
                   </span>
                 )}
               </p>
@@ -91,10 +91,10 @@ function InformeParaValve() {
                   ? 'Si el formulario no trae el informe, reemplaza su texto con este.'
                   : 'El informe es demasiado largo para el enlace: pega este texto en el formulario.'}
               </p>
-              <CajaCopiar etiqueta={`Informe: ${x.title}`} texto={x.body} />
+              <CopyBox label={`Informe: ${x.title}`} text={x.body} />
             </li>
           </ol>
-          <p>{volver}</p>
+          <p>{backLink}</p>
         </>
       )}
     </main>

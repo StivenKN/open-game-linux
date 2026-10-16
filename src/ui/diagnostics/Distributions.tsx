@@ -1,13 +1,13 @@
 import { Link } from '@tanstack/react-router'
 import type { EvaluatedDistro, DistroVerdict } from '../../domain/distros.ts'
 import type { GuideId } from '../../domain/ids.ts'
-import { Insignia } from '../Badge.tsx'
-import { objecion, veredictoDistro } from '../vocabulary.ts'
+import { Badge } from '../Badge.tsx'
+import { objection, distroVerdict } from '../vocabulary.ts'
 
-const GRUPOS = ['sin_objeciones', 'con_ajustes', 'descartada'] as const satisfies ReadonlyArray<DistroVerdict>
+const GROUPS = ['sin_objeciones', 'con_ajustes', 'descartada'] as const satisfies ReadonlyArray<DistroVerdict>
 
 /** Distros ruled out by the hardware, grouped by verdict. Order inside a group is the registry's, never a ranking. */
-export function Distribuciones({ evaluated, guide }: { evaluated: ReadonlyArray<EvaluatedDistro>; guide: GuideId | null }) {
+export function Distributions({ evaluated, guide }: { evaluated: ReadonlyArray<EvaluatedDistro>; guide: GuideId | null }) {
   return (
     <section className="pila" aria-labelledby="distribuciones">
       <h2 id="distribuciones" className="titulo-seccion">
@@ -19,12 +19,12 @@ export function Distribuciones({ evaluated, guide }: { evaluated: ReadonlyArray<
         {guide === null ? <Link to="/guias">las guías de adopción</Link> : <Link to="/guias/$guideId" params={{ guideId: guide }}>¿Qué distribución elegir para jugar?</Link>}.
       </p>
       <div className="mosaico mosaico-ancho">
-        {GRUPOS.map((grupo) => {
-          const distros = evaluated.filter((d) => d.verdict === grupo)
+        {GROUPS.map((group) => {
+          const distros = evaluated.filter((d) => d.verdict === group)
           if (distros.length === 0) return null
           return (
-            <section key={grupo} className="tarjeta pila" aria-label={veredictoDistro[grupo].texto}>
-              <Insignia etiqueta={veredictoDistro[grupo]} forma="punteado" />
+            <section key={group} className="tarjeta pila" aria-label={distroVerdict[group].text}>
+              <Badge label={distroVerdict[group]} shape="punteado" />
               <ul className="lista-tarjetas">
                 {distros.map((d) => (
                   <li key={d.key} className="pila">
@@ -33,7 +33,7 @@ export function Distribuciones({ evaluated, guide }: { evaluated: ReadonlyArray<
                     </a>
                     {d.objections.map((o) => (
                       <p key={o.code} className="pequeno tenue">
-                        {objecion(o)}
+                        {objection(o)}
                       </p>
                     ))}
                   </li>

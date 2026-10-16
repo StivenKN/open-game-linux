@@ -4,97 +4,97 @@ import { useState } from 'react'
 import { NewSolution } from '../../domain/contributions.ts'
 import { ReportId, FailureTypeId } from '../../domain/ids.ts'
 import { solutionOptionsFn, submitSolutionFn } from '../../fns/contributions.ts'
-import { ErrorCampo } from '../../ui/FieldError.tsx'
-import { momento } from '../../ui/format.ts'
-import { Campo, campo, nulo } from '../../ui/form.tsx'
-import { Insignia } from '../../ui/Badge.tsx'
-import { erroresDeRegla, useAccion } from '../../ui/useAction.ts'
-import { estadoRevision, resultado, tipoFallo } from '../../ui/vocabulary.ts'
-import { idDeRuta } from '../-ids.ts'
-import { volverAqui } from '../-return-to.ts'
+import { FieldError } from '../../ui/FieldError.tsx'
+import { dateTime } from '../../ui/format.ts'
+import { Field, fieldProps, nullText } from '../../ui/form.tsx'
+import { Badge } from '../../ui/Badge.tsx'
+import { ruleErrors, useAction } from '../../ui/useAction.ts'
+import { reviewStatus, outcome, failureType } from '../../ui/vocabulary.ts'
+import { routeIdParser } from '../-ids.ts'
+import { returnHere } from '../-return-to.ts'
 
-const reportId = idDeRuta(ReportId)
+const reportId = routeIdParser(ReportId)
 
 export const Route = createFileRoute('/reportes/$reportId/solucion')({
   params: { parse: (p) => ({ reportId: reportId(p.reportId) }), stringify: (p) => ({ reportId: String(p.reportId) }) },
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipoFallo: Schema.optionalKey(FailureTypeId) })),
   beforeLoad: ({ context, location }) => {
-    if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
+    if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
   },
   loader: ({ params }) => solutionOptionsFn({ data: { reportId: params.reportId } }),
   head: ({ loaderData }) => ({ meta: [{ title: `Proponer solución · ${loaderData?.report.juego ?? 'OpenGame Linux'}` }] }),
-  component: ProponerSolucion,
+  component: ProposeSolutionPage,
 })
 
-function ProponerSolucion() {
-  const { report: reporte, failures: fallos, profiles: perfiles } = Route.useLoaderData()
-  const { tipoFallo: preseleccion } = Route.useSearch()
-  const [enviada, setEnviada] = useState(false)
-  const r = useAccion(NewSolution, submitSolutionFn, { alFallar: erroresDeRegla, alCompletar: () => setEnviada(true) })
+function ProposeSolutionPage() {
+  const { report, failures, profiles } = Route.useLoaderData()
+  const { tipoFallo: preselected } = Route.useSearch()
+  const [submitted, setSubmitted] = useState(false)
+  const r = useAction(NewSolution, submitSolutionFn, { onFailure: ruleErrors, onComplete: () => setSubmitted(true) })
 
   return (
     <main className="envoltura">
       <p className="rotulo">Proponer solución</p>
-      <h1>{reporte.juego}</h1>
+      <h1>{report.juego}</h1>
       <section className="tarjeta pila">
         <p className="fila">
-          <Insignia etiqueta={resultado[reporte.resultado]} />
-          <Insignia etiqueta={estadoRevision[reporte.estado_revision]} />
+          <Badge label={outcome[report.resultado]} />
+          <Badge label={reviewStatus[report.estado_revision]} />
           <span className="dato">
-            {reporte.lanzador} · {reporte.distribucion} · {reporte.capa} · versión {reporte.version_juego} · {momento(reporte.fecha_prueba)}
+            {report.lanzador} · {report.distribucion} · {report.capa} · versión {report.version_juego} · {dateTime(report.fecha_prueba)}
           </span>
         </p>
-        <p>{reporte.observaciones}</p>
+        <p>{report.observaciones}</p>
       </section>
 
-      {enviada ? (
+      {submitted ? (
         <section className="tarjeta pila" aria-live="polite">
           <h2>Solución enviada</h2>
           <p>
             Queda <strong>pendiente de revisión</strong>. Para publicarla, un revisor necesita evidencia de que resuelve el fallo, no solo que el fallo existe.
           </p>
           <p>
-            <Link to="/juegos/$gameId" params={{ gameId: reporte.juego_id }}>
+            <Link to="/juegos/$gameId" params={{ gameId: report.juego_id }}>
               Volver a la ficha del juego
             </Link>
           </p>
         </section>
       ) : (
-        <form className="tarjeta formulario formulario-ancho" {...r.formulario}>
-          <ErrorCampo errores={r.errores} campo="formulario" />
-          <input type="hidden" name="reporte_id" value={reporte.id} />
-          <Campo errores={r.errores} nombre="tipo_fallo_id" etiqueta="Fallo que resuelve">
-            <select {...campo(r.errores, 'tipo_fallo_id')} defaultValue={fallos.find((f) => f.tipo_fallo_id === preseleccion)?.tipo_fallo_id}>
-              {fallos.map((f) => (
+        <form className="tarjeta formulario formulario-ancho" {...r.form}>
+          <FieldError errors={r.errors} field="formulario" />
+          <input type="hidden" name="reporte_id" value={report.id} />
+          <Field errors={r.errors} name="tipo_fallo_id" label="Fallo que resuelve">
+            <select {...fieldProps(r.errors, 'tipo_fallo_id')} defaultValue={failures.find((f) => f.tipo_fallo_id === preselected)?.tipo_fallo_id}>
+              {failures.map((f) => (
                 <option key={f.tipo_fallo_id} value={f.tipo_fallo_id}>
-                  {tipoFallo(f.codigo).texto}: {f.detalle}
+                  {failureType(f.codigo).text}: {f.detalle}
                 </option>
               ))}
             </select>
-          </Campo>
-          <Campo
-            errores={r.errores}
-            nombre="perfil_id"
-            etiqueta="Perfil que recomiendas (opcional)"
-            ayuda="Solo perfiles de la misma edición. Si recomiendas uno pendiente, la solución no se aprueba hasta que el perfil lo esté."
+          </Field>
+          <Field
+            errors={r.errors}
+            name="perfil_id"
+            label="Perfil que recomiendas (opcional)"
+            help="Solo perfiles de la misma edición. Si recomiendas uno pendiente, la solución no se aprueba hasta que el perfil lo esté."
           >
-            <select {...campo(r.errores, 'perfil_id')} defaultValue={nulo}>
-              <option value={nulo}>Ninguno: describo otra acción</option>
-              {perfiles.map((p) => (
+            <select {...fieldProps(r.errors, 'perfil_id')} defaultValue={nullText}>
+              <option value={nullText}>Ninguno: describo otra acción</option>
+              {profiles.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.titulo} (r{p.revision}, {estadoRevision[p.estado_revision].texto.toLowerCase()})
+                  {p.titulo} (r{p.revision}, {reviewStatus[p.estado_revision].text.toLowerCase()})
                 </option>
               ))}
             </select>
-          </Campo>
-          <Campo errores={r.errores} nombre="titulo" etiqueta="Título">
-            <input {...campo(r.errores, 'titulo')} placeholder="Reinstalar el lanzador dentro del prefijo" />
-          </Campo>
-          <Campo errores={r.errores} nombre="instrucciones" etiqueta="Instrucciones" ayuda="Pasos concretos para resolver el fallo o aplicar la alternativa.">
-            <textarea {...campo(r.errores, 'instrucciones')} rows={6} />
-          </Campo>
-          <button type="submit" disabled={r.enviando}>
-            {r.enviando ? 'Enviando…' : 'Enviar solución'}
+          </Field>
+          <Field errors={r.errors} name="titulo" label="Título">
+            <input {...fieldProps(r.errors, 'titulo')} placeholder="Reinstalar el lanzador dentro del prefijo" />
+          </Field>
+          <Field errors={r.errors} name="instrucciones" label="Instrucciones" help="Pasos concretos para resolver el fallo o aplicar la alternativa.">
+            <textarea {...fieldProps(r.errors, 'instrucciones')} rows={6} />
+          </Field>
+          <button type="submit" disabled={r.submitting}>
+            {r.submitting ? 'Enviando…' : 'Enviar solución'}
           </button>
         </form>
       )}

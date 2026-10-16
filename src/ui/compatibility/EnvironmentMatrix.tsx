@@ -1,33 +1,33 @@
 import type { TestedSetup } from '../../domain/compatibility.ts'
 import type { DistributionId } from '../../domain/ids.ts'
 import { Outcome } from '../../domain/literals.ts'
-import { contar, fecha, fps } from '../format.ts'
-import { Chip, Insignia } from '../Badge.tsx'
-import { estadoCompatibilidad, resultado } from '../vocabulary.ts'
-import { ChipsFallos } from './FailureChips.tsx'
+import { count, date, fps } from '../format.ts'
+import { Chip, Badge } from '../Badge.tsx'
+import { compatibilityStatus, outcome } from '../vocabulary.ts'
+import { FailureChips } from './FailureChips.tsx'
 
 // The first word that names the distro itself: "Linux Mint 21.3" gives M, "Arch Linux rolling" gives A.
-const inicial = (distribucion: string) =>
-  (distribucion.split(' ').find((p) => /^\p{L}/u.test(p) && p !== 'Linux') ?? distribucion).charAt(0).toUpperCase()
+const initial = (distribution: string) =>
+  (distribution.split(' ').find((p) => /^\p{L}/u.test(p) && p !== 'Linux') ?? distribution).charAt(0).toUpperCase()
 
-export function MatrizEntornos({ entornos, miDistribucion }: { entornos: ReadonlyArray<TestedSetup>; miDistribucion: DistributionId | null }) {
-  if (entornos.length === 0) return <p className="tarjeta tenue">Sin entornos con evidencia aprobada.</p>
+export function EnvironmentMatrix({ setups, myDistribution }: { setups: ReadonlyArray<TestedSetup>; myDistribution: DistributionId | null }) {
+  if (setups.length === 0) return <p className="tarjeta tenue">Sin entornos con evidencia aprobada.</p>
   return (
     <ul className="entornos" aria-label="Entornos probados con reportes aprobados">
-      {entornos.map((e) => {
-        const mia = e.distribucion_id === miDistribucion
-        const estado = estadoCompatibilidad[e.status]
+      {setups.map((e) => {
+        const mine = e.distribucion_id === myDistribution
+        const status = compatibilityStatus[e.status]
         return (
-          <li key={e.key} className="entorno" data-mia={mia || undefined}>
-            <span className="entorno-franja" data-tono={estado.tono} data-forma="relleno" data-estado={e.status} />
+          <li key={e.key} className="entorno" data-mia={mine || undefined}>
+            <span className="entorno-franja" data-tono={status.tone} data-forma="relleno" data-estado={e.status} />
             <span className="entorno-inicial" aria-hidden="true">
-              {inicial(e.distribucion)}
+              {initial(e.distribucion)}
             </span>
             <div className="entorno-que">
               <h3>
                 {e.distribucion}
-                {mia && (
-                  <Chip tono="azul" forma="punteado">
+                {mine && (
+                  <Chip tone="azul" shape="punteado">
                     tu distro
                   </Chip>
                 )}
@@ -50,7 +50,7 @@ export function MatrizEntornos({ entornos, miDistribucion }: { entornos: Readonl
                     <dd key={`${f.resolution}|${f.quality}`}>
                       <b className="fps">{fps(f.average)}</b>{' '}
                       <span className="pequeno tenue">
-                        FPS · {f.resolution} · {f.quality} · {contar(f.samples, 'medición', 'mediciones')}
+                        FPS · {f.resolution} · {f.quality} · {count(f.samples, 'medición', 'mediciones')}
                       </span>
                     </dd>
                   ))
@@ -58,20 +58,20 @@ export function MatrizEntornos({ entornos, miDistribucion }: { entornos: Readonl
               </div>
             </dl>
             <div className="entorno-resultado">
-              <Insignia etiqueta={estado} />
+              <Badge label={status} />
               {e.status === 'resultados_variables' && (
                 <span className="pequeno tenue">
                   {Outcome.literals
                     .flatMap((r) => {
                       const n = e.by_outcome[r]
-                      return n ? [`${n} ${resultado[r].texto.toLowerCase()}`] : []
+                      return n ? [`${n} ${outcome[r].text.toLowerCase()}`] : []
                     })
                     .join(' · ')}
                 </span>
               )}
-              {e.failures.length > 0 && <ChipsFallos fallos={e.failures} />}
+              {e.failures.length > 0 && <FailureChips failures={e.failures} />}
               <span className="pequeno tenue">
-                {contar(e.test_count, 'prueba', 'pruebas')} · última {fecha(e.last_tested)}
+                {count(e.test_count, 'prueba', 'pruebas')} · última {date(e.last_tested)}
               </span>
               {e.recent_count === 0 && <span className="pequeno tenue">ninguna del último año</span>}
             </div>

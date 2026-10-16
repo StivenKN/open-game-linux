@@ -1,40 +1,40 @@
 import { type ReactNode, useState } from 'react'
-import { ErrorCampo, idError } from './FieldError.tsx'
-import type { Errores } from './useAction.ts'
+import { FieldError, errorId } from './FieldError.tsx'
+import type { FieldErrors } from './useAction.ts'
 
 /** Schema's StringTree encoding of null. */
-export const nulo = 'null'
+export const nullText = 'null'
 
-export const campo = (errores: Errores, nombre: string) => ({
-  name: nombre,
-  id: nombre,
-  'aria-invalid': errores[nombre] !== undefined,
-  'aria-describedby': idError(nombre),
+export const fieldProps = (errors: FieldErrors, name: string) => ({
+  name,
+  id: name,
+  'aria-invalid': errors[name] !== undefined,
+  'aria-describedby': errorId(name),
 })
 
-export function Campo({ errores, nombre, etiqueta, ayuda, children }: { errores: Errores; nombre: string; etiqueta: string; ayuda?: string; children: ReactNode }) {
+export function Field({ errors, name, label, help, children }: { errors: FieldErrors; name: string; label: string; help?: string; children: ReactNode }) {
   return (
     <div className="campo">
-      <label htmlFor={nombre}>{etiqueta}</label>
-      {ayuda !== undefined && <p className="pequeno tenue ayuda">{ayuda}</p>}
+      <label htmlFor={name}>{label}</label>
+      {help !== undefined && <p className="pequeno tenue ayuda">{help}</p>}
       {children}
-      <ErrorCampo errores={errores} campo={nombre} />
+      <FieldError errors={errors} field={name} />
     </div>
   )
 }
 
-export function GrupoOpcional({ nombre, etiqueta, children }: { nombre: string; etiqueta: string; children: ReactNode }) {
-  const [activo, setActivo] = useState(false)
+export function OptionalGroup({ name, label, children }: { name: string; label: string; children: ReactNode }) {
+  const [enabled, setEnabled] = useState(false)
   return (
     <fieldset className="grupo-opcional">
       <legend>
         <label className="casilla">
-          <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.currentTarget.checked)} />
-          {etiqueta}
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.currentTarget.checked)} />
+          {label}
         </label>
       </legend>
-      {!activo && <input type="hidden" name={nombre} value={nulo} />}
-      <fieldset disabled={!activo} hidden={!activo} className="grupo-opcional-campos">
+      {!enabled && <input type="hidden" name={name} value={nullText} />}
+      <fieldset disabled={!enabled} hidden={!enabled} className="grupo-opcional-campos">
         {children}
       </fieldset>
     </fieldset>

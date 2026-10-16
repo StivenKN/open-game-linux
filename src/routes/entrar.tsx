@@ -1,44 +1,44 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { ErrorCampo } from '../ui/FieldError.tsx'
-import { campo } from '../ui/form.tsx'
-import { useAccion } from '../ui/useAction.ts'
-import { Entrada, entrar, erroresDeCuenta } from './-account.ts'
-import { Volver } from './-return-to.ts'
+import { FieldError } from '../ui/FieldError.tsx'
+import { fieldProps } from '../ui/form.tsx'
+import { useAction } from '../ui/useAction.ts'
+import { SignIn, signIn, accountErrors } from './-account.ts'
+import { ReturnTo } from './-return-to.ts'
 
 export const Route = createFileRoute('/entrar')({
   head: () => ({ meta: [{ title: 'Entrar · OpenGame Linux' }] }),
-  validateSearch: Volver,
-  component: Entrar,
+  validateSearch: ReturnTo,
+  component: SignInPage,
 })
 
-function Entrar() {
+function SignInPage() {
   const router = useRouter()
-  const { volver } = Route.useSearch()
-  const r = useAccion(Entrada, entrar, {
-    alFallar: erroresDeCuenta,
-    alCompletar: async () => {
+  const { volver: returnTo } = Route.useSearch()
+  const r = useAction(SignIn, signIn, {
+    onFailure: accountErrors,
+    onComplete: async () => {
       await router.invalidate()
-      await router.navigate({ href: volver ?? '/' })
+      await router.navigate({ href: returnTo ?? '/' })
     },
   })
   return (
     <main className="envoltura estrecha">
       <h1>Entrar</h1>
       <p className="tenue">Entra para guardar tu diagnóstico y publicar reportes.</p>
-      <form className="tarjeta formulario" {...r.formulario}>
-        <ErrorCampo errores={r.errores} campo="formulario" />
+      <form className="tarjeta formulario" {...r.form}>
+        <FieldError errors={r.errors} field="formulario" />
         <label htmlFor="correo">Correo</label>
-        <input {...campo(r.errores, 'correo')} type="email" autoComplete="email" />
-        <ErrorCampo errores={r.errores} campo="correo" />
+        <input {...fieldProps(r.errors, 'correo')} type="email" autoComplete="email" />
+        <FieldError errors={r.errors} field="correo" />
         <label htmlFor="contrasena">Contraseña</label>
-        <input {...campo(r.errores, 'contrasena')} type="password" autoComplete="current-password" />
-        <ErrorCampo errores={r.errores} campo="contrasena" />
-        <button type="submit" disabled={r.enviando}>
-          {r.enviando ? 'Entrando…' : 'Entrar'}
+        <input {...fieldProps(r.errors, 'contrasena')} type="password" autoComplete="current-password" />
+        <FieldError errors={r.errors} field="contrasena" />
+        <button type="submit" disabled={r.submitting}>
+          {r.submitting ? 'Entrando…' : 'Entrar'}
         </button>
       </form>
       <p>
-        ¿No tienes cuenta? <Link to="/registro" search={volver ? { volver } : {}}>Crea una</Link>.
+        ¿No tienes cuenta? <Link to="/registro" search={returnTo ? { volver: returnTo } : {}}>Crea una</Link>.
       </p>
     </main>
   )

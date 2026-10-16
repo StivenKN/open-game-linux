@@ -1,34 +1,34 @@
 import { Schema } from 'effect'
 import type { Reply } from '../domain/errors.ts'
 import { User } from '../domain/tables.ts'
-import type { Errores } from '../ui/useAction.ts'
-import { authCliente } from './-auth-client.ts'
+import type { FieldErrors } from '../ui/useAction.ts'
+import { authClient } from './-auth-client.ts'
 
-const correo = User.fields.correo.pipe(
+const email = User.fields.correo.pipe(
   Schema.check(Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { message: 'Escribe un correo válido.' })),
 )
 // better-auth's defaults; it refuses anything outside them with PASSWORD_TOO_SHORT/LONG.
-const contrasena = Schema.String.pipe(
+const password = Schema.String.pipe(
   Schema.check(Schema.isMinLength(8, { message: 'Usa al menos 8 caracteres.' })),
   Schema.check(Schema.isMaxLength(128, { message: 'Usa como máximo 128 caracteres.' })),
 )
 
-export const Registro = Schema.Struct({ alias: User.fields.alias, correo, contrasena })
-export const Entrada = Schema.Struct({ correo, contrasena: Schema.String.pipe(Schema.check(Schema.isNonEmpty({ message: 'Escribe tu contraseña.' }))) })
+export const SignUp = Schema.Struct({ alias: User.fields.alias, correo: email, contrasena: password })
+export const SignIn = Schema.Struct({ correo: email, contrasena: Schema.String.pipe(Schema.check(Schema.isNonEmpty({ message: 'Escribe tu contraseña.' }))) })
 
-type FalloCuenta = { readonly codigo: string | undefined }
+type AccountFailure = { readonly code: string | undefined }
 
 // Its rate limiter (production only) answers 429 with no code, so the status names that one.
-const respuesta = (error: { readonly code?: string | undefined; readonly status: number } | null): Reply<null, FalloCuenta> =>
-  error === null ? { ok: true, value: null } : { ok: false, error: { codigo: error.code ?? (error.status === 429 ? 'DEMASIADOS_INTENTOS' : undefined) } }
+const reply = (error: { readonly code?: string | undefined; readonly status: number } | null): Reply<null, AccountFailure> =>
+  error === null ? { ok: true, value: null } : { ok: false, error: { code: error.code ?? (error.status === 429 ? 'DEMASIADOS_INTENTOS' : undefined) } }
 
-export const registrar = async ({ data }: { readonly data: typeof Registro.Encoded }) =>
-  respuesta((await authCliente.signUp.email({ name: data.alias, email: data.correo, password: data.contrasena })).error)
+export const signUp = async ({ data }: { readonly data: typeof SignUp.Encoded }) =>
+  reply((await authClient.signUp.email({ name: data.alias, email: data.correo, password: data.contrasena })).error)
 
-export const entrar = async ({ data }: { readonly data: typeof Entrada.Encoded }) =>
-  respuesta((await authCliente.signIn.email({ email: data.correo, password: data.contrasena })).error)
+export const signIn = async ({ data }: { readonly data: typeof SignIn.Encoded }) =>
+  reply((await authClient.signIn.email({ email: data.correo, password: data.contrasena })).error)
 
-const mensajes: Readonly<Partial<Record<string, Errores>>> = {
+const messages: Readonly<Partial<Record<string, FieldErrors>>> = {
   USER_ALREADY_EXISTS: { correo: 'Ya existe una cuenta con ese correo. ¿Quieres entrar?' },
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: { correo: 'Ya existe una cuenta con ese correo. ¿Quieres entrar?' },
   INVALID_EMAIL: { correo: 'Escribe un correo válido.' },
@@ -39,5 +39,5 @@ const mensajes: Readonly<Partial<Record<string, Errores>>> = {
   DEMASIADOS_INTENTOS: { formulario: 'Demasiados intentos seguidos. Espera unos segundos y vuelve a intentarlo.' },
 }
 
-export const erroresDeCuenta = (f: FalloCuenta): Errores =>
-  (f.codigo === undefined ? undefined : mensajes[f.codigo]) ?? { formulario: 'No pudimos completar la operación. Intenta de nuevo.' }
+export const accountErrors = (f: AccountFailure): FieldErrors =>
+  (f.code === undefined ? undefined : messages[f.code]) ?? { formulario: 'No pudimos completar la operación. Intenta de nuevo.' }

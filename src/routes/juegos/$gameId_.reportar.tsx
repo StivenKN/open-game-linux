@@ -8,67 +8,67 @@ import { LayerFamily, requiresFailure, Outcome } from '../../domain/literals.ts'
 import { GameId, ProfileId, type ReportId } from '../../domain/ids.ts'
 import { protonReportPossible } from '../../domain/upstream.ts'
 import { reportOptionsFn, submitReportFn } from '../../fns/contributions.ts'
-import { ErrorCampo } from '../../ui/FieldError.tsx'
-import { momento } from '../../ui/format.ts'
-import { Campo, campo, GrupoOpcional, nulo } from '../../ui/form.tsx'
-import { erroresDeRegla, type Errores, useAccion } from '../../ui/useAction.ts'
-import { estadoRevision, resultado as etiquetaResultado, tipoFallo } from '../../ui/vocabulary.ts'
-import { idDeRuta } from '../-ids.ts'
-import { volverAqui } from '../-return-to.ts'
+import { FieldError } from '../../ui/FieldError.tsx'
+import { dateTime } from '../../ui/format.ts'
+import { Field, fieldProps, OptionalGroup, nullText } from '../../ui/form.tsx'
+import { ruleErrors, type FieldErrors, useAction } from '../../ui/useAction.ts'
+import { reviewStatus, outcome as etiquetaResultado, failureType } from '../../ui/vocabulary.ts'
+import { routeIdParser } from '../-ids.ts'
+import { returnHere } from '../-return-to.ts'
 
-const gameId = idDeRuta(GameId)
+const gameId = routeIdParser(GameId)
 
 export const Route = createFileRoute('/juegos/$gameId_/reportar')({
   params: { parse: (p) => ({ gameId: gameId(p.gameId) }), stringify: (p) => ({ gameId: String(p.gameId) }) },
   // The router already parses `?perfil=7` into a number.
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ perfil: Schema.optionalKey(ProfileId) })),
   beforeLoad: ({ context, location }) => {
-    if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
+    if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
   },
   loaderDeps: ({ search }) => ({ perfil: search.perfil ?? null }),
   loader: ({ params, deps }) => reportOptionsFn({ data: { gameId: params.gameId, perfil: deps.perfil } }),
   head: ({ loaderData }) => ({ meta: [{ title: `Reportar ${loaderData?.game.titulo ?? 'resultado'} · OpenGame Linux` }] }),
-  component: Reportar,
+  component: ReportPage,
 })
 
-type Opciones = Awaited<ReturnType<typeof reportOptionsFn>>
-type Enviado = { readonly id: ReportId; readonly conFallos: boolean; readonly proton: boolean }
+type Options = Awaited<ReturnType<typeof reportOptionsFn>>
+type Submitted = { readonly id: ReportId; readonly hasFailures: boolean; readonly proton: boolean }
 
-function Reportar() {
-  const opciones = Route.useLoaderData()
-  const [enviado, setEnviado] = useState<Enviado | null>(null)
-  const { game: juego } = opciones
+function ReportPage() {
+  const options = Route.useLoaderData()
+  const [submitted, setSubmitted] = useState<Submitted | null>(null)
+  const { game } = options
 
   return (
     <main className="envoltura">
       <p className="rotulo">Reportar resultado</p>
-      <h1>{juego.titulo}</h1>
-      {enviado !== null ? (
+      <h1>{game.titulo}</h1>
+      {submitted !== null ? (
         <section className="tarjeta pila" aria-live="polite">
           <h2>Reporte enviado</h2>
           <p>
             Queda <strong>pendiente de revisión</strong> y no cuenta en el resumen del juego hasta que un revisor lo apruebe.
           </p>
           <p className="fila">
-            <Link to="/juegos/$gameId" params={{ gameId: juego.id }}>
+            <Link to="/juegos/$gameId" params={{ gameId: game.id }}>
               Volver a la ficha del juego
             </Link>
-            {enviado.conFallos && (
-              <Link to="/reportes/$reportId/solucion" params={{ reportId: enviado.id }}>
+            {submitted.hasFailures && (
+              <Link to="/reportes/$reportId/solucion" params={{ reportId: submitted.id }}>
                 ¿Conoces una solución? Propónla
               </Link>
             )}
-            {enviado.proton && (
-              <Link to="/reportes/$reportId/proton" params={{ reportId: enviado.id }}>
+            {submitted.proton && (
+              <Link to="/reportes/$reportId/proton" params={{ reportId: submitted.id }}>
                 Prepara el informe para Valve
               </Link>
             )}
-            <button type="button" className="boton-secundario" onClick={() => setEnviado(null)}>
+            <button type="button" className="boton-secundario" onClick={() => setSubmitted(null)}>
               Reportar otro resultado
             </button>
           </p>
         </section>
-      ) : opciones.diagnostics.length === 0 ? (
+      ) : options.diagnostics.length === 0 ? (
         <section className="tarjeta nota pila">
           <p>Para reportar necesitas un diagnóstico de tu equipo hecho en Linux: el reporte guarda el entorno exacto de la prueba.</p>
           <p>
@@ -76,20 +76,20 @@ function Reportar() {
           </p>
         </section>
       ) : (
-        <FormReporte opciones={opciones} alEnviar={setEnviado} />
+        <ReportForm options={options} onSubmitted={setSubmitted} />
       )}
     </main>
   )
 }
 
-const porId = <I extends number>(lista: ReadonlyArray<{ readonly id: I }>, valor: string) => lista.find((x) => String(x.id) === valor)?.id
+const byId = <I extends number>(list: ReadonlyArray<{ readonly id: I }>, value: string) => list.find((x) => String(x.id) === value)?.id
 
-const nombres = (o: Opciones) => {
-  const distribuciones = new Map<number, string>([
+const mismatchNames = (o: Options) => {
+  const distributions = new Map<number, string>([
     ...o.profiles.map((p) => [p.distribucion_id, p.distribucion] as const),
     ...o.diagnostics.map((d) => [d.distribucion_id, d.distribucion] as const),
   ])
-  const capa = (id: number) => {
+  const layerName = (id: number) => {
     const c = o.layers.find((x) => x.id === id)
     return c === undefined ? 'otra capa' : `${c.familia} ${c.variante} ${c.version}`
   }
@@ -98,9 +98,9 @@ const nombres = (o: Opciones) => {
       case 'edicion':
         return [o.editions.find((e) => e.id === d.expected)?.lanzador ?? 'otra edición', o.editions.find((e) => e.id === d.actual)?.lanzador ?? 'otra edición']
       case 'capa':
-        return [capa(d.expected), capa(d.actual)]
+        return [layerName(d.expected), layerName(d.actual)]
       case 'distribucion':
-        return [distribuciones.get(d.expected) ?? 'otra distribución', distribuciones.get(d.actual) ?? 'otra distribución']
+        return [distributions.get(d.expected) ?? 'otra distribución', distributions.get(d.actual) ?? 'otra distribución']
       case 'arquitectura':
       case 'version_juego':
         return [d.expected, d.actual]
@@ -108,169 +108,169 @@ const nombres = (o: Opciones) => {
   }
 }
 
-function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (enviado: Enviado) => void }) {
-  const { diagnostics: diagnosticos, editions: ediciones, layers: capas, profiles: perfiles, failureTypes: tiposFallo, selectedProfile: perfilElegido } = opciones
-  const elegido = perfiles.find((p) => p.id === perfilElegido)
+function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (submitted: Submitted) => void }) {
+  const { diagnostics, editions, layers, profiles, failureTypes, selectedProfile } = options
+  const selected = profiles.find((p) => p.id === selectedProfile)
 
-  const [diagnosticId, setDiagnosticoId] = useState(diagnosticos.at(0)?.id)
-  const [edicionId, setEdicionId] = useState(elegido?.edicion_id ?? ediciones.at(0)?.id)
-  const [tipoCapa, setTipoCapa] = useState<'existente' | 'nueva'>('existente')
-  const [capaId, setCapaId] = useState(elegido?.version_capa_id ?? capas.at(0)?.id)
-  const [capaNueva, setCapaNueva] = useState<{ readonly familia: LayerFamily; readonly variante: string }>({ familia: 'Wine', variante: '' })
-  const [versionJuego, setVersionJuego] = useState(elegido?.version_juego_objetivo ?? '')
-  const [profileId, setPerfilId] = useState(elegido === undefined ? nulo : String(elegido.id))
-  const [resultado, setResultado] = useState<Outcome>('funciona')
-  const [fallos, setFallos] = useState<ReadonlyArray<number>>([])
-  const [siguienteFallo, setSiguienteFallo] = useState(0)
+  const [diagnosticId, setDiagnosticId] = useState(diagnostics.at(0)?.id)
+  const [editionId, setEditionId] = useState(selected?.edicion_id ?? editions.at(0)?.id)
+  const [layerType, setLayerType] = useState<'existente' | 'nueva'>('existente')
+  const [layerId, setLayerId] = useState(selected?.version_capa_id ?? layers.at(0)?.id)
+  const [newLayer, setNewLayer] = useState<{ readonly familia: LayerFamily; readonly variante: string }>({ familia: 'Wine', variante: '' })
+  const [gameVersion, setGameVersion] = useState(selected?.version_juego_objetivo ?? '')
+  const [profileId, setProfileId] = useState(selected === undefined ? nullText : String(selected.id))
+  const [outcome, setOutcome] = useState<Outcome>('funciona')
+  const [failures, setFailures] = useState<ReadonlyArray<number>>([])
+  const [nextFailure, setNextFailure] = useState(0)
 
-  const diagnostico = diagnosticos.find((d) => d.id === diagnosticId)
-  const prueba =
-    diagnostico !== undefined && edicionId !== undefined && capaId !== undefined && tipoCapa === 'existente'
-      ? { edicion_id: edicionId, version_capa_id: capaId, distribucion_id: diagnostico.distribucion_id, arquitectura: diagnostico.arquitectura, version_juego: versionJuego.trim() }
+  const diagnostic = diagnostics.find((d) => d.id === diagnosticId)
+  const testRun =
+    diagnostic !== undefined && editionId !== undefined && layerId !== undefined && layerType === 'existente'
+      ? { edicion_id: editionId, version_capa_id: layerId, distribucion_id: diagnostic.distribucion_id, arquitectura: diagnostic.arquitectura, version_juego: gameVersion.trim() }
       : null
-  const comparables = perfiles.filter((p) => p.id === perfilElegido || (prueba !== null && mismatches(prueba, p).length === 0))
-  const perfilValor = comparables.some((p) => String(p.id) === profileId) ? profileId : nulo
+  const comparable = profiles.filter((p) => p.id === selectedProfile || (testRun !== null && mismatches(testRun, p).length === 0))
+  const profileValue = comparable.some((p) => String(p.id) === profileId) ? profileId : nullText
 
-  const nombreDe = nombres(opciones)
-  const r = useAccion(NewReport, submitReportFn, {
-    alFallar: (f: Encoded<RuleViolated | IncomparableProfile>): Errores => {
+  const nameOf = mismatchNames(options)
+  const r = useAction(NewReport, submitReportFn, {
+    onFailure: (f: Encoded<RuleViolated | IncomparableProfile>): FieldErrors => {
       switch (f._tag) {
         case 'ReglaIncumplida':
-          return erroresDeRegla(f)
+          return ruleErrors(f)
         case 'PerfilNoComparable': {
-          const errores: Record<string, string> = {}
+          const errors: Record<string, string> = {}
           for (const d of f.mismatches) {
-            const { field: c, message: mensaje } = profileMismatches[d.aspect]
-            errores[c] = [errores[c], mensaje(...nombreDe(d))].filter((m) => m !== undefined).join(' ')
+            const { field: c, message } = profileMismatches[d.aspect]
+            errors[c] = [errors[c], message(...nameOf(d))].filter((m) => m !== undefined).join(' ')
           }
-          return errores
+          return errors
         }
       }
     },
-    alCompletar: (v) => {
-      const capa = tipoCapa === 'existente' ? capas.find((c) => c.id === capaId) : capaNueva
-      const lanzador = ediciones.find((e) => e.id === edicionId)?.lanzador
-      const proton = capa !== undefined && lanzador !== undefined && protonReportPossible({ lanzador, familia: capa.familia, variante: capa.variante.trim(), resultado })
-      alEnviar({ id: v.id, conFallos: fallos.length > 0, proton })
+    onComplete: (v) => {
+      const layer = layerType === 'existente' ? layers.find((c) => c.id === layerId) : newLayer
+      const launcher = editions.find((e) => e.id === editionId)?.lanzador
+      const proton = layer !== undefined && launcher !== undefined && protonReportPossible({ lanzador: launcher, familia: layer.familia, variante: layer.variante.trim(), resultado: outcome })
+      onSubmitted({ id: v.id, hasFailures: failures.length > 0, proton })
     },
   })
 
-  const agregarFallo = () => {
-    setFallos([...fallos, siguienteFallo])
-    setSiguienteFallo(siguienteFallo + 1)
+  const addFailure = () => {
+    setFailures([...failures, nextFailure])
+    setNextFailure(nextFailure + 1)
   }
 
   return (
-    <form className="tarjeta formulario formulario-ancho" {...r.formulario}>
-      <ErrorCampo errores={r.errores} campo="formulario" />
+    <form className="tarjeta formulario formulario-ancho" {...r.form}>
+      <FieldError errors={r.errors} field="formulario" />
 
       <h2 className="titulo-seccion">Dónde probaste</h2>
-      <Campo errores={r.errores} nombre="diagnostico_id" etiqueta="Diagnóstico del equipo" ayuda="Solo aparecen tus diagnósticos hechos en Linux.">
-        <select {...campo(r.errores, 'diagnostico_id')} value={diagnosticId ?? ''} onChange={(e) => setDiagnosticoId(porId(diagnosticos, e.currentTarget.value))}>
-          {diagnosticos.map((d) => (
+      <Field errors={r.errors} name="diagnostico_id" label="Diagnóstico del equipo" help="Solo aparecen tus diagnósticos hechos en Linux.">
+        <select {...fieldProps(r.errors, 'diagnostico_id')} value={diagnosticId ?? ''} onChange={(e) => setDiagnosticId(byId(diagnostics, e.currentTarget.value))}>
+          {diagnostics.map((d) => (
             <option key={d.id} value={d.id}>
-              {d.equipo} · {d.distribucion} · {d.arquitectura} · {momento(d.capturado_en)}
+              {d.equipo} · {d.distribucion} · {d.arquitectura} · {dateTime(d.capturado_en)}
             </option>
           ))}
         </select>
-      </Campo>
-      <Campo errores={r.errores} nombre="edicion_id" etiqueta="Edición (lanzador)">
-        <select {...campo(r.errores, 'edicion_id')} value={edicionId ?? ''} onChange={(e) => setEdicionId(porId(ediciones, e.currentTarget.value))}>
-          {ediciones.map((e) => (
+      </Field>
+      <Field errors={r.errors} name="edicion_id" label="Edición (lanzador)">
+        <select {...fieldProps(r.errors, 'edicion_id')} value={editionId ?? ''} onChange={(e) => setEditionId(byId(editions, e.currentTarget.value))}>
+          {editions.map((e) => (
             <option key={e.id} value={e.id}>
               {e.lanzador}
             </option>
           ))}
         </select>
-      </Campo>
+      </Field>
 
       <fieldset className="grupo">
         <legend>Capa de compatibilidad usada</legend>
         <div className="fila">
           <label className="casilla">
-            <input type="radio" name="version_capa[_tag]" value="existente" checked={tipoCapa === 'existente'} onChange={() => setTipoCapa('existente')} />
+            <input type="radio" name="version_capa[_tag]" value="existente" checked={layerType === 'existente'} onChange={() => setLayerType('existente')} />
             Una versión de la lista
           </label>
           <label className="casilla">
-            <input type="radio" name="version_capa[_tag]" value="nueva" checked={tipoCapa === 'nueva'} onChange={() => setTipoCapa('nueva')} />
+            <input type="radio" name="version_capa[_tag]" value="nueva" checked={layerType === 'nueva'} onChange={() => setLayerType('nueva')} />
             Otra versión
           </label>
         </div>
-        {tipoCapa === 'existente' ? (
-          <Campo errores={r.errores} nombre="version_capa[id]" etiqueta="Versión">
-            <select {...campo(r.errores, 'version_capa[id]')} value={capaId ?? ''} onChange={(e) => setCapaId(porId(capas, e.currentTarget.value))}>
-              {capas.map((c) => (
+        {layerType === 'existente' ? (
+          <Field errors={r.errors} name="version_capa[id]" label="Versión">
+            <select {...fieldProps(r.errors, 'version_capa[id]')} value={layerId ?? ''} onChange={(e) => setLayerId(byId(layers, e.currentTarget.value))}>
+              {layers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.familia} {c.variante} {c.version}
                 </option>
               ))}
             </select>
-          </Campo>
+          </Field>
         ) : (
           <div className="fila campos-en-linea">
-            <Campo errores={r.errores} nombre="version_capa[familia]" etiqueta="Familia">
+            <Field errors={r.errors} name="version_capa[familia]" label="Familia">
               <select
-                {...campo(r.errores, 'version_capa[familia]')}
-                value={capaNueva.familia}
-                onChange={(e) => setCapaNueva({ ...capaNueva, familia: LayerFamily.literals.find((f) => f === e.currentTarget.value) ?? capaNueva.familia })}
+                {...fieldProps(r.errors, 'version_capa[familia]')}
+                value={newLayer.familia}
+                onChange={(e) => setNewLayer({ ...newLayer, familia: LayerFamily.literals.find((f) => f === e.currentTarget.value) ?? newLayer.familia })}
               >
                 {LayerFamily.literals.map((f) => (
                   <option key={f}>{f}</option>
                 ))}
               </select>
-            </Campo>
-            <Campo errores={r.errores} nombre="version_capa[variante]" etiqueta="Variante">
+            </Field>
+            <Field errors={r.errors} name="version_capa[variante]" label="Variante">
               <input
-                {...campo(r.errores, 'version_capa[variante]')}
-                value={capaNueva.variante}
-                onChange={(e) => setCapaNueva({ ...capaNueva, variante: e.currentTarget.value })}
+                {...fieldProps(r.errors, 'version_capa[variante]')}
+                value={newLayer.variante}
+                onChange={(e) => setNewLayer({ ...newLayer, variante: e.currentTarget.value })}
                 placeholder="GE"
               />
-            </Campo>
-            <Campo errores={r.errores} nombre="version_capa[version]" etiqueta="Versión exacta">
-              <input {...campo(r.errores, 'version_capa[version]')} placeholder="9-20" />
-            </Campo>
+            </Field>
+            <Field errors={r.errors} name="version_capa[version]" label="Versión exacta">
+              <input {...fieldProps(r.errors, 'version_capa[version]')} placeholder="9-20" />
+            </Field>
           </div>
         )}
-        <ErrorCampo errores={r.errores} campo="version_capa" />
+        <FieldError errors={r.errors} field="version_capa" />
       </fieldset>
 
       <div className="fila campos-en-linea">
-        <Campo errores={r.errores} nombre="version_juego" etiqueta="Versión o build del juego">
-          <input {...campo(r.errores, 'version_juego')} value={versionJuego} onChange={(e) => setVersionJuego(e.currentTarget.value)} placeholder="1.0.3179" />
-        </Campo>
-        <Campo errores={r.errores} nombre="version_lanzador" etiqueta="Versión del lanzador (opcional)">
-          <input {...campo(r.errores, 'version_lanzador')} />
-        </Campo>
+        <Field errors={r.errors} name="version_juego" label="Versión o build del juego">
+          <input {...fieldProps(r.errors, 'version_juego')} value={gameVersion} onChange={(e) => setGameVersion(e.currentTarget.value)} placeholder="1.0.3179" />
+        </Field>
+        <Field errors={r.errors} name="version_lanzador" label="Versión del lanzador (opcional)">
+          <input {...fieldProps(r.errors, 'version_lanzador')} />
+        </Field>
       </div>
 
-      <Campo
-        errores={r.errores}
-        nombre="perfil_id"
-        etiqueta="Perfil que seguiste"
-        ayuda="Solo aparecen los perfiles que coinciden con tu diagnóstico, la edición, la capa y la versión del juego."
+      <Field
+        errors={r.errors}
+        name="perfil_id"
+        label="Perfil que seguiste"
+        help="Solo aparecen los perfiles que coinciden con tu diagnóstico, la edición, la capa y la versión del juego."
       >
-        <select {...campo(r.errores, 'perfil_id')} value={perfilValor} onChange={(e) => setPerfilId(e.currentTarget.value)}>
-          <option value={nulo}>Sin perfil</option>
-          {comparables.map((p) => (
+        <select {...fieldProps(r.errors, 'perfil_id')} value={profileValue} onChange={(e) => setProfileId(e.currentTarget.value)}>
+          <option value={nullText}>Sin perfil</option>
+          {comparable.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.titulo} (r{p.revision}, {estadoRevision[p.estado_revision].texto.toLowerCase()}) · {p.distribucion}
+              {p.titulo} (r{p.revision}, {reviewStatus[p.estado_revision].text.toLowerCase()}) · {p.distribucion}
             </option>
           ))}
         </select>
-      </Campo>
+      </Field>
 
       <h2 className="titulo-seccion">Qué pasó</h2>
-      <Campo errores={r.errores} nombre="fecha_prueba" etiqueta="Fecha y hora de la prueba">
-        <input {...campo(r.errores, 'fecha_prueba')} type="datetime-local" />
-      </Campo>
+      <Field errors={r.errors} name="fecha_prueba" label="Fecha y hora de la prueba">
+        <input {...fieldProps(r.errors, 'fecha_prueba')} type="datetime-local" />
+      </Field>
       <fieldset className="grupo">
         <legend>Resultado</legend>
         <div className="fila">
-          {Outcome.literals.map((valor) => (
-            <label key={valor} className="casilla">
-              <input type="radio" name="resultado" value={valor} checked={resultado === valor} onChange={() => setResultado(valor)} />
-              {etiquetaResultado[valor].texto}
+          {Outcome.literals.map((value) => (
+            <label key={value} className="casilla">
+              <input type="radio" name="resultado" value={value} checked={outcome === value} onChange={() => setOutcome(value)} />
+              {etiquetaResultado[value].text}
             </label>
           ))}
         </div>
@@ -279,61 +279,61 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
       <fieldset className="grupo">
         <legend>Fallos observados</legend>
         <p className="pequeno tenue">
-          {requiresFailure[resultado]
+          {requiresFailure[outcome]
             ? 'Indica al menos un tipo de fallo. Si no sabes la causa, elige «Otro» y describe el síntoma.'
             : 'Opcional: anota cualquier problema aunque el juego funcione.'}
         </p>
-        {fallos.map((clave, i) => (
-          <div key={clave} className="fila campos-en-linea">
-            <Campo errores={r.errores} nombre={`fallos[${i}][tipo_fallo_id]`} etiqueta="Tipo">
-              <select {...campo(r.errores, `fallos[${i}][tipo_fallo_id]`)}>
-                {tiposFallo.map((t) => (
+        {failures.map((key, i) => (
+          <div key={key} className="fila campos-en-linea">
+            <Field errors={r.errors} name={`fallos[${i}][tipo_fallo_id]`} label="Tipo">
+              <select {...fieldProps(r.errors, `fallos[${i}][tipo_fallo_id]`)}>
+                {failureTypes.map((t) => (
                   <option key={t.id} value={t.id} title={t.descripcion}>
-                    {tipoFallo(t.codigo).texto}
+                    {failureType(t.codigo).text}
                   </option>
                 ))}
               </select>
-            </Campo>
-            <Campo errores={r.errores} nombre={`fallos[${i}][detalle]`} etiqueta="Qué viste">
-              <input {...campo(r.errores, `fallos[${i}][detalle]`)} />
-            </Campo>
-            <button type="button" className="boton-secundario" onClick={() => setFallos(fallos.filter((f) => f !== clave))}>
+            </Field>
+            <Field errors={r.errors} name={`fallos[${i}][detalle]`} label="Qué viste">
+              <input {...fieldProps(r.errors, `fallos[${i}][detalle]`)} />
+            </Field>
+            <button type="button" className="boton-secundario" onClick={() => setFailures(failures.filter((f) => f !== key))}>
               Quitar
             </button>
           </div>
         ))}
         <p>
-          <button type="button" className="boton-secundario" onClick={agregarFallo}>
+          <button type="button" className="boton-secundario" onClick={addFailure}>
             Añadir un fallo
           </button>
         </p>
-        <ErrorCampo errores={r.errores} campo="fallos" />
+        <FieldError errors={r.errors} field="fallos" />
       </fieldset>
 
-      <GrupoOpcional nombre="medicion" etiqueta="Medí los FPS">
+      <OptionalGroup name="medicion" label="Medí los FPS">
         <p className="pequeno tenue">Sin medición el reporte no guarda FPS; nunca se convierte en cero.</p>
         <div className="fila campos-en-linea">
-          <Campo errores={r.errores} nombre="medicion[fps_promedio]" etiqueta="FPS promedio">
-            <input {...campo(r.errores, 'medicion[fps_promedio]')} type="number" inputMode="decimal" min="0" step="0.01" />
-          </Campo>
-          <Campo errores={r.errores} nombre="medicion[resolucion]" etiqueta="Resolución">
-            <input {...campo(r.errores, 'medicion[resolucion]')} placeholder="1920x1080" />
-          </Campo>
-          <Campo errores={r.errores} nombre="medicion[calidad_grafica]" etiqueta="Calidad gráfica">
-            <input {...campo(r.errores, 'medicion[calidad_grafica]')} placeholder="Medio" />
-          </Campo>
+          <Field errors={r.errors} name="medicion[fps_promedio]" label="FPS promedio">
+            <input {...fieldProps(r.errors, 'medicion[fps_promedio]')} type="number" inputMode="decimal" min="0" step="0.01" />
+          </Field>
+          <Field errors={r.errors} name="medicion[resolucion]" label="Resolución">
+            <input {...fieldProps(r.errors, 'medicion[resolucion]')} placeholder="1920x1080" />
+          </Field>
+          <Field errors={r.errors} name="medicion[calidad_grafica]" label="Calidad gráfica">
+            <input {...fieldProps(r.errors, 'medicion[calidad_grafica]')} placeholder="Medio" />
+          </Field>
         </div>
-        <Campo errores={r.errores} nombre="medicion[metodo_medicion]" etiqueta="Cómo mediste">
-          <input {...campo(r.errores, 'medicion[metodo_medicion]')} placeholder="MangoHud · escena · duración" />
-        </Campo>
-      </GrupoOpcional>
+        <Field errors={r.errors} name="medicion[metodo_medicion]" label="Cómo mediste">
+          <input {...fieldProps(r.errors, 'medicion[metodo_medicion]')} placeholder="MangoHud · escena · duración" />
+        </Field>
+      </OptionalGroup>
 
-      <Campo errores={r.errores} nombre="observaciones" etiqueta="Observaciones" ayuda="Resultado, limitaciones y cualquier ajuste extra que hiciste fuera del perfil.">
-        <textarea {...campo(r.errores, 'observaciones')} rows={4} />
-      </Campo>
+      <Field errors={r.errors} name="observaciones" label="Observaciones" help="Resultado, limitaciones y cualquier ajuste extra que hiciste fuera del perfil.">
+        <textarea {...fieldProps(r.errors, 'observaciones')} rows={4} />
+      </Field>
 
-      <button type="submit" disabled={r.enviando}>
-        {r.enviando ? 'Enviando…' : 'Enviar reporte'}
+      <button type="submit" disabled={r.submitting}>
+        {r.submitting ? 'Enviando…' : 'Enviar reporte'}
       </button>
     </form>
   )

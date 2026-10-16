@@ -1,16 +1,16 @@
 import type { FailureCount } from '../../domain/compatibility.ts'
-import { contar } from '../format.ts'
+import { count } from '../format.ts'
 import { Chip } from '../Badge.tsx'
-import { tipoFallo } from '../vocabulary.ts'
+import { failureType } from '../vocabulary.ts'
 
-export function ChipsFallos({ fallos }: { fallos: ReadonlyArray<FailureCount> }) {
+export function FailureChips({ failures }: { failures: ReadonlyArray<FailureCount> }) {
   return (
     <span className="fila-chips">
-      {fallos.map((f) => {
-        const etiqueta = tipoFallo(f.code)
+      {failures.map((f) => {
+        const label = failureType(f.code)
         return (
-          <span key={f.code} title={contar(f.reports, 'reporte', 'reportes')}>
-            <Chip tono={etiqueta.tono}>{etiqueta.texto}</Chip>
+          <span key={f.code} title={count(f.reports, 'reporte', 'reportes')}>
+            <Chip tone={label.tone}>{label.text}</Chip>
           </span>
         )
       })}

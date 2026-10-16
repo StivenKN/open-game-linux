@@ -3,7 +3,7 @@
 import { notFound } from '@tanstack/react-router'
 import { Option, Schema } from 'effect'
 
-export const idDeRuta = <T extends number>(id: Schema.Codec<T, number>) => {
-  const decodificar = Schema.decodeUnknownOption(Schema.NumberFromString.pipe(Schema.decodeTo(id)))
-  return (texto: string): T => Option.getOrThrowWith(/^[1-9]\d*$/.test(texto) ? decodificar(texto) : Option.none(), () => notFound())
+export const routeIdParser = <T extends number>(id: Schema.Codec<T, number>) => {
+  const decode = Schema.decodeUnknownOption(Schema.NumberFromString.pipe(Schema.decodeTo(id)))
+  return (text: string): T => Option.getOrThrowWith(/^[1-9]\d*$/.test(text) ? decode(text) : Option.none(), () => notFound())
 }

@@ -59,7 +59,7 @@ const r = useAccion(NewReport, submitReportFn, {
 </form>
 ```
 
-`useAccion` checks the input in two places. First, the browser decodes the FormData with `NewReport`, so a blank observation or a failing result without a fallo shows its field error before any request. If that passes, the server fn validates the same Encoded value with the same schema. The program then fails with `RuleViolated({ rule: 'perfil_otra_distribucion' })` from `mismatches`, and `runAction` returns `{ ok: false, error: { _tag: 'ReglaIncumplida', rule: 'perfil_otra_distribucion' } }`. The `rules` table (`domain/errors.ts`) maps each rule to `{ field, message }`.
+`useAction` checks the input in two places. First, the browser decodes the FormData with `NewReport`, so a blank observation or a failing result without a fallo shows its field error before any request. If that passes, the server fn validates the same Encoded value with the same schema. The program then fails with `RuleViolated({ rule: 'perfil_otra_distribucion' })` from `mismatches`, and `runAction` returns `{ ok: false, error: { _tag: 'ReglaIncumplida', rule: 'perfil_otra_distribucion' } }`. The `rules` table (`domain/errors.ts`) maps each rule to `{ field, message }`.
 
 **A reviewer approves.**
 
@@ -200,7 +200,7 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 
 **U3** departs from the sketch as follows.
 
-- **`useAccion` binds `onSubmit`, not `<form action>`.** React 19 resets an action form's fields after every action, so a field error would wipe what the user typed. `enviar` builds the FormData with the submitter, so `<button name="decision[_tag]" value="Aprobar">` still posts its value.
+- **`useAction` binds `onSubmit`, not `<form action>`.** React 19 resets an action form's fields after every action, so a field error would wipe what the user typed. `enviar` builds the FormData with the submitter, so `<button name="decision[_tag]" value="Aprobar">` still posts its value.
 - **Field errors are keyed by the input's name.** A nested issue lands on `fallos[0][detalle]`, not on `fallos`. A rule from `rules` still lands on its `campo`. Decoding reports every invalid field at once.
 - **No better-auth cookie cache.** With it, `pnpm rol` and deactivation would take up to five minutes to apply. Each request reads the session from the database instead.
 - **`assignRole` lives in `server/auth.ts`.** `pnpm rol` and the seed share it, so role writes have one home.
@@ -226,7 +226,7 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 - **`server/commands/diagnostic.ts` is the single writer of `equipo` and `diagnostico`**, not `contributions.ts`, so lanes U5 and U6 never share a file. `src/boundaries.test.ts` fails on an `INSERT INTO`/`UPDATE` of either table anywhere else.
 - **Saving converges.** `submitDiagnostic` locks the user's row, reuses the user's equipo with the same alias (case-insensitive) for `nuevo`, and returns `{ id, nuevo }`. A double click, a retry or a re-import of the same payload leaves one equipo and one diagnostico.
 - **Column limits are checked in `captureOf`.** `Capture` in `domain/contributions.ts` has unbounded text, so `server/diagnostics/payload.ts` checks the `tables.ts` limits and answers `campo_invalido` instead of an SQL error at INSERT. The parser also names a null `cpu_modelo` "CPU no detectada" (ARM kernels).
-- **The manual form has its own schema**, `FormularioManual` in `routes/diagnostico/-input.ts`. It covers only what a person types, with the column limits, and `entradaManual` turns it into a `ManualCapture` taken now. That schema has no PCI id or library, which only a detector reads, so a manual entry cannot store a library the parser never normalized. Nullable selects post `"null"` ("No sé").
+- **The manual form has its own schema**, `ManualForm` in `routes/diagnostico/-input.ts`. It covers only what a person types, with the column limits, and `manualInput` turns it into a `ManualCapture` taken now. That schema has no PCI id or library, which only a detector reads, so a manual entry cannot store a library the parser never normalized. Nullable selects post `"null"` ("No sé").
 - **Paste and manual entries are evaluated twice.** `/diagnostico` evaluates first, so a bad paste keeps its error under the box. Then `/diagnostico/importar` evaluates again from sessionStorage. That page owns the result and the save. The read is cheap, and one result page is simpler than two.
 - **`/entrar` and `/registro` accept `?volver=`** from a closed list (`/diagnostico/importar`), so a guest who signs in to save returns to the unsaved result.
 - **The public origin comes from `BETTER_AUTH_URL`** (`server/origin.ts`), with the request URL only as a dev fallback. `originFn` and `/opengame-detect.sh` use it for the `curl … | bash` command. That route is allowlisted in `boundaries.test.ts`, like `/api/auth/$`.
@@ -239,13 +239,13 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 - **`createGame` maps the two edition UQ constraints to rules.** `edicion_juego_juego_lanzador_uq` becomes `edicion_repetida` and `edicion_juego_externo_uq` becomes `identificador_en_uso`, both on the `ediciones` field. The form starts each row on a different launcher by position, which avoids most accidental duplicates. The loader's `gameOptions` also calls `requireReviewer`, so a `usuario` gets a real 404, not only the route guard.
 - **The seed writes captures through `submitDiagnostic`.** Part 1 catalog lookups (juego, edicion_juego, profiles) stay raw SQL, so the seed does not go through `createGame`.
 - **A merge had left two CSS rules without their closing brace.** Browsers parse nesting, so the diagnosis rules matched only inside `.bloque`, and the U5 rules, nested in `textarea` too, matched nothing. `src/styles.test.ts` now fails on nesting outside at-rules and on a selector styled in two rules.
-- **`fecha` prints the Bogotá day, not the UTC day.** Its comment assumed DB `date` columns, but every stored time is a `timestamptz`. The `/_muestras` fixtures moved from UTC midnight to noon so they keep their calendar day. `fechaHora` (UTC, "p. m.") is gone, and captures print with `momento`.
+- **`date` prints the Bogotá day, not the UTC day.** Its comment assumed DB `date` columns, but every stored time is a `timestamptz`. The `/_muestras` fixtures moved from UTC midnight to noon so they keep their calendar day. `fechaHora` (UTC, "p. m.") is gone, and captures print with `dateTime`.
 - **Known gap, closed in U9.** A guest who followed "Reportar un resultado" or "Reportar resultado con este perfil" signed in and landed on `/`, because `?volver=` accepted only `/diagnostico/importar`.
 
 **U9** departs from the earlier units as follows.
 
-- **Every useAccion form posts.** `useAccion` returns `formulario` (`onSubmit`, `method="post"`, `noValidate`) and each form spreads it. With no method, a submit before hydration did a native GET, and `/entrar?correo=…&contrasena=…` put the password in the history and the server log.
-- **`?volver=` names any page that needs an account.** `routes/-return-to.ts` parses the guard's own `location.href` into a `Destino`, a union of template literals rebuilt from the page's ids, so it can only name one of our pages. Each `beforeLoad` guard, `/diagnosticos/$id` included, sends `volverAqui(location)`. `Volver` always returns the `volver` key, because router-core spreads the validated search over the raw query: a validator that leaves a bad key out lets the raw value reach `useSearch()`.
+- **Every useAccion form posts.** `useAction` returns `formulario` (`onSubmit`, `method="post"`, `noValidate`) and each form spreads it. With no method, a submit before hydration did a native GET, and `/entrar?correo=…&contrasena=…` put the password in the history and the server log.
+- **`?volver=` names any page that needs an account.** `routes/-return-to.ts` parses the guard's own `location.href` into a `Destination`, a union of template literals rebuilt from the page's ids, so it can only name one of our pages. Each `beforeLoad` guard, `/diagnosticos/$id` included, sends `returnHere(location)`. `ReturnTo` always returns the `volver` key, because router-core spreads the validated search over the raw query: a validator that leaves a bad key out lets the raw value reach `useSearch()`.
 - **The ficha offers "Proponer una solución" to guests**, like "Reportar un resultado". The form's guard sends them to sign in and back.
 - **A pending report has no public page.** In the 8.10 walkthrough the second user proposes the solution after the reviewer approves the report, because 8.9 keeps pending reports private and the ficha links only approved ones.
 - **Scrollable regions are focusable.** The copy box's `<pre>` and the ficha's matrix card take `tabIndex={0}`, so a keyboard can scroll them (axe `scrollable-region-focusable`). Form grids use `minmax(0, 1fr)` so a long `<select>` option no longer widens the page at 390px.
@@ -267,8 +267,8 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 
 Found by the pre-PR comment audit. None is a correctness bug; each would make an illegal state unrepresentable or remove a hand-synced copy.
 
-- `RequirementCheck.exigido` and `detectado.valor` hold either MB or a Vulkan version in one string. A union tagged by requisito would remove the `Number()` parse in `ChecklistEvaluacion`.
-- `Personal` (`VeredictoParaMi`) and the FPS fields of `ApprovedTest` are sets of nullables whose combinations mean different things. Each should be a tagged union or one nullable struct, like `FpsMeasurement`.
+- `RequirementCheck.exigido` and `detectado.valor` hold either MB or a Vulkan version in one string. A union tagged by requisito would remove the `Number()` parse in `EvaluationChecklist`.
+- `Personal` (`VerdictForMe`) and the FPS fields of `ApprovedTest` are sets of nullables whose combinations mean different things. Each should be a tagged union or one nullable struct, like `FpsMeasurement`.
 - `FpsMeasurement.fps_promedio`'s maximum copies `numeric(7,2)` by hand, and the failure-type codes live in both `scripts/sembrar.ts` and `ui/vocabulary.ts`. Derive both from one source.
 - Migrations build their CHECK lists from today's literal Schemas, so an old migration renders different SQL after a literal changes. Snapshot the lists per migration before the first real deploy.
 - `submitDiagnostic` serializes per user with a row lock. A unique index on `(usuario_id, lower(alias))` with `ON CONFLICT` would make convergence structural.

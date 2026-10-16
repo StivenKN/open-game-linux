@@ -1,38 +1,38 @@
 import type { X86Level } from '../../domain/platform.ts'
 import type { GamePath } from '../../domain/graphics-path.ts'
-import { Insignia } from '../Badge.tsx'
-import { camino, etiquetaRuta, fraseRuta } from '../vocabulary.ts'
+import { Badge } from '../Badge.tsx'
+import { renderPath, gamePathLabel, gamePathSentences } from '../vocabulary.ts'
 
 /**
  * The hardware-only graphics path for one game. It stands apart from the community state and the
  * profile check: it needs no reports. `minimo` is the game's minimum x86-64 level.
  */
-export function RutaGrafica({ ruta, minimo, orientativa }: { ruta: GamePath; minimo: X86Level | null; orientativa: boolean }) {
+export function GraphicsPath({ path, minX86Level, approximate }: { path: GamePath; minX86Level: X86Level | null; approximate: boolean }) {
   // The warning and launch option follow the path wherever it shows, a certain floor included.
-  const visible = ruta.status === 'con_ruta' ? ruta.path : ruta.status === 'sin_datos' ? ruta.at_least : null
-  const { nota, opcion, tono } = visible === null ? { nota: null, opcion: null, tono: null } : camino[visible]
+  const visible = path.status === 'con_ruta' ? path.path : path.status === 'sin_datos' ? path.at_least : null
+  const { note, option, tone } = visible === null ? { note: null, option: null, tone: null } : renderPath[visible]
   return (
     <div className="pila">
       <div className="fila">
         <span className="rotulo">Ruta gráfica</span>
-        <Insignia etiqueta={etiquetaRuta(ruta)} forma="punteado" />
+        <Badge label={gamePathLabel(path)} shape="punteado" />
       </div>
-      {fraseRuta(ruta, minimo).map((frase) => (
-        <p key={frase} className="pequeno">
-          {frase}
+      {gamePathSentences(path, minX86Level).map((sentence) => (
+        <p key={sentence} className="pequeno">
+          {sentence}
         </p>
       ))}
-      {nota && (
-        <p className="pequeno nota" data-tono={tono === 'verde' ? 'azul' : 'amarillo'}>
-          {nota}
+      {note && (
+        <p className="pequeno nota" data-tono={tone === 'verde' ? 'azul' : 'amarillo'}>
+          {note}
         </p>
       )}
-      {opcion && (
+      {option && (
         <p className="pequeno tenue">
-          Opción de lanzamiento en Steam: <code>{opcion}</code>
+          Opción de lanzamiento en Steam: <code>{option}</code>
         </p>
       )}
-      {orientativa && <p className="pequeno tenue">Calculada desde un diagnóstico de Windows: sirve de orientación.</p>}
+      {approximate && <p className="pequeno tenue">Calculada desde un diagnóstico de Windows: sirve de orientación.</p>}
     </div>
   )
 }

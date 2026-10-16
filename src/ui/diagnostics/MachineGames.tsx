@@ -1,28 +1,28 @@
 import type { EvaluatedLibrary } from '../../domain/library.ts'
-import { contar } from '../format.ts'
-import { type FilaMatriz, MatrizDiagnostico } from './DiagnosticMatrix.tsx'
+import { count } from '../format.ts'
+import { type MatrixRow, DiagnosticMatrix } from './DiagnosticMatrix.tsx'
 
-const ABIERTA_HASTA = 20
+const OPEN_UP_TO = 20
 
-export function JuegosDelEquipo({
-  filas,
-  biblioteca,
-  orientativa,
+export function MachineGames({
+  rows,
+  library,
+  approximate,
 }: {
-  filas: ReadonlyArray<FilaMatriz>
-  biblioteca: EvaluatedLibrary | null
-  orientativa: boolean
+  rows: ReadonlyArray<MatrixRow>
+  library: EvaluatedLibrary | null
+  approximate: boolean
 }) {
-  if (biblioteca === null)
+  if (library === null)
     return (
       <>
         <h2 className="titulo-seccion">Juegos</h2>
-        <MatrizDiagnostico filas={filas} orientativa={orientativa} />
+        <DiagnosticMatrix rows={rows} approximate={approximate} />
       </>
     )
-  const propias = filas.filter((f) => f.in_library)
-  const resto = filas.filter((f) => !f.in_library)
-  const { unknown: desconocidos } = biblioteca
+  const owned = rows.filter((f) => f.in_library)
+  const rest = rows.filter((f) => !f.in_library)
+  const { unknown } = library
   return (
     <>
       <section className="pila" aria-labelledby="biblioteca-steam">
@@ -30,19 +30,19 @@ export function JuegosDelEquipo({
           Tu biblioteca de Steam
         </h2>
         <p className="tenue">
-          {contar(biblioteca.total, 'juego instalado', 'juegos instalados')}, {propias.length} en el catálogo.
+          {count(library.total, 'juego instalado', 'juegos instalados')}, {owned.length} en el catálogo.
         </p>
-        {propias.length > 0 ? (
-          <MatrizDiagnostico filas={propias} orientativa={orientativa} />
+        {owned.length > 0 ? (
+          <DiagnosticMatrix rows={owned} approximate={approximate} />
         ) : (
           <p className="pequeno nota">Ninguno de tus juegos instalados está todavía en el catálogo.</p>
         )}
-        {desconocidos.length > 0 && (
-          <details className="tarjeta" open={desconocidos.length <= ABIERTA_HASTA}>
-            <summary className="panel-titulo">Juegos que todavía no conocemos ({desconocidos.length})</summary>
+        {unknown.length > 0 && (
+          <details className="tarjeta" open={unknown.length <= OPEN_UP_TO}>
+            <summary className="panel-titulo">Juegos que todavía no conocemos ({unknown.length})</summary>
             <p className="pequeno tenue">Aún no están en el catálogo, así que no sabemos cómo funcionan en Linux. Cada nombre abre su página en Steam.</p>
             <ul className="lista-biblioteca">
-              {desconocidos.map((j) => (
+              {unknown.map((j) => (
                 <li key={j.app_id}>
                   <a href={`https://store.steampowered.com/app/${j.app_id}`} target="_blank" rel="noreferrer">
                     {j.nombre}
@@ -54,7 +54,7 @@ export function JuegosDelEquipo({
         )}
       </section>
       <h2 className="titulo-seccion">Resto del catálogo</h2>
-      <MatrizDiagnostico filas={resto} orientativa={orientativa} />
+      <DiagnosticMatrix rows={rest} approximate={approximate} />
     </>
   )
 }

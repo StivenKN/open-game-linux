@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Volver } from './-return-to.ts'
+import { ReturnTo } from './-return-to.ts'
 
 describe('Volver (?volver= on /entrar and /registro)', () => {
   it.each([
@@ -10,8 +10,8 @@ describe('Volver (?volver= on /entrar and /registro)', () => {
     ['/reportes/10/solucion?tipoFallo=5', '/reportes/10/solucion?tipoFallo=5'],
     ['/revision?tipo=perfil', '/revision?tipo=perfil'],
     ['/catalogo/nuevo', '/catalogo/nuevo'],
-  ])('keeps %s', (volver, esperado) => {
-    expect(Volver({ volver })).toEqual({ volver: esperado })
+  ])('keeps %s', (input, expected) => {
+    expect(ReturnTo({ volver: input })).toEqual({ volver: expected })
   })
 
   it.each([
@@ -19,8 +19,8 @@ describe('Volver (?volver= on /entrar and /registro)', () => {
     ['/juegos/4/reportar?perfil=abc', '/juegos/4/reportar'],
     ['/revision?tipo=todo', '/revision'],
     ['/diagnostico/importar#d=abc', '/diagnostico/importar'],
-  ])('rebuilds %s from its ids as %s', (volver, esperado) => {
-    expect(Volver({ volver })).toEqual({ volver: esperado })
+  ])('rebuilds %s from its ids as %s', (input, expected) => {
+    expect(ReturnTo({ volver: input })).toEqual({ volver: expected })
   })
 
   it.each([
@@ -35,7 +35,7 @@ describe('Volver (?volver= on /entrar and /registro)', () => {
     '/',
     42,
     undefined,
-  ])('drops %o, even after router-core spreads it over the raw query', (volver) => {
-    expect({ volver, ...Volver({ volver }) }.volver).toBeUndefined()
+  ])('drops %o, even after router-core spreads it over the raw query', (input) => {
+    expect({ volver: input, ...ReturnTo({ volver: input }) }.volver).toBeUndefined()
   })
 })

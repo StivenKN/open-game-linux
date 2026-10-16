@@ -27,7 +27,7 @@ Each failure message names the fix, for example: "routes call server fns from sr
 
 | Path | Owns | Does not own |
 |---|---|---|
-| `domain/ids.ts` | Branded integer ids (including `DependencyId`), text `UserId`, `RequiredText` (trim + non-empty), `OptionalText` (blank → null), `idDeRuta` (`routes/-ids.ts`) | |
+| `domain/ids.ts` | Branded integer ids (including `DependencyId`), text `UserId`, `RequiredText` (trim + non-empty), `OptionalText` (blank → null), `routeIdParser` (`routes/-ids.ts`) | |
 | `domain/literals.ts` | `LayerFamily`, `Outcome` with `WorkingOutcome`/`FailingOutcome`, `requiresFailure`, `ProtonVariant`. Imports only `effect`, so `contributions.ts` can spread `tables.ts` fields without a cycle | |
 | `domain/compatibility.ts` | `CompatibilityStatus`, `estadoDeResultado` (explicit map), **`statusOf`** (the only result-set rule), `ApprovedTest` (row schema that proves approval), **`summarize(pruebas, ahora)`** (the one state function for ficha and catalog: last-year base set, `sin_confirmacion_reciente`, `regresiones`), `onDistribution` | Queries, the clock |
 | `domain/recency.ts` | **`isRecent`**, the only 365-day window, for OpenGame's reports (against `ahora`) and ProtonDB's (against the export date) | |
@@ -61,13 +61,13 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `fns/*.ts` | The server API surface: one `createServerFn` per operation | Anything else |
 | `routes/**` | Pages, loaders, search params, route guards (UX only) | Data rules |
 | `ui/useAction.ts` | The one form hook: the form's props (`method="post"` included), decode FormData → call fn → narrow `Reply` → field errors | |
-| `routes/-return-to.ts` | `Destino` and the only parser of `?volver=` on `/entrar` and `/registro`; `volverAqui` for route guards | |
-| `ui/format.ts` | Display formatting. Every instant prints in Bogotá time with the year (`fecha` day, `momento` day and 24-hour time) | |
+| `routes/-return-to.ts` | `Destination` and the only parser of `?volver=` on `/entrar` and `/registro`; `returnHere` for route guards | |
+| `ui/format.ts` | Display formatting. Every instant prints in Bogotá time with the year (`date` day, `dateTime` day and 24-hour time) | |
 | `ui/progress.ts` | The profile page's local step checklist (`localStorage`, SSR-safe) | |
 | `ui/vocabulary.ts` | Spanish label and tone for every domain literal, exhaustive via `satisfies Record` | |
 | `ui/diagnostics/GraphicsCardOnLinux.tsx` | The "Tu tarjeta gráfica en Linux" card: family, Linux driver, Vulkan labelled "Detectado" or "Proyectado", the Direct3D path with its launch option, and the warnings | |
 | `ui/diagnostics/MachineGames.tsx` | The diagnosis matrix, split into "Tu biblioteca de Steam", "Juegos que todavía no conocemos" and "Resto del catálogo" when the capture has a library | |
-| `ui/compatibility/*` | `EstadoJuego` (variant 1 badge, the stale note and "Dejó de funcionar"), `MatrizEntornos`, `VeredictoParaMi` (with the "En tu distribución" line), `RutaGrafica` (the hardware-only path, apart from the community state and the profile check), evaluation checklist, copy box | |
+| `ui/compatibility/*` | `GameStatus` (variant 1 badge, the stale note and "Dejó de funcionar"), `EnvironmentMatrix`, `VerdictForMe` (with the "En tu distribución" line), `GraphicsPath` (the hardware-only path, apart from the community state and the profile check), evaluation checklist, copy box | |
 | `ui/protondb/ProtonDb.tsx` | The ficha's "Otras fuentes: ProtonDB" section, the catalog card line, the ODbL attribution | |
 | `ui/diagnostics/Distributions.tsx` | The "Distribuciones" section: candidates grouped by verdict with their reasons | |
 | `detector/opengame-detect.sh` | The productionized prototype script: payload v1 + `gpu_pci_id` + `biblioteca_steam`, with `__OPENGAME_URL__` and `__OPENGAME_MAX_JUEGOS__` filled in by the server route | |

@@ -1,45 +1,45 @@
 import { Option, Schema } from 'effect'
 import { useSyncExternalStore } from 'react'
 
-const Hechos = Schema.fromJsonString(Schema.Array(Schema.Int))
+const DoneSteps = Schema.fromJsonString(Schema.Array(Schema.Int))
 
 // The storage event fires only in other tabs, so this tab's own writes notify through this set.
-const avisos = new Set<() => void>()
+const listeners = new Set<() => void>()
 
-const suscribir = (aviso: () => void) => {
-  avisos.add(aviso)
-  window.addEventListener('storage', aviso)
+const subscribe = (listener: () => void) => {
+  listeners.add(listener)
+  window.addEventListener('storage', listener)
   return () => {
-    avisos.delete(aviso)
-    window.removeEventListener('storage', aviso)
+    listeners.delete(listener)
+    window.removeEventListener('storage', listener)
   }
 }
 
 // localStorage throws when the browser blocks storage; the checklist then stays unchecked.
-const leer = (clave: string) => {
+const read = (key: string) => {
   try {
-    return localStorage.getItem(clave)
+    return localStorage.getItem(key)
   } catch {
     return null
   }
 }
 
-const escribir = (clave: string, hechos: ReadonlyArray<number>) => {
+const write = (key: string, done: ReadonlyArray<number>) => {
   try {
-    if (hechos.length === 0) localStorage.removeItem(clave)
-    else localStorage.setItem(clave, JSON.stringify(hechos))
+    if (done.length === 0) localStorage.removeItem(key)
+    else localStorage.setItem(key, JSON.stringify(done))
   } catch {
     return
   }
-  for (const aviso of avisos) aviso()
+  for (const listener of listeners) listener()
 }
 
-export const useProgreso = (clave: string) => {
-  const crudo = useSyncExternalStore(suscribir, () => leer(clave), () => null)
-  const hechos: ReadonlyArray<number> = Option.getOrElse(Schema.decodeUnknownOption(Hechos)(crudo), () => [])
+export const useProgress = (key: string) => {
+  const raw = useSyncExternalStore(subscribe, () => read(key), () => null)
+  const done: ReadonlyArray<number> = Option.getOrElse(Schema.decodeUnknownOption(DoneSteps)(raw), () => [])
   return {
-    hechos,
-    alternar: (orden: number) => escribir(clave, hechos.includes(orden) ? hechos.filter((o) => o !== orden) : [...hechos, orden]),
-    reiniciar: () => escribir(clave, []),
+    done,
+    toggle: (step: number) => write(key, done.includes(step) ? done.filter((o) => o !== step) : [...done, step]),
+    reset: () => write(key, []),
   }
 }

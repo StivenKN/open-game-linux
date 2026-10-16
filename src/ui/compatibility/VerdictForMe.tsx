@@ -2,22 +2,22 @@ import type { ReactNode } from 'react'
 import type { CompatibilitySummary } from '../../domain/compatibility.ts'
 import type { X86Level } from '../../domain/platform.ts'
 import type { GamePath } from '../../domain/graphics-path.ts'
-import { contar, fecha } from '../format.ts'
-import { Insignia } from '../Badge.tsx'
-import { estadoCompatibilidad } from '../vocabulary.ts'
-import { ChecklistEvaluacion, type PerfilEvaluado } from './EvaluationChecklist.tsx'
-import { RutaGrafica } from './GraphicsPath.tsx'
+import { count, date } from '../format.ts'
+import { Badge } from '../Badge.tsx'
+import { compatibilityStatus } from '../vocabulary.ts'
+import { EvaluationChecklist, type EvaluatedProfile } from './EvaluationChecklist.tsx'
+import { GraphicsPath } from './GraphicsPath.tsx'
 
 export type Personal = {
   readonly on_my_distribution: { readonly name: string; readonly summary: CompatibilitySummary } | null
-  readonly profile: PerfilEvaluado | null
+  readonly profile: EvaluatedProfile | null
   readonly path: GamePath
   readonly nivel_x86_min: X86Level | null
   readonly approximate: boolean
 }
 
 /** The dashed "Tu equipo" panel: everything in it is computed from the visitor's hardware. */
-export function PanelEquipo({ children }: { children: ReactNode }) {
+export function MachinePanel({ children }: { children: ReactNode }) {
   return (
     <section className="panel-equipo" aria-label="Tu equipo">
       <p className="panel-titulo">Tu equipo</p>
@@ -37,10 +37,10 @@ export function PanelEquipo({ children }: { children: ReactNode }) {
 }
 
 /** The game page's panel. `children` goes under the evaluation, e.g. which diagnosis it compared. */
-export function VeredictoParaMi({ personal, children }: { personal: Personal | null; children?: ReactNode }) {
-  const mia = personal?.on_my_distribution
+export function VerdictForMe({ personal, children }: { personal: Personal | null; children?: ReactNode }) {
+  const mine = personal?.on_my_distribution
   return (
-    <PanelEquipo>
+    <MachinePanel>
       {personal === null ? (
         <p className="pequeno tenue">
           Sin diagnóstico. Ejecuta el detector para ver si tu tarjeta gráfica tiene una ruta para este juego, la evidencia
@@ -48,24 +48,24 @@ export function VeredictoParaMi({ personal, children }: { personal: Personal | n
         </p>
       ) : (
         <>
-          {mia && (
+          {mine && (
             <p className="fila pequeno">
-              <span>En tu distribución, {mia.name}:</span>
-              <Insignia etiqueta={estadoCompatibilidad[mia.summary.status]} />
+              <span>En tu distribución, {mine.name}:</span>
+              <Badge label={compatibilityStatus[mine.summary.status]} />
               <span className="tenue">
-                {mia.summary.last_tested
-                  ? `${contar(mia.summary.test_count, 'reporte aprobado', 'reportes aprobados')} · última prueba ${fecha(mia.summary.last_tested)}${mia.summary.no_recent_confirmation ? ' · sin confirmación en el último año' : ''}`
-                  : `nadie ha aprobado una prueba en ${mia.name}`}
+                {mine.summary.last_tested
+                  ? `${count(mine.summary.test_count, 'reporte aprobado', 'reportes aprobados')} · última prueba ${date(mine.summary.last_tested)}${mine.summary.no_recent_confirmation ? ' · sin confirmación en el último año' : ''}`
+                  : `nadie ha aprobado una prueba en ${mine.name}`}
               </span>
             </p>
           )}
           <hr />
-          <RutaGrafica ruta={personal.path} minimo={personal.nivel_x86_min} orientativa={personal.approximate} />
+          <GraphicsPath path={personal.path} minX86Level={personal.nivel_x86_min} approximate={personal.approximate} />
           <hr />
-          <ChecklistEvaluacion perfil={personal.profile} />
+          <EvaluationChecklist profile={personal.profile} />
         </>
       )}
       {children}
-    </PanelEquipo>
+    </MachinePanel>
   )
 }

@@ -3,20 +3,20 @@ import { DiagnosticInput } from '../../domain/contributions.ts'
 import { VulkanSupport } from '../../domain/evaluation.ts'
 import { Diagnostic, Distribution } from '../../domain/tables.ts'
 
-export type Entrada = typeof DiagnosticInput.Encoded
+export type Input = typeof DiagnosticInput.Encoded
 
-const CLAVE = 'opengame:diagnostico-pendiente'
-const Guardada = Schema.fromJsonString(Schema.toEncoded(DiagnosticInput))
+const STORAGE_KEY = 'opengame:diagnostico-pendiente'
+const Stored = Schema.fromJsonString(Schema.toEncoded(DiagnosticInput))
 
-export const guardarPendiente = (entrada: Entrada) => sessionStorage.setItem(CLAVE, JSON.stringify(entrada))
+export const savePending = (input: Input) => sessionStorage.setItem(STORAGE_KEY, JSON.stringify(input))
 
-export const olvidarPendiente = () => sessionStorage.removeItem(CLAVE)
+export const forgetPending = () => sessionStorage.removeItem(STORAGE_KEY)
 
-export const leerPendiente = (): Option.Option<Entrada> => Schema.decodeUnknownOption(Guardada)(sessionStorage.getItem(CLAVE))
+export const readPending = (): Option.Option<Input> => Schema.decodeUnknownOption(Stored)(sessionStorage.getItem(STORAGE_KEY))
 
-export const Pegado = Schema.Struct({ texto: Schema.String.pipe(Schema.check(Schema.isNonEmpty({ message: 'Pega la salida del detector.' }))) })
+export const Pasted = Schema.Struct({ texto: Schema.String.pipe(Schema.check(Schema.isNonEmpty({ message: 'Pega la salida del detector.' }))) })
 
-const comunes = {
+const common = {
   version_sistema: Diagnostic.fields.version_sistema,
   arquitectura: Diagnostic.fields.arquitectura,
   cpu_modelo: Diagnostic.fields.cpu_modelo,
@@ -25,18 +25,18 @@ const comunes = {
   vram_mb: Diagnostic.fields.vram_mb,
 }
 
-export const FormularioManual = Schema.Union([
+export const ManualForm = Schema.Union([
   Schema.Struct({
-    ...comunes,
+    ...common,
     sistema: Schema.Literal('Linux'),
     distribucion: Schema.Struct({ nombre: Distribution.fields.nombre, version: Distribution.fields.version }),
     soporte_vulkan: VulkanSupport,
     version_vulkan: Diagnostic.fields.version_vulkan,
   }),
-  Schema.Struct({ ...comunes, sistema: Schema.Literal('Windows') }),
+  Schema.Struct({ ...common, sistema: Schema.Literal('Windows') }),
 ])
 
-export const entradaManual = (f: typeof FormularioManual.Encoded): Entrada => {
+export const manualInput = (f: typeof ManualForm.Encoded): Input => {
   const capturado_en = new Date().toISOString()
   return {
     _tag: 'manual',

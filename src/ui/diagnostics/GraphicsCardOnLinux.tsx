@@ -1,17 +1,17 @@
 import { vulkanRangeText, type MachineVulkan } from '../../domain/evaluation.ts'
 import type { MachineOnLinux, PciId } from '../../domain/gpu.ts'
-import { CajaCopiar } from '../compatibility/CopyBox.tsx'
-import { avisoGpu, controladorLinux, familiaGpu, origenVulkan, rutaD3d } from '../vocabulary.ts'
+import { CopyBox } from '../compatibility/CopyBox.tsx'
+import { gpuWarning, linuxDriver, gpuFamily, vulkanOrigin, d3dPath } from '../vocabulary.ts'
 
-const vulkanTexto = (vulkan: MachineVulkan): string => {
+const vulkanText = (vulkan: MachineVulkan): string => {
   if (vulkan.support === 'desconocido') return 'Desconocido'
-  const valor = vulkan.support === 'no' ? 'sin soporte' : vulkan.range === null ? 'compatible' : vulkanRangeText(vulkan.range)
-  return `${origenVulkan[vulkan.origin]}: ${valor}`
+  const value = vulkan.support === 'no' ? 'sin soporte' : vulkan.range === null ? 'compatible' : vulkanRangeText(vulkan.range)
+  return `${vulkanOrigin[vulkan.origin]}: ${value}`
 }
 
-export function TarjetaGraficaEnLinux({ equipo, pci }: { equipo: MachineOnLinux; pci: PciId | null }) {
-  const { gpu, paths: ruta, vulkan } = equipo
-  const opcion = ruta === null ? null : rutaD3d[ruta.d3d9_11].opcion
+export function GraphicsCardOnLinux({ machine, pci }: { machine: MachineOnLinux; pci: PciId | null }) {
+  const { gpu, paths, vulkan } = machine
+  const option = paths === null ? null : d3dPath[paths.d3d9_11].option
   return (
     <section className="panel-equipo" aria-label="Tu tarjeta gráfica en Linux">
       <p className="panel-titulo">Tu tarjeta gráfica en Linux</p>
@@ -28,13 +28,13 @@ export function TarjetaGraficaEnLinux({ equipo, pci }: { equipo: MachineOnLinux;
             <div>
               <dt className="rotulo">Generación</dt>
               <dd>
-                <strong>{familiaGpu[gpu.family]}</strong>
+                <strong>{gpuFamily[gpu.family]}</strong>
               </dd>
             </div>
             <div>
               <dt className="rotulo">Controlador en Linux</dt>
               <dd>
-                <strong>{controladorLinux[gpu.driver]}</strong>
+                <strong>{linuxDriver[gpu.driver]}</strong>
               </dd>
             </div>
           </>
@@ -42,33 +42,33 @@ export function TarjetaGraficaEnLinux({ equipo, pci }: { equipo: MachineOnLinux;
         <div>
           <dt className="rotulo">Vulkan</dt>
           <dd>
-            <strong>{vulkanTexto(vulkan)}</strong>
+            <strong>{vulkanText(vulkan)}</strong>
           </dd>
         </div>
-        {ruta !== null && (
+        {paths !== null && (
           <>
             <div>
               <dt className="rotulo">DirectX 9 a 11</dt>
               <dd>
-                <strong>{rutaD3d[ruta.d3d9_11].texto}</strong>
-                {rutaD3d[ruta.d3d9_11].detalle && <span className="pequeno tenue">{rutaD3d[ruta.d3d9_11].detalle}</span>}
+                <strong>{d3dPath[paths.d3d9_11].text}</strong>
+                {d3dPath[paths.d3d9_11].detail && <span className="pequeno tenue">{d3dPath[paths.d3d9_11].detail}</span>}
               </dd>
             </div>
             <div>
               <dt className="rotulo">DirectX 12</dt>
               <dd>
-                <strong>{ruta.d3d12 ? 'Sí, con VKD3D-Proton' : 'No'}</strong>
-                {!ruta.d3d12 && <span className="pequeno tenue">Necesita Vulkan 1.3</span>}
+                <strong>{paths.d3d12 ? 'Sí, con VKD3D-Proton' : 'No'}</strong>
+                {!paths.d3d12 && <span className="pequeno tenue">Necesita Vulkan 1.3</span>}
               </dd>
             </div>
           </>
         )}
       </dl>
-      {opcion !== null && <CajaCopiar etiqueta="Opción de lanzamiento en Steam" texto={opcion} />}
+      {option !== null && <CopyBox label="Opción de lanzamiento en Steam" text={option} />}
       {gpu !== null &&
         gpu.warnings.map((a) => (
           <p key={a} className="pequeno nota" data-tono="amarillo">
-            {avisoGpu[a]}
+            {gpuWarning[a]}
           </p>
         ))}
       {vulkan.support !== 'desconocido' && vulkan.origin === 'proyectado' && (

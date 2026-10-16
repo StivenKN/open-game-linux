@@ -1,13 +1,13 @@
 // Generated cover art. Everything is seeded from the title, so a game gets the same cover on the
 // catalog, the hero stack and its own page, and SSR and the browser draw the same shapes.
 
-export const motivos = ['sol', 'franjas', 'picos', 'anillos', 'bloques'] as const
-export type Motivo = (typeof motivos)[number]
+export const motifs = ['sol', 'franjas', 'picos', 'anillos', 'bloques'] as const
+export type Motif = (typeof motifs)[number]
 
 /** FNV-1a over the characters of the text. */
-export const semilla = (texto: string) => {
+export const seed = (text: string) => {
   let h = 2166136261
-  for (const c of texto) {
+  for (const c of text) {
     h ^= c.charCodeAt(0)
     h = Math.imul(h, 16777619)
   }
@@ -15,8 +15,8 @@ export const semilla = (texto: string) => {
 }
 
 /** mulberry32: a tiny PRNG returning floats in [0, 1). */
-export const azar = (inicial: number) => {
-  let a = inicial
+export const seededRandom = (initial: number) => {
+  let a = initial
   return () => {
     a = (a + 0x6d2b79f5) | 0
     let t = Math.imul(a ^ (a >>> 15), 1 | a)
@@ -25,20 +25,20 @@ export const azar = (inicial: number) => {
   }
 }
 
-export const disenoPortada = (titulo: string) => {
-  const r = azar(semilla(titulo))
-  const matiz = Math.floor(r() * 360)
-  const motivo = motivos[Math.floor(r() * motivos.length)]
-  const t = azar(semilla(`${titulo}tipo`))
-  const estrecho = t() < 0.5
-  const arriba = t() < 0.4
-  const largo = Math.max(...titulo.split(/[\s-]/).map((p) => p.length))
-  const tamano = estrecho ? Math.min(60, 180 / (largo * 0.5)) : Math.min(34, 180 / (largo * 0.8))
+export const coverDesign = (title: string) => {
+  const r = seededRandom(seed(title))
+  const hue = Math.floor(r() * 360)
+  const motif = motifs[Math.floor(r() * motifs.length)]
+  const t = seededRandom(seed(`${title}tipo`))
+  const narrow = t() < 0.5
+  const atTop = t() < 0.4
+  const maxLength = Math.max(...title.split(/[\s-]/).map((p) => p.length))
+  const size = narrow ? Math.min(60, 180 / (maxLength * 0.5)) : Math.min(34, 180 / (maxLength * 0.8))
   return {
-    matiz,
-    motivo,
+    hue,
+    motif,
     // Font size in cqi of the cover width, so the longest word fits whatever size the cover renders at.
-    rotulo: { estrecho, arriba, tamano: Math.round((tamano / 2.2) * 100) / 100 },
-    trazo: semilla(`${titulo}${motivo}`),
+    caption: { narrow, atTop, size: Math.round((size / 2.2) * 100) / 100 },
+    strokeSeed: seed(`${title}${motif}`),
   }
 }

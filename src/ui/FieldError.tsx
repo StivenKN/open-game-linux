@@ -1,13 +1,13 @@
-import type { Errores } from './useAction.ts'
+import type { FieldErrors } from './useAction.ts'
 
-export const idError = (campo: string) => `error-${campo}`
+export const errorId = (field: string) => `error-${field}`
 
-export function ErrorCampo({ errores, campo }: { errores: Errores; campo: string }) {
-  const mensaje = errores[campo]
-  if (mensaje === undefined) return null
+export function FieldError({ errors, field }: { errors: FieldErrors; field: string }) {
+  const message = errors[field]
+  if (message === undefined) return null
   return (
-    <p className="error-campo" id={idError(campo)} role={campo === 'formulario' ? 'alert' : undefined}>
-      {mensaje}
+    <p className="error-campo" id={errorId(field)} role={field === 'formulario' ? 'alert' : undefined}>
+      {message}
     </p>
   )
 }
