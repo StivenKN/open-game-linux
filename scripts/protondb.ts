@@ -5,24 +5,24 @@ import { Effect } from 'effect'
 import { importProtonDb, importSummary } from '../src/server/external/protondb.ts'
 import { PgLive } from '../src/server/runtime.ts'
 
-const ruta = process.argv[2]
-if (ruta === undefined) {
+const path = process.argv[2]
+if (path === undefined) {
   console.error('Usage: pnpm db:protondb <reports_piiremoved.json | ->')
   process.exit(2)
 }
 
 // Opened on first read, inside the import, so a missing file fails the import instead of crashing Node.
-async function* trozos(origen: string): AsyncGenerator<string> {
-  yield* origen === '-' ? process.stdin.setEncoding('utf8') : createReadStream(origen, { encoding: 'utf8' })
+async function* chunks(source: string): AsyncGenerator<string> {
+  yield* source === '-' ? process.stdin.setEncoding('utf8') : createReadStream(source, { encoding: 'utf8' })
 }
 
-const programa = importProtonDb(trozos(ruta)).pipe(
+const program = importProtonDb(chunks(path)).pipe(
   Effect.catchTag('ExportacionInvalida', (e) => Effect.die(`ProtonDB: ${e.reason}. Nothing changed.`)),
   Effect.flatMap((r) => Effect.log(importSummary(r))),
   Effect.provide(PgLive),
 )
 
-Effect.runPromise(programa).then(
+Effect.runPromise(program).then(
   () => process.exit(0),
   (e: unknown) => {
     console.error(e)

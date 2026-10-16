@@ -4,17 +4,17 @@ import { Role } from '../src/domain/review.ts'
 import { assignRole } from '../src/server/auth.ts'
 import { PgLive } from '../src/server/runtime.ts'
 
-const [correo = '', rol] = process.argv.slice(2)
+const [email = '', role] = process.argv.slice(2)
 
-const programa = Schema.decodeUnknownEffect(Role)(rol).pipe(
+const program = Schema.decodeUnknownEffect(Role)(role).pipe(
   Effect.catchTag('SchemaError', () => Effect.die(`Usage: pnpm set-role <email> <${Role.literals.join('|')}>`)),
-  Effect.flatMap((r) => assignRole(correo, r)),
-  Effect.catchTag('NoEncontrado', () => Effect.die(`No account has the email ${correo}`)),
+  Effect.flatMap((r) => assignRole(email, r)),
+  Effect.catchTag('NoEncontrado', () => Effect.die(`No account has the email ${email}`)),
   Effect.flatMap((r) => Effect.log(r.changed ? `${r.alias} is now ${r.role}` : `${r.alias} was already ${r.role}; nothing to change`)),
   Effect.provide(PgLive),
 )
 
-Effect.runPromise(programa).then(
+Effect.runPromise(program).then(
   () => process.exit(0),
   (e: unknown) => {
     console.error(e)

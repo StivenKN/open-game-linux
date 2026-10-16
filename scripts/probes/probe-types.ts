@@ -7,18 +7,18 @@ import { SqlClient } from 'effect/sql'
 const url = process.env.DATABASE_URL_TEST
 if (url === undefined) throw new Error('DATABASE_URL_TEST is not set')
 
-const describir = (v: unknown): string =>
+const describe = (v: unknown): string =>
   v === null
     ? 'null'
     : Array.isArray(v)
-      ? `Array [${v.map(describir).join(', ')}]`
+      ? `Array [${v.map(describe).join(', ')}]`
       : v instanceof Date
         ? `Date ${v.toISOString()}`
         : `${typeof v} ${JSON.stringify(v, (_, x: unknown) => (typeof x === 'bigint' ? `${x}n` : x))}`
 
-const programa = Effect.gen(function* () {
+const program = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
-  const [fila] = yield* sql`
+  const [row] = yield* sql`
     SELECT 42::integer                                AS integer,
            1234.5::numeric(7,2)                       AS numeric_7_2,
            NULL::numeric(7,2)                         AS numeric_null,
@@ -30,8 +30,8 @@ const programa = Effect.gen(function* () {
            (SELECT count(*) FROM pg_database)         AS count_star,
            9007199254740993::bigint                   AS bigint,
            current_setting('TimeZone')                AS session_zone`
-  for (const [columna, valor] of Object.entries(fila ?? {})) console.log(`${columna.padEnd(18)} ${describir(valor)}`)
+  for (const [column, value] of Object.entries(row ?? {})) console.log(`${column.padEnd(18)} ${describe(value)}`)
   console.log(`process TZ         ${Intl.DateTimeFormat().resolvedOptions().timeZone}`)
 })
 
-await Effect.runPromise(programa.pipe(Effect.provide(PgClient.layer({ url: Redacted.make(url) })), Effect.scoped))
+await Effect.runPromise(program.pipe(Effect.provide(PgClient.layer({ url: Redacted.make(url) })), Effect.scoped))

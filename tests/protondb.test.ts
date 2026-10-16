@@ -46,14 +46,14 @@ const scenario = Effect.gen(function* () {
     idOf(sql`INSERT INTO ${sql(table)} ${sql.insert(row)} RETURNING id`)
   const steam = yield* insert('launcher', { name: 'Steam' })
   const epic = yield* insert('launcher', { name: 'Epic Games Store' })
-  const uno = yield* insert('game', { title: 'Juego Uno', description: 'd' })
-  const dos = yield* insert('game', { title: 'Juego Dos', description: 'd' })
-  const tres = yield* insert('game', { title: 'Juego Tres', description: 'd' })
-  const unoSteam = yield* insert('game_edition', { game_id: uno, launcher_id: steam, external_id: '1000' })
-  yield* insert('game_edition', { game_id: uno, launcher_id: epic, external_id: '2000' })
-  const dosSteam = yield* insert('game_edition', { game_id: dos, launcher_id: steam, external_id: '2000' })
-  yield* insert('game_edition', { game_id: tres, launcher_id: steam, external_id: null })
-  return { uno: GameId.make(uno), tres: GameId.make(tres), unoSteam: EditionId.make(unoSteam), dosSteam: EditionId.make(dosSteam) }
+  const one = yield* insert('game', { title: 'Juego Uno', description: 'd' })
+  const two = yield* insert('game', { title: 'Juego Dos', description: 'd' })
+  const three = yield* insert('game', { title: 'Juego Tres', description: 'd' })
+  const oneSteam = yield* insert('game_edition', { game_id: one, launcher_id: steam, external_id: '1000' })
+  yield* insert('game_edition', { game_id: one, launcher_id: epic, external_id: '2000' })
+  const twoSteam = yield* insert('game_edition', { game_id: two, launcher_id: steam, external_id: '2000' })
+  yield* insert('game_edition', { game_id: three, launcher_id: steam, external_id: null })
+  return { one: GameId.make(one), three: GameId.make(three), oneSteam: EditionId.make(oneSteam), twoSteam: EditionId.make(twoSteam) }
 })
 
 const saved = Effect.flatMap(SqlClient.SqlClient, (sql) => rows(ProtonDbSummary, sql`SELECT * FROM protondb_summary ORDER BY edition_id`))
@@ -73,7 +73,7 @@ layer(PgTest)('importarProtonDb', (it) => {
           expect(yield* importText(october)).toEqual({ read: 9, discarded: 2, matched: 6, saved: 2, exported_at: exportedAt })
           expect(yield* saved).toEqual([
             {
-              edition_id: e.unoSteam,
+              edition_id: e.oneSteam,
               exported_at: exportedAt,
               total_reports: 4,
               recent: 3,
@@ -86,7 +86,7 @@ layer(PgTest)('importarProtonDb', (it) => {
               layer_reports: 2,
             },
             {
-              edition_id: e.dosSteam,
+              edition_id: e.twoSteam,
               exported_at: exportedAt,
               total_reports: 1,
               recent: 1,
@@ -124,7 +124,7 @@ layer(PgTest)('importarProtonDb', (it) => {
           yield* importText(october)
           const november = exportOf(entry({ appId: '2000', date: '2026-11-01T00:00:00Z', works: false }))
           yield* importText(november).pipe(onDay(new Date('2026-11-15T00:00:00Z')))
-          expect((yield* saved).map((r) => [r.edition_id, r.total_reports, r.recent_working, r.layer_variant])).toEqual([[e.dosSteam, 1, 0, null]])
+          expect((yield* saved).map((r) => [r.edition_id, r.total_reports, r.recent_working, r.layer_variant])).toEqual([[e.twoSteam, 1, 0, null]])
         }),
       ).pipe(onDay(today)),
     )
@@ -173,12 +173,12 @@ layer(PgTest)('importarProtonDb', (it) => {
             ['Juego Tres', 'sin_evidencia', null],
             ['Juego Uno', 'sin_evidencia', { recent: 3, recent_working: 2, total_reports: 4 }],
           ])
-          const page = yield* Effect.provideService(gamePage(e.uno), Visitor, guest)
+          const page = yield* Effect.provideService(gamePage(e.one), Visitor, guest)
           expect(page.summary.status).toBe('sin_evidencia')
           expect(page.protondb).toEqual({
-            game_id: e.uno,
+            game_id: e.one,
             app_id: '1000',
-            edition_id: e.unoSteam,
+            edition_id: e.oneSteam,
             exported_at: exportedAt,
             total_reports: 4,
             recent: 3,
@@ -190,7 +190,7 @@ layer(PgTest)('importarProtonDb', (it) => {
             layer_version: 'GE-Proton10-34',
             layer_reports: 2,
           })
-          expect((yield* Effect.provideService(gamePage(e.tres), Visitor, guest)).protondb).toBeNull()
+          expect((yield* Effect.provideService(gamePage(e.three), Visitor, guest)).protondb).toBeNull()
         }),
       ).pipe(onDay(today)),
     )

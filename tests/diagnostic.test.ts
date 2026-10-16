@@ -89,7 +89,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
     Effect.gen(function* () {
       const before = yield* count(f, 'diagnostic')
       for (const machine of [existingMachine(f.machine), existingMachine(999999)]) {
-        const failure = yield* Effect.flip(save({ machine, input: payload() }).pipe(asUser(f.revisor)))
+        const failure = yield* Effect.flip(save({ machine, input: payload() }).pipe(asUser(f.reviewer)))
         expect(failure).toMatchObject({ _tag: 'ReglaIncumplida', rule: 'equipo_ajeno' })
       }
       expect(yield* count(f, 'diagnostic')).toBe(before)
@@ -97,7 +97,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
 
   it.effect('un payload de Arch guarda la versión rolling y reutiliza su distribución', withSeed((f) =>
     Effect.gen(function* () {
-      const arch = (capturado_en: string) => payload({ capturado_en, distribucion: { nombre: 'Arch Linux', version: '20261004.0.606936' } })
+      const arch = (capturedAt: string) => payload({ capturado_en: capturedAt, distribucion: { nombre: 'Arch Linux', version: '20261004.0.606936' } })
       const { id } = yield* save({ machine: newMachine('Arch'), input: arch('2026-10-08T10:00:00Z') }).pipe(asUser(f.author))
       yield* save({ machine: newMachine('Arch'), input: arch('2026-10-09T10:00:00Z') }).pipe(asUser(f.author))
       const rows = yield* f.sql`SELECT dist.version FROM diagnostic d JOIN distribution dist ON dist.id = d.distribution_id WHERE d.id = ${id}`
@@ -130,7 +130,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
   const addProfiles = (f: Seed) =>
     Effect.gen(function* () {
       yield* f.sql`UPDATE profile SET ram_min_mb = 32768, vram_min_mb = 2048 WHERE id = ${f.profile}`
-      yield* f.sql`UPDATE profile SET ${f.sql.update({ review_status: 'aprobado', reviewer_id: f.revisor, reviewed_at: new Date(), review_reason: 'probado', review_evidence: 'reporte' })} WHERE id = ${f.profile}`
+      yield* f.sql`UPDATE profile SET ${f.sql.update({ review_status: 'aprobado', reviewer_id: f.reviewer, reviewed_at: new Date(), review_reason: 'probado', review_evidence: 'reporte' })} WHERE id = ${f.profile}`
       yield* f.sql`INSERT INTO profile (edition_id, distribution_id, layer_version_id, author_id, architecture, revision, title, ram_min_mb)
                    VALUES (${f.ed2}, ${f.dist}, ${f.layer}, ${f.author}, 'x86_64', 1, 'pendiente', 1024)`
     })
@@ -210,7 +210,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
           { app_id: 292030, nombre: 'The Witcher 3: Wild Hunt' },
         ],
       })
-      expect(yield* Effect.flip(myDiagnostic(id).pipe(asUser(f.revisor)))).toMatchObject({ _tag: 'NoEncontrado' })
+      expect(yield* Effect.flip(myDiagnostic(id).pipe(asUser(f.reviewer)))).toMatchObject({ _tag: 'NoEncontrado' })
     })))
 
   it.effect('sin guardar la biblioteca, el diagnóstico guardado no la muestra', withSeed((f) =>
@@ -238,7 +238,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       const own = yield* myDiagnostic(id).pipe(asUser(f.author))
       expect(own).toMatchObject({ alias: 'portátil', capture: { operating_system: 'Linux', distribution: { name: 'Linux Mint', version: '22' }, ram_mb: 8192 } })
       expect(own.matrix.find((m) => m.title === 'Juego')?.profile?.evaluation.verdict).toBe('no_cumple')
-      expect(yield* Effect.flip(myDiagnostic(id).pipe(asUser(f.revisor)))).toMatchObject({ _tag: 'NoEncontrado' })
+      expect(yield* Effect.flip(myDiagnostic(id).pipe(asUser(f.reviewer)))).toMatchObject({ _tag: 'NoEncontrado' })
       expect(yield* myMachines().pipe(asGuest)).toEqual([])
     })))
 })

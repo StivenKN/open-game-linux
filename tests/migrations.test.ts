@@ -125,7 +125,7 @@ layer(PgTest)('7_english_names', (it) => {
     inRollback(
       Effect.gen(function* () {
         const f = yield* seed
-        yield* f.sql`UPDATE report SET review_status = 'aprobado', reviewer_id = ${f.revisor}, reviewed_at = now(), review_reason = 'probado', review_evidence = 'captura' WHERE id = ${f.rep}`
+        yield* f.sql`UPDATE report SET review_status = 'aprobado', reviewer_id = ${f.reviewer}, reviewed_at = now(), review_reason = 'probado', review_evidence = 'captura' WHERE id = ${f.rep}`
         const failure = yield* Effect.flip(rejected(f, f.sql`UPDATE report SET observations = 'otra cosa' WHERE id = ${f.rep}`))
         expect(failure).toEqual(new RuleViolated({ rule: 'contenido_inmutable' }))
         expect(yield* f.sql`SELECT observations FROM report WHERE id = ${f.rep}`).toEqual([{ observations: 'pantalla negra' }])
@@ -134,7 +134,7 @@ layer(PgTest)('7_english_names', (it) => {
 
   const offenses = {
     report_failure_pkey: (f) => {
-      const failure = f.sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${f.rep}, ${f.tipoFallo}, 'pantalla negra')`
+      const failure = f.sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${f.rep}, ${f.failureType}, 'pantalla negra')`
       return Effect.andThen(failure, failure)
     },
     layer_version_exact_version: (f) => f.sql`INSERT INTO layer_version (family, variant, version) VALUES ('Wine', 'Staging', 'Latest')`,

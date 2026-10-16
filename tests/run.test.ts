@@ -55,7 +55,7 @@ describe('runRead', () => {
 
   it('un revisor pasa y recibe su propio usuario', async () => {
     const d = await inRequest(await sessionCookie('revisor'), () => runRead(requireReviewer))
-    expect(d.ok && { alias: d.value.alias, rol: d.value.role }).toEqual({ alias: 'demo_revisor', rol: 'revisor' })
+    expect(d.ok && { alias: d.value.alias, role: d.value.role }).toEqual({ alias: 'demo_revisor', role: 'revisor' })
   })
 
   it('una cuenta desactivada cuenta como visitante sin sesión', async () => {

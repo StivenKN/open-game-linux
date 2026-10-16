@@ -28,9 +28,9 @@ export const seed = Effect.gen(function* () {
   const rep = yield* idOf(sql`
     INSERT INTO report (edition_id, diagnostic_id, layer_version_id, game_version, tested_at, outcome, observations)
     VALUES (${ed}, ${diag}, ${layerVersion}, '1.0', '2026-10-02T10:00:00Z', 'no_inicia', 'pantalla negra') RETURNING id`)
-  const tipoFallo = yield* idOf(sql`INSERT INTO failure_type (code, description) VALUES ('otro', 'Causa no identificada') RETURNING id`)
+  const failureType = yield* idOf(sql`INSERT INTO failure_type (code, description) VALUES ('otro', 'Causa no identificada') RETURNING id`)
   const dependency = yield* idOf(sql`INSERT INTO dependency (name, package_manager, description) VALUES ('vcrun2019', 'winetricks', 'd') RETURNING id`)
-  return { sql, author: 'autor', revisor: 'revisor', launcher, ed, ed2, dist, layer: layerVersion, machine, diag, profile, rep, tipoFallo, dependency }
+  return { sql, author: 'autor', reviewer: 'revisor', launcher, ed, ed2, dist, layer: layerVersion, machine, diag, profile, rep, failureType, dependency }
 })
 
 export type Seed = Effect.Success<typeof seed>

@@ -1,26 +1,26 @@
 import type { GpuFamily, GpuVendor } from '../src/domain/gpu.ts'
 import { encodeSpans } from '../src/server/gpu/ranges.ts'
 
-export type Dispositivo = { readonly vendor: GpuVendor; readonly device: string; readonly familia: GpuFamily }
+export type Device = { readonly vendor: GpuVendor; readonly device: string; readonly family: GpuFamily }
 
 const hex4 = (s: string) => s.toLowerCase().padStart(4, '0')
 
-export const chipsetsMesa = (texto: string, fuente: string): ReadonlyArray<{ readonly device: string; readonly token: string }> =>
-  texto.split('\n').flatMap((linea, i) => {
-    if (linea.trim() === '') return []
-    const m = /^CHIPSET\(0x([0-9a-fA-F]{1,4}),\s*([A-Za-z0-9_]+)\s*,/.exec(linea)
-    if (m?.[1] === undefined || m[2] === undefined) throw new Error(`${fuente}:${i + 1}: unreadable line «${linea}»`)
+export const mesaChipsets = (text: string, source: string): ReadonlyArray<{ readonly device: string; readonly token: string }> =>
+  text.split('\n').flatMap((line, i) => {
+    if (line.trim() === '') return []
+    const m = /^CHIPSET\(0x([0-9a-fA-F]{1,4}),\s*([A-Za-z0-9_]+)\s*,/.exec(line)
+    if (m?.[1] === undefined || m[2] === undefined) throw new Error(`${source}:${i + 1}: unreadable line «${line}»`)
     return [{ device: hex4(m[1]), token: m[2] }]
   })
 
-const reglas = (fuente: string, token: string, tabla: ReadonlyArray<readonly [RegExp, GpuFamily]>, otro?: GpuFamily): GpuFamily => {
-  const familia = tabla.find(([re]) => re.test(token))?.[1] ?? otro
-  if (familia === undefined) throw new Error(`${fuente}: unknown token «${token}»; add its family to scripts/gpu-sources.ts`)
-  return familia
+const byRules = (source: string, token: string, rules: ReadonlyArray<readonly [RegExp, GpuFamily]>, fallback?: GpuFamily): GpuFamily => {
+  const family = rules.find(([re]) => re.test(token))?.[1] ?? fallback
+  if (family === undefined) throw new Error(`${source}: unknown token «${token}»; add its family to scripts/gpu-sources.ts`)
+  return family
 }
 
-export const familiaCrocus = (token: string): GpuFamily =>
-  reglas('crocus', token, [
+export const crocusFamily = (token: string): GpuFamily =>
+  byRules('crocus', token, [
     [/^(i965|g4x|ilk)$/, 'intel_gen5_o_anterior'],
     [/^snb_/, 'intel_gen6'],
     [/^(ivb_|byt$)/, 'intel_gen7'],
@@ -29,10 +29,10 @@ export const familiaCrocus = (token: string): GpuFamily =>
   ])
 
 /** iris starts at Broadwell; every later platform (and any new token) is gen9 or newer. */
-export const familiaIris = (token: string): GpuFamily =>
-  reglas('iris', token, [[/^(bdw_|chv$)/, 'intel_gen8']], 'intel_gen9_o_posterior')
+export const irisFamily = (token: string): GpuFamily =>
+  byRules('iris', token, [[/^(bdw_|chv$)/, 'intel_gen8']], 'intel_gen9_o_posterior')
 
-const chipsAmdgpu = {
+const amdgpuChips = {
   TAHITI: 'amd_gcn1',
   PITCAIRN: 'amd_gcn1',
   VERDE: 'amd_gcn1',
@@ -70,34 +70,34 @@ const chipsAmdgpu = {
   YELLOW_CARP: 'amd_gcn3_o_posterior',
 } as const satisfies Record<string, GpuFamily>
 
-const esChip = (chip: string): chip is keyof typeof chipsAmdgpu => Object.hasOwn(chipsAmdgpu, chip)
+const isChip = (chip: string): chip is keyof typeof amdgpuChips => Object.hasOwn(amdgpuChips, chip)
 
 /**
  * The explicit ids of `pciidlist[]`. Accepts both entry styles the kernel has used (`{0x1002, 0x6780, ...,
  * CHIP_X}` and `{ PCI_DEVICE(0x1002, 0x6780), .driver_data = CHIP_X }`). Class wildcards (`PCI_ANY_ID`,
  * the IP-discovery parts) carry no id and are skipped, so those GPUs get no projection.
  */
-export const idsAmdgpu = (texto: string): ReadonlyArray<Dispositivo> => {
-  const inicio = texto.search(/^static const struct pci_device_id pciidlist\[\] = \{$/m)
-  if (inicio === -1) throw new Error('amdgpu_drv.c: cannot find «static const struct pci_device_id pciidlist[] = {»')
-  const fin = texto.indexOf('\n};', inicio)
-  const cuerpo = texto
-    .slice(texto.indexOf('{', inicio) + 1, fin)
+export const amdgpuIds = (text: string): ReadonlyArray<Device> => {
+  const start = text.search(/^static const struct pci_device_id pciidlist\[\] = \{$/m)
+  if (start === -1) throw new Error('amdgpu_drv.c: cannot find «static const struct pci_device_id pciidlist[] = {»')
+  const end = text.indexOf('\n};', start)
+  const body = text
+    .slice(text.indexOf('{', start) + 1, end)
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/.*$/gm, '')
-  const entradas = cuerpo.split(/\}\s*,?/).map((e) => e.replace(/^[\s,]*\{/, '').trim())
-  return entradas.flatMap((e) => {
+  const entries = body.split(/\}\s*,?/).map((e) => e.replace(/^[\s,]*\{/, '').trim())
+  return entries.flatMap((e) => {
     if (e === '' || /^0,\s*0,\s*0$/.test(e)) return []
     if (/^(PCI_DEVICE\()?0x1002,\s*PCI_ANY_ID\b/.test(e)) return []
     const m = /^(?:PCI_DEVICE\()?0x1002,\s*0x([0-9a-fA-F]{4})\b[\s\S]*?\bCHIP_([A-Z0-9_]+)/.exec(e)
     if (m?.[1] === undefined || m[2] === undefined) throw new Error(`amdgpu_drv.c: unreadable entry «${e}»`)
     const chip = m[2]
-    if (!esChip(chip)) throw new Error(`amdgpu_drv.c: unknown CHIP_${chip}; add its family to scripts/gpu-sources.ts`)
-    return [{ vendor: '1002', device: hex4(m[1]), familia: chipsAmdgpu[chip] }]
+    if (!isChip(chip)) throw new Error(`amdgpu_drv.c: unknown CHIP_${chip}; add its family to scripts/gpu-sources.ts`)
+    return [{ vendor: '1002', device: hex4(m[1]), family: amdgpuChips[chip] }]
   })
 }
 
-const codenamesNvidia: ReadonlyArray<readonly [RegExp, GpuFamily]> = [
+const nvidiaCodenames: ReadonlyArray<readonly [RegExp, GpuFamily]> = [
   [/^GF\d/, 'nvidia_fermi'],
   [/^GK\d/, 'nvidia_kepler'],
   [/^G[MPV]\d/, 'nvidia_maxwell_a_volta'],
@@ -106,49 +106,49 @@ const codenamesNvidia: ReadonlyArray<readonly [RegExp, GpuFamily]> = [
 ]
 
 // pci.ids names chipset and GPU functions with the same codename ("TU116 USB 3.1 Host Controller").
-const noEsGpu = /\b(Audio|Bridge|bridge|Controller|PCIe host|USB|UCSI|SMBus|Ethernet|SATA|IDE)\b/
+const notGpu = /\b(Audio|Bridge|bridge|Controller|PCIe host|USB|UCSI|SMBus|Ethernet|SATA|IDE)\b/
 
-export const idsNvidia = (texto: string): ReadonlyArray<Dispositivo> => {
-  const lineas = texto.split('\n')
-  const inicio = lineas.findIndex((l) => l.startsWith('10de  '))
-  if (inicio === -1) throw new Error('pci.ids: cannot find vendor 10de')
-  const salida: Array<Dispositivo> = []
-  for (const [i, linea] of lineas.slice(inicio + 1).entries()) {
-    if (/^([0-9a-f]{4}  |C )/.test(linea)) break
-    if (linea.trim() === '' || linea.startsWith('#') || /^\t\t[0-9a-f]{4} [0-9a-f]{4}  /.test(linea)) continue
-    const m = /^\t([0-9a-f]{4})  (.+)$/.exec(linea)
-    if (m?.[1] === undefined || m[2] === undefined) throw new Error(`pci.ids:${inicio + i + 2}: unreadable line «${linea}»`)
-    const nombre = m[2]
-    if (noEsGpu.test(nombre.replace(/\[[^\]]*\]/g, ''))) continue
-    const familia = codenamesNvidia.find(([re]) => re.test(nombre))?.[1]
-    if (familia !== undefined) salida.push({ vendor: '10de', device: m[1], familia })
+export const nvidiaIds = (text: string): ReadonlyArray<Device> => {
+  const lines = text.split('\n')
+  const start = lines.findIndex((l) => l.startsWith('10de  '))
+  if (start === -1) throw new Error('pci.ids: cannot find vendor 10de')
+  const devices: Array<Device> = []
+  for (const [i, line] of lines.slice(start + 1).entries()) {
+    if (/^([0-9a-f]{4}  |C )/.test(line)) break
+    if (line.trim() === '' || line.startsWith('#') || /^\t\t[0-9a-f]{4} [0-9a-f]{4}  /.test(line)) continue
+    const m = /^\t([0-9a-f]{4})  (.+)$/.exec(line)
+    if (m?.[1] === undefined || m[2] === undefined) throw new Error(`pci.ids:${start + i + 2}: unreadable line «${line}»`)
+    const name = m[2]
+    if (notGpu.test(name.replace(/\[[^\]]*\]/g, ''))) continue
+    const family = nvidiaCodenames.find(([re]) => re.test(name))?.[1]
+    if (family !== undefined) devices.push({ vendor: '10de', device: m[1], family })
   }
-  return salida
+  return devices
 }
 
-export const conPiso = <A>(fuente: string, piso: number, ids: ReadonlyArray<A>): ReadonlyArray<A> => {
-  if (ids.length < piso) throw new Error(`${fuente}: ${ids.length} ids, under the floor of ${piso}; did the format change?`)
+export const withFloor = <A>(source: string, floor: number, ids: ReadonlyArray<A>): ReadonlyArray<A> => {
+  if (ids.length < floor) throw new Error(`${source}: ${ids.length} ids, under the floor of ${floor}; did the format change?`)
   return ids
 }
 
-export type Tabla = Record<GpuVendor, Partial<Record<GpuFamily, string>>>
+export type Table = Record<GpuVendor, Partial<Record<GpuFamily, string>>>
 
-export const tablaDe = (dispositivos: ReadonlyArray<Dispositivo>): Tabla => {
-  const unicos = new Map<string, Dispositivo>()
-  for (const d of dispositivos) {
-    const clave = `${d.vendor}:${d.device}`
-    const previa = unicos.get(clave)?.familia
-    if (previa !== undefined && previa !== d.familia) throw new Error(`${clave} appears as both ${previa} and ${d.familia}`)
-    unicos.set(clave, d)
+export const tableOf = (devices: ReadonlyArray<Device>): Table => {
+  const unique = new Map<string, Device>()
+  for (const d of devices) {
+    const key = `${d.vendor}:${d.device}`
+    const previous = unique.get(key)?.family
+    if (previous !== undefined && previous !== d.family) throw new Error(`${key} appears as both ${previous} and ${d.family}`)
+    unique.set(key, d)
   }
-  const grupos = new Map<string, { readonly vendor: GpuVendor; readonly familia: GpuFamily; readonly numeros: Array<number> }>()
-  for (const d of unicos.values()) {
-    const clave = `${d.vendor} ${d.familia}`
-    const grupo = grupos.get(clave) ?? { vendor: d.vendor, familia: d.familia, numeros: [] }
-    grupo.numeros.push(parseInt(d.device, 16))
-    grupos.set(clave, grupo)
+  const groups = new Map<string, { readonly vendor: GpuVendor; readonly family: GpuFamily; readonly numbers: Array<number> }>()
+  for (const d of unique.values()) {
+    const key = `${d.vendor} ${d.family}`
+    const group = groups.get(key) ?? { vendor: d.vendor, family: d.family, numbers: [] }
+    group.numbers.push(parseInt(d.device, 16))
+    groups.set(key, group)
   }
-  const tabla: Tabla = { '8086': {}, '1002': {}, '10de': {} }
-  for (const g of grupos.values()) tabla[g.vendor][g.familia] = encodeSpans(g.numeros)
-  return tabla
+  const table: Table = { '8086': {}, '1002': {}, '10de': {} }
+  for (const g of groups.values()) table[g.vendor][g.family] = encodeSpans(g.numbers)
+  return table
 }

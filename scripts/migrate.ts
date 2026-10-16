@@ -7,12 +7,12 @@ import { migrate, dropSchema } from '../src/server/schema/migrations.ts'
 
 const reset = process.argv.indexOf('--reset')
 
-const programa = Effect.gen(function* () {
+const program = Effect.gen(function* () {
   if (reset !== -1) yield* dropSchema(process.argv[reset + 1] ?? '')
   yield* Effect.log('migrations applied', yield* migrate)
 }).pipe(Effect.provide([PgLive, NodeServices.layer]))
 
-Effect.runPromise(programa).then(
+Effect.runPromise(program).then(
   () => process.exit(0),
   (e: unknown) => {
     console.error(e)

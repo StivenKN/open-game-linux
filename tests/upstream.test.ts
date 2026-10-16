@@ -30,7 +30,7 @@ const scenario = Effect.gen(function* () {
 
   const steam = yield* insert('launcher', { name: 'Steam' })
   const game = yield* insert('game', { title: 'The Witcher 3: Wild Hunt', description: 'd' })
-  const edicion = yield* insert('game_edition', { game_id: game, launcher_id: steam, external_id: '292030' })
+  const edition = yield* insert('game_edition', { game_id: game, launcher_id: steam, external_id: '292030' })
   const fedora = yield* insert('distribution', { name: 'Fedora', version: '40' })
   const proton = yield* insert('layer_version', { family: 'Proton', variant: 'Valve', version: '9.0-3' })
   const wine = yield* insert('layer_version', { family: 'Wine', variant: 'estable', version: '9.0' })
@@ -46,7 +46,7 @@ const scenario = Effect.gen(function* () {
   const insertProfile = (revision: number, overrides: Record<string, Value> = {}) =>
     Effect.map(
       insert('profile', {
-        edition_id: edicion,
+        edition_id: edition,
         distribution_id: fedora,
         layer_version_id: proton,
         author_id: ana.id,
@@ -74,8 +74,8 @@ const scenario = Effect.gen(function* () {
     driver_version: 'Mesa 24.1.7',
     vulkan_support: 'si',
   })
-  const fallido = yield* insert('report', {
-    edition_id: edicion,
+  const failed = yield* insert('report', {
+    edition_id: edition,
     diagnostic_id: diagnostic,
     layer_version_id: proton,
     game_version: '4.04',
@@ -83,20 +83,20 @@ const scenario = Effect.gen(function* () {
     outcome: 'no_inicia',
     observations: 'Pantalla negra al iniciar.',
   })
-  const lanzadorFallo = yield* insert('failure_type', { code: 'lanzador', description: 'El lanzador no abre.' })
-  yield* sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${fallido}, ${lanzadorFallo}, 'El lanzador se cierra.')`
+  const launcherFailure = yield* insert('failure_type', { code: 'lanzador', description: 'El lanzador no abre.' })
+  yield* sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${failed}, ${launcherFailure}, 'El lanzador se cierra.')`
 
   return {
     sql,
     rita,
     ana,
     bruno,
-    fallido: ReportId.make(fallido),
+    failed: ReportId.make(failed),
     exportable: yield* insertProfile(1),
-    otroExportable: yield* insertProfile(2),
-    pendiente: yield* insertProfile(3, { review_status: 'pendiente', reviewer_id: null, reviewed_at: null, review_reason: null, review_evidence: null }),
-    conWine: yield* insertProfile(4, { layer_version_id: wine }),
-    deEjemplo: yield* insertProfile(5, { author_id: 'up_demo' }),
+    otherExportable: yield* insertProfile(2),
+    pending: yield* insertProfile(3, { review_status: 'pendiente', reviewer_id: null, reviewed_at: null, review_reason: null, review_evidence: null }),
+    withWine: yield* insertProfile(4, { layer_version_id: wine }),
+    sample: yield* insertProfile(5, { author_id: 'up_demo' }),
   }
 })
 type Scenario = Effect.Success<typeof scenario>
@@ -126,25 +126,25 @@ layer(PgTest)('arreglo_upstream', (it) => {
       expect(yield* asUser(e.rita)(noteFix(accepted(e.exportable)))).toEqual({ changed: false })
       expect(yield* fixCount).toBe(1)
       const page = yield* Effect.provideService(profile(e.exportable), Visitor, Option.none())
-      expect({ exportacion: page.fixExport?._tag, arreglos: page.fixes.map((a) => a.pr) }).toEqual({ exportacion: 'archivo', arreglos: [512] })
+      expect({ fixExport: page.fixExport?._tag, fixes: page.fixes.map((a) => a.pr) }).toEqual({ fixExport: 'archivo', fixes: [512] })
     })))
 
   it.effect('el mismo PR no se registra para otro perfil', inScenario((e) =>
     Effect.gen(function* () {
       yield* asUser(e.rita)(noteFix(accepted(e.exportable)))
-      expect(yield* Effect.flip(asUser(e.rita)(noteFix(accepted(e.otroExportable))))).toEqual(rule('arreglo_pr_de_otro_perfil'))
+      expect(yield* Effect.flip(asUser(e.rita)(noteFix(accepted(e.otherExportable))))).toEqual(rule('arreglo_pr_de_otro_perfil'))
     })))
 
   it.effect('rechaza perfiles sin camino a gamefixes-steam: pendiente, con Wine o inexistente', inScenario((e) =>
     Effect.gen(function* () {
-      for (const id of [e.pendiente, e.conWine, 999999])
+      for (const id of [e.pending, e.withWine, 999999])
         expect(yield* Effect.flip(asUser(e.rita)(noteFix(accepted(id))))).toEqual(rule('arreglo_no_exportable'))
       expect(yield* fixCount).toBe(0)
     })))
 
   it.effect('rechaza los datos de ejemplo: el contador público no cuenta demos', inScenario((e) =>
     Effect.gen(function* () {
-      expect(yield* Effect.flip(asUser(e.rita)(noteFix(accepted(e.deEjemplo))))).toEqual(rule('arreglo_datos_de_ejemplo'))
+      expect(yield* Effect.flip(asUser(e.rita)(noteFix(accepted(e.sample))))).toEqual(rule('arreglo_datos_de_ejemplo'))
     })))
 
   it.effect('Anular borra el registro; anular de nuevo no cambia nada', inScenario((e) =>
@@ -171,7 +171,7 @@ layer(PgTest)('arreglo_upstream', (it) => {
 layer(PgTest)('informeProtonDe', (it) => {
   it.effect('su autora recibe el informe; nadie más sabe que existe', inScenario((e) =>
     Effect.gen(function* () {
-      const own = yield* Effect.provideService(myProtonReport(e.fallido), Visitor, Option.some(e.ana))
+      const own = yield* Effect.provideService(myProtonReport(e.failed), Visitor, Option.some(e.ana))
       expect(own.protonReport).toMatchObject({ _tag: 'informe', title: 'The Witcher 3: Wild Hunt (292030)', body_in_link: true })
       expect(own.protonReport._tag === 'informe' && own.protonReport.body.split('\n').slice(5, 9)).toEqual([
         '- GPU: AMD Radeon RX 6600',
@@ -179,7 +179,7 @@ layer(PgTest)('informeProtonDe', (it) => {
         '- Kernel version: 6.10.6-200.fc40.x86_64',
         '- Distribution: Fedora 40',
       ])
-      expect(yield* Effect.flip(Effect.provideService(myProtonReport(e.fallido), Visitor, Option.some(e.bruno)))).toEqual(new NotFound())
-      expect(yield* Effect.flip(Effect.provideService(myProtonReport(e.fallido), Visitor, Option.none()))).toEqual(new Unauthenticated())
+      expect(yield* Effect.flip(Effect.provideService(myProtonReport(e.failed), Visitor, Option.some(e.bruno)))).toEqual(new NotFound())
+      expect(yield* Effect.flip(Effect.provideService(myProtonReport(e.failed), Visitor, Option.none()))).toEqual(new Unauthenticated())
     })))
 })
