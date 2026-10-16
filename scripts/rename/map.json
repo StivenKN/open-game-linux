@@ -908,7 +908,9 @@
       "planificar.permitidos": "allowed",
       "AporteRef": "ContributionRef",
       "TipoAporte": "ContributionType",
-      "Bloqueo": "Blocker"
+      "Bloqueo": "Blocker",
+      "Decision.motivo:prop": "reason",
+      "Decision.evidencia:prop": "evidence"
     },
     "src/domain/tables.ts": {
       "TextoHasta": "TextUpTo",
@@ -1251,7 +1253,40 @@
       "ContextoPrueba.version_capa_id": "layer_version_id",
       "ContextoPrueba.distribucion_id": "distribution_id",
       "ContextoPrueba.arquitectura": "architecture",
-      "ContextoPrueba.version_juego": "game_version"
+      "ContextoPrueba.version_juego": "game_version",
+      "VersionCapaRef.familia:prop": "family",
+      "VersionCapaRef.variante:prop": "variant",
+      "MedicionFps.fps_promedio:prop": "avg_fps",
+      "MedicionFps.resolucion:prop": "resolution",
+      "MedicionFps.calidad_grafica:prop": "graphics_quality",
+      "MedicionFps.metodo_medicion:prop": "measurement_method",
+      "FalloObservado.tipo_fallo_id:prop": "failure_type_id",
+      "FalloObservado.detalle:prop": "detail",
+      "camposReporte.edicion_id:prop": "edition_id",
+      "camposReporte.diagnostico_id:prop": "diagnostic_id",
+      "camposReporte.version_capa:prop": "layer_version",
+      "camposReporte.perfil_id:prop": "profile_id",
+      "camposReporte.version_juego:prop": "game_version",
+      "camposReporte.version_lanzador:prop": "launcher_version",
+      "camposReporte.fecha_prueba:prop": "tested_at",
+      "camposReporte.medicion:prop": "measurement",
+      "camposReporte.observaciones:prop": "observations",
+      "NuevoReporte.resultado:prop": "outcome",
+      "NuevoReporte.fallos:prop": "failures",
+      "NuevaSolucion.reporte_id:prop": "report_id",
+      "NuevaSolucion.tipo_fallo_id:prop": "failure_type_id",
+      "NuevaSolucion.perfil_id:prop": "profile_id",
+      "NuevaSolucion.titulo:prop": "title",
+      "NuevaSolucion.instrucciones:prop": "instructions",
+      "NuevoJuego.titulo:prop": "title",
+      "NuevoJuego.descripcion:prop": "description",
+      "NuevoJuego.ediciones:prop": "editions",
+      "NuevoJuego.ediciones.lanzador_id:prop": "launcher_id",
+      "NuevoJuego.ediciones.identificador_externo:prop": "external_id",
+      "NuevoJuego.nivel_x86_min:prop": "x86_level_min",
+      "GuardarDiagnostico.equipo:prop": "machine",
+      "GuardarDiagnostico.entrada:prop": "input",
+      "GuardarDiagnostico.con_biblioteca:prop": "with_library"
     },
     "src/domain/compatibility.ts": {
       "EstadoCompatibilidad": "CompatibilityStatus",
@@ -1572,7 +1607,8 @@
       "informeProtonPosible.r.lanzador": "launcher",
       "EntradaInforme.juego": "game",
       "EntradaInforme.distribucion": "distribution",
-      "EntradaInforme.ejemplo": "demo"
+      "EntradaInforme.ejemplo": "demo",
+      "NotaArreglo.perfil_id:prop": "profile_id"
     },
     "src/server/queries/diagnostic.ts": {
       "separarBiblioteca.biblioteca.desconocidos:prop": "unknown",
@@ -3789,7 +3825,17 @@
       "registrar": "signUp",
       "entrar": "signIn",
       "mensajes": "messages",
-      "erroresDeCuenta": "accountErrors"
+      "erroresDeCuenta": "accountErrors",
+      "Registro.correo:prop": "email",
+      "Registro.contrasena:prop": "password",
+      "Entrada.correo:prop": "email",
+      "Entrada.contrasena:prop": "password",
+      "mensajes.USER_ALREADY_EXISTS.correo:prop": "email",
+      "mensajes.USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL.correo:prop": "email",
+      "mensajes.INVALID_EMAIL.correo:prop": "email",
+      "mensajes.DOMINIO_RESERVADO.correo:prop": "email",
+      "mensajes.PASSWORD_TOO_SHORT.contrasena:prop": "password",
+      "mensajes.PASSWORD_TOO_LONG.contrasena:prop": "password"
     },
     "src/routes/entrar.tsx": {
       "Entrar": "SignInPage",
@@ -3877,7 +3923,8 @@
       "Pegado": "Pasted",
       "comunes": "common",
       "FormularioManual": "ManualForm",
-      "entradaManual": "manualInput"
+      "entradaManual": "manualInput",
+      "Pegado.texto:prop": "text"
     },
     "src/routes/diagnostico/importar.tsx": {
       "Evaluado": "Evaluated",
@@ -3903,7 +3950,12 @@
       "Guardar.setGuardado": "setSaved",
       "Guardar.r.alCompletar:prop": "onComplete",
       "Guardar.r.alCompletar.valor": "value",
-      "Guardado.nuevo": "inserted"
+      "Guardado.nuevo": "inserted",
+      "Destino.equipo:prop": "machine",
+      "Destino.con_biblioteca:prop": "with_library",
+      "Guardar.r.data.equipo:prop": "machine",
+      "Guardar.r.data.con_biblioteca:prop": "with_library",
+      "Guardar.r.data.entrada:prop": "input"
     },
     "src/routes/diagnostico/index.tsx": {
       "Route.loader.origen": "siteOrigin",
