@@ -1,38 +1,38 @@
 // Dev-only gallery of the verdict components on fixtures (PLAN U2c). The [_] escape makes the URL
 // /_muestras; a bare `_muestras.tsx` would be a pathless layout. Production builds answer notFound.
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { CajaCopiar } from '../ui/compatibilidad/CajaCopiar.tsx'
-import { EstadoJuego } from '../ui/compatibilidad/EstadoJuego.tsx'
-import { MatrizEntornos } from '../ui/compatibilidad/MatrizEntornos.tsx'
-import { VeredictoParaMi } from '../ui/compatibilidad/VeredictoParaMi.tsx'
-import { diagnostico, muestras, parametrosLanzamiento, type Muestra } from '../ui/muestras/fixtures.ts'
+import { CopyBox } from '../ui/compatibility/CopyBox.tsx'
+import { GameStatus } from '../ui/compatibility/GameStatus.tsx'
+import { EnvironmentMatrix } from '../ui/compatibility/EnvironmentMatrix.tsx'
+import { VerdictForMe } from '../ui/compatibility/VerdictForMe.tsx'
+import { diagnostic, samples, launchOptions, type Sample } from '../ui/samples/fixtures.ts'
 
 export const Route = createFileRoute('/_muestras')({
   beforeLoad: () => {
     if (!import.meta.env.DEV) throw notFound()
   },
   head: () => ({ meta: [{ title: 'Muestras · OpenGame Linux' }] }),
-  component: Muestras,
+  component: SamplesPage,
 })
 
-function Muestras() {
+function SamplesPage() {
   return (
     <>
-      <main className="envoltura">
-        <p className="fila">
-          <span className="sello">Datos de ejemplo</span>
-          <span className="pequeno tenue">Muestras de veredicto · solo en desarrollo</span>
+      <main className="wrapper">
+        <p className="row">
+          <span className="stamp">Datos de ejemplo</span>
+          <span className="small muted">Muestras de veredicto · solo en desarrollo</span>
         </p>
-        <p className="dato tenue">Tu diagnóstico: {diagnostico.resumen}</p>
-        {muestras.map((m, i) => (
-          <Ficha key={m.clave} muestra={m} numero={i + 1} />
+        <p className="datum muted">Tu diagnóstico: {diagnostic.summary}</p>
+        {samples.map((m, i) => (
+          <SampleCard key={m.key} sample={m} number={i + 1} />
         ))}
 
-        <h2 className="titulo-seccion">Otros estados</h2>
-        <div className="rejilla-2">
-          <VeredictoParaMi personal={null} />
-          <div className="tarjeta">
-            <CajaCopiar etiqueta={parametrosLanzamiento.etiqueta} texto={parametrosLanzamiento.texto} />
+        <h2 className="section-title">Otros estados</h2>
+        <div className="grid-2">
+          <VerdictForMe personal={null} />
+          <div className="card">
+            <CopyBox label={launchOptions.label} text={launchOptions.text} />
           </div>
         </div>
       </main>
@@ -40,29 +40,29 @@ function Muestras() {
   )
 }
 
-function Ficha({ muestra, numero }: { muestra: Muestra; numero: number }) {
+function SampleCard({ sample, number }: { sample: Sample; number: number }) {
   return (
-    <article className="ficha" aria-labelledby={`ficha-${muestra.clave}`}>
-      <h2 className="titulo-seccion">
-        ({numero}) {muestra.caso}
+    <article className="sample-card" aria-labelledby={`sample-card-${sample.key}`}>
+      <h2 className="section-title">
+        ({number}) {sample.scenario}
       </h2>
-      <div className="migas">Catálogo / {muestra.estudio}</div>
-      <h3 id={`ficha-${muestra.clave}`} className="titulo-juego">
-        {muestra.titulo}
+      <div className="breadcrumbs">Catálogo / {sample.studio}</div>
+      <h3 id={`sample-card-${sample.key}`} className="game-title">
+        {sample.title}
       </h3>
-      <div className="fila-chips">
-        {muestra.ediciones.map((e) => (
+      <div className="chip-row">
+        {sample.editions.map((e) => (
           <span key={e} className="chip">
             {e}
           </span>
         ))}
       </div>
-      <div className="ficha-cuerpo">
-        <EstadoJuego resumen={muestra.resumen} pendientes={muestra.pendientes} />
-        <VeredictoParaMi personal={muestra.personal} />
+      <div className="game-page-body">
+        <GameStatus summary={sample.summary} pending={sample.pending} />
+        <VerdictForMe personal={sample.personal} />
       </div>
-      <h4 className="titulo-seccion">Entornos probados</h4>
-      <MatrizEntornos entornos={muestra.resumen.entornos} miDistribucion={diagnostico.distribucion_id} />
+      <h4 className="section-title">Entornos probados</h4>
+      <EnvironmentMatrix setups={sample.summary.setups} myDistribution={diagnostic.distribution_id} />
     </article>
   )
 }

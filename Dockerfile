@@ -1,5 +1,5 @@
-# One image serves the app (`pnpm start`) and runs the TypeScript scripts (`pnpm db:migrar`, `pnpm db:sembrar`,
-# `pnpm rol`, `pnpm db:protondb`), which import src/ directly. The build stage keeps the dev dependencies out of the final image.
+# One image serves the app (`pnpm start`) and runs the TypeScript scripts (`pnpm db:migrate`, `pnpm db:seed`,
+# `pnpm set-role`, `pnpm db:protondb`), which import src/ directly. The build stage keeps the dev dependencies out of the final image.
 FROM node:24-slim AS build
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable

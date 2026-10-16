@@ -1,118 +1,118 @@
 import { createFileRoute, notFound, redirect, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { NuevoJuego } from '../../dominio/aportes.ts'
-import { ApiGrafica } from '../../dominio/literales.ts'
-import type { NivelX86 } from '../../dominio/plataforma.ts'
-import { crearJuegoFn, opcionesJuegoFn } from '../../fns/aportes.ts'
-import { ErrorCampo } from '../../ui/ErrorCampo.tsx'
-import { Campo, campo, nulo } from '../../ui/formulario.tsx'
-import { erroresDeRegla, useAccion } from '../../ui/useAccion.ts'
-import { apiGrafica, nivelX86 } from '../../ui/vocabulario.ts'
-import { volverAqui } from '../-volver.ts'
+import { NewGame } from '../../domain/contributions.ts'
+import { GraphicsApi } from '../../domain/literals.ts'
+import type { X86Level } from '../../domain/platform.ts'
+import { createGameFn, gameOptionsFn } from '../../fns/contributions.ts'
+import { FieldError } from '../../ui/FieldError.tsx'
+import { Field, fieldProps, nullText } from '../../ui/form.tsx'
+import { ruleErrors, useAction } from '../../ui/useAction.ts'
+import { graphicsApi, x86Level } from '../../ui/vocabulary.ts'
+import { returnHere } from '../-return-to.ts'
 
 // v1 is every x86-64 CPU, so it is no requirement.
-const nivelesMinimos = ['v2', 'v3', 'v4'] as const satisfies ReadonlyArray<NivelX86>
+const minimumLevels = ['v2', 'v3', 'v4'] as const satisfies ReadonlyArray<X86Level>
 
 export const Route = createFileRoute('/catalogo/nuevo')({
   beforeLoad: ({ context, location }) => {
-    if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
-    if (context.visitante.rol === 'usuario') throw notFound()
+    if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
+    if (context.visitor.role === 'usuario') throw notFound()
   },
-  loader: () => opcionesJuegoFn(),
+  loader: () => gameOptionsFn(),
   head: () => ({ meta: [{ title: 'Nuevo juego · OpenGame Linux' }] }),
-  component: NuevoJuegoPagina,
+  component: NewGamePage,
 })
 
-function NuevoJuegoPagina() {
-  const { lanzadores } = Route.useLoaderData()
-  const navegar = useNavigate()
+function NewGamePage() {
+  const { launchers } = Route.useLoaderData()
+  const navigate = useNavigate()
   // Row keys, not indexes: removing a middle edition must not shift what the other rows show.
-  const [ediciones, setEdiciones] = useState<ReadonlyArray<number>>([0])
-  const [siguiente, setSiguiente] = useState(1)
-  const r = useAccion(NuevoJuego, crearJuegoFn, {
-    alFallar: erroresDeRegla,
-    alCompletar: ({ id }) => void navegar({ to: '/juegos/$juegoId', params: { juegoId: id } }),
+  const [editions, setEditions] = useState<ReadonlyArray<number>>([0])
+  const [nextKey, setNextKey] = useState(1)
+  const r = useAction(NewGame, createGameFn, {
+    onFailure: ruleErrors,
+    onComplete: ({ id }) => void navigate({ to: '/juegos/$gameId', params: { gameId: id } }),
   })
 
-  const agregar = () => {
-    setEdiciones([...ediciones, siguiente])
-    setSiguiente(siguiente + 1)
+  const addEdition = () => {
+    setEditions([...editions, nextKey])
+    setNextKey(nextKey + 1)
   }
 
   return (
-    <main className="envoltura">
-      <p className="rotulo">Catálogo</p>
+    <main className="wrapper">
+      <p className="caption">Catálogo</p>
       <h1>Nuevo juego</h1>
-      <form className="tarjeta formulario formulario-ancho" {...r.formulario}>
-        <ErrorCampo errores={r.errores} campo="formulario" />
-        <Campo errores={r.errores} nombre="titulo" etiqueta="Título">
-          <input {...campo(r.errores, 'titulo')} />
-        </Campo>
-        <Campo errores={r.errores} nombre="descripcion" etiqueta="Descripción">
-          <textarea {...campo(r.errores, 'descripcion')} />
-        </Campo>
+      <form className="card form form-wide" {...r.form}>
+        <FieldError errors={r.errors} field="form" />
+        <Field errors={r.errors} name="title" label="Título">
+          <input {...fieldProps(r.errors, 'title')} />
+        </Field>
+        <Field errors={r.errors} name="description" label="Descripción">
+          <textarea {...fieldProps(r.errors, 'description')} />
+        </Field>
 
-        <fieldset className="grupo">
+        <fieldset className="group">
           <legend>Ediciones</legend>
-          <p className="pequeno tenue">Una por lanzador. El identificador es el de la tienda (por ejemplo, el App ID de Steam), si lo conoces.</p>
-          {ediciones.map((clave, i) => (
-            <div key={clave} className="fila campos-en-linea">
-              <Campo errores={r.errores} nombre={`ediciones[${i}][lanzador_id]`} etiqueta="Lanzador">
-                <select {...campo(r.errores, `ediciones[${i}][lanzador_id]`)} defaultValue={lanzadores[i % lanzadores.length]?.id}>
-                  {lanzadores.map((l) => (
+          <p className="small muted">Una por lanzador. El identificador es el de la tienda (por ejemplo, el App ID de Steam), si lo conoces.</p>
+          {editions.map((key, i) => (
+            <div key={key} className="row inline-fields">
+              <Field errors={r.errors} name={`editions[${i}][launcher_id]`} label="Lanzador">
+                <select {...fieldProps(r.errors, `editions[${i}][launcher_id]`)} defaultValue={launchers[i % launchers.length]?.id}>
+                  {launchers.map((l) => (
                     <option key={l.id} value={l.id}>
-                      {l.nombre}
+                      {l.name}
                     </option>
                   ))}
                 </select>
-              </Campo>
-              <Campo errores={r.errores} nombre={`ediciones[${i}][identificador_externo]`} etiqueta="Identificador (opcional)">
-                <input {...campo(r.errores, `ediciones[${i}][identificador_externo]`)} />
-              </Campo>
+              </Field>
+              <Field errors={r.errors} name={`editions[${i}][external_id]`} label="Identificador (opcional)">
+                <input {...fieldProps(r.errors, `editions[${i}][external_id]`)} />
+              </Field>
               <button
                 type="button"
-                className="boton-secundario"
-                disabled={ediciones.length === 1}
-                onClick={() => setEdiciones(ediciones.filter((e) => e !== clave))}
+                className="button-secondary"
+                disabled={editions.length === 1}
+                onClick={() => setEditions(editions.filter((e) => e !== key))}
               >
                 Quitar
               </button>
             </div>
           ))}
           <p>
-            <button type="button" className="boton-secundario" onClick={agregar} disabled={ediciones.length >= lanzadores.length}>
+            <button type="button" className="button-secondary" onClick={addEdition} disabled={editions.length >= launchers.length}>
               Añadir una edición
             </button>
           </p>
-          <ErrorCampo errores={r.errores} campo="ediciones" />
+          <FieldError errors={r.errors} field="editions" />
         </fieldset>
 
-        <fieldset className="grupo">
+        <fieldset className="group">
           <legend>APIs gráficas</legend>
-          <p className="pequeno tenue">Marca cada API con la que el juego puede dibujar, aunque sea un modo alternativo.</p>
-          <div className="fila">
-            {ApiGrafica.literals.map((api) => (
-              <label key={api} className="casilla">
+          <p className="small muted">Marca cada API con la que el juego puede dibujar, aunque sea un modo alternativo.</p>
+          <div className="row">
+            {GraphicsApi.literals.map((api) => (
+              <label key={api} className="checkbox">
                 <input type="checkbox" name="apis[]" value={api} />
-                {apiGrafica[api]}
+                {graphicsApi[api]}
               </label>
             ))}
           </div>
-          <ErrorCampo errores={r.errores} campo="apis" />
+          <FieldError errors={r.errors} field="apis" />
         </fieldset>
 
-        <Campo errores={r.errores} nombre="nivel_x86_min" etiqueta="CPU mínima" ayuda="Solo si el juego exige un conjunto de instrucciones, como SSE4.2 en Counter-Strike 2.">
-          <select {...campo(r.errores, 'nivel_x86_min')} defaultValue={nulo}>
-            <option value={nulo}>Sin requisito</option>
-            {nivelesMinimos.map((n) => (
+        <Field errors={r.errors} name="x86_level_min" label="CPU mínima" help="Solo si el juego exige un conjunto de instrucciones, como SSE4.2 en Counter-Strike 2.">
+          <select {...fieldProps(r.errors, 'x86_level_min')} defaultValue={nullText}>
+            <option value={nullText}>Sin requisito</option>
+            {minimumLevels.map((n) => (
               <option key={n} value={n}>
-                {nivelX86[n]}
+                {x86Level[n]}
               </option>
             ))}
           </select>
-        </Campo>
+        </Field>
 
-        <button type="submit" disabled={r.enviando}>
+        <button type="submit" disabled={r.submitting}>
           Crear juego
         </button>
       </form>

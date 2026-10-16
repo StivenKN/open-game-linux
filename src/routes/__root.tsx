@@ -3,13 +3,13 @@ import { type ReactNode, useEffect, useRef, useState } from 'react'
 import bigShoulders from '@fontsource-variable/big-shoulders-display/files/big-shoulders-display-latin-wght-normal.woff2?url'
 import onest from '@fontsource-variable/onest/files/onest-latin-wght-normal.woff2?url'
 import unbounded from '@fontsource-variable/unbounded/files/unbounded-latin-wght-normal.woff2?url'
-import icono from '../../assets/icon.svg?url'
-import { visitanteFn } from '../fns/sesion.ts'
+import icon from '../../assets/icon.svg?url'
+import { visitorFn } from '../fns/session.ts'
 import appCss from '../styles.css?url'
-import { authCliente } from './-auth-cliente.ts'
+import { authClient } from './-auth-client.ts'
 
 export const Route = createRootRoute({
-  beforeLoad: async () => ({ visitante: await visitanteFn() }),
+  beforeLoad: async () => ({ visitor: await visitorFn() }),
   head: () => ({
     meta: [{ charSet: 'utf-8' }, { name: 'viewport', content: 'width=device-width, initial-scale=1' }, { title: 'OpenGame Linux' }],
     links: [
@@ -17,16 +17,16 @@ export const Route = createRootRoute({
       // The stylesheet only discovers its fonts after it parses; preloading the Latin files lets SSR text
       // paint in its real face instead of swapping.
       ...[onest, unbounded, bigShoulders].map((href) => ({ rel: 'preload', as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' as const, href })),
-      { rel: 'icon', type: 'image/svg+xml', href: icono },
+      { rel: 'icon', type: 'image/svg+xml', href: icon },
     ],
   }),
-  shellComponent: Documento,
-  component: Marco,
-  notFoundComponent: NoEncontrada,
-  errorComponent: ErrorGeneral,
+  shellComponent: RootDocument,
+  component: RootLayout,
+  notFoundComponent: NotFoundPage,
+  errorComponent: ErrorPage,
 })
 
-function Documento({ children }: { children: ReactNode }) {
+function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
       <head>
@@ -40,61 +40,61 @@ function Documento({ children }: { children: ReactNode }) {
   )
 }
 
-function Marco() {
+function RootLayout() {
   return (
     <>
-      <Cabecera />
+      <SiteHeader />
       <Outlet />
     </>
   )
 }
 
-function Cabecera() {
-  const { visitante } = Route.useRouteContext()
+function SiteHeader() {
+  const { visitor } = Route.useRouteContext()
   const nav = useRef<HTMLElement>(null)
   const { pathname } = useLocation()
   // On narrow screens the nav scrolls sideways; bring the current page's link into view. scrollIntoView
   // would also scroll the page vertically.
   useEffect(() => {
     const n = nav.current
-    const actual = n?.querySelector<HTMLElement>('[data-status="active"]')
-    if (n && actual) n.scrollLeft = Math.max(0, actual.offsetLeft + actual.offsetWidth - n.offsetLeft - n.clientWidth + 16)
+    const current = n?.querySelector<HTMLElement>('[data-status="active"]')
+    if (n && current) n.scrollLeft = Math.max(0, current.offsetLeft + current.offsetWidth - n.offsetLeft - n.clientWidth + 16)
   }, [pathname])
   return (
-    <header className="cabecera">
-      <Link to="/" className="marca">
-        <Marca />
+    <header className="header">
+      <Link to="/" className="brand">
+        <Brand />
         OpenGame Linux
       </Link>
-      <nav ref={nav} aria-label="Principal" className="navegacion">
+      <nav ref={nav} aria-label="Principal" className="nav">
         <Link to="/" activeOptions={{ exact: true }}>
           Inicio
         </Link>
         <Link to="/diagnostico">Diagnóstico</Link>
         <Link to="/guias">Guías</Link>
-        {visitante !== null && visitante.rol !== 'usuario' && (
+        {visitor !== null && visitor.role !== 'usuario' && (
           <>
             <Link to="/revision">Revisión</Link>
             <Link to="/catalogo/nuevo">Nuevo juego</Link>
           </>
         )}
       </nav>
-      <div className="cuenta">
-        {visitante === null ? (
+      <div className="account">
+        {visitor === null ? (
           <>
-            <Link to="/entrar" className="boton-secundario">
+            <Link to="/entrar" className="button-secondary">
               Entrar
             </Link>
-            <Link to="/registro" className="boton">
+            <Link to="/registro" className="button">
               Crear cuenta
             </Link>
           </>
         ) : (
           <>
             <span>
-              Hola, <strong>{visitante.alias}</strong>
+              Hola, <strong>{visitor.alias}</strong>
             </span>
-            <Salir />
+            <SignOutButton />
           </>
         )}
       </div>
@@ -102,7 +102,7 @@ function Cabecera() {
   )
 }
 
-function Marca() {
+function Brand() {
   return (
     <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
       <rect x="2" y="6" width="16" height="22" rx="4" fill="#5b4568" transform="rotate(-10 10 17)" />
@@ -113,37 +113,37 @@ function Marca() {
   )
 }
 
-function Salir() {
+function SignOutButton() {
   const router = useRouter()
-  const [saliendo, setSaliendo] = useState(false)
-  const salir = async () => {
-    setSaliendo(true)
-    await authCliente.signOut()
+  const [signingOut, setSigningOut] = useState(false)
+  const signOut = async () => {
+    setSigningOut(true)
+    await authClient.signOut()
     await router.invalidate()
-    setSaliendo(false)
+    setSigningOut(false)
   }
   return (
-    <button type="button" className="boton-secundario" onClick={() => void salir()} disabled={saliendo}>
+    <button type="button" className="button-secondary" onClick={() => void signOut()} disabled={signingOut}>
       Salir
     </button>
   )
 }
 
-function NoEncontrada() {
+function NotFoundPage() {
   return (
-    <main className="envoltura">
+    <main className="wrapper">
       <h1>No encontramos esa página</h1>
-      <p className="tenue">Puede que el enlace esté mal escrito o que el contenido ya no exista.</p>
+      <p className="muted">Puede que el enlace esté mal escrito o que el contenido ya no exista.</p>
       <Link to="/">Volver al inicio</Link>
     </main>
   )
 }
 
-function ErrorGeneral() {
+function ErrorPage() {
   return (
-    <main className="envoltura">
+    <main className="wrapper">
       <h1>Algo falló de nuestro lado</h1>
-      <p className="tenue">Intenta de nuevo en unos segundos.</p>
+      <p className="muted">Intenta de nuevo en unos segundos.</p>
     </main>
   )
 }

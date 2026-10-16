@@ -1,173 +1,173 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Effect, Schema, SchemaTransformation, Struct } from 'effect'
 import type { FormEvent, ReactNode } from 'react'
-import { FiltroCatalogo } from '../dominio/aportes.ts'
-import { EstadoCompatibilidad } from '../dominio/compatibilidad.ts'
-import { catalogoFn } from '../fns/catalogo.ts'
-import { ChipsFallos } from '../ui/compatibilidad/ChipsFallos.tsx'
-import { contar, fecha } from '../ui/formato.ts'
-import { Portada } from '../ui/Portada.tsx'
-import { AtribucionProtonDb, LineaProtonDb } from '../ui/protondb/ProtonDb.tsx'
-import { estadoCompatibilidad, significadoEstado } from '../ui/vocabulario.ts'
+import { CatalogFilter } from '../domain/contributions.ts'
+import { CompatibilityStatus } from '../domain/compatibility.ts'
+import { catalogFn } from '../fns/catalog.ts'
+import { FailureChips } from '../ui/compatibility/FailureChips.tsx'
+import { count, date } from '../ui/format.ts'
+import { Cover } from '../ui/Cover.tsx'
+import { ProtonDbAttribution, ProtonDbLine } from '../ui/protondb/ProtonDb.tsx'
+import { compatibilityStatus, statusMeaning } from '../ui/vocabulary.ts'
 
-const opcional = <S extends Schema.Constraint>(campo: S) => Schema.catchDecoding<S>(() => Effect.succeedNone)(campo)
+const lenient = <S extends Schema.Constraint>(field: S) => Schema.catchDecoding<S>(() => Effect.succeedNone)(field)
 // The router JSON-parses each query value, so a title typed as `?q=2` arrives as the number 2.
-const TextoBuscado = Schema.Union([Schema.String, Schema.Finite, Schema.Boolean]).pipe(
+const SearchText = Schema.Union([Schema.String, Schema.Finite, Schema.Boolean]).pipe(
   Schema.decodeTo(Schema.String, SchemaTransformation.transform<string, string | number | boolean>({ decode: String, encode: (s) => s })),
 )
-const Busqueda = FiltroCatalogo.mapFields((f) => ({
-  q: opcional(Schema.optionalKey(TextoBuscado)),
-  estado: opcional(f.estado),
-  lanzador: opcional(f.lanzador),
-  sin_anti_cheat: opcional(f.sin_anti_cheat),
+const CatalogSearch = CatalogFilter.mapFields((f) => ({
+  q: lenient(Schema.optionalKey(SearchText)),
+  estado: lenient(f.estado),
+  lanzador: lenient(f.lanzador),
+  sin_anti_cheat: lenient(f.sin_anti_cheat),
 }))
 
-const limpiar = Schema.decodeUnknownSync(Busqueda)
+const cleanSearch = Schema.decodeUnknownSync(CatalogSearch)
 
 export const Route = createFileRoute('/')({
-  validateSearch: Schema.toStandardSchemaV1(Busqueda),
+  validateSearch: Schema.toStandardSchemaV1(CatalogSearch),
   // router-core keeps raw query keys that validateSearch dropped in `search`, so the loader and the page
   // read this cleaned copy instead.
-  loaderDeps: ({ search }) => limpiar(search),
-  loader: ({ deps }) => catalogoFn({ data: deps }),
+  loaderDeps: ({ search }) => cleanSearch(search),
+  loader: ({ deps }) => catalogFn({ data: deps }),
   head: () => ({ meta: [{ title: 'Catálogo · OpenGame Linux' }] }),
-  component: Catalogo,
+  component: CatalogPage,
 })
 
-const alternar = <K extends 'estado' | 'lanzador' | 'sin_anti_cheat'>(
-  filtro: FiltroCatalogo,
-  clave: K,
-  valor: NonNullable<FiltroCatalogo[K]>,
-): FiltroCatalogo => (filtro[clave] === valor ? Struct.omit(filtro, [clave]) : { ...filtro, [clave]: valor })
+const toggle = <K extends 'estado' | 'lanzador' | 'sin_anti_cheat'>(
+  filter: CatalogFilter,
+  key: K,
+  value: NonNullable<CatalogFilter[K]>,
+): CatalogFilter => (filter[key] === value ? Struct.omit(filter, [key]) : { ...filter, [key]: value })
 
 // A filter link points at the toggled-off search, which the router's default partial match would call the
 // current page; exact matching leaves aria-current to the filter's own state.
-const soloIgual = { exact: true } as const
+const exactOnly = { exact: true } as const
 
 // The hero fans out the games with the most approved reports, the busiest one in front.
-const posiciones = ['centro', 'izquierda', 'derecha'] as const
+const positions = ['centro', 'izquierda', 'derecha'] as const
 
-function Catalogo() {
-  const { juegos, por_estado, lanzadores, contadores } = Route.useLoaderData()
-  const filtro = Route.useLoaderDeps()
+function CatalogPage() {
+  const { games, by_status: byStatus, launchers, counters } = Route.useLoaderData()
+  const filter = Route.useLoaderDeps()
   const navigate = useNavigate({ from: '/' })
-  const filtrado = Object.keys(filtro).length > 0
-  const destacados = [...juegos].sort((a, b) => b.resumen.pruebas - a.resumen.pruebas).slice(0, posiciones.length)
-  const activos = [
-    filtro.q === undefined ? undefined : `«${filtro.q}»`,
-    filtro.estado === undefined ? undefined : estadoCompatibilidad[filtro.estado].texto,
-    lanzadores.find((l) => l.id === filtro.lanzador)?.nombre,
-    filtro.sin_anti_cheat === true ? 'sin bloqueo anti-cheat' : undefined,
+  const filtered = Object.keys(filter).length > 0
+  const featured = [...games].sort((a, b) => b.summary.test_count - a.summary.test_count).slice(0, positions.length)
+  const active = [
+    filter.q === undefined ? undefined : `«${filter.q}»`,
+    filter.estado === undefined ? undefined : compatibilityStatus[filter.estado].text,
+    launchers.find((l) => l.id === filter.lanzador)?.name,
+    filter.sin_anti_cheat === true ? 'sin bloqueo anti-cheat' : undefined,
   ].filter((a) => a !== undefined)
 
-  const buscar = (e: FormEvent<HTMLFormElement>) => {
+  const onSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const q = new FormData(e.currentTarget).get('q')
-    const texto = typeof q === 'string' ? q.trim() : ''
-    void navigate({ search: texto === '' ? Struct.omit(filtro, ['q']) : { ...filtro, q: texto } })
+    const text = typeof q === 'string' ? q.trim() : ''
+    void navigate({ search: text === '' ? Struct.omit(filter, ['q']) : { ...filter, q: text } })
   }
 
   return (
-    <main className="envoltura">
-      <section className="presentacion">
+    <main className="wrapper">
+      <section className="intro">
         <div>
           <h1>Lleva tu biblioteca de Windows a Linux.</h1>
-          <p className="bajada">
+          <p className="lede">
             Busca un juego y mira cómo les fue a jugadores que ya lo probaron, en su distribución y con su configuración.
             Solo cuenta lo que un revisor aprobó, y el estado usa los reportes del último año cuando los hay.
           </p>
-          <form role="search" className="buscador" method="get" action="/" onSubmit={buscar}>
+          <form role="search" className="search" method="get" action="/" onSubmit={onSearch}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
               <circle cx="11" cy="11" r="7" />
               <path d="m20 20-4-4" />
             </svg>
-            <label htmlFor="q" className="solo-lector">
+            <label htmlFor="q" className="sr-only">
               Buscar un juego por título
             </label>
-            <input id="q" name="q" type="search" placeholder="¿Qué quieres jugar?" defaultValue={filtro.q ?? ''} key={filtro.q} />
+            <input id="q" name="q" type="search" placeholder="¿Qué quieres jugar?" defaultValue={filter.q ?? ''} key={filter.q} />
             {/* Without JavaScript the browser submits only the form's fields; these keep the active filters. */}
-            {filtro.estado !== undefined && <input type="hidden" name="estado" value={filtro.estado} />}
-            {filtro.lanzador !== undefined && <input type="hidden" name="lanzador" value={filtro.lanzador} />}
-            {filtro.sin_anti_cheat === true && <input type="hidden" name="sin_anti_cheat" value="true" />}
+            {filter.estado !== undefined && <input type="hidden" name="estado" value={filter.estado} />}
+            {filter.lanzador !== undefined && <input type="hidden" name="lanzador" value={filter.lanzador} />}
+            {filter.sin_anti_cheat === true && <input type="hidden" name="sin_anti_cheat" value="true" />}
             <button type="submit">Buscar</button>
           </form>
-          {destacados.length > 0 && (
-            <p className="sugerencias">
-              <span className="tenue">Prueba:</span>
-              {destacados.map((j) => (
-                <Link key={j.id} to="/" search={{ q: j.titulo }} className="sugerencia">
-                  {j.titulo}
+          {featured.length > 0 && (
+            <p className="suggestions">
+              <span className="muted">Prueba:</span>
+              {featured.map((j) => (
+                <Link key={j.id} to="/" search={{ q: j.title }} className="suggestion">
+                  {j.title}
                 </Link>
               ))}
             </p>
           )}
-          <p className="cifras">
-            Hasta hoy hay <b>{contar(contadores.reportes_aprobados, 'reporte aprobado', 'reportes aprobados')}</b> sobre{' '}
-            <b>{contar(contadores.juegos_verificados, 'juego verificado', 'juegos verificados')}</b>, en{' '}
-            <b>{contar(contadores.distribuciones_probadas, 'distribución', 'distribuciones')}</b>,{' '}
-            <b>{contar(contadores.perfiles_aprobados, 'perfil de configuración', 'perfiles de configuración')}</b> para copiar y{' '}
-            <b>{contar(contadores.arreglos_upstream, 'arreglo aceptado', 'arreglos aceptados')}</b> en umu-protonfixes.
+          <p className="figures">
+            Hasta hoy hay <b>{count(counters.approved_reports, 'reporte aprobado', 'reportes aprobados')}</b> sobre{' '}
+            <b>{count(counters.verified_games, 'juego verificado', 'juegos verificados')}</b>, en{' '}
+            <b>{count(counters.tested_distributions, 'distribución', 'distribuciones')}</b>,{' '}
+            <b>{count(counters.approved_profiles, 'perfil de configuración', 'perfiles de configuración')}</b> para copiar y{' '}
+            <b>{count(counters.upstream_fixes, 'arreglo aceptado', 'arreglos aceptados')}</b> en umu-protonfixes.
           </p>
         </div>
-        <div className="abanico" aria-hidden="true">
-          {destacados.map((j, i) => (
-            <div key={j.id} className="abanico-carta" data-posicion={posiciones[i]}>
-              <Portada titulo={j.titulo} estado={j.resumen.estado} ejemplo={j.ejemplo} />
+        <div className="fan" aria-hidden="true">
+          {featured.map((j, i) => (
+            <div key={j.id} className="fan-card" data-position={positions[i]}>
+              <Cover title={j.title} status={j.summary.status} sample={j.demo} />
             </div>
           ))}
         </div>
       </section>
 
-      <div className="biblioteca">
-        <aside className="lateral" aria-label="Filtros">
-          <section aria-labelledby="filtro-estado">
-            <h2 id="filtro-estado" className="lateral-titulo">
+      <div className="library">
+        <aside className="sidebar" aria-label="Filtros">
+          <section aria-labelledby="status-filter">
+            <h2 id="status-filter" className="sidebar-title">
               Estado
             </h2>
-            <ul className="opciones">
-              {EstadoCompatibilidad.literals.map((e) => {
-                const etiqueta = estadoCompatibilidad[e]
+            <ul className="options">
+              {CompatibilityStatus.literals.map((e) => {
+                const label = compatibilityStatus[e]
                 return (
                   <li key={e}>
-                    <Filtro activo={filtro.estado === e} search={alternar(filtro, 'estado', e)} cuenta={por_estado[e]}>
-                      <span className="punto" data-tono={etiqueta.tono} data-forma="relleno" data-estado={e} />
-                      <span className="opcion-nombre">{etiqueta.texto}</span>
-                      <span className="opcion-que">{significadoEstado[e]}</span>
-                    </Filtro>
+                    <FilterLink active={filter.estado === e} search={toggle(filter, 'estado', e)} total={byStatus[e]}>
+                      <span className="dot" data-tone={label.tone} data-shape="relleno" data-state={e} />
+                      <span className="option-name">{label.text}</span>
+                      <span className="option-what">{statusMeaning[e]}</span>
+                    </FilterLink>
                   </li>
                 )
               })}
             </ul>
             {/* Narrow screens hide each option's meaning and show only the active one here; screen readers
                 still get it from the active link itself. */}
-            {filtro.estado !== undefined && (
-              <p className="estado-significado" aria-hidden="true">
-                {significadoEstado[filtro.estado]}
+            {filter.estado !== undefined && (
+              <p className="status-meaning" aria-hidden="true">
+                {statusMeaning[filter.estado]}
               </p>
             )}
           </section>
-          <section aria-labelledby="filtro-lanzador">
-            <h2 id="filtro-lanzador" className="lateral-titulo">
+          <section aria-labelledby="launcher-filter">
+            <h2 id="launcher-filter" className="sidebar-title">
               Lanzador
             </h2>
-            <ul className="opciones">
-              {lanzadores.map((l) => (
+            <ul className="options">
+              {launchers.map((l) => (
                 <li key={l.id}>
-                  <Filtro activo={filtro.lanzador === l.id} search={alternar(filtro, 'lanzador', l.id)}>
-                    <span className="opcion-nombre">{l.nombre}</span>
-                  </Filtro>
+                  <FilterLink active={filter.lanzador === l.id} search={toggle(filter, 'lanzador', l.id)}>
+                    <span className="option-name">{l.name}</span>
+                  </FilterLink>
                 </li>
               ))}
             </ul>
           </section>
           <Link
             to="/"
-            search={alternar(filtro, 'sin_anti_cheat', true)}
-            activeOptions={soloIgual}
-            className="interruptor"
-            aria-current={filtro.sin_anti_cheat === true || undefined}
+            search={toggle(filter, 'sin_anti_cheat', true)}
+            activeOptions={exactOnly}
+            className="switch"
+            aria-current={filter.sin_anti_cheat === true || undefined}
           >
-            <span className="pista" />
+            <span className="track" />
             <span>
               <b>Sin bloqueo anti-cheat</b>
               <small>Oculta los juegos con reportes bloqueados por un anti-cheat.</small>
@@ -175,68 +175,68 @@ function Catalogo() {
           </Link>
         </aside>
 
-        <section aria-labelledby="titulo-rejilla">
-          <div className="barra-rejilla">
-            <h2 id="titulo-rejilla">{contar(juegos.length, 'juego', 'juegos')}</h2>
-            <span className="tenue">{activos.length > 0 ? activos.join(', ') : 'en el catálogo'}</span>
-            {filtrado && (
-              <Link to="/" search={{}} activeOptions={soloIgual} className="limpiar">
+        <section aria-labelledby="grid-title">
+          <div className="grid-bar">
+            <h2 id="grid-title">{count(games.length, 'juego', 'juegos')}</h2>
+            <span className="muted">{active.length > 0 ? active.join(', ') : 'en el catálogo'}</span>
+            {filtered && (
+              <Link to="/" search={{}} activeOptions={exactOnly} className="clean">
                 Quitar filtros
               </Link>
             )}
           </div>
-          {juegos.length === 0 ? (
-            <p className="vacio">
-              {filtrado ? 'Ningún juego coincide con estos filtros. Quita alguno o busca otro título.' : 'Todavía no hay juegos en el catálogo.'}
+          {games.length === 0 ? (
+            <p className="empty">
+              {filtered ? 'Ningún juego coincide con estos filtros. Quita alguno o busca otro título.' : 'Todavía no hay juegos en el catálogo.'}
             </p>
           ) : (
-            <ul className="rejilla-juegos">
-              {juegos.map((j) => (
-                <li key={j.id} className="juego">
-                  <Link to="/juegos/$juegoId" params={{ juegoId: j.id }} className="juego-enlace">
-                    <span className="juego-nombre">{j.titulo}</span>
-                    <Portada titulo={j.titulo} estado={j.resumen.estado} ejemplo={j.ejemplo} />
+            <ul className="game-grid">
+              {games.map((j) => (
+                <li key={j.id} className="game-card">
+                  <Link to="/juegos/$gameId" params={{ gameId: j.id }} className="game-card-link">
+                    <span className="game-card-name">{j.title}</span>
+                    <Cover title={j.title} status={j.summary.status} sample={j.demo} />
                   </Link>
-                  <p className="juego-meta">
-                    <span className="juego-lanzadores">{j.lanzadores.join(', ')}</span>
+                  <p className="game-card-meta">
+                    <span className="game-card-launchers">{j.launchers.join(', ')}</span>
                     <br />
-                    {j.resumen.ultima_prueba
-                      ? `${contar(j.resumen.pruebas, 'reporte aprobado', 'reportes aprobados')} · última prueba ${fecha(j.resumen.ultima_prueba)}`
+                    {j.summary.last_tested
+                      ? `${count(j.summary.test_count, 'reporte aprobado', 'reportes aprobados')} · última prueba ${date(j.summary.last_tested)}`
                       : 'Nadie ha aprobado una prueba todavía'}
-                    {j.resumen.sin_confirmacion_reciente && (
+                    {j.summary.no_recent_confirmation && (
                       <>
                         <br />
                         Sin confirmación en el último año
                       </>
                     )}
-                    {j.pendientes > 0 && (
+                    {j.pending > 0 && (
                       <>
                         <br />
-                        {j.pendientes === 1 ? '1 reporte espera revisión y no cuenta' : `${j.pendientes} reportes esperan revisión y no cuentan`}
+                        {j.pending === 1 ? '1 reporte espera revisión y no cuenta' : `${j.pending} reportes esperan revisión y no cuentan`}
                       </>
                     )}
                   </p>
-                  {j.protondb && <LineaProtonDb resumen={j.protondb} />}
-                  {j.resumen.fallos.length > 0 && <ChipsFallos fallos={j.resumen.fallos} />}
+                  {j.protondb && <ProtonDbLine summary={j.protondb} />}
+                  {j.summary.failures.length > 0 && <FailureChips failures={j.summary.failures} />}
                 </li>
               ))}
             </ul>
           )}
-          {juegos.some((j) => j.protondb) && <AtribucionProtonDb />}
+          {games.some((j) => j.protondb) && <ProtonDbAttribution />}
         </section>
       </div>
     </main>
   )
 }
 
-function Filtro({ activo, search, cuenta, children }: { activo: boolean; search: FiltroCatalogo; cuenta?: number; children: ReactNode }) {
+function FilterLink({ active, search, total, children }: { active: boolean; search: CatalogFilter; total?: number; children: ReactNode }) {
   return (
-    <Link to="/" search={search} activeOptions={soloIgual} className="opcion" aria-current={activo || undefined}>
+    <Link to="/" search={search} activeOptions={exactOnly} className="option" aria-current={active || undefined}>
       {children}
-      {cuenta !== undefined && (
-        <span className="opcion-cuenta">
-          {cuenta}
-          <span className="solo-lector"> {cuenta === 1 ? 'juego' : 'juegos'}</span>
+      {total !== undefined && (
+        <span className="option-count">
+          {total}
+          <span className="sr-only"> {total === 1 ? 'juego' : 'juegos'}</span>
         </span>
       )}
     </Link>

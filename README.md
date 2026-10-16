@@ -30,13 +30,13 @@ Created in [T3 Code](https://t3.codes).
 4. Apply the migrations. A second run applies nothing.
 
    ```sh
-   pnpm db:migrar
+   pnpm db:migrate
    ```
 
 5. Load the demo catalog, profiles, guides, accounts and reports. A second run adds nothing.
 
    ```sh
-   pnpm db:sembrar
+   pnpm db:seed
    ```
 
 6. Start the dev server and open <http://localhost:3000>.
@@ -60,10 +60,10 @@ The seed creates four accounts. They all use the password `opengame-demo`.
 
 Content written by these accounts shows the "Datos de ejemplo" stamp. You can also create your own account at `/registro`.
 
-To change an account's role, run `pnpm rol <email> <usuario|revisor|administrador>`. The new role applies on the account's next request.
+To change an account's role, run `pnpm set-role <email> <usuario|revisor|administrador>`. The new role applies on the account's next request.
 
 ```sh
-pnpm rol demo_ana@demo.opengame.test revisor
+pnpm set-role demo_ana@demo.opengame.test revisor
 ```
 
 ## Import ProtonDB data
@@ -125,12 +125,12 @@ The `/diagnostico` page shows both commands, and it also accepts the pasted outp
 
 ## Update the GPU table
 
-The diagnosis projects what a GPU can do on Linux from its PCI id. The id table, `src/servidor/gpu/familias.generado.ts`, is generated from pinned Mesa, Linux and pci.ids sources. Do not edit it by hand.
+The diagnosis projects what a GPU can do on Linux from its PCI id. The id table, `src/server/gpu/families.generated.ts`, is generated from pinned Mesa, Linux and pci.ids sources. Do not edit it by hand.
 
-To recognize newer GPUs, bump the pins in `scripts/generar-gpus.ts`, then regenerate the table. Review the printed counts and the diff before you commit.
+To recognize newer GPUs, bump the pins in `scripts/generate-gpus.ts`, then regenerate the table. Review the printed counts and the diff before you commit.
 
 ```sh
-pnpm gpu:generar
+pnpm gpu:generate
 ```
 
 The run downloads the sources and fails if a source has a line or a chip it cannot read, or fewer ids than expected.
@@ -142,6 +142,58 @@ pnpm check
 ```
 
 This runs route generation, `tsc`, oxlint, Vitest, `vite build` and a guard that keeps server code out of the browser bundle. The tests in `tests/` need the database container. They empty and migrate `DATABASE_URL_TEST` once per run. The PowerShell detector tests need `pwsh` on the `PATH` or Docker with the `mcr.microsoft.com/powershell` image pulled. Without either, Vitest skips them and names the reason.
+
+## Parity harness
+
+The parity harness is a visual and markup regression test for any two versions of the app. It proves that a change, such as a refactor or a dependency upgrade, leaves everything a player sees and sends exactly as it was. It builds the two versions, gives each its own database, and compares what each one serves.
+
+1. Start the database container with `pnpm db:up`.
+2. Install the browser that the harness uses. Run this command once per machine.
+
+   ```sh
+   pnpm exec playwright-core install chromium-headless-shell
+   ```
+
+3. Compare your working tree, uncommitted edits included, with a base ref.
+
+   ```sh
+   pnpm parity compare --base main
+   ```
+
+   To compare two commits, pass both.
+
+   ```sh
+   pnpm parity compare --base main --head my-branch
+   ```
+
+`--base` and `--head` each take a git ref or a directory, and `--head` defaults to the current directory. `--out` names the output directory, and the default is a new directory in the system temporary directory. Each side runs in a temporary copy, with its own database named `opengame_parity_*` and its own port. The harness deletes both when the run ends.
+
+Each side seeds its database with a frozen clock and seeded randomness. Then `demo_ana` files a report and `demo_revisor` approves it. The harness requests every route in `scripts/parity/capture.ts` as an anonymous visitor, as `demo_ana` and as `demo_revisor`. It saves the following:
+
+- The status, the `Location` header and the content type.
+- The HTML, or the body of a response that is not HTML, such as the two detector scripts.
+- Full-page screenshots at 1280 px and 390 px wide.
+- The sign-in JSON.
+
+The comparison passes only when every check below passes:
+
+- Screenshots are identical pixel for pixel. ImageMagick measures a pair whose files differ.
+- The HTML is byte-identical after the harness removes every `<script>` element and replaces `/assets/` file names. Before it compares, the harness changes each renamed name in the head back to the old name, as `scripts/parity/markup-map.json` lists it. Each section of the map applies to one place only:
+  - `classes` applies to names in `class`.
+  - `ids` applies to `id`, `for`, the `aria-*` attributes that refer to an `id`, such as `aria-labelledby`, and `url(#…)` references in `fill`, `stroke`, `clip-path`, `mask` and `filter`. It never applies to `href`. An id that starts with a React `useId` prefix, such as `_R_15iq_`, maps by the name after the prefix.
+  - `customProperties` applies to `--` names in `style`.
+  - `dataAttributes` applies to the names of `data-*` attributes. Their values are not changed.
+  - `formFields` applies to `name` on `input`, `select`, `textarea` and `button`.
+
+  URLs, query strings, form values and text are never changed, so a map entry cannot hide a change to them.
+- The router data in the page has the same values in the same order, with the same number of object keys. Most key names can differ. These keys must match, because they carry data:
+  - Numeric keys.
+  - Route ids, which start with `/`. Route param names such as `$gameId` can differ.
+  - Values that a CHECK constraint in the base database allows, such as `funciona`. The harness reads them from the base database into `frozen-literals.json`.
+- The sign-in JSON is byte-identical after the harness replaces each `token` or `secret` value with its length. A token depends on how many random values the app drew before sign-in.
+- Every other file is byte-identical.
+
+The command prints one block for each difference, then one line like `parity: 0 differences across 506 captures`. The next line, `harness: <hash>`, is the SHA-256 of the files in `scripts/parity/`, so a reviewer can see when a change edits the harness. It exits with 1 if it finds a difference. The output directory keeps both captures, the logs, and a diff image for each screenshot that differs. To capture a side once and reuse it, run `pnpm parity capture --ref <ref> --out <dir>`, then pass that directory as `--base` or `--head`.
 
 ## Production
 
@@ -170,7 +222,7 @@ The stack reads four variables, listed in `.env.prod.example`:
 3. In Environment Variables, fill in the variables above. Coolify blocks the deploy until the required ones have a value.
 4. Set the domain of the `app` service to `https://<domain>:3000`. The `:3000` tells Coolify which container port receives the requests. You can also let Coolify generate an sslip.io domain. Set `BETTER_AUTH_URL` to the same https address, without the port.
 5. Deploy.
-6. Load the demo data once. Open the `app` container's Terminal tab in Coolify and run `pnpm db:sembrar`. Promote an account from the same terminal with `pnpm rol <correo> revisor`.
+6. Load the demo data once. Open the `app` container's Terminal tab in Coolify and run `pnpm db:seed`. Promote an account from the same terminal with `pnpm set-role <email> revisor`.
 
 Every later deploy rebuilds the image and keeps the database.
 
@@ -189,11 +241,11 @@ Every later deploy rebuilds the image and keeps the database.
 
    ```sh
    docker compose -p opengame-prod --env-file .env.prod -f compose.prod.yaml -f compose.local.yaml up -d --build
-   docker compose -p opengame-prod --env-file .env.prod -f compose.prod.yaml -f compose.local.yaml exec app pnpm db:sembrar
+   docker compose -p opengame-prod --env-file .env.prod -f compose.prod.yaml -f compose.local.yaml exec app pnpm db:seed
    ```
 
 4. Serve it over https from the host's reverse proxy. With Caddy, the whole site entry is `opengame.example.com { reverse_proxy 127.0.0.1:3000 }`.
 
 ## Architecture
 
-`docs/architecture/` holds the design. Start with `ARCHITECTURE.md`. `MODULES.md` maps the directories, `PLAN.md` lists the build units and cuts, `RATIONALE.md` records the decisions, and `cobertura.md` maps each requirement to its route, server program, tests and screenshots.
+`docs/architecture/` holds the design. Start with `ARCHITECTURE.md`. `MODULES.md` maps the directories, `PLAN.md` lists the build units and cuts, `RATIONALE.md` records the decisions, and `cobertura.md` maps each requirement to its route, server program, tests and screenshots. The interface is in Spanish and the code is in English. [`GLOSSARY.md`](docs/architecture/GLOSSARY.md) maps each Spanish term to its English code name and lists the Spanish names that stay because they are URLs, stored data or other contracts.

@@ -1,47 +1,47 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { ErrorCampo } from '../ui/ErrorCampo.tsx'
-import { campo } from '../ui/formulario.tsx'
-import { useAccion } from '../ui/useAccion.ts'
-import { erroresDeCuenta, Registro, registrar } from './-cuenta.ts'
-import { Volver } from './-volver.ts'
+import { FieldError } from '../ui/FieldError.tsx'
+import { fieldProps } from '../ui/form.tsx'
+import { useAction } from '../ui/useAction.ts'
+import { accountErrors, SignUp, signUp } from './-account.ts'
+import { ReturnTo } from './-return-to.ts'
 
 export const Route = createFileRoute('/registro')({
   head: () => ({ meta: [{ title: 'Crear cuenta · OpenGame Linux' }] }),
-  validateSearch: Volver,
-  component: CrearCuenta,
+  validateSearch: ReturnTo,
+  component: SignUpPage,
 })
 
-function CrearCuenta() {
+function SignUpPage() {
   const router = useRouter()
-  const { volver } = Route.useSearch()
-  const r = useAccion(Registro, registrar, {
-    alFallar: erroresDeCuenta,
-    alCompletar: async () => {
+  const { volver: returnTo } = Route.useSearch()
+  const r = useAction(SignUp, signUp, {
+    onFailure: accountErrors,
+    onComplete: async () => {
       await router.invalidate()
-      await router.navigate({ href: volver ?? '/' })
+      await router.navigate({ href: returnTo ?? '/' })
     },
   })
   return (
-    <main className="envoltura estrecha">
+    <main className="wrapper narrow">
       <h1>Crear cuenta</h1>
-      <p className="tenue">Los demás solo verán tu alias. Tu correo no se muestra en ningún aporte.</p>
-      <form className="tarjeta formulario" {...r.formulario}>
-        <ErrorCampo errores={r.errores} campo="formulario" />
+      <p className="muted">Los demás solo verán tu alias. Tu correo no se muestra en ningún aporte.</p>
+      <form className="card form" {...r.form}>
+        <FieldError errors={r.errors} field="form" />
         <label htmlFor="alias">Alias</label>
-        <input {...campo(r.errores, 'alias')} autoComplete="nickname" />
-        <ErrorCampo errores={r.errores} campo="alias" />
-        <label htmlFor="correo">Correo</label>
-        <input {...campo(r.errores, 'correo')} type="email" autoComplete="email" />
-        <ErrorCampo errores={r.errores} campo="correo" />
-        <label htmlFor="contrasena">Contraseña</label>
-        <input {...campo(r.errores, 'contrasena')} type="password" autoComplete="new-password" />
-        <ErrorCampo errores={r.errores} campo="contrasena" />
-        <button type="submit" disabled={r.enviando}>
-          {r.enviando ? 'Creando cuenta…' : 'Crear cuenta'}
+        <input {...fieldProps(r.errors, 'alias')} autoComplete="nickname" />
+        <FieldError errors={r.errors} field="alias" />
+        <label htmlFor="email">Correo</label>
+        <input {...fieldProps(r.errors, 'email')} type="email" autoComplete="email" />
+        <FieldError errors={r.errors} field="email" />
+        <label htmlFor="password">Contraseña</label>
+        <input {...fieldProps(r.errors, 'password')} type="password" autoComplete="new-password" />
+        <FieldError errors={r.errors} field="password" />
+        <button type="submit" disabled={r.submitting}>
+          {r.submitting ? 'Creando cuenta…' : 'Crear cuenta'}
         </button>
       </form>
       <p>
-        ¿Ya tienes cuenta? <Link to="/entrar" search={volver ? { volver } : {}}>Entra</Link>.
+        ¿Ya tienes cuenta? <Link to="/entrar" search={returnTo ? { volver: returnTo } : {}}>Entra</Link>.
       </p>
     </main>
   )

@@ -1,198 +1,198 @@
 import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Option } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { EdicionId, JuegoId } from '../src/dominio/ids.ts'
-import { ProtonDbResumen } from '../src/dominio/tablas.ts'
-import { Visitante } from '../src/servidor/auth.ts'
-import { catalogo } from '../src/servidor/consultas/catalogo.ts'
-import { fichaJuego } from '../src/servidor/consultas/ficha.ts'
-import { importarProtonDb } from '../src/servidor/externo/protondb.ts'
-import { filas } from '../src/servidor/filas.ts'
-import { elDia, enRollback, idDe, PgTest } from './apoyo.ts'
+import { EditionId, GameId } from '../src/domain/ids.ts'
+import { ProtonDbSummary } from '../src/domain/tables.ts'
+import { Visitor } from '../src/server/auth.ts'
+import { catalog } from '../src/server/queries/catalog.ts'
+import { gamePage } from '../src/server/queries/game.ts'
+import { importProtonDb } from '../src/server/external/protondb.ts'
+import { rows } from '../src/server/rows.ts'
+import { onDay, inRollback, idOf, PgTest } from './support.ts'
 
-async function* trozos(texto: string) {
-  for (let i = 0; i < texto.length; i += 7) yield texto.slice(i, i + 7)
+async function* chunks(text: string) {
+  for (let i = 0; i < text.length; i += 7) yield text.slice(i, i + 7)
 }
 
-type Registro = { appId: string | number; fecha: string; funciona: boolean; ram?: string; variant?: string; version?: string }
+type Entry = { appId: string | number; date: string; works: boolean; ram?: string; variant?: string; version?: string }
 
-const registro = ({ appId, fecha, funciona, ram = '16 GB', variant = 'official', version }: Registro) =>
+const entry = ({ appId, date, works, ram = '16 GB', variant = 'official', version }: Entry) =>
   JSON.stringify({
     app: { steam: { appId }, title: 'Juego inventado' },
-    timestamp: Date.parse(fecha) / 1000,
+    timestamp: Date.parse(date) / 1000,
     systemInfo: { gpu: 'NVIDIA GeForce GTX 1060', ram },
-    responses: { verdict: funciona ? 'yes' : 'no', variant, ...(version === undefined ? {} : { customProtonVersion: version }) },
+    responses: { verdict: works ? 'yes' : 'no', variant, ...(version === undefined ? {} : { customProtonVersion: version }) },
   })
 
-const exportacion = (...elementos: ReadonlyArray<string>) => `[\n${elementos.join(',\n')}\n]`
+const exportOf = (...elements: ReadonlyArray<string>) => `[\n${elements.join(',\n')}\n]`
 
 const ge = { variant: 'ge', version: 'GE-Proton10-34' }
-const repetido = registro({ appId: '1000', fecha: '2026-09-01T00:00:00Z', funciona: true, ...ge })
-const octubre = exportacion(
-  repetido,
-  repetido,
-  registro({ appId: '1000', fecha: '2026-08-01T00:00:00Z', funciona: true, ram: '8 GB', ...ge }),
-  registro({ appId: '1000', fecha: '2026-07-01T00:00:00Z', funciona: false, ram: '8 GB' }),
-  registro({ appId: '1000', fecha: '2024-05-01T00:00:00Z', funciona: true }),
-  registro({ appId: 2000, fecha: '2026-10-01T00:00:00Z', funciona: true }),
-  registro({ appId: '3000', fecha: '2026-09-15T00:00:00Z', funciona: true }),
-  registro({ appId: '1000', fecha: '2027-01-01T00:00:00Z', funciona: true }),
+const repeated = entry({ appId: '1000', date: '2026-09-01T00:00:00Z', works: true, ...ge })
+const october = exportOf(
+  repeated,
+  repeated,
+  entry({ appId: '1000', date: '2026-08-01T00:00:00Z', works: true, ram: '8 GB', ...ge }),
+  entry({ appId: '1000', date: '2026-07-01T00:00:00Z', works: false, ram: '8 GB' }),
+  entry({ appId: '1000', date: '2024-05-01T00:00:00Z', works: true }),
+  entry({ appId: 2000, date: '2026-10-01T00:00:00Z', works: true }),
+  entry({ appId: '3000', date: '2026-09-15T00:00:00Z', works: true }),
+  entry({ appId: '1000', date: '2027-01-01T00:00:00Z', works: true }),
   '{"timestamp":"ayer"}',
 )
 
-const escenario = Effect.gen(function* () {
+const scenario = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
-  const insertar = (tabla: string, fila: Record<string, string | number | null>) =>
-    idDe(sql`INSERT INTO ${sql(tabla)} ${sql.insert(fila)} RETURNING id`)
-  const steam = yield* insertar('lanzador', { nombre: 'Steam' })
-  const epic = yield* insertar('lanzador', { nombre: 'Epic Games Store' })
-  const uno = yield* insertar('juego', { titulo: 'Juego Uno', descripcion: 'd' })
-  const dos = yield* insertar('juego', { titulo: 'Juego Dos', descripcion: 'd' })
-  const tres = yield* insertar('juego', { titulo: 'Juego Tres', descripcion: 'd' })
-  const unoSteam = yield* insertar('edicion_juego', { juego_id: uno, lanzador_id: steam, identificador_externo: '1000' })
-  yield* insertar('edicion_juego', { juego_id: uno, lanzador_id: epic, identificador_externo: '2000' })
-  const dosSteam = yield* insertar('edicion_juego', { juego_id: dos, lanzador_id: steam, identificador_externo: '2000' })
-  yield* insertar('edicion_juego', { juego_id: tres, lanzador_id: steam, identificador_externo: null })
-  return { uno: JuegoId.make(uno), tres: JuegoId.make(tres), unoSteam: EdicionId.make(unoSteam), dosSteam: EdicionId.make(dosSteam) }
+  const insert = (table: string, row: Record<string, string | number | null>) =>
+    idOf(sql`INSERT INTO ${sql(table)} ${sql.insert(row)} RETURNING id`)
+  const steam = yield* insert('launcher', { name: 'Steam' })
+  const epic = yield* insert('launcher', { name: 'Epic Games Store' })
+  const one = yield* insert('game', { title: 'Juego Uno', description: 'd' })
+  const two = yield* insert('game', { title: 'Juego Dos', description: 'd' })
+  const three = yield* insert('game', { title: 'Juego Tres', description: 'd' })
+  const oneSteam = yield* insert('game_edition', { game_id: one, launcher_id: steam, external_id: '1000' })
+  yield* insert('game_edition', { game_id: one, launcher_id: epic, external_id: '2000' })
+  const twoSteam = yield* insert('game_edition', { game_id: two, launcher_id: steam, external_id: '2000' })
+  yield* insert('game_edition', { game_id: three, launcher_id: steam, external_id: null })
+  return { one: GameId.make(one), three: GameId.make(three), oneSteam: EditionId.make(oneSteam), twoSteam: EditionId.make(twoSteam) }
 })
 
-const guardados = Effect.flatMap(SqlClient.SqlClient, (sql) => filas(ProtonDbResumen, sql`SELECT * FROM protondb_resumen ORDER BY edicion_id`))
+const saved = Effect.flatMap(SqlClient.SqlClient, (sql) => rows(ProtonDbSummary, sql`SELECT * FROM protondb_summary ORDER BY edition_id`))
 
-const importar = (texto: string) => importarProtonDb(trozos(texto))
-const motivoDe = (texto: string) => Effect.map(Effect.flip(importar(texto)), (e) => ('motivo' in e ? e.motivo : e._tag))
+const importText = (text: string) => importProtonDb(chunks(text))
+const reasonOf = (text: string) => Effect.map(Effect.flip(importText(text)), (e) => ('reason' in e ? e.reason : e._tag))
 
-const hoy = new Date('2026-10-15T00:00:00Z')
-const exportadoEn = new Date('2026-10-01T00:00:00Z')
+const today = new Date('2026-10-15T00:00:00Z')
+const exportedAt = new Date('2026-10-01T00:00:00Z')
 
-layer(PgTest)('importarProtonDb', (it) => {
+layer(PgTest)('importProtonDb', (it) => {
   describe('un export de octubre', () => {
     it.effect('guarda un resumen por edición de Steam del catálogo, sin duplicados ni reportes futuros', () =>
-      enRollback(
+      inRollback(
         Effect.gen(function* () {
-          const e = yield* escenario
-          expect(yield* importar(octubre)).toEqual({ leidos: 9, descartados: 2, coincidentes: 6, guardados: 2, exportado_en: exportadoEn })
-          expect(yield* guardados).toEqual([
+          const e = yield* scenario
+          expect(yield* importText(october)).toEqual({ read: 9, discarded: 2, matched: 6, saved: 2, exported_at: exportedAt })
+          expect(yield* saved).toEqual([
             {
-              edicion_id: e.unoSteam,
-              exportado_en: exportadoEn,
-              reportes_total: 4,
-              recientes: 3,
-              recientes_funcionan: 2,
-              modestos_recientes: 2,
-              modestos_funcionan: 1,
-              ultimo_reporte: new Date('2026-09-01T00:00:00Z'),
-              capa_variante: 'ge',
-              capa_version: 'GE-Proton10-34',
-              capa_reportes: 2,
+              edition_id: e.oneSteam,
+              exported_at: exportedAt,
+              total_reports: 4,
+              recent: 3,
+              recent_working: 2,
+              modest_recent: 2,
+              modest_working: 1,
+              latest_report: new Date('2026-09-01T00:00:00Z'),
+              layer_variant: 'ge',
+              layer_version: 'GE-Proton10-34',
+              layer_reports: 2,
             },
             {
-              edicion_id: e.dosSteam,
-              exportado_en: exportadoEn,
-              reportes_total: 1,
-              recientes: 1,
-              recientes_funcionan: 1,
-              modestos_recientes: 0,
-              modestos_funcionan: 0,
-              ultimo_reporte: exportadoEn,
-              capa_variante: 'official',
-              capa_version: null,
-              capa_reportes: 1,
+              edition_id: e.twoSteam,
+              exported_at: exportedAt,
+              total_reports: 1,
+              recent: 1,
+              recent_working: 1,
+              modest_recent: 0,
+              modest_working: 0,
+              latest_report: exportedAt,
+              layer_variant: 'official',
+              layer_version: null,
+              layer_reports: 1,
             },
           ])
         }),
-      ).pipe(elDia(hoy)),
+      ).pipe(onDay(today)),
     )
 
     it.effect('importar el mismo export otra vez deja las mismas filas', () =>
-      enRollback(
+      inRollback(
         Effect.gen(function* () {
-          yield* escenario
-          yield* importar(octubre)
-          const primera = yield* guardados
-          yield* importar(octubre)
-          expect(yield* guardados).toEqual(primera)
+          yield* scenario
+          yield* importText(october)
+          const first = yield* saved
+          yield* importText(october)
+          expect(yield* saved).toEqual(first)
         }),
-      ).pipe(elDia(hoy)),
+      ).pipe(onDay(today)),
     )
   })
 
   describe('después de importar octubre', () => {
     it.effect('un export más nuevo reemplaza todo y quita la edición que ya no aparece', () =>
-      enRollback(
+      inRollback(
         Effect.gen(function* () {
-          const e = yield* escenario
-          yield* importar(octubre)
-          const noviembre = exportacion(registro({ appId: '2000', fecha: '2026-11-01T00:00:00Z', funciona: false }))
-          yield* importar(noviembre).pipe(elDia(new Date('2026-11-15T00:00:00Z')))
-          expect((yield* guardados).map((r) => [r.edicion_id, r.reportes_total, r.recientes_funcionan, r.capa_variante])).toEqual([[e.dosSteam, 1, 0, null]])
+          const e = yield* scenario
+          yield* importText(october)
+          const november = exportOf(entry({ appId: '2000', date: '2026-11-01T00:00:00Z', works: false }))
+          yield* importText(november).pipe(onDay(new Date('2026-11-15T00:00:00Z')))
+          expect((yield* saved).map((r) => [r.edition_id, r.total_reports, r.recent_working, r.layer_variant])).toEqual([[e.twoSteam, 1, 0, null]])
         }),
-      ).pipe(elDia(hoy)),
+      ).pipe(onDay(today)),
     )
 
     it.effect('una entrada vacía, truncada o sin reportes válidos falla y conserva lo importado', () =>
-      enRollback(
+      inRollback(
         Effect.gen(function* () {
-          yield* escenario
-          yield* importar(octubre)
-          const antes = yield* guardados
-          expect(yield* motivoDe('')).toBe('la entrada está vacía')
-          expect(yield* motivoDe(octubre.slice(0, octubre.length - 40))).toBe('el archivo está truncado')
-          expect(yield* motivoDe('[{"app":{}}]')).toBe('ningún reporte válido')
-          expect(yield* guardados).toEqual(antes)
+          yield* scenario
+          yield* importText(october)
+          const before = yield* saved
+          expect(yield* reasonOf('')).toBe('la entrada está vacía')
+          expect(yield* reasonOf(october.slice(0, october.length - 40))).toBe('el archivo está truncado')
+          expect(yield* reasonOf('[{"app":{}}]')).toBe('ningún reporte válido')
+          expect(yield* saved).toEqual(before)
         }),
-      ).pipe(elDia(hoy)),
+      ).pipe(onDay(today)),
     )
 
     it.effect('un export más antiguo que el importado se rechaza', () =>
-      enRollback(
+      inRollback(
         Effect.gen(function* () {
-          yield* escenario
-          yield* importar(octubre)
-          const antes = yield* guardados
-          const septiembre = exportacion(registro({ appId: '1000', fecha: '2026-09-01T00:00:00Z', funciona: false }))
-          expect(yield* motivoDe(septiembre)).toBe('exportación más antigua que la importada')
-          expect(yield* guardados).toEqual(antes)
+          yield* scenario
+          yield* importText(october)
+          const before = yield* saved
+          const september = exportOf(entry({ appId: '1000', date: '2026-09-01T00:00:00Z', works: false }))
+          expect(yield* reasonOf(september)).toBe('exportación más antigua que la importada')
+          expect(yield* saved).toEqual(before)
         }),
-      ).pipe(elDia(hoy)),
+      ).pipe(onDay(today)),
     )
   })
 
   describe('lectura', () => {
-    const invitado = Visitante.of(Option.none())
+    const guest = Visitor.of(Option.none())
 
     it.effect('la ficha y el catálogo muestran el resumen sin tocar el estado calculado ni los contadores', () =>
-      enRollback(
+      inRollback(
         Effect.gen(function* () {
-          const e = yield* escenario
-          const antes = yield* catalogo({})
-          yield* importar(octubre)
-          const despues = yield* catalogo({})
-          expect(despues.contadores).toEqual(antes.contadores)
-          expect(despues.juegos.map((j) => [j.titulo, j.resumen.estado, j.protondb])).toEqual([
-            ['Juego Dos', 'sin_evidencia', { recientes: 1, recientes_funcionan: 1, reportes_total: 1 }],
+          const e = yield* scenario
+          const before = yield* catalog({})
+          yield* importText(october)
+          const after = yield* catalog({})
+          expect(after.counters).toEqual(before.counters)
+          expect(after.games.map((j) => [j.title, j.summary.status, j.protondb])).toEqual([
+            ['Juego Dos', 'sin_evidencia', { recent: 1, recent_working: 1, total_reports: 1 }],
             ['Juego Tres', 'sin_evidencia', null],
-            ['Juego Uno', 'sin_evidencia', { recientes: 3, recientes_funcionan: 2, reportes_total: 4 }],
+            ['Juego Uno', 'sin_evidencia', { recent: 3, recent_working: 2, total_reports: 4 }],
           ])
-          const uno = yield* Effect.provideService(fichaJuego(e.uno), Visitante, invitado)
-          expect(uno.resumen.estado).toBe('sin_evidencia')
-          expect(uno.protondb).toEqual({
-            juego_id: e.uno,
+          const page = yield* Effect.provideService(gamePage(e.one), Visitor, guest)
+          expect(page.summary.status).toBe('sin_evidencia')
+          expect(page.protondb).toEqual({
+            game_id: e.one,
             app_id: '1000',
-            edicion_id: e.unoSteam,
-            exportado_en: exportadoEn,
-            reportes_total: 4,
-            recientes: 3,
-            recientes_funcionan: 2,
-            modestos_recientes: 2,
-            modestos_funcionan: 1,
-            ultimo_reporte: new Date('2026-09-01T00:00:00Z'),
-            capa_variante: 'ge',
-            capa_version: 'GE-Proton10-34',
-            capa_reportes: 2,
+            edition_id: e.oneSteam,
+            exported_at: exportedAt,
+            total_reports: 4,
+            recent: 3,
+            recent_working: 2,
+            modest_recent: 2,
+            modest_working: 1,
+            latest_report: new Date('2026-09-01T00:00:00Z'),
+            layer_variant: 'ge',
+            layer_version: 'GE-Proton10-34',
+            layer_reports: 2,
           })
-          expect((yield* Effect.provideService(fichaJuego(e.tres), Visitante, invitado)).protondb).toBeNull()
+          expect((yield* Effect.provideService(gamePage(e.three), Visitor, guest)).protondb).toBeNull()
         }),
-      ).pipe(elDia(hoy)),
+      ).pipe(onDay(today)),
     )
   })
 })
