@@ -122,17 +122,24 @@ export const parseMarkupMap = (raw: unknown): HeadToBaseNames => {
 }
 
 const idReferences = new Set(['id', 'for', 'aria-labelledby', 'aria-describedby', 'aria-controls', 'aria-owns', 'aria-activedescendant', 'aria-details', 'aria-errormessage', 'aria-flowto'])
+const reactUseIdPrefix = /^_[Rr]_[0-9a-z]+_/
+const urlReferences = new Set(['fill', 'stroke', 'clip-path', 'mask', 'filter'])
 const formControls = new Set(['input', 'select', 'textarea', 'button'])
 
 export const unmapMarkup = (html: string, map: HeadToBaseNames) => {
   const back = (names: ReadonlyMap<string, string>) => (name: string) => names.get(name) ?? name
+  const backId = (id: string) => {
+    const prefix = reactUseIdPrefix.exec(id)?.[0] ?? ''
+    return prefix + back(map.ids)(id.slice(prefix.length))
+  }
   const each = (value: string, names: ReadonlyMap<string, string>) => value.replaceAll(/\S+/g, back(names))
   return html.replaceAll(/<([A-Za-z][\w-]*)([^>]*)>/g, (_, element: string, attributes: string) => {
     const mapped = attributes.replaceAll(/([^\s"'=/]+)(?:="([^"]*)")?/g, (whole, name: string, value: string | undefined) => {
       if (name.startsWith('data-')) return back(map.dataAttributes)(name) + whole.slice(name.length)
       if (value === undefined) return whole
       if (name === 'class') return `class="${each(value, map.classes)}"`
-      if (idReferences.has(name)) return `${name}="${each(value, map.ids)}"`
+      if (idReferences.has(name)) return `${name}="${value.replaceAll(/\S+/g, backId)}"`
+      if (urlReferences.has(name)) return `${name}="${value.replaceAll(/url\(#([^)\s]+)\)/g, (_, id: string) => `url(#${backId(id)})`)}"`
       if (name === 'style') return `style="${value.replaceAll(/--[\w-]+/g, back(map.customProperties))}"`
       if (name === 'name' && formControls.has(element)) return `name="${back(map.formFields)(value)}"`
       return whole

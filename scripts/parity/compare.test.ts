@@ -20,6 +20,18 @@ describe('unmapMarkup', () => {
     )
   })
 
+  test('an id entry maps back useId-prefixed ids and their url(#) references, but not href', () => {
+    const head = '<linearGradient id="_R_15iq_background"><rect fill="url(#_R_15iq_background)" stroke="url(#background)" mask="none"><use href="#_R_15iq_background">'
+    expect(unmapMarkup(head, parseMarkupMap({ ids: { fondo: 'background' } }))).toBe(
+      '<linearGradient id="_R_15iq_fondo"><rect fill="url(#_R_15iq_fondo)" stroke="url(#fondo)" mask="none"><use href="#_R_15iq_background">',
+    )
+  })
+
+  test('a url(#) reference with no id entry stays renamed', () => {
+    const head = '<rect fill="url(#_R_15iq_shade)" clip-path="url(#shade)">'
+    expect(unmapMarkup(head, parseMarkupMap({ ids: { fondo: 'background' } }))).toBe(head)
+  })
+
   test('the flat map shape is rejected', () => {
     expect(() => parseMarkupMap({ estado: 'state' })).toThrow('markup-map.json: unknown sections estado')
   })

@@ -180,7 +180,7 @@ The comparison passes only when every check below passes:
 - Screenshots are identical pixel for pixel. ImageMagick measures a pair whose files differ.
 - The HTML is byte-identical after the harness removes every `<script>` element and replaces `/assets/` file names. Before it compares, the harness changes each renamed name in the head back to the old name, as `scripts/parity/markup-map.json` lists it. Each section of the map applies to one place only:
   - `classes` applies to names in `class`.
-  - `ids` applies to `id`, `for` and the `aria-*` attributes that refer to an `id`, such as `aria-labelledby`.
+  - `ids` applies to `id`, `for`, the `aria-*` attributes that refer to an `id`, such as `aria-labelledby`, and `url(#…)` references in `fill`, `stroke`, `clip-path`, `mask` and `filter`. It never applies to `href`. An id that starts with a React `useId` prefix, such as `_R_15iq_`, maps by the name after the prefix.
   - `customProperties` applies to `--` names in `style`.
   - `dataAttributes` applies to the names of `data-*` attributes. Their values are not changed.
   - `formFields` applies to `name` on `input`, `select`, `textarea` and `button`.

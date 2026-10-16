@@ -59,10 +59,10 @@ const motifDrawings = {
     const radius = Math.min(width, height) * 0.38
     return (
       <>
-        <pattern id={`${id}puntos`} width={cell} height={cell} patternUnits="userSpaceOnUse">
+        <pattern id={`${id}dots`} width={cell} height={cell} patternUnits="userSpaceOnUse">
           <circle cx={cell / 2} cy={cell / 2} r={cell * 0.11} fill={color(20, 30, 40)} />
         </pattern>
-        <rect width={width} height={height} fill={`url(#${id}puntos)`} />
+        <rect width={width} height={height} fill={`url(#${id}dots)`} />
         <circle cx={cx} cy={cy} r={radius} fill="none" stroke={color(-35, 55, 52)} strokeWidth={radius * 0.28} />
         <circle cx={cx - radius * 0.9} cy={cy + radius * 0.8} r={radius * 0.35} fill={color(40, 45, 38)} />
       </>
@@ -87,18 +87,18 @@ export function Artwork({ title, width, height }: { title: string; width: number
   return (
     <svg className="artwork" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
-        <linearGradient id={`${id}fondo`} x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={`${id}background`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor={color(0, 42, 26)} />
           <stop offset="1" stopColor={color(50, 38, 12)} />
         </linearGradient>
-        <linearGradient id={`${id}sombra`} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${id}shade`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0.45" stopColor="#000" stopOpacity="0" />
           <stop offset="1" stopColor="#000" stopOpacity="0.55" />
         </linearGradient>
       </defs>
-      <rect width={width} height={height} fill={`url(#${id}fondo)`} />
+      <rect width={width} height={height} fill={`url(#${id}background)`} />
       {motifDrawings[motif]({ id, r: seededRandom(strokeSeed), width, height, color })}
-      <rect width={width} height={height} fill={`url(#${id}sombra)`} />
+      <rect width={width} height={height} fill={`url(#${id}shade)`} />
     </svg>
   )
 }
