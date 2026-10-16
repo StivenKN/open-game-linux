@@ -2395,8 +2395,6 @@
       "registrarReporte.creado.metodo_medicion:prop": "measurement_method",
       "registrarReporte.creado.observaciones:prop": "observations",
       "registrarReporte.reporte_id:prop": "report_id",
-      "registrarReporte.tipo_fallo_id:prop": "failure_type_id",
-      "registrarReporte.detalle:prop": "detail",
       "registrarSolucion.creada.reporte_id:prop": "report_id",
       "registrarSolucion.creada.tipo_fallo_id:prop": "failure_type_id",
       "registrarSolucion.creada.autor_id:prop": "author_id",
@@ -3953,8 +3951,6 @@
       "Guardado.nuevo": "inserted",
       "Destino.equipo:prop": "machine",
       "Destino.con_biblioteca:prop": "with_library",
-      "Guardar.r.data.equipo:prop": "machine",
-      "Guardar.r.data.con_biblioteca:prop": "with_library",
       "Guardar.r.data.entrada:prop": "input"
     },
     "src/routes/diagnostico/index.tsx": {
