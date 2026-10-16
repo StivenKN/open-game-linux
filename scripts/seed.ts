@@ -46,7 +46,7 @@ const layers = {
   proton9: { family: 'Proton', variant: 'Valve', version: '9.0-3' },
   ge94: { family: 'Proton', variant: 'GE', version: '9-4' },
   wine9: { family: 'Wine', variant: 'estable', version: '9.0' },
-  nativo: { family: 'Nativo', variant: 'Steam Linux Runtime', version: '3.0' },
+  native: { family: 'Nativo', variant: 'Steam Linux Runtime', version: '3.0' },
 } as const satisfies Record<string, { family: LayerFamily; variant: string; version: string }>
 
 const failureTypes = {
@@ -133,7 +133,7 @@ type Profile = {
   requires_vulkan: boolean | null
   vulkan_version_min: string | null
   launch_options: string | null
-  steps: ReadonlyArray<readonly [titulo: string, instruccion: string]>
+  steps: ReadonlyArray<readonly [title: string, instruction: string]>
   dependencies: ReadonlyArray<{ dependency: keyof typeof dependencies; required: boolean; install_instruction: string }>
 }
 
@@ -209,7 +209,7 @@ const profiles: ReadonlyArray<Profile> = [
   {
     edition: ['ets2', 'steam'],
     distribution: 'mint',
-    layer: 'nativo',
+    layer: 'native',
     author: 'demo_bruno',
     title: 'ETS2 nativo en Linux Mint',
     ram_min_mb: 4096,
@@ -223,7 +223,7 @@ const profiles: ReadonlyArray<Profile> = [
   {
     edition: ['cs2', 'steam'],
     distribution: 'arch',
-    layer: 'nativo',
+    layer: 'native',
     author: 'demo_ana',
     title: 'CS2 nativo con Vulkan',
     ram_min_mb: 8192,
@@ -297,7 +297,7 @@ type Value = string | number | boolean | null
 const profileKey = (p: Pick<Profile, 'edition' | 'distribution' | 'layer'>) => `${p.edition.join('/')}|${p.distribution}|${p.layer}`
 
 const machines = {
-  anaPortatil: {
+  anaLaptop: {
     owner: 'demo_ana',
     alias: 'Portátil de Ana',
     distribution: 'mint',
@@ -314,7 +314,7 @@ const machines = {
       version_vulkan: '1.3.280',
     },
   },
-  anaTorre: {
+  anaTower: {
     owner: 'demo_ana',
     alias: 'Torre de Ana',
     distribution: 'fedora',
@@ -355,7 +355,7 @@ const machines = {
     },
   },
   // Old hardware with no reports: the graphics path verdict must still say something.
-  brunoViejo: {
+  brunoOld: {
     owner: 'demo_bruno',
     alias: 'PC viejo de Bruno',
     distribution: 'ubuntu',
@@ -375,7 +375,7 @@ const machines = {
       nivel_x86: 'v3',
     },
   },
-  anaFamiliar: {
+  anaFamily: {
     owner: 'demo_ana',
     alias: 'PC familiar de Ana',
     distribution: 'mint',
@@ -413,13 +413,13 @@ type DemoReport = {
 
 const reports: ReadonlyArray<DemoReport> = [
   {
-    machine: 'anaPortatil', edition: ['gta5', 'steam'], layer: 'proton8', withProfile: true, game_version: '1.0.3179',
+    machine: 'anaLaptop', edition: ['gta5', 'steam'], layer: 'proton8', withProfile: true, game_version: '1.0.3179',
     tested_at: '2026-09-28T20:00:00Z', outcome: 'funciona',
     measurement: { avg_fps: 54, resolution: '1280x720', graphics_quality: 'Bajo', measurement_method: 'MangoHud · misión Prólogo · 5 min' },
     failures: [], observations: 'Seguí el perfil al pie de la letra. Historia y GTA Online sin cierres en dos horas.', approve: true,
   },
   {
-    machine: 'anaPortatil', edition: ['gta5', 'steam'], layer: 'proton8', withProfile: true, game_version: '1.0.3179',
+    machine: 'anaLaptop', edition: ['gta5', 'steam'], layer: 'proton8', withProfile: true, game_version: '1.0.3179',
     tested_at: '2026-09-14T20:00:00Z', outcome: 'funciona', measurement: null,
     failures: [], observations: 'Primera prueba con el perfil. Sin medir FPS; se juega fluido en gráficos bajos.', approve: true,
   },
@@ -430,7 +430,7 @@ const reports: ReadonlyArray<DemoReport> = [
     failures: [], observations: 'Desde Heroic. Hubo que desactivar la superposición de Epic para que el juego pasara del menú.', approve: true,
   },
   {
-    machine: 'anaTorre', edition: ['gta5', 'steam'], layer: 'proton9', withProfile: false, game_version: '1.0.3258',
+    machine: 'anaTower', edition: ['gta5', 'steam'], layer: 'proton9', withProfile: false, game_version: '1.0.3258',
     tested_at: '2026-10-02T19:00:00Z', outcome: 'falla_en_ejecucion', measurement: null,
     failures: [['lanzador', 'El Rockstar Games Launcher se queda en «Actualizando» y se cierra tras unos minutos de juego.']],
     observations: 'Tras la actualización 1.0.3258 el lanzador corta la partida a los pocos minutos.', approve: true,
@@ -441,7 +441,7 @@ const reports: ReadonlyArray<DemoReport> = [
     failures: [], observations: 'Con GE-Proton 9-4 y el argumento -nobattleye funciona la historia; Online no probado.', approve: false,
   },
   {
-    machine: 'anaPortatil', edition: ['valorant', 'riot'], layer: 'wine9', withProfile: false, game_version: '9.07',
+    machine: 'anaLaptop', edition: ['valorant', 'riot'], layer: 'wine9', withProfile: false, game_version: '9.07',
     tested_at: '2026-07-11T20:00:00Z', outcome: 'no_inicia', measurement: null,
     failures: [['anti_cheat', 'Vanguard exige su controlador de kernel de Windows y el cliente no deja entrar.']],
     observations: 'El cliente de Riot se instala, pero Vanguard bloquea el juego antes del menú.', approve: true,
@@ -453,17 +453,17 @@ const reports: ReadonlyArray<DemoReport> = [
     observations: 'Mismo bloqueo con GE-Proton: el anti-trampas no admite Linux.', approve: true,
   },
   {
-    machine: 'anaPortatil', edition: ['ets2', 'steam'], layer: 'nativo', withProfile: true, game_version: '1.50.1.2s',
+    machine: 'anaLaptop', edition: ['ets2', 'steam'], layer: 'native', withProfile: true, game_version: '1.50.1.2s',
     tested_at: '2026-09-10T20:00:00Z', outcome: 'funciona', measurement: null,
     failures: [], observations: 'Versión nativa, sin herramienta de compatibilidad. Una hora de ruta sin problemas.', approve: false,
   },
   {
-    machine: 'brunoPc', edition: ['ets2', 'steam'], layer: 'nativo', withProfile: false, game_version: '1.50.1.2s',
+    machine: 'brunoPc', edition: ['ets2', 'steam'], layer: 'native', withProfile: false, game_version: '1.50.1.2s',
     tested_at: '2026-09-12T21:00:00Z', outcome: 'funciona_con_ajustes', measurement: null,
     failures: [], observations: 'Funciona nativo; el volante necesitó configurar los ejes a mano.', approve: false,
   },
   {
-    machine: 'anaTorre', edition: ['witcher3', 'steam'], layer: 'proton9', withProfile: true, game_version: '4.04',
+    machine: 'anaTower', edition: ['witcher3', 'steam'], layer: 'proton9', withProfile: true, game_version: '4.04',
     tested_at: '2026-10-06T19:00:00Z', outcome: 'funciona', measurement: null,
     failures: [], observations: 'Con el perfil el juego abre directo, sin el lanzador de CD Projekt, y se mantiene a 60 FPS en Novigrado.', approve: true,
   },
@@ -492,7 +492,7 @@ const TextIdRow = Schema.Struct({ id: Schema.String })
 
 const lookup = <K, A>(ids: ReadonlyMap<K, A>, key: K) => {
   const id = ids.get(key)
-  return id === undefined ? Effect.die(`la semilla no definió ${String(key)}`) : Effect.succeed(id)
+  return id === undefined ? Effect.die(`the seed did not define ${String(key)}`) : Effect.succeed(id)
 }
 
 const program = Effect.gen(function* () {
@@ -513,7 +513,7 @@ const program = Effect.gen(function* () {
     Effect.map(ensure(table, key, rest), (r) => r.id)
 
   // Accounts go through better-auth so the password is hashed its way. Its own pool commits them
-  // outside the transaction below; the lookup by correo makes a rerun skip them.
+  // outside the transaction below; the lookup by email makes a rerun skip them.
   const user = new Map<Account, string>()
   for (const [alias, role] of Record.toEntries(accounts)) {
     const email = emailOf(alias)
@@ -698,9 +698,9 @@ const program = Effect.gen(function* () {
   )
 
   yield* Effect.log(
-    insertedRows.size === 0 ? 'La semilla ya estaba aplicada; nada que cambiar.' : `Filas nuevas: ${[...insertedRows].map(([t, n]) => `${t} ${n}`).join(', ')}`,
+    insertedRows.size === 0 ? 'The seed was already applied; nothing to change.' : `New rows: ${[...insertedRows].map(([t, n]) => `${t} ${n}`).join(', ')}`,
   )
-  yield* Effect.log(`Cuentas demo, contraseña «${demoPassword}»: ${Record.toEntries(accounts).map(([a, r]) => `${emailOf(a)} (${r})`).join(', ')}`)
+  yield* Effect.log(`Demo accounts, password «${demoPassword}»: ${Record.toEntries(accounts).map(([a, r]) => `${emailOf(a)} (${r})`).join(', ')}`)
 }).pipe(Effect.provide(PgLive))
 
 Effect.runPromise(program).then(

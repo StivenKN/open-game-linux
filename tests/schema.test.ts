@@ -76,7 +76,7 @@ const step = (f: Seed, profileId: number, position = 1) =>
 const solution = (f: Seed) =>
   idOf(f.sql`INSERT INTO solution (report_id, failure_type_id, author_id, title, instructions) VALUES (${f.rep}, ${f.failureType}, 'revisor', 's', 'i') RETURNING id`)
 
-type Case = readonly [caso: string, restriccion: string, ofensa: (f: Seed) => Effect.Effect<unknown, SqlError.SqlError | Schema.SchemaError>]
+type Case = readonly [title: string, constraint: string, offense: (f: Seed) => Effect.Effect<unknown, SqlError.SqlError | Schema.SchemaError>]
 
 const rejects: ReadonlyArray<Case> = [
   ['dependencia duplicada en un perfil', 'profile_dependency_pkey', (f) =>
