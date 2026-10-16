@@ -68,7 +68,7 @@ const inProject = (symbol: { getDeclarations(): Node[] }) =>
     return path.startsWith(root) && !path.includes('/node_modules/')
   })
 
-const assertNoCapture = (node: Node, to: string) => {
+const assertNoCapture = (node: Node, to: string, key: string, entries: Entries) => {
   if (isProperty(node)) {
     if (node.getParentOrThrow().getChildren().some((s) => s !== node && nameOf(s) === to)) throw new Error(`${nameOf(node)} -> ${to}: a sibling member is already ${to}`)
     return
@@ -76,11 +76,13 @@ const assertNoCapture = (node: Node, to: string) => {
   const name = nameNodeOf(node)
   if (name === undefined) return
   const target = name.getSymbol()
+  const namedBySameKey = (s: { getDeclarations(): Node[] }) =>
+    s.getDeclarations().every((d) => d.getSourceFile() === node.getSourceFile() && isDeclaration(d) && originalKeyOf(d, entries) === key)
   const renamed = service.findRenameLocations(name, { usePrefixAndSuffixText: true })
   for (const site of renamed.flatMap((l) => l.getSourceFile().getDescendantAtPos(l.getTextSpan().getStart()) ?? [])) {
     const clash = site
       .getSymbolsInScope(SymbolFlags.Value | SymbolFlags.Type | SymbolFlags.Namespace | SymbolFlags.Alias)
-      .find((s) => s.getName() === to && s !== target && inProject(s))
+      .find((s) => s.getName() === to && s !== target && inProject(s) && !namedBySameKey(s))
     if (clash !== undefined) throw new Error(`${nameOf(node)} -> ${to} would capture ${to} at ${site.getSourceFile().getFilePath()}:${site.getStartLineNumber()}`)
   }
 }
@@ -268,7 +270,7 @@ if (process.argv[2] === '--list') {
       const attempt = `${file}:${node.getStart()}\t${key}\t${from}`
       if (attempted.has(attempt)) throw new Error(`${attempt} did not rename to ${to}`)
       attempted.add(attempt)
-      assertNoCapture(node, to)
+      assertNoCapture(node, to, key, map.symbols[file] ?? {})
       const name = nameNodeOf(node)
       if (name === undefined) throw new Error(`${file}\t${key} has no name`)
       if (Node.isExportGetable(node) && node.isExported()) exported.set(from, exported.has(from) && exported.get(from) !== to ? null : to)
