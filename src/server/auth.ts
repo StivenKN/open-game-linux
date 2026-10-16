@@ -6,9 +6,9 @@ import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { Context, Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { Pool } from 'pg'
-import { NoAutenticado, NoEncontrado, SinPermiso } from '../domain/errors.ts'
-import { puedeRevisar, type Rol } from '../domain/review.ts'
-import { Usuario as FilaUsuario } from '../domain/tables.ts'
+import { Unauthenticated, NotFound, Forbidden } from '../domain/errors.ts'
+import { canReview, type Role } from '../domain/review.ts'
+import { User as FilaUsuario } from '../domain/tables.ts'
 import { esquemaAuth } from './schema/auth.ts'
 import { filas } from './rows.ts'
 
@@ -57,21 +57,21 @@ export const visitanteDe = (headers: Headers): Effect.Effect<Option.Option<Usuar
     return u.activo ? Option.some({ id: u.id, alias: u.name, rol: u.rol }) : Option.none()
   })
 
-export const exigirUsuario: Effect.Effect<Usuario, NoAutenticado, Visitante> = Effect.flatMap(Visitante, (visitante) =>
-  Option.match(visitante, { onNone: () => Effect.fail(new NoAutenticado()), onSome: Effect.succeed }),
+export const exigirUsuario: Effect.Effect<Usuario, Unauthenticated, Visitante> = Effect.flatMap(Visitante, (visitante) =>
+  Option.match(visitante, { onNone: () => Effect.fail(new Unauthenticated()), onSome: Effect.succeed }),
 )
 
 const revisor: unique symbol = Symbol('Revisor')
 
 export type Revisor = Usuario & { readonly [revisor]: true }
 
-export const exigirRevisor: Effect.Effect<Revisor, NoAutenticado | SinPermiso, Visitante> = Effect.flatMap(exigirUsuario, (u) =>
-  puedeRevisar[u.rol] ? Effect.succeed({ ...u, [revisor]: true as const }) : Effect.fail(new SinPermiso()),
+export const exigirRevisor: Effect.Effect<Revisor, Unauthenticated | Forbidden, Visitante> = Effect.flatMap(exigirUsuario, (u) =>
+  canReview[u.rol] ? Effect.succeed({ ...u, [revisor]: true as const }) : Effect.fail(new Forbidden()),
 )
 
 const RolCambiado = Schema.Struct({ alias: FilaUsuario.fields.alias, antes: FilaUsuario.fields.rol })
 
-export const asignarRol = (correo: string, rol: Rol) =>
+export const asignarRol = (correo: string, rol: Role) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     const [fila] = yield* filas(
@@ -81,6 +81,6 @@ export const asignarRol = (correo: string, rol: Rol) =>
            cambio AS (UPDATE usuario u SET rol = ${rol} FROM previo WHERE u.id = previo.id AND previo.antes <> ${rol} RETURNING u.id)
       SELECT alias, antes FROM previo`,
     )
-    if (fila === undefined) return yield* Effect.fail(new NoEncontrado())
+    if (fila === undefined) return yield* Effect.fail(new NotFound())
     return { alias: fila.alias, rol, cambio: fila.antes !== rol }
   })

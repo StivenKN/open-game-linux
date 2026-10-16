@@ -1,14 +1,14 @@
 import { Effect, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { JuegoId } from '../../domain/ids.ts'
-import { ProtonDbResumen } from '../../domain/tables.ts'
+import { GameId } from '../../domain/ids.ts'
+import { ProtonDbSummary } from '../../domain/tables.ts'
 import { filas } from '../rows.ts'
 
-const FilaProtonDb = Schema.Struct({ ...ProtonDbResumen.fields, juego_id: JuegoId, app_id: Schema.String })
+const FilaProtonDb = Schema.Struct({ ...ProtonDbSummary.fields, juego_id: GameId, app_id: Schema.String })
 export type FilaProtonDb = typeof FilaProtonDb.Type
 
 /** ProtonDB's aggregate per game, from its Steam edition: one game, or every game with `null`. */
-export const resumenesProtonDb = (juego: JuegoId | null) =>
+export const resumenesProtonDb = (juego: GameId | null) =>
   Effect.flatMap(SqlClient.SqlClient, (sql) =>
     filas(
       FilaProtonDb,

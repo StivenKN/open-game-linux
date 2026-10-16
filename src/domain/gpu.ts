@@ -1,20 +1,20 @@
 import { Schema } from 'effect'
-import type { Capacidades } from './evaluation.ts'
+import type { Capabilities } from './evaluation.ts'
 
 export const PciId = Schema.String.pipe(Schema.check(Schema.isPattern(/^[0-9a-f]{4}:[0-9a-f]{4}$/)), Schema.brand('PciId'))
 export type PciId = typeof PciId.Type
 
-export const VendorGpu = Schema.Literals(['8086', '1002', '10de'])
-export type VendorGpu = typeof VendorGpu.Type
+export const GpuVendor = Schema.Literals(['8086', '1002', '10de'])
+export type GpuVendor = typeof GpuVendor.Type
 
-const esVendorGpu = Schema.is(VendorGpu)
+const isGpuVendor = Schema.is(GpuVendor)
 
-export const vendorDe = (pci: PciId): VendorGpu | null => {
+export const vendorOf = (pci: PciId): GpuVendor | null => {
   const vendor = pci.slice(0, 4)
-  return esVendorGpu(vendor) ? vendor : null
+  return isGpuVendor(vendor) ? vendor : null
 }
 
-export const FamiliaGpu = Schema.Literals([
+export const GpuFamily = Schema.Literals([
   'intel_gen5_o_anterior',
   'intel_gen6',
   'intel_gen7',
@@ -31,16 +31,16 @@ export const FamiliaGpu = Schema.Literals([
   'nvidia_maxwell_a_volta',
   'nvidia_turing_o_posterior',
 ])
-export type FamiliaGpu = typeof FamiliaGpu.Type
+export type GpuFamily = typeof GpuFamily.Type
 
-export const ControladorLinux = Schema.Literals(['i915', 'radeon', 'amdgpu', 'nouveau', 'nvidia_580xx', 'nvidia'])
-export type ControladorLinux = typeof ControladorLinux.Type
+export const LinuxDriver = Schema.Literals(['i915', 'radeon', 'amdgpu', 'nouveau', 'nvidia_580xx', 'nvidia'])
+export type LinuxDriver = typeof LinuxDriver.Type
 
 /** Never Gallium Nine: Mesa 25.2 removed it. */
-export const RutaD3d = Schema.Literals(['dxvk', 'dxvk_2', 'dxvk_sarek', 'wined3d'])
-export type RutaD3d = typeof RutaD3d.Type
+export const D3dPath = Schema.Literals(['dxvk', 'dxvk_2', 'dxvk_sarek', 'wined3d'])
+export type D3dPath = typeof D3dPath.Type
 
-export const AvisoGpu = Schema.Literals([
+export const GpuWarning = Schema.Literals([
   'gcn_usar_amdgpu',
   'kepler_470_fin',
   'fijar_nvidia_580xx',
@@ -49,14 +49,14 @@ export const AvisoGpu = Schema.Literals([
   'vulkan_sin_verificar',
   'vulkan_no_detectado',
 ])
-export type AvisoGpu = typeof AvisoGpu.Type
+export type GpuWarning = typeof GpuWarning.Type
 
-export type GpuEnLinux = {
-  readonly familia: FamiliaGpu
-  readonly controlador: ControladorLinux
-  readonly avisos: ReadonlyArray<AvisoGpu>
+export type GpuOnLinux = {
+  readonly family: GpuFamily
+  readonly driver: LinuxDriver
+  readonly warnings: ReadonlyArray<GpuWarning>
 }
 
-export type RutaLinux = { readonly d3d9_11: RutaD3d; readonly d3d12: boolean }
+export type LinuxPaths = { readonly d3d9_11: D3dPath; readonly d3d12: boolean }
 
-export type EquipoEnLinux = Capacidades & { readonly gpu: GpuEnLinux | null; readonly ruta: RutaLinux | null }
+export type MachineOnLinux = Capabilities & { readonly gpu: GpuOnLinux | null; readonly paths: LinuxPaths | null }

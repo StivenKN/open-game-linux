@@ -2,8 +2,8 @@ import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient, type SqlError } from 'effect/sql'
 import { getMigrations } from 'better-auth/db/migration'
-import { MAX_JUEGOS_BIBLIOTECA } from '../src/domain/library.ts'
-import { ReglaIncumplida } from '../src/domain/errors.ts'
+import { MAX_LIBRARY_GAMES } from '../src/domain/library.ts'
+import { RuleViolated } from '../src/domain/errors.ts'
 import { auth } from '../src/server/auth.ts'
 import { conReglasDeBd, reglaDeRestriccion } from '../src/server/schema/constraints.ts'
 import { enRollback, idDe, PgTest, restriccionDe } from './support.ts'
@@ -158,8 +158,8 @@ const rechaza: ReadonlyArray<Caso> = [
   ['versión de Vulkan sin soporte', 'diagnostico_version_vulkan_solo_con_soporte', (f) => diagnostico(f, { soporte_vulkan: 'no', version_vulkan: '1.3' })],
   ['PCI id en mayúsculas', 'diagnostico_gpu_pci_id_formato', (f) => diagnostico(f, { gpu_pci_id: '10DE:0FC6' })],
   ['biblioteca de Steam que no es una lista', 'diagnostico_biblioteca_steam_forma', (f) => diagnostico(f, { biblioteca_steam: '{"app_id": 271590}' })],
-  [`biblioteca de Steam de más de ${MAX_JUEGOS_BIBLIOTECA} juegos`, 'diagnostico_biblioteca_steam_forma', (f) =>
-    diagnostico(f, { biblioteca_steam: bibliotecaDe(MAX_JUEGOS_BIBLIOTECA + 1) })],
+  [`biblioteca de Steam de más de ${MAX_LIBRARY_GAMES} juegos`, 'diagnostico_biblioteca_steam_forma', (f) =>
+    diagnostico(f, { biblioteca_steam: bibliotecaDe(MAX_LIBRARY_GAMES + 1) })],
   ['Vulkan mínimo en un perfil que no exige Vulkan', 'perfil_configuracion_vulkan_min_requiere_vulkan', (f) => perfil(f, { version_vulkan_min: '1.3' })],
   ['texto obligatorio en blanco', 'juego_titulo_no_vacio', (f) => f.sql`INSERT INTO juego (titulo, descripcion) VALUES ('   ', 'd')`],
   ['texto opcional en blanco', 'reporte_version_lanzador_no_vacio', (f) => reporte(f, { version_lanzador: ' ' })],
@@ -232,8 +232,8 @@ layer(PgTest)('esquema', (it) => {
     it.effect('varios diagnósticos históricos del mismo equipo', conBase((f) =>
       Effect.andThen(acepta(diagnostico(f)), acepta(diagnostico(f, { capturado_en: new Date('2026-10-06T10:00:00Z'), version_controlador: '550.1' })))))
     it.effect('diagnóstico de Windows sin distribución', conBase((f) => acepta(diagnostico(f, { sistema: 'Windows', version_sistema: '11', distribucion_id: null }))))
-    it.effect(`diagnóstico con PCI id y biblioteca de Steam de ${MAX_JUEGOS_BIBLIOTECA} juegos`, conBase((f) =>
-      acepta(diagnostico(f, { gpu_pci_id: '10de:0fc6', biblioteca_steam: bibliotecaDe(MAX_JUEGOS_BIBLIOTECA) }))))
+    it.effect(`diagnóstico con PCI id y biblioteca de Steam de ${MAX_LIBRARY_GAMES} juegos`, conBase((f) =>
+      acepta(diagnostico(f, { gpu_pci_id: '10de:0fc6', biblioteca_steam: bibliotecaDe(MAX_LIBRARY_GAMES) }))))
     it.effect('cambiar el dueño de un equipo sin diagnósticos', conBase((f) =>
       Effect.gen(function* () {
         const nuevo = yield* idDe(f.sql`INSERT INTO equipo (usuario_id, alias) VALUES (${f.autor}, 'sobremesa') RETURNING id`)
@@ -281,7 +281,7 @@ layer(PgTest)('esquema', (it) => {
           const f = yield* base
           yield* falloDelReporte(f)
           const fallo = yield* Effect.flip(conReglasDeBd(falloDelReporte(f)))
-          expect(fallo).toEqual(new ReglaIncumplida({ regla: 'fallo_duplicado' }))
+          expect(fallo).toEqual(new RuleViolated({ rule: 'fallo_duplicado' }))
         }),
       ))
 

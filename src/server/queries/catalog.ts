@@ -1,14 +1,14 @@
 import { Clock, Effect, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
-import type { FiltroCatalogo } from '../../domain/contributions.ts'
-import { type EstadoCompatibilidad, resumir } from '../../domain/compatibility.ts'
-import { Juego, Lanzador } from '../../domain/tables.ts'
+import type { CatalogFilter } from '../../domain/contributions.ts'
+import { type CompatibilityStatus, summarize } from '../../domain/compatibility.ts'
+import { Game, Launcher } from '../../domain/tables.ts'
 import { unaFila } from '../rows.ts'
 import { pruebasAprobadas } from './game.ts'
 import { resumenesProtonDb } from './protondb.ts'
 
-const FilaJuego = Juego.mapFields(Struct.pick(['id', 'titulo'])).mapFields(
-  Struct.assign({ lanzadores: Schema.Array(Lanzador.fields.nombre), pendientes: Schema.Int }),
+const FilaJuego = Game.mapFields(Struct.pick(['id', 'titulo'])).mapFields(
+  Struct.assign({ lanzadores: Schema.Array(Launcher.fields.nombre), pendientes: Schema.Int }),
 )
 
 const Contadores = Schema.Struct({
@@ -22,7 +22,7 @@ const Contadores = Schema.Struct({
 /** ILIKE treats % and _ as wildcards; a title search means them literally. */
 const literalLike = (texto: string) => `%${texto.replace(/[\\%_]/g, '\\$&')}%`
 
-export const catalogo = (filtro: FiltroCatalogo) =>
+export const catalogo = (filtro: CatalogFilter) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     const q = filtro.q?.trim() ?? ''
@@ -54,7 +54,7 @@ export const catalogo = (filtro: FiltroCatalogo) =>
     const candidatos = filas
       .map((j) => {
         const pruebas = todas.filter((p) => p.juego_id === j.id)
-        const { estado, pruebas: aprobados, sin_confirmacion_reciente, ultima_prueba, fallos } = resumir(pruebas, ahora)
+        const { status: estado, test_count: aprobados, no_recent_confirmation: sin_confirmacion_reciente, last_tested: ultima_prueba, failures: fallos } = summarize(pruebas, ahora)
         const externo = protondb.get(j.id)
         return {
           ...j,
@@ -63,11 +63,11 @@ export const catalogo = (filtro: FiltroCatalogo) =>
           protondb: externo ? Struct.pick(externo, ['recientes', 'recientes_funcionan', 'reportes_total']) : null,
         }
       })
-      .filter((j) => filtro.sin_anti_cheat !== true || !j.resumen.fallos.some((f) => f.codigo === 'anti_cheat'))
+      .filter((j) => filtro.sin_anti_cheat !== true || !j.resumen.fallos.some((f) => f.code === 'anti_cheat'))
     const juegos = filtro.estado === undefined ? candidatos : candidatos.filter((j) => j.resumen.estado === filtro.estado)
 
     // Counted before the estado filter, so each status filter shows how many games it would list.
-    const cuantos = (estado: EstadoCompatibilidad) => candidatos.filter((j) => j.resumen.estado === estado).length
+    const cuantos = (estado: CompatibilityStatus) => candidatos.filter((j) => j.resumen.estado === estado).length
     const por_estado = {
       sin_evidencia: cuantos('sin_evidencia'),
       funciona: cuantos('funciona'),
@@ -75,7 +75,7 @@ export const catalogo = (filtro: FiltroCatalogo) =>
       no_inicia: cuantos('no_inicia'),
       falla_en_ejecucion: cuantos('falla_en_ejecucion'),
       resultados_variables: cuantos('resultados_variables'),
-    } satisfies Record<EstadoCompatibilidad, number>
+    } satisfies Record<CompatibilityStatus, number>
 
     // arreglos_upstream needs no demo filter: its writer refuses demo profiles.
     const contadores = yield* unaFila(
@@ -94,7 +94,7 @@ export const catalogo = (filtro: FiltroCatalogo) =>
 
     const lanzadores = yield* SqlSchema.findAll({
       Request: Schema.Void,
-      Result: Lanzador.mapFields(Struct.pick(['id', 'nombre'])),
+      Result: Launcher.mapFields(Struct.pick(['id', 'nombre'])),
       execute: () => sql`SELECT id, nombre FROM lanzador ORDER BY nombre`,
     })(undefined)
 

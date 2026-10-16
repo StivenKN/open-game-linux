@@ -1,10 +1,10 @@
 import { Schema } from 'effect'
-import type { Respuesta } from '../domain/errors.ts'
-import { Usuario } from '../domain/tables.ts'
+import type { Reply } from '../domain/errors.ts'
+import { User } from '../domain/tables.ts'
 import type { Errores } from '../ui/useAction.ts'
 import { authCliente } from './-auth-client.ts'
 
-const correo = Usuario.fields.correo.pipe(
+const correo = User.fields.correo.pipe(
   Schema.check(Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { message: 'Escribe un correo válido.' })),
 )
 // better-auth's defaults; it refuses anything outside them with PASSWORD_TOO_SHORT/LONG.
@@ -13,14 +13,14 @@ const contrasena = Schema.String.pipe(
   Schema.check(Schema.isMaxLength(128, { message: 'Usa como máximo 128 caracteres.' })),
 )
 
-export const Registro = Schema.Struct({ alias: Usuario.fields.alias, correo, contrasena })
+export const Registro = Schema.Struct({ alias: User.fields.alias, correo, contrasena })
 export const Entrada = Schema.Struct({ correo, contrasena: Schema.String.pipe(Schema.check(Schema.isNonEmpty({ message: 'Escribe tu contraseña.' }))) })
 
 type FalloCuenta = { readonly codigo: string | undefined }
 
 // Its rate limiter (production only) answers 429 with no code, so the status names that one.
-const respuesta = (error: { readonly code?: string | undefined; readonly status: number } | null): Respuesta<null, FalloCuenta> =>
-  error === null ? { ok: true, valor: null } : { ok: false, fallo: { codigo: error.code ?? (error.status === 429 ? 'DEMASIADOS_INTENTOS' : undefined) } }
+const respuesta = (error: { readonly code?: string | undefined; readonly status: number } | null): Reply<null, FalloCuenta> =>
+  error === null ? { ok: true, value: null } : { ok: false, error: { codigo: error.code ?? (error.status === 429 ? 'DEMASIADOS_INTENTOS' : undefined) } }
 
 export const registrar = async ({ data }: { readonly data: typeof Registro.Encoded }) =>
   respuesta((await authCliente.signUp.email({ name: data.alias, email: data.correo, password: data.contrasena })).error)

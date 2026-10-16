@@ -1,30 +1,30 @@
 import { Array as Arr, Effect, Schema, Struct } from 'effect'
 import { SqlClient, type SqlError } from 'effect/sql'
-import { discrepancias, PerfilObjetivo } from '../../domain/contributions.ts'
-import { AprobacionBloqueada, type NoAutenticado, NoEncontrado, ReglaIncumplida, type SinPermiso, TransicionInvalida } from '../../domain/errors.ts'
-import { DistribucionId, UsuarioId } from '../../domain/ids.ts'
-import { ResultadoFuncional } from '../../domain/literals.ts'
-import { type AporteRef, type Bloqueo, type Decision, destinoDe, EstadoRevision, planificar, type TipoAporte } from '../../domain/review.ts'
-import { Diagnostico, Reporte } from '../../domain/tables.ts'
+import { mismatches, TargetProfile } from '../../domain/contributions.ts'
+import { ApprovalBlocked, type Unauthenticated, NotFound, RuleViolated, type Forbidden, InvalidTransition } from '../../domain/errors.ts'
+import { DistributionId, UserId } from '../../domain/ids.ts'
+import { WorkingOutcome } from '../../domain/literals.ts'
+import { type ContributionRef, type Blocker, type Decision, targetOf, ReviewStatus, planTransition, type ContributionType } from '../../domain/review.ts'
+import { Diagnostic, Report } from '../../domain/tables.ts'
 import { exigirRevisor, type Visitante } from '../auth.ts'
 import { filas, type Infra } from '../rows.ts'
 
 type Lectura<A> = Effect.Effect<A, Infra, SqlClient.SqlClient>
 
-const aprobado: EstadoRevision = 'aprobado'
+const aprobado: ReviewStatus = 'aprobado'
 
 type Revisable = {
   readonly tabla: string
   readonly bloquear: (sql: SqlClient.SqlClient, id: number) => Effect.Effect<ReadonlyArray<unknown>, SqlError.SqlError>
-  readonly bloqueos: (id: number) => Lectura<ReadonlyArray<Bloqueo>>
+  readonly bloqueos: (id: number) => Lectura<ReadonlyArray<Blocker>>
 }
 
 const Hay = Schema.Struct({ hay: Schema.Boolean })
-const EstadosSolucion = Schema.Struct({ reporte: EstadoRevision, perfil: Schema.NullOr(EstadoRevision) })
+const EstadosSolucion = Schema.Struct({ reporte: ReviewStatus, perfil: Schema.NullOr(ReviewStatus) })
 const PruebaDeReporte = Schema.Struct({
-  ...Reporte.mapFields(Struct.pick(['edicion_id', 'version_capa_id', 'version_juego', 'perfil_id'])).fields,
-  distribucion_id: DistribucionId,
-  arquitectura: Diagnostico.fields.arquitectura,
+  ...Report.mapFields(Struct.pick(['edicion_id', 'version_capa_id', 'version_juego', 'perfil_id'])).fields,
+  distribucion_id: DistributionId,
+  arquitectura: Diagnostic.fields.arquitectura,
 })
 
 const revisables = {
@@ -37,7 +37,7 @@ const revisables = {
         const [fila] = yield* filas(
           Hay,
           sql`SELECT EXISTS (SELECT 1 FROM reporte WHERE perfil_id = ${id} AND estado_revision = ${aprobado}
-                AND resultado IN ${sql.in(ResultadoFuncional.literals)} LIMIT 1 FOR SHARE) AS hay`,
+                AND resultado IN ${sql.in(WorkingOutcome.literals)} LIMIT 1 FOR SHARE) AS hay`,
         )
         return fila?.hay === true ? [] : ['perfil_sin_reporte_funcional_aprobado']
       }),
@@ -58,11 +58,11 @@ const revisables = {
         )
         if (prueba === undefined || prueba.perfil_id === null) return []
         const [perfil] = yield* filas(
-          PerfilObjetivo,
+          TargetProfile,
           sql`SELECT edicion_id, version_capa_id, distribucion_id, arquitectura, version_juego_objetivo
               FROM perfil_configuracion WHERE id = ${prueba.perfil_id}`,
         )
-        return perfil !== undefined && discrepancias(prueba, perfil).length > 0 ? ['reporte_incomparable'] : []
+        return perfil !== undefined && mismatches(prueba, perfil).length > 0 ? ['reporte_incomparable'] : []
       }),
   },
   solucion: {
@@ -79,24 +79,24 @@ const revisables = {
               WHERE s.id = ${id} FOR SHARE OF r`,
         )
         if (estados === undefined) return []
-        const bloqueos: Array<Bloqueo> = []
+        const bloqueos: Array<Blocker> = []
         if (estados.reporte !== aprobado) bloqueos.push('solucion_fallo_origen_no_aprobado')
         if (estados.perfil !== null && estados.perfil !== aprobado) bloqueos.push('solucion_perfil_no_aprobado')
         return bloqueos
       }),
   },
-} as const satisfies Record<TipoAporte, Revisable>
+} as const satisfies Record<ContributionType, Revisable>
 
-export const bloqueosAprobacion = (ref: AporteRef): Lectura<ReadonlyArray<Bloqueo>> => revisables[ref._tag].bloqueos(ref.id)
+export const bloqueosAprobacion = (ref: ContributionRef): Lectura<ReadonlyArray<Blocker>> => revisables[ref._tag].bloqueos(ref.id)
 
-const FilaRevisable = Schema.Struct({ estado_revision: EstadoRevision, autor_id: UsuarioId })
+const FilaRevisable = Schema.Struct({ estado_revision: ReviewStatus, autor_id: UserId })
 
 export const decidir = (
-  ref: AporteRef,
+  ref: ContributionRef,
   decision: Decision,
 ): Effect.Effect<
   { readonly cambio: boolean },
-  ReglaIncumplida | TransicionInvalida | AprobacionBloqueada | NoEncontrado | NoAutenticado | SinPermiso | Infra,
+  RuleViolated | InvalidTransition | ApprovalBlocked | NotFound | Unauthenticated | Forbidden | Infra,
   SqlClient.SqlClient | Visitante
 > =>
   Effect.gen(function* () {
@@ -105,17 +105,17 @@ export const decidir = (
     const revisable = revisables[ref._tag]
 
     const [fila] = yield* filas(FilaRevisable, revisable.bloquear(sql, ref.id))
-    if (fila === undefined) return yield* Effect.fail(new NoEncontrado())
-    if (fila.autor_id === revisor.id) return yield* Effect.fail(new ReglaIncumplida({ regla: 'autorrevision' }))
+    if (fila === undefined) return yield* Effect.fail(new NotFound())
+    if (fila.autor_id === revisor.id) return yield* Effect.fail(new RuleViolated({ rule: 'autorrevision' }))
 
-    const destino = destinoDe[decision._tag]
-    const plan = planificar(fila.estado_revision, decision)
+    const destino = targetOf[decision._tag]
+    const plan = planTransition(fila.estado_revision, decision)
     if (plan === 'sin_cambios') return { cambio: false }
-    if (plan === 'transicion_invalida') return yield* Effect.fail(new TransicionInvalida({ de: fila.estado_revision, a: destino }))
+    if (plan === 'transicion_invalida') return yield* Effect.fail(new InvalidTransition({ from: fila.estado_revision, to: destino }))
 
     if (decision._tag === 'Aprobar') {
       const bloqueos = yield* revisable.bloqueos(ref.id)
-      if (Arr.isReadonlyArrayNonEmpty(bloqueos)) return yield* Effect.fail(new AprobacionBloqueada({ bloqueos }))
+      if (Arr.isReadonlyArrayNonEmpty(bloqueos)) return yield* Effect.fail(new ApprovalBlocked({ blockers: bloqueos }))
     }
 
     const evidencia = decision._tag === 'Aprobar' ? decision.evidencia : null

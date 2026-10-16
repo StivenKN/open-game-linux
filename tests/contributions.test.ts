@@ -1,10 +1,10 @@
 import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { NuevaSolucion, NuevoJuego, NuevoReporte } from '../src/domain/contributions.ts'
-import { AprobacionBloqueada, NoAutenticado, PerfilNoComparable, ReglaIncumplida, SinPermiso, TransicionInvalida } from '../src/domain/errors.ts'
-import { UsuarioId } from '../src/domain/ids.ts'
-import { AporteRef, Decision, type Rol } from '../src/domain/review.ts'
+import { NewSolution, NewGame, NewReport } from '../src/domain/contributions.ts'
+import { ApprovalBlocked, Unauthenticated, IncomparableProfile, RuleViolated, Forbidden, InvalidTransition } from '../src/domain/errors.ts'
+import { UserId } from '../src/domain/ids.ts'
+import { ContributionRef, Decision, type Role } from '../src/domain/review.ts'
 import { crearJuego, registrarReporte, registrarSolucion } from '../src/server/commands/contributions.ts'
 import { bloqueosAprobacion, decidir } from '../src/server/commands/review.ts'
 import { type Usuario, Visitante } from '../src/server/auth.ts'
@@ -15,10 +15,10 @@ const Fila = Schema.Array(Schema.Record(Schema.String, Schema.Unknown))
 
 const escenario = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
-  const cuenta = (alias: string, rol: Rol) =>
+  const cuenta = (alias: string, rol: Role) =>
     Effect.as(
       sql`INSERT INTO usuario (id, alias, correo, correo_verificado, rol, activo) VALUES (${alias}, ${alias}, ${`${alias}@demo.opengame.test`}, false, ${rol}, true)`,
-      { id: Schema.decodeSync(UsuarioId)(alias), alias, rol } satisfies Usuario,
+      { id: Schema.decodeSync(UserId)(alias), alias, rol } satisfies Usuario,
     )
   const ana = yield* cuenta('ana', 'usuario')
   const bruno = yield* cuenta('bruno', 'usuario')
@@ -80,7 +80,7 @@ const como =
     Effect.flatMap(SqlClient.SqlClient, (sql) => sql.withTransaction(programa)).pipe(Effect.provideService(Visitante, Option.fromNullOr(quien)))
 
 const nuevoReporte = (e: Escenario, cambios: Record<string, unknown> = {}) =>
-  Schema.decodeUnknownSync(NuevoReporte)({
+  Schema.decodeUnknownSync(NewReport)({
     edicion_id: e.ed,
     diagnostico_id: e.diagAna,
     version_capa: { _tag: 'existente', id: e.capa },
@@ -96,7 +96,7 @@ const nuevoReporte = (e: Escenario, cambios: Record<string, unknown> = {}) =>
 
 const reportar = (e: Escenario, cambios: Record<string, unknown> = {}, quien: Usuario = e.ana) => como(quien)(registrarReporte(nuevoReporte(e, cambios)))
 
-const ref = (tipo: 'perfil' | 'reporte' | 'solucion', id: number) => Schema.decodeUnknownSync(AporteRef)({ _tag: tipo, id })
+const ref = (tipo: 'perfil' | 'reporte' | 'solucion', id: number) => Schema.decodeUnknownSync(ContributionRef)({ _tag: tipo, id })
 const aprobar = Schema.decodeUnknownSync(Decision)({ _tag: 'Aprobar', motivo: 'Coincide con la evidencia', evidencia: 'Captura de MangoHud #7' })
 const rechazar = Schema.decodeUnknownSync(Decision)({ _tag: 'Rechazar', motivo: 'Sin datos suficientes' })
 const retirar = Schema.decodeUnknownSync(Decision)({ _tag: 'Retirar', motivo: 'Versión obsoleta' })
@@ -104,7 +104,7 @@ const retirar = Schema.decodeUnknownSync(Decision)({ _tag: 'Retirar', motivo: 'V
 const solucion = (e: Escenario, reporte_id: number, cambios: Record<string, unknown> = {}, quien: Usuario = e.bruno) =>
   como(quien)(
     registrarSolucion(
-      Schema.decodeUnknownSync(NuevaSolucion)({
+      Schema.decodeUnknownSync(NewSolution)({
         reporte_id,
         tipo_fallo_id: e.lanzadorFallo,
         perfil_id: null,
@@ -119,17 +119,17 @@ const nuevoJuego = (
   titulo: string,
   ediciones: ReadonlyArray<{ lanzador_id: number; identificador_externo: string }>,
   graficos: { apis: ReadonlyArray<string>; nivel_x86_min: string | null } = { apis: ['d3d11'], nivel_x86_min: null },
-) => Schema.decodeUnknownSync(NuevoJuego)({ titulo, descripcion: 'Un juego de prueba', ediciones, ...graficos })
+) => Schema.decodeUnknownSync(NewGame)({ titulo, descripcion: 'Un juego de prueba', ediciones, ...graficos })
 
 const conFallo = (e: Escenario) => ({ resultado: 'no_inicia', fallos: [{ tipo_fallo_id: e.lanzadorFallo, detalle: 'El lanzador se cierra' }] })
 
 const enEscenario = (prueba: (e: Escenario) => Effect.Effect<void, unknown, SqlClient.SqlClient>) => () =>
   enRollback(Effect.flatMap(escenario, prueba))
 
-const noComparable = (discrepancias: ReadonlyArray<unknown>) =>
-  Schema.decodeUnknownSync(PerfilNoComparable)({ _tag: 'PerfilNoComparable', discrepancias })
+const noComparable = (mismatches: ReadonlyArray<unknown>) =>
+  Schema.decodeUnknownSync(IncomparableProfile)({ _tag: 'PerfilNoComparable', mismatches })
 
-const regla = (r: ReglaIncumplida['regla']) => new ReglaIncumplida({ regla: r })
+const regla = (r: RuleViolated['rule']) => new RuleViolated({ rule: r })
 
 layer(PgTest)('aportes', (it) => {
   describe('la aplicación rechaza', () => {
@@ -155,7 +155,7 @@ layer(PgTest)('aportes', (it) => {
     it.effect('un perfil de otra edición, antes de que lo note la FK', enEscenario((e) =>
       Effect.gen(function* () {
         expect(yield* Effect.flip(reportar(e, { edicion_id: e.edGog, perfil_id: e.perfilMint }))).toEqual(
-          noComparable([{ de: 'edicion', esperado: e.ed, observado: e.edGog }]),
+          noComparable([{ aspect: 'edicion', expected: e.ed, actual: e.edGog }]),
         )
       })))
 
@@ -165,10 +165,10 @@ layer(PgTest)('aportes', (it) => {
         const fallo = yield* Effect.flip(reportar(e, { perfil_id: fedora, version_capa: { _tag: 'existente', id: e.capa8 } }))
         expect(fallo).toEqual(
           noComparable([
-            { de: 'capa', esperado: e.capa, observado: e.capa8 },
-            { de: 'distribucion', esperado: e.fedora, observado: e.mint },
-            { de: 'arquitectura', esperado: 'aarch64', observado: 'x86_64' },
-            { de: 'version_juego', esperado: '2.0', observado: '1.0' },
+            { aspect: 'capa', expected: e.capa, actual: e.capa8 },
+            { aspect: 'distribucion', expected: e.fedora, actual: e.mint },
+            { aspect: 'arquitectura', expected: 'aarch64', actual: 'x86_64' },
+            { aspect: 'version_juego', expected: '2.0', actual: '1.0' },
           ]),
         )
       })))
@@ -222,7 +222,7 @@ layer(PgTest)('aportes', (it) => {
 
     it.effect('aprobar un perfil sin un reporte funcional aprobado que lo use', enEscenario((e) =>
       Effect.gen(function* () {
-        const bloqueado = new AprobacionBloqueada({ bloqueos: ['perfil_sin_reporte_funcional_aprobado'] })
+        const bloqueado = new ApprovalBlocked({ blockers: ['perfil_sin_reporte_funcional_aprobado'] })
         expect(yield* Effect.flip(como(e.rita)(decidir(ref('perfil', e.perfilMint), aprobar)))).toEqual(bloqueado)
 
         const { id: falla } = yield* reportar(e, { perfil_id: e.perfilMint, ...conFallo(e) })
@@ -243,35 +243,35 @@ layer(PgTest)('aportes', (it) => {
         expect(yield* bloqueosAprobacion(ref('solucion', sol))).toEqual(['solucion_fallo_origen_no_aprobado', 'solucion_perfil_no_aprobado'])
         yield* como(e.rita)(decidir(ref('reporte', reporte), aprobar))
         expect(yield* Effect.flip(como(e.rita)(decidir(ref('solucion', sol), aprobar)))).toEqual(
-          new AprobacionBloqueada({ bloqueos: ['solucion_perfil_no_aprobado'] }),
+          new ApprovalBlocked({ blockers: ['solucion_perfil_no_aprobado'] }),
         )
       })))
 
     it.effect('decidir sin rol de revisor o sin sesión', enEscenario((e) =>
       Effect.gen(function* () {
         const { id } = yield* reportar(e)
-        expect(yield* Effect.flip(como(e.bruno)(decidir(ref('reporte', id), aprobar)))).toEqual(new SinPermiso())
-        expect(yield* Effect.flip(como(null)(decidir(ref('reporte', id), aprobar)))).toEqual(new NoAutenticado())
-        expect(yield* Effect.flip(como(null)(registrarReporte(nuevoReporte(e))))).toEqual(new NoAutenticado())
+        expect(yield* Effect.flip(como(e.bruno)(decidir(ref('reporte', id), aprobar)))).toEqual(new Forbidden())
+        expect(yield* Effect.flip(como(null)(decidir(ref('reporte', id), aprobar)))).toEqual(new Unauthenticated())
+        expect(yield* Effect.flip(como(null)(registrarReporte(nuevoReporte(e))))).toEqual(new Unauthenticated())
       })))
 
     it.effect('rechazar lo que ya está aprobado, o retirar lo que sigue pendiente', enEscenario((e) =>
       Effect.gen(function* () {
         const { id } = yield* reportar(e)
         expect(yield* Effect.flip(como(e.rita)(decidir(ref('reporte', id), retirar)))).toEqual(
-          new TransicionInvalida({ de: 'pendiente', a: 'retirado' }),
+          new InvalidTransition({ from: 'pendiente', to: 'retirado' }),
         )
         yield* como(e.rita)(decidir(ref('reporte', id), aprobar))
         expect(yield* Effect.flip(como(e.rita)(decidir(ref('reporte', id), rechazar)))).toEqual(
-          new TransicionInvalida({ de: 'aprobado', a: 'rechazado' }),
+          new InvalidTransition({ from: 'aprobado', to: 'rechazado' }),
         )
       })))
 
     it.effect('que un usuario o un invitado registre un juego, sin escribir nada', enEscenario((e) =>
       Effect.gen(function* () {
         const juego = nuevoJuego('Hades', [{ lanzador_id: e.lanzador, identificador_externo: '1145360' }])
-        expect(yield* Effect.flip(como(e.ana)(crearJuego(juego)))).toEqual(new SinPermiso())
-        expect(yield* Effect.flip(como(null)(crearJuego(juego)))).toEqual(new NoAutenticado())
+        expect(yield* Effect.flip(como(e.ana)(crearJuego(juego)))).toEqual(new Forbidden())
+        expect(yield* Effect.flip(como(null)(crearJuego(juego)))).toEqual(new Unauthenticated())
         expect(yield* e.sql`SELECT titulo FROM juego WHERE titulo = 'Hades'`).toEqual([])
       })))
 

@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router'
-import type { EstadoCompatibilidad } from '../../domain/compatibility.ts'
-import type { JuegoId } from '../../domain/ids.ts'
-import type { NivelX86 } from '../../domain/platform.ts'
-import type { RutaJuego } from '../../domain/graphics-path.ts'
+import type { CompatibilityStatus } from '../../domain/compatibility.ts'
+import type { GameId } from '../../domain/ids.ts'
+import type { X86Level } from '../../domain/platform.ts'
+import type { GamePath } from '../../domain/graphics-path.ts'
 import { ChecklistEvaluacion, type PerfilEvaluado } from '../compatibility/EvaluationChecklist.tsx'
 import { RutaGrafica } from '../compatibility/GraphicsPath.tsx'
 import { contar } from '../format.ts'
@@ -10,13 +10,13 @@ import { Insignia } from '../Badge.tsx'
 import { estadoCompatibilidad } from '../vocabulary.ts'
 
 export type FilaMatriz = {
-  readonly juego_id: JuegoId
+  readonly juego_id: GameId
   readonly titulo: string
   readonly en_biblioteca: boolean
-  readonly estado: EstadoCompatibilidad
+  readonly estado: CompatibilityStatus
   readonly pruebas: number
-  readonly nivel_x86_min: NivelX86 | null
-  readonly ruta: RutaJuego
+  readonly nivel_x86_min: X86Level | null
+  readonly ruta: GamePath
   readonly perfil: (PerfilEvaluado & { readonly capa: string; readonly distribucion: string }) | null
 }
 

@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useEffect, useRef, useState } from 'react'
-import { Sistema, SoporteVulkan } from '../../domain/evaluation.ts'
-import type { PayloadInvalido } from '../../domain/errors.ts'
+import { OperatingSystem, VulkanSupport } from '../../domain/evaluation.ts'
+import type { InvalidPayload } from '../../domain/errors.ts'
 import { evaluarDiagnosticoFn, misEquiposFn, origenFn } from '../../fns/diagnostic.ts'
 import { CajaCopiar } from '../../ui/compatibility/CopyBox.tsx'
 import { ErrorCampo } from '../../ui/FieldError.tsx'
@@ -81,8 +81,8 @@ const useEvaluar = () => {
 
 const erroresDePayload =
   (campo: string) =>
-  (f: typeof PayloadInvalido.Encoded): Errores => ({
-    [campo]: f.motivo === 'campo_invalido' && f.campo !== null ? `${motivoPayload.campo_invalido} (${f.campo})` : motivoPayload[f.motivo],
+  (f: typeof InvalidPayload.Encoded): Errores => ({
+    [campo]: f.reason === 'campo_invalido' && f.field !== null ? `${motivoPayload.campo_invalido} (${f.field})` : motivoPayload[f.reason],
   })
 
 function Detector({ origen }: { origen: string }) {
@@ -144,8 +144,8 @@ function Detector({ origen }: { origen: string }) {
   )
 }
 
-const esSistema = Schema.is(Sistema)
-const esSoporte = Schema.is(SoporteVulkan)
+const esSistema = Schema.is(OperatingSystem)
+const esSoporte = Schema.is(VulkanSupport)
 
 const ramGb = [2, 3, 4, 6, 8, 12, 16, 24, 32, 64]
 const vramMb = [512, 1024, 2048, 3072, 4096, 6144, 8192, 12288, 16384]
@@ -153,8 +153,8 @@ const versionesVulkan = ['1.0', '1.1', '1.2', '1.3', '1.4']
 
 function Manual() {
   const evaluar = useEvaluar()
-  const [so, setSo] = useState<Sistema>('Windows')
-  const [vulkan, setVulkan] = useState<SoporteVulkan>('desconocido')
+  const [so, setSo] = useState<OperatingSystem>('Windows')
+  const [vulkan, setVulkan] = useState<VulkanSupport>('desconocido')
   const r = useAccion(FormularioManual, ({ data }) => evaluar(entradaManual(data)), {
     alFallar: erroresDePayload('formulario'),
     alCompletar: () => undefined,
@@ -171,7 +171,7 @@ function Manual() {
           <div>
             <label htmlFor="sistema">Sistema</label>
             <select {...campo(r.errores, 'sistema')} value={so} onChange={(e) => esSistema(e.currentTarget.value) && setSo(e.currentTarget.value)}>
-              {Sistema.literals.map((s) => (
+              {OperatingSystem.literals.map((s) => (
                 <option key={s} value={s}>
                   {etiquetaSistema[s]}
                 </option>

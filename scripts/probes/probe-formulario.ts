@@ -3,7 +3,7 @@
 // U2 folded the probe's fix into NuevoReporte (fallos defaults to [], the 8.7 rule lands on `fallos`),
 // so the sketch-schema case is gone and the "con defecto" cases run against NuevoReporte itself.
 import { Schema } from 'effect'
-import { NuevoReporte } from '../../src/domain/contributions.ts'
+import { NewReport } from '../../src/domain/contributions.ts'
 
 type Par = readonly [string, string]
 
@@ -29,12 +29,12 @@ const con = (pares: ReadonlyArray<Par>, cambios: Record<string, string>): Readon
 ]
 
 const casos: ReadonlyArray<readonly [string, Schema.Codec<unknown, unknown>, ReadonlyArray<Par>]> = [
-  ['perfil_id "" y medicion ""', NuevoReporte, con(base, { perfil_id: '', medicion: '' })],
-  ['perfil_id y medicion ausentes', NuevoReporte, base],
-  ['perfil_id "null" y medicion "null" (nulo canónico de StringTree)', NuevoReporte, con(base, { perfil_id: 'null', medicion: 'null' })],
+  ['perfil_id "" y medicion ""', NewReport, con(base, { perfil_id: '', medicion: '' })],
+  ['perfil_id y medicion ausentes', NewReport, base],
+  ['perfil_id "null" y medicion "null" (nulo canónico de StringTree)', NewReport, con(base, { perfil_id: 'null', medicion: 'null' })],
   [
     'version_capa nueva, perfil 7, medición completa',
-    NuevoReporte,
+    NewReport,
     con(base.filter(([k]) => !k.startsWith('version_capa')), {
       'version_capa[_tag]': 'nueva',
       'version_capa[familia]': 'Proton',
@@ -47,10 +47,10 @@ const casos: ReadonlyArray<readonly [string, Schema.Codec<unknown, unknown>, Rea
       'medicion[metodo_medicion]': 'MangoHud',
     }),
   ],
-  ['funciona sin fallos, fallos con defecto []', NuevoReporte, con(sinFallos, { resultado: 'funciona', perfil_id: 'null', medicion: 'null' })],
-  ['no_inicia sin fallos, fallos con defecto [] (regla 8.7)', NuevoReporte, con(sinFallos, { perfil_id: 'null', medicion: 'null' })],
-  ['id no numérico', NuevoReporte, con(base, { 'version_capa[id]': 'abc', perfil_id: 'null', medicion: 'null' })],
-  ['texto opcional escrito "null"', NuevoReporte, con(base, { version_lanzador: 'null', perfil_id: 'null', medicion: 'null' })],
+  ['funciona sin fallos, fallos con defecto []', NewReport, con(sinFallos, { resultado: 'funciona', perfil_id: 'null', medicion: 'null' })],
+  ['no_inicia sin fallos, fallos con defecto [] (regla 8.7)', NewReport, con(sinFallos, { perfil_id: 'null', medicion: 'null' })],
+  ['id no numérico', NewReport, con(base, { 'version_capa[id]': 'abc', perfil_id: 'null', medicion: 'null' })],
+  ['texto opcional escrito "null"', NewReport, con(base, { version_lanzador: 'null', perfil_id: 'null', medicion: 'null' })],
 ]
 
 for (const [nombre, esquema, pares] of casos) {

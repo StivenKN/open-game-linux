@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Option, Schema } from 'effect'
 import { useEffect, useState } from 'react'
-import { EquipoDestino } from '../../domain/contributions.ts'
-import { Casilla, type DiagnosticoId } from '../../domain/ids.ts'
+import { TargetMachine } from '../../domain/contributions.ts'
+import { Checkbox, type DiagnosticId } from '../../domain/ids.ts'
 import { evaluarDiagnosticoFn, guardarDiagnosticoFn, misEquiposFn } from '../../fns/diagnostic.ts'
 import { Distribuciones } from '../../ui/diagnostics/Distributions.tsx'
 import { JuegosDelEquipo } from '../../ui/diagnostics/MachineGames.tsx'
@@ -63,8 +63,8 @@ function Importar() {
       <main className="envoltura pila">
         <h1>No pudimos leer este diagnóstico</h1>
         <p role="alert">
-          {motivoPayload[r.fallo.motivo]}
-          {r.fallo.campo !== null && <span className="dato"> ({r.fallo.campo})</span>}
+          {motivoPayload[r.error.reason]}
+          {r.error.field !== null && <span className="dato"> ({r.error.field})</span>}
         </p>
         <Link to="/diagnostico">Volver a Diagnóstico</Link>
       </main>
@@ -76,17 +76,17 @@ function Importar() {
         Esta evaluación no se ha guardado. Compara RAM, VRAM y Vulkan con el perfil aprobado sugerido para cada juego; no
         predice FPS.
       </p>
-      <ResumenCaptura captura={r.valor.captura} />
-      <TarjetaGraficaEnLinux equipo={r.valor.equipo} pci={r.valor.captura.gpu_pci_id} />
-      <Guardar entrada={estado.entrada} juegosEnBiblioteca={r.valor.biblioteca?.total ?? 0} />
-      <JuegosDelEquipo filas={r.valor.matriz} biblioteca={r.valor.biblioteca} orientativa={r.valor.captura.sistema === 'Windows'} />
-      <Distribuciones {...r.valor.distribuciones} />
+      <ResumenCaptura captura={r.value.captura} />
+      <TarjetaGraficaEnLinux equipo={r.value.equipo} pci={r.value.captura.gpu_pci_id} />
+      <Guardar entrada={estado.entrada} juegosEnBiblioteca={r.value.biblioteca?.total ?? 0} />
+      <JuegosDelEquipo filas={r.value.matriz} biblioteca={r.value.biblioteca} orientativa={r.value.captura.sistema === 'Windows'} />
+      <Distribuciones {...r.value.distribuciones} />
     </main>
   )
 }
 
-const Destino = Schema.Struct({ equipo: EquipoDestino, con_biblioteca: Casilla })
-type Guardado = { readonly id: DiagnosticoId; readonly nuevo: boolean }
+const Destino = Schema.Struct({ equipo: TargetMachine, con_biblioteca: Checkbox })
+type Guardado = { readonly id: DiagnosticId; readonly nuevo: boolean }
 
 function Guardar({ entrada, juegosEnBiblioteca }: { entrada: Entrada; juegosEnBiblioteca: number }) {
   const { visitante } = Route.useRouteContext()
@@ -97,7 +97,7 @@ function Guardar({ entrada, juegosEnBiblioteca }: { entrada: Entrada; juegosEnBi
     alFallar: (f) =>
       f._tag === 'ReglaIncumplida'
         ? { 'equipo[id]': 'Ese equipo no es tuyo. Elige uno de tu lista.' }
-        : { formulario: motivoPayload[f.motivo] },
+        : { formulario: motivoPayload[f.reason] },
     alCompletar: (valor) => {
       olvidarPendiente()
       setGuardado(valor)

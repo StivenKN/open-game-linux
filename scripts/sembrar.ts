@@ -1,12 +1,12 @@
 import { Effect, Option, Record, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { GuardarDiagnostico, NuevaSolucion, NuevoReporte } from '../src/domain/contributions.ts'
-import { LANZADOR_STEAM } from '../src/domain/library.ts'
-import type { TipoGuia } from '../src/domain/guides.ts'
-import { UsuarioId } from '../src/domain/ids.ts'
-import { type ApiGrafica, exigeFallo, type FamiliaCapa, type Resultado } from '../src/domain/literals.ts'
-import type { NivelX86 } from '../src/domain/platform.ts'
-import { AporteRef, Decision, type Rol } from '../src/domain/review.ts'
+import { SaveDiagnostic, NewSolution, NewReport } from '../src/domain/contributions.ts'
+import { STEAM_LAUNCHER } from '../src/domain/library.ts'
+import type { GuideType } from '../src/domain/guides.ts'
+import { UserId } from '../src/domain/ids.ts'
+import { type GraphicsApi, requiresFailure, type LayerFamily, type Outcome } from '../src/domain/literals.ts'
+import type { X86Level } from '../src/domain/platform.ts'
+import { ContributionRef, Decision, type Role } from '../src/domain/review.ts'
 import { registrarReporte, registrarSolucion } from '../src/server/commands/contributions.ts'
 import { registrarDiagnostico } from '../src/server/commands/diagnostic.ts'
 import { VERSION_ESQUEMA } from '../src/server/diagnostics/payload.ts'
@@ -22,12 +22,12 @@ const cuentas = {
   demo_admin: 'administrador',
   demo_ana: 'usuario',
   demo_bruno: 'usuario',
-} as const satisfies Record<string, Rol>
+} as const satisfies Record<string, Role>
 type Cuenta = keyof typeof cuentas
 const correoDe = (alias: Cuenta) => `${alias}@${dominioDemo}`
 
 const lanzadores = {
-  steam: { nombre: LANZADOR_STEAM, url_oficial: 'https://store.steampowered.com' },
+  steam: { nombre: STEAM_LAUNCHER, url_oficial: 'https://store.steampowered.com' },
   epic: { nombre: 'Epic Games Store', url_oficial: 'https://store.epicgames.com' },
   gog: { nombre: 'GOG', url_oficial: 'https://www.gog.com' },
   riot: { nombre: 'Riot Client', url_oficial: 'https://www.riotgames.com' },
@@ -47,7 +47,7 @@ const capas = {
   ge94: { familia: 'Proton', variante: 'GE', version: '9-4' },
   wine9: { familia: 'Wine', variante: 'estable', version: '9.0' },
   nativo: { familia: 'Nativo', variante: 'Steam Linux Runtime', version: '3.0' },
-} as const satisfies Record<string, { familia: FamiliaCapa; variante: string; version: string }>
+} as const satisfies Record<string, { familia: LayerFamily; variante: string; version: string }>
 
 const tiposFallo = {
   anti_cheat: 'El sistema anti-trampas del juego bloquea Linux o la capa de compatibilidad.',
@@ -115,8 +115,8 @@ const juegos = {
     titulo: string
     descripcion: string
     ediciones: Partial<Record<keyof typeof lanzadores, string | null>>
-    apis: ReadonlyArray<ApiGrafica>
-    nivel_x86_min: NivelX86 | null
+    apis: ReadonlyArray<GraphicsApi>
+    nivel_x86_min: X86Level | null
   }
 >
 
@@ -257,7 +257,7 @@ const perfiles: ReadonlyArray<Perfil> = [
   },
 ]
 
-const guias: ReadonlyArray<{ tipo: TipoGuia; distribucion: keyof typeof distribuciones | null; titulo: string; contenido: string }> = [
+const guias: ReadonlyArray<{ tipo: GuideType; distribucion: keyof typeof distribuciones | null; titulo: string; contenido: string }> = [
   {
     tipo: 'eleccion_distribucion',
     distribucion: null,
@@ -404,7 +404,7 @@ type ReporteDemo = {
   conPerfil: boolean
   version_juego: string
   fecha_prueba: string
-  resultado: Resultado
+  resultado: Outcome
   medicion: { fps_promedio: number; resolucion: string; calidad_grafica: string; metodo_medicion: string } | null
   fallos: ReadonlyArray<readonly [keyof typeof tiposFallo, string]>
   observaciones: string
@@ -611,7 +611,7 @@ const programa = Effect.gen(function* () {
 
       const como = <A, E, R>(alias: Cuenta, programa: Effect.Effect<A, E, R>) =>
         Effect.flatMap(de(usuario, alias), (id) =>
-          Effect.provideService(programa, Visitante, Option.some({ id: Schema.decodeSync(UsuarioId)(id), alias, rol: cuentas[alias] })),
+          Effect.provideService(programa, Visitante, Option.some({ id: Schema.decodeSync(UserId)(id), alias, rol: cuentas[alias] })),
         )
 
       const diagnosticoDe = new Map<keyof typeof equipos, number>()
@@ -627,7 +627,7 @@ const programa = Effect.gen(function* () {
           biblioteca_steam: null,
           ...eq.diagnostico,
         }
-        const guardar = yield* Schema.decodeUnknownEffect(GuardarDiagnostico)({
+        const guardar = yield* Schema.decodeUnknownEffect(SaveDiagnostic)({
           equipo: { _tag: 'nuevo', alias: eq.alias },
           entrada: { _tag: 'detector', texto: JSON.stringify(payload) },
         })
@@ -651,7 +651,7 @@ const programa = Effect.gen(function* () {
         }
         const fallos: Array<{ tipo_fallo_id: number; detalle: string }> = []
         for (const [codigo, detalle] of r.fallos) fallos.push({ tipo_fallo_id: yield* de(tipoFallo, codigo), detalle })
-        const nuevo = yield* Schema.decodeUnknownEffect(NuevoReporte)({
+        const nuevo = yield* Schema.decodeUnknownEffect(NewReport)({
           edicion_id,
           diagnostico_id,
           version_capa: { _tag: 'existente', id: yield* de(capa, r.capa) },
@@ -677,20 +677,20 @@ const programa = Effect.gen(function* () {
       )
       let solucion_id = solucionExistente?.id
       if (solucion_id === undefined) {
-        const nueva = yield* Schema.decodeUnknownEffect(NuevaSolucion)({ reporte_id, tipo_fallo_id, perfil_id: null, titulo: sol.titulo, instrucciones: sol.instrucciones })
+        const nueva = yield* Schema.decodeUnknownEffect(NewSolution)({ reporte_id, tipo_fallo_id, perfil_id: null, titulo: sol.titulo, instrucciones: sol.instrucciones })
         solucion_id = (yield* como('demo_bruno', registrarSolucion(nueva))).id
         contar('solucion')
       }
 
-      const aprobar = (ref: { _tag: AporteRef['_tag']; id: number }, que: string) =>
+      const aprobar = (ref: { _tag: ContributionRef['_tag']; id: number }, que: string) =>
         Effect.gen(function* () {
-          const { cambio } = yield* como('demo_revisor', decidir(yield* Schema.decodeUnknownEffect(AporteRef)(ref), aprobacionDemo(que)))
+          const { cambio } = yield* como('demo_revisor', decidir(yield* Schema.decodeUnknownEffect(ContributionRef)(ref), aprobacionDemo(que)))
           if (cambio) contar(`aprobación de ${ref._tag}`)
         })
       for (const [i, r] of reportes.entries()) if (r.aprobar) yield* aprobar({ _tag: 'reporte', id: yield* de(reporteDe, i) }, 'Reporte')
       const probados = new Set<number>()
       for (const r of reportes)
-        if (r.aprobar && r.conPerfil && !exigeFallo[r.resultado])
+        if (r.aprobar && r.conPerfil && !requiresFailure[r.resultado])
           probados.add(yield* de(perfilDe, clavePerfil({ edicion: r.edicion, distribucion: equipos[r.equipo].distribucion, capa: r.capa })))
       for (const id of probados) yield* aprobar({ _tag: 'perfil', id }, 'Perfil con un reporte funcional aprobado,')
       yield* aprobar({ _tag: 'solucion', id: solucion_id }, 'Solución')

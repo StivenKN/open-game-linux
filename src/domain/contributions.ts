@@ -1,188 +1,188 @@
 import { Array as Arr, Effect, Schema, Struct } from 'effect'
-import { EstadoCompatibilidad } from './compatibility.ts'
-import { SoporteVulkan } from './evaluation.ts'
-import type { Discrepancia } from './errors.ts'
+import { CompatibilityStatus } from './compatibility.ts'
+import { VulkanSupport } from './evaluation.ts'
+import type { Mismatch } from './errors.ts'
 import {
-  Casilla,
-  DiagnosticoId,
-  DistribucionId,
-  EdicionId,
-  EquipoId,
-  LanzadorId,
-  PerfilId,
-  ReporteId,
-  Texto,
-  TipoFalloId,
-  VersionCapaId,
+  Checkbox,
+  DiagnosticId,
+  DistributionId,
+  EditionId,
+  MachineId,
+  LauncherId,
+  ProfileId,
+  ReportId,
+  RequiredText,
+  FailureTypeId,
+  LayerVersionId,
 } from './ids.ts'
-import { ApiGrafica, FamiliaCapa, ResultadoFallido, ResultadoFuncional } from './literals.ts'
-import { MAX_JUEGOS_BIBLIOTECA } from './library.ts'
-import { largo } from './max-lengths.ts'
-import { Diagnostico, Distribucion, Equipo, Juego, PerfilConfiguracion, Reporte, Solucion, TextoHasta, TextoOpcionalHasta, VersionCapa } from './tables.ts'
+import { GraphicsApi, LayerFamily, FailingOutcome, WorkingOutcome } from './literals.ts'
+import { MAX_LIBRARY_GAMES } from './library.ts'
+import { maxLengths } from './max-lengths.ts'
+import { Diagnostic, Distribution, Machine, Game, Profile, Report, Solution, TextUpTo, OptionalTextUpTo, LayerVersion } from './tables.ts'
 
-export const VersionCapaRef = Schema.Union([
-  Schema.TaggedStruct('existente', { id: VersionCapaId }),
-  Schema.TaggedStruct('nueva', { familia: FamiliaCapa, variante: VersionCapa.fields.variante, version: VersionCapa.fields.version }),
+export const LayerVersionRef = Schema.Union([
+  Schema.TaggedStruct('existente', { id: LayerVersionId }),
+  Schema.TaggedStruct('nueva', { familia: LayerFamily, variante: LayerVersion.fields.variante, version: LayerVersion.fields.version }),
 ])
 
-export const EquipoDestino = Schema.Union([
-  Schema.TaggedStruct('existente', { id: EquipoId }),
-  Schema.TaggedStruct('nuevo', { alias: Equipo.fields.alias }),
+export const TargetMachine = Schema.Union([
+  Schema.TaggedStruct('existente', { id: MachineId }),
+  Schema.TaggedStruct('nuevo', { alias: Machine.fields.alias }),
 ])
 
-export const MedicionFps = Schema.Struct({
+export const FpsMeasurement = Schema.Struct({
   fps_promedio: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 99999.99 }, { message: 'Escribe un promedio de FPS entre 0 y 99999.99.' })),
-  resolucion: TextoHasta(largo.reporte.resolucion),
-  calidad_grafica: TextoHasta(largo.reporte.calidad_grafica),
-  metodo_medicion: Texto,
+  resolucion: TextUpTo(maxLengths.reporte.resolucion),
+  calidad_grafica: TextUpTo(maxLengths.reporte.calidad_grafica),
+  metodo_medicion: RequiredText,
 })
 
-export const FalloObservado = Schema.Struct({ tipo_fallo_id: TipoFalloId, detalle: Texto })
+export const ObservedFailure = Schema.Struct({ tipo_fallo_id: FailureTypeId, detalle: RequiredText })
 
 // FormData cannot express an empty array, so a form with no fallos rows posts no `fallos` key (probe a).
-const FallosOpcionales = Schema.Array(FalloObservado).pipe(Schema.withDecodingDefaultKey(Effect.succeed([])))
-const FallosExigidos = Schema.Array(FalloObservado).pipe(
+const OptionalFailures = Schema.Array(ObservedFailure).pipe(Schema.withDecodingDefaultKey(Effect.succeed([])))
+const RequiredFailures = Schema.Array(ObservedFailure).pipe(
   Schema.refine(Arr.isReadonlyArrayNonEmpty, {
     message: 'Si no inicia o falla, indica al menos un tipo de fallo (usa «otro» si no sabes la causa).',
   }),
   Schema.withDecodingDefaultKey(Effect.succeed([])),
 )
 
-const camposReporte = {
-  edicion_id: EdicionId,
-  diagnostico_id: DiagnosticoId,
-  version_capa: VersionCapaRef,
-  perfil_id: Schema.NullOr(PerfilId),
-  version_juego: Reporte.fields.version_juego,
-  version_lanzador: TextoOpcionalHasta(largo.reporte.version_lanzador),
+const reportFields = {
+  edicion_id: EditionId,
+  diagnostico_id: DiagnosticId,
+  version_capa: LayerVersionRef,
+  perfil_id: Schema.NullOr(ProfileId),
+  version_juego: Report.fields.version_juego,
+  version_lanzador: OptionalTextUpTo(maxLengths.reporte.version_lanzador),
   fecha_prueba: Schema.DateFromString, // the form's datetime-local value, read in the browser's own zone
-  medicion: Schema.NullOr(MedicionFps),
-  observaciones: Texto,
+  medicion: Schema.NullOr(FpsMeasurement),
+  observaciones: RequiredText,
 }
 
 /**
  * One member per literal because a union only picks its member by a single
  * literal field; with a literal set it would try every member and report all their issues.
  */
-export const NuevoReporte = Schema.Union([
-  ...ResultadoFuncional.members.map((resultado) => Schema.Struct({ ...camposReporte, resultado, fallos: FallosOpcionales })),
-  ...ResultadoFallido.members.map((resultado) => Schema.Struct({ ...camposReporte, resultado, fallos: FallosExigidos })),
+export const NewReport = Schema.Union([
+  ...WorkingOutcome.members.map((outcome) => Schema.Struct({ ...reportFields, resultado: outcome, fallos: OptionalFailures })),
+  ...FailingOutcome.members.map((outcome) => Schema.Struct({ ...reportFields, resultado: outcome, fallos: RequiredFailures })),
 ])
-export type NuevoReporte = typeof NuevoReporte.Type
+export type NewReport = typeof NewReport.Type
 
-export const NuevaSolucion = Schema.Struct({
-  reporte_id: ReporteId,
-  tipo_fallo_id: TipoFalloId,
-  perfil_id: Schema.NullOr(PerfilId),
-  titulo: Solucion.fields.titulo,
-  instrucciones: Texto,
+export const NewSolution = Schema.Struct({
+  reporte_id: ReportId,
+  tipo_fallo_id: FailureTypeId,
+  perfil_id: Schema.NullOr(ProfileId),
+  titulo: Solution.fields.titulo,
+  instrucciones: RequiredText,
 })
-export type NuevaSolucion = typeof NuevaSolucion.Type
+export type NewSolution = typeof NewSolution.Type
 
-export const NuevoJuego = Schema.Struct({
-  titulo: Juego.fields.titulo,
-  descripcion: Texto,
+export const NewGame = Schema.Struct({
+  titulo: Game.fields.titulo,
+  descripcion: RequiredText,
   ediciones: Schema.NonEmptyArray(
-    Schema.Struct({ lanzador_id: LanzadorId, identificador_externo: TextoOpcionalHasta(largo.edicion_juego.identificador_externo) }),
+    Schema.Struct({ lanzador_id: LauncherId, identificador_externo: OptionalTextUpTo(maxLengths.edicion_juego.identificador_externo) }),
   ),
   // Checkboxes named `apis[]`; with none checked the form posts no `apis` key at all.
-  apis: Schema.Array(ApiGrafica).pipe(
+  apis: Schema.Array(GraphicsApi).pipe(
     Schema.refine(Arr.isReadonlyArrayNonEmpty, { message: 'Marca al menos una API gráfica.' }),
     Schema.withDecodingDefaultKey(Effect.succeed([])),
   ),
-  nivel_x86_min: Juego.fields.nivel_x86_min,
+  nivel_x86_min: Game.fields.nivel_x86_min,
 })
-export type NuevoJuego = typeof NuevoJuego.Type
+export type NewGame = typeof NewGame.Type
 
-const camposCaptura = {
+const captureFields = {
   capturado_en: Schema.DateFromString,
-  version_sistema: Diagnostico.fields.version_sistema,
-  arquitectura: Diagnostico.fields.arquitectura,
-  cpu_modelo: Diagnostico.fields.cpu_modelo,
-  gpu_modelo: Diagnostico.fields.gpu_modelo,
-  ram_mb: Diagnostico.fields.ram_mb,
-  vram_mb: Diagnostico.fields.vram_mb,
+  version_sistema: Diagnostic.fields.version_sistema,
+  arquitectura: Diagnostic.fields.arquitectura,
+  cpu_modelo: Diagnostic.fields.cpu_modelo,
+  gpu_modelo: Diagnostic.fields.gpu_modelo,
+  ram_mb: Diagnostic.fields.ram_mb,
+  vram_mb: Diagnostic.fields.vram_mb,
 }
 
-const camposLinux = {
+const linuxFields = {
   sistema: Schema.Literal('Linux'),
-  distribucion: Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version }),
-  controlador: TextoOpcionalHasta(largo.diagnostico.controlador),
-  version_controlador: TextoOpcionalHasta(largo.diagnostico.version_controlador),
-  soporte_vulkan: SoporteVulkan,
-  version_vulkan: TextoOpcionalHasta(largo.diagnostico.version_vulkan),
+  distribucion: Schema.Struct({ nombre: Distribution.fields.nombre, version: Distribution.fields.version }),
+  controlador: OptionalTextUpTo(maxLengths.diagnostico.controlador),
+  version_controlador: OptionalTextUpTo(maxLengths.diagnostico.version_controlador),
+  soporte_vulkan: VulkanSupport,
+  version_vulkan: OptionalTextUpTo(maxLengths.diagnostico.version_vulkan),
 }
 
-const camposDetectados = {
-  gpu_pci_id: Diagnostico.fields.gpu_pci_id,
-  biblioteca_steam: Diagnostico.fields.biblioteca_steam,
+const detectedFields = {
+  gpu_pci_id: Diagnostic.fields.gpu_pci_id,
+  biblioteca_steam: Diagnostic.fields.biblioteca_steam,
   // Only the Linux detector reads these; the Windows detector and older payloads omit them.
-  nivel_x86: Diagnostico.fields.nivel_x86.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
-  arranque_seguro: Diagnostico.fields.arranque_seguro.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
-  tpm: Diagnostico.fields.tpm.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
-  zram_mb: Diagnostico.fields.zram_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
-  swap_mb: Diagnostico.fields.swap_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  nivel_x86: Diagnostic.fields.nivel_x86.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  arranque_seguro: Diagnostic.fields.arranque_seguro.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  tpm: Diagnostic.fields.tpm.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  zram_mb: Diagnostic.fields.zram_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  swap_mb: Diagnostic.fields.swap_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
 }
 
-const vulkanConSoporte = Schema.makeFilter((c: { readonly soporte_vulkan: SoporteVulkan; readonly version_vulkan: string | null }) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
+const vulkanNeedsSupport = Schema.makeFilter((c: { readonly soporte_vulkan: VulkanSupport; readonly version_vulkan: string | null }) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
   message: 'Solo hay versión de Vulkan si hay soporte.',
 })
 
-export const Captura = Schema.Union([
-  Schema.Struct({ ...camposCaptura, ...camposDetectados, ...camposLinux }).check(vulkanConSoporte),
-  Schema.Struct({ ...camposCaptura, ...camposDetectados, sistema: Schema.Literal('Windows') }),
+export const Capture = Schema.Union([
+  Schema.Struct({ ...captureFields, ...detectedFields, ...linuxFields }).check(vulkanNeedsSupport),
+  Schema.Struct({ ...captureFields, ...detectedFields, sistema: Schema.Literal('Windows') }),
 ])
-export type Captura = typeof Captura.Type
+export type Capture = typeof Capture.Type
 
-export const CapturaManual = Schema.Union([
-  Schema.Struct({ ...camposCaptura, ...camposLinux }).check(vulkanConSoporte),
-  Schema.Struct({ ...camposCaptura, sistema: Schema.Literal('Windows') }),
+export const ManualCapture = Schema.Union([
+  Schema.Struct({ ...captureFields, ...linuxFields }).check(vulkanNeedsSupport),
+  Schema.Struct({ ...captureFields, sistema: Schema.Literal('Windows') }),
 ])
 
 // About 30 characters of JSON around each name, then ×2 for base64url (4/3) and the hardware fields.
 // PowerShell writes non-ASCII as \uXXXX, so a full library of long non-ASCII names can still exceed it.
-const MAX_TEXTO_DETECTOR = MAX_JUEGOS_BIBLIOTECA * (30 + largo.biblioteca.nombre) * 2
+const MAX_DETECTOR_TEXT = MAX_LIBRARY_GAMES * (30 + maxLengths.biblioteca.nombre) * 2
 
-export const EntradaDiagnostico = Schema.Union([
-  Schema.TaggedStruct('detector', { texto: Schema.String.pipe(Schema.check(Schema.isMaxLength(MAX_TEXTO_DETECTOR))) }),
-  Schema.TaggedStruct('manual', { captura: CapturaManual }),
+export const DiagnosticInput = Schema.Union([
+  Schema.TaggedStruct('detector', { texto: Schema.String.pipe(Schema.check(Schema.isMaxLength(MAX_DETECTOR_TEXT))) }),
+  Schema.TaggedStruct('manual', { captura: ManualCapture }),
 ])
-export type EntradaDiagnostico = typeof EntradaDiagnostico.Type
+export type DiagnosticInput = typeof DiagnosticInput.Type
 
-export const GuardarDiagnostico = Schema.Struct({ equipo: EquipoDestino, entrada: EntradaDiagnostico, con_biblioteca: Casilla })
+export const SaveDiagnostic = Schema.Struct({ equipo: TargetMachine, entrada: DiagnosticInput, con_biblioteca: Checkbox })
 
-export const FiltroCatalogo = Schema.Struct({
+export const CatalogFilter = Schema.Struct({
   q: Schema.optionalKey(Schema.String),
-  estado: Schema.optionalKey(EstadoCompatibilidad),
-  lanzador: Schema.optionalKey(LanzadorId),
+  estado: Schema.optionalKey(CompatibilityStatus),
+  lanzador: Schema.optionalKey(LauncherId),
   sin_anti_cheat: Schema.optionalKey(Schema.Boolean),
 })
-export type FiltroCatalogo = typeof FiltroCatalogo.Type
+export type CatalogFilter = typeof CatalogFilter.Type
 
-export type ContextoPrueba = {
-  readonly edicion_id: EdicionId
-  readonly version_capa_id: VersionCapaId
-  readonly distribucion_id: DistribucionId
+export type TestContext = {
+  readonly edicion_id: EditionId
+  readonly version_capa_id: LayerVersionId
+  readonly distribucion_id: DistributionId
   readonly arquitectura: string
   readonly version_juego: string
 }
 
-export const PerfilObjetivo = PerfilConfiguracion.mapFields(
+export const TargetProfile = Profile.mapFields(
   Struct.pick(['edicion_id', 'version_capa_id', 'distribucion_id', 'arquitectura', 'version_juego_objetivo']),
 )
-export type PerfilObjetivo = typeof PerfilObjetivo.Type
+export type TargetProfile = typeof TargetProfile.Type
 
-export const discrepancias = (prueba: ContextoPrueba, perfil: PerfilObjetivo): ReadonlyArray<Discrepancia> => {
-  const encontradas: Array<Discrepancia> = []
-  if (prueba.edicion_id !== perfil.edicion_id)
-    encontradas.push({ de: 'edicion', esperado: perfil.edicion_id, observado: prueba.edicion_id })
-  if (prueba.version_capa_id !== perfil.version_capa_id)
-    encontradas.push({ de: 'capa', esperado: perfil.version_capa_id, observado: prueba.version_capa_id })
-  if (prueba.distribucion_id !== perfil.distribucion_id)
-    encontradas.push({ de: 'distribucion', esperado: perfil.distribucion_id, observado: prueba.distribucion_id })
-  if (prueba.arquitectura !== perfil.arquitectura)
-    encontradas.push({ de: 'arquitectura', esperado: perfil.arquitectura, observado: prueba.arquitectura })
-  if (perfil.version_juego_objetivo !== null && prueba.version_juego !== perfil.version_juego_objetivo)
-    encontradas.push({ de: 'version_juego', esperado: perfil.version_juego_objetivo, observado: prueba.version_juego })
-  return encontradas
+export const mismatches = (test: TestContext, profile: TargetProfile): ReadonlyArray<Mismatch> => {
+  const found: Array<Mismatch> = []
+  if (test.edicion_id !== profile.edicion_id)
+    found.push({ aspect: 'edicion', expected: profile.edicion_id, actual: test.edicion_id })
+  if (test.version_capa_id !== profile.version_capa_id)
+    found.push({ aspect: 'capa', expected: profile.version_capa_id, actual: test.version_capa_id })
+  if (test.distribucion_id !== profile.distribucion_id)
+    found.push({ aspect: 'distribucion', expected: profile.distribucion_id, actual: test.distribucion_id })
+  if (test.arquitectura !== profile.arquitectura)
+    found.push({ aspect: 'arquitectura', expected: profile.arquitectura, actual: test.arquitectura })
+  if (profile.version_juego_objetivo !== null && test.version_juego !== profile.version_juego_objetivo)
+    found.push({ aspect: 'version_juego', expected: profile.version_juego_objetivo, actual: test.version_juego })
+  return found
 }

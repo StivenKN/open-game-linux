@@ -1,8 +1,8 @@
 import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Exit, Option, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { type ResumenCompatibilidad, resumir } from '../src/domain/compatibility.ts'
-import { GuiaId, JuegoId, LanzadorId, PerfilId, UsuarioId } from '../src/domain/ids.ts'
+import { type CompatibilitySummary, summarize } from '../src/domain/compatibility.ts'
+import { GuideId, GameId, LauncherId, ProfileId, UserId } from '../src/domain/ids.ts'
 import { gtaV } from '../src/domain/samples.ts'
 import { Visitante } from '../src/server/auth.ts'
 import { catalogo } from '../src/server/queries/catalog.ts'
@@ -14,7 +14,7 @@ import { elDia, enRollback, idDe, PgTest } from './support.ts'
 type Valor = string | number | boolean | Date | null
 
 const invitado = Visitante.of(Option.none())
-const ana = Visitante.of(Option.some({ id: UsuarioId.make('ana'), alias: 'ana', rol: 'usuario' }))
+const ana = Visitante.of(Option.some({ id: UserId.make('ana'), alias: 'ana', rol: 'usuario' }))
 
 const hoy = new Date('2026-10-15T00:00:00Z')
 
@@ -139,35 +139,35 @@ const escenario = Effect.gen(function* () {
   return {
     insertar,
     aprobado,
-    gta: JuegoId.make(gta),
+    gta: GameId.make(gta),
     gtaSteam,
     fedora,
     proton9,
-    epic: LanzadorId.make(epic),
-    perfilAprobado: PerfilId.make(perfilAprobado),
-    perfilEnPrueba: PerfilId.make(perfilEnPrueba),
-    perfilRetirado: PerfilId.make(perfilRetirado),
-    guiaPublicada: GuiaId.make(guiaPublicada),
-    guiaBorrador: GuiaId.make(guiaBorrador),
+    epic: LauncherId.make(epic),
+    perfilAprobado: ProfileId.make(perfilAprobado),
+    perfilEnPrueba: ProfileId.make(perfilEnPrueba),
+    perfilRetirado: ProfileId.make(perfilRetirado),
+    guiaPublicada: GuideId.make(guiaPublicada),
+    guiaBorrador: GuideId.make(guiaBorrador),
   }
 })
 
-const forma = (r: ResumenCompatibilidad) => ({
-  estado: r.estado,
-  pruebas: r.pruebas,
-  vigentes: r.vigentes,
-  sin_confirmacion_reciente: r.sin_confirmacion_reciente,
-  regresiones: r.regresiones.map((x) => [x.fecha_prueba, x.version_juego, x.resultado]),
-  ultima_prueba: r.ultima_prueba,
-  fallos: r.fallos,
-  entornos: r.entornos.map((e) => ({
+const forma = (r: CompatibilitySummary) => ({
+  estado: r.status,
+  pruebas: r.test_count,
+  vigentes: r.recent_count,
+  sin_confirmacion_reciente: r.no_recent_confirmation,
+  regresiones: r.regressions.map((x) => [x.fecha_prueba, x.version_juego, x.resultado]),
+  ultima_prueba: r.last_tested,
+  fallos: r.failures,
+  entornos: r.setups.map((e) => ({
     version_juego: e.version_juego,
-    estado: e.estado,
-    pruebas: e.pruebas,
-    vigentes: e.vigentes,
-    por_resultado: e.por_resultado,
-    ultima_prueba: e.ultima_prueba,
-    fallos: e.fallos,
+    estado: e.status,
+    pruebas: e.test_count,
+    vigentes: e.recent_count,
+    por_resultado: e.by_outcome,
+    ultima_prueba: e.last_tested,
+    fallos: e.failures,
     fps: e.fps,
   })),
 })
@@ -181,13 +181,13 @@ layer(PgTest)('consultas', (it) => {
         Effect.gen(function* () {
           const e = yield* escenario
           const ficha = yield* Effect.provideService(fichaJuego(e.gta), Visitante, invitado)
-          expect(forma(ficha.resumen)).toEqual(forma(resumir(gtaV.pruebas, hoy)))
-          expect(ficha.resumen.estado).toBe('resultados_variables')
-          expect(ficha.resumen.entornos).toHaveLength(3)
+          expect(forma(ficha.resumen)).toEqual(forma(summarize(gtaV.tests, hoy)))
+          expect(ficha.resumen.status).toBe('resultados_variables')
+          expect(ficha.resumen.setups).toHaveLength(3)
           expect(ficha.pendientes).toBe(1)
           expect(ficha.ejemplo).toBe(true)
           expect(ficha.personal).toBeNull()
-          expect(ficha.causas.map((c) => [c.codigo, c.descripcion, c.soluciones.map((x) => x.titulo)])).toEqual([
+          expect(ficha.causas.map((c) => [c.code, c.descripcion, c.soluciones.map((x) => x.titulo)])).toEqual([
             ['lanzador', 'El lanzador no abre.', ['Volver a Proton 8.0-5']],
           ])
         }),
@@ -200,10 +200,10 @@ layer(PgTest)('consultas', (it) => {
           const e = yield* escenario
           const ficha = yield* Effect.provideService(fichaJuego(e.gta), Visitante, ana)
           expect(ficha.personal?.en_mi_distribucion?.nombre).toBe('Linux Mint 21.3')
-          expect(ficha.personal?.en_mi_distribucion?.resumen.estado).toBe('funciona')
-          expect(ficha.personal?.en_mi_distribucion?.resumen.pruebas).toBe(2)
-          expect(ficha.personal?.perfil).toMatchObject({ id: e.perfilAprobado, evaluacion: { veredicto: 'cumple' } })
-          expect(ficha.perfiles.map((p) => [p.id, p.estado_revision, p.evaluacion?.veredicto ?? null])).toEqual([
+          expect(ficha.personal?.en_mi_distribucion?.resumen.status).toBe('funciona')
+          expect(ficha.personal?.en_mi_distribucion?.resumen.test_count).toBe(2)
+          expect(ficha.personal?.perfil).toMatchObject({ id: e.perfilAprobado, evaluacion: { verdict: 'cumple' } })
+          expect(ficha.perfiles.map((p) => [p.id, p.estado_revision, p.evaluacion?.verdict ?? null])).toEqual([
             [e.perfilAprobado, 'aprobado', 'cumple'],
             [e.perfilEnPrueba, 'pendiente', null],
           ])
@@ -229,11 +229,11 @@ layer(PgTest)('consultas', (it) => {
           yield* sql`UPDATE perfil_configuracion SET ${sql.update(Struct.omit(e.aprobado, ['creado_en']))} WHERE id = ${exigente}`
           const ficha = yield* Effect.provideService(fichaJuego(e.gta), Visitante, ana)
           expect(ficha.perfiles.find((p) => p.id === exigente)?.evaluacion).toEqual({
-            veredicto: 'no_cumple',
-            solo_orientativa: true,
-            comprobaciones: [
-              { requisito: 'ram', estado: 'cumple', exigido: '8192', detectado: { valor: '16384', origen: 'medido' } },
-              { requisito: 'vulkan', estado: 'no_cumple', exigido: '1.3', detectado: { valor: '1.2', origen: 'proyectado' } },
+            verdict: 'no_cumple',
+            advisory_only: true,
+            checks: [
+              { requirement: 'ram', status: 'cumple', required: '8192', detected: { value: '16384', origin: 'medido' } },
+              { requirement: 'vulkan', status: 'no_cumple', required: '1.3', detected: { value: '1.2', origin: 'proyectado' } },
             ],
           })
         }),
@@ -243,7 +243,7 @@ layer(PgTest)('consultas', (it) => {
     it.effect('un juego que no existe es NoEncontrado', () =>
       enRollback(
         Effect.gen(function* () {
-          const exit = yield* Effect.exit(Effect.provideService(fichaJuego(JuegoId.make(999999)), Visitante, invitado))
+          const exit = yield* Effect.exit(Effect.provideService(fichaJuego(GameId.make(999999)), Visitante, invitado))
           expect(Exit.findErrorOption(exit).pipe(Option.map((e) => e._tag))).toEqual(Option.some('NoEncontrado'))
         }),
       ),
@@ -296,7 +296,7 @@ layer(PgTest)('consultas', (it) => {
           ])
           expect(titulos(yield* catalogo({ estado: 'falla_en_ejecucion' }))).toEqual(['Grand Theft Auto V'])
           const ficha = yield* Effect.provideService(fichaJuego(e.gta), Visitante, invitado)
-          expect([ficha.resumen.estado, ficha.resumen.vigentes, ficha.resumen.pruebas]).toEqual(['falla_en_ejecucion', 1, 4])
+          expect([ficha.resumen.status, ficha.resumen.recent_count, ficha.resumen.test_count]).toEqual(['falla_en_ejecucion', 1, 4])
           expect(todo.contadores).toEqual({ juegos_verificados: 3, reportes_aprobados: 6, perfiles_aprobados: 1, distribuciones_probadas: 3, arreglos_upstream: 0 })
         }),
       ).pipe(elDia(new Date('2027-10-01T00:00:00Z'))),
@@ -314,7 +314,7 @@ layer(PgTest)('consultas', (it) => {
           const enPrueba = yield* Effect.provideService(perfil(e.perfilEnPrueba), Visitante, ana)
           expect(enPrueba.evaluacion).toBe('perfil_en_prueba')
           const conDiagnostico = yield* Effect.provideService(perfil(e.perfilAprobado), Visitante, ana)
-          expect(conDiagnostico.evaluacion).toMatchObject({ veredicto: 'cumple' })
+          expect(conDiagnostico.evaluacion).toMatchObject({ verdict: 'cumple' })
         }),
       ),
     )

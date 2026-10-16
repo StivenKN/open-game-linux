@@ -1,32 +1,32 @@
-import type { ResumenCompatibilidad } from '../../domain/compatibility.ts'
-import { Resultado } from '../../domain/literals.ts'
+import type { CompatibilitySummary } from '../../domain/compatibility.ts'
+import { Outcome } from '../../domain/literals.ts'
 import { contar, fecha } from '../format.ts'
 import { estadoCompatibilidad, resultado, significadoEstado } from '../vocabulary.ts'
 import { ChipsFallos } from './FailureChips.tsx'
 
-export function EstadoJuego({ resumen, pendientes }: { resumen: ResumenCompatibilidad; pendientes: number }) {
-  const etiqueta = estadoCompatibilidad[resumen.estado]
-  const base = resumen.sin_confirmacion_reciente ? resumen.pruebas : resumen.vigentes
+export function EstadoJuego({ resumen, pendientes }: { resumen: CompatibilitySummary; pendientes: number }) {
+  const etiqueta = estadoCompatibilidad[resumen.status]
+  const base = resumen.no_recent_confirmation ? resumen.test_count : resumen.recent_count
   // The environments the state counts, so the bar adds up to `base`.
-  const contados = resumen.entornos.filter((e) => e.vigentes > 0 || resumen.sin_confirmacion_reciente)
-  const reparto = Resultado.literals.flatMap((r) => {
-    const n = contados.reduce((total, e) => total + (e.por_resultado[r] ?? 0), 0)
+  const contados = resumen.setups.filter((e) => e.recent_count > 0 || resumen.no_recent_confirmation)
+  const reparto = Outcome.literals.flatMap((r) => {
+    const n = contados.reduce((total, e) => total + (e.by_outcome[r] ?? 0), 0)
     return n > 0 ? [{ resultado: r, n }] : []
   })
   return (
     <section className="veredicto" data-tono={etiqueta.tono} aria-label="Estado de compatibilidad">
       <div className="veredicto-cabeza">
-        <span className="veredicto-icono" data-tono={etiqueta.tono} data-forma="relleno" data-estado={resumen.estado} aria-hidden="true">
+        <span className="veredicto-icono" data-tono={etiqueta.tono} data-forma="relleno" data-estado={resumen.status} aria-hidden="true">
           {etiqueta.icono}
         </span>
         <div>
           <p className="veredicto-estado">{etiqueta.texto}</p>
           <p className="veredicto-base">
-            {resumen.ultima_prueba ? (
+            {resumen.last_tested ? (
               <>
                 Según <b>{contar(base, 'reporte aprobado', 'reportes aprobados')}</b>
-                {base < resumen.pruebas && <> del último año ({resumen.pruebas} en total)</>}. Última prueba el{' '}
-                {fecha(resumen.ultima_prueba)}.
+                {base < resumen.test_count && <> del último año ({resumen.test_count} en total)</>}. Última prueba el{' '}
+                {fecha(resumen.last_tested)}.
               </>
             ) : (
               'Todavía no hay reportes aprobados.'
@@ -34,13 +34,13 @@ export function EstadoJuego({ resumen, pendientes }: { resumen: ResumenCompatibi
           </p>
         </div>
       </div>
-      <p className="veredicto-significa">{significadoEstado[resumen.estado]}</p>
-      {resumen.sin_confirmacion_reciente && (
+      <p className="veredicto-significa">{significadoEstado[resumen.status]}</p>
+      {resumen.no_recent_confirmation && (
         <p className="nota pequeno" data-tono="amarillo">
           Sin confirmación en el último año: todos los reportes aprobados tienen más de 12 meses.
         </p>
       )}
-      {resumen.regresiones.map((r) => (
+      {resumen.regressions.map((r) => (
         <p key={r.edicion_id} className="nota pequeno" data-tono="rojo">
           <b>Dejó de funcionar</b> en {r.lanzador}: la prueba más reciente ({fecha(r.fecha_prueba)}, versión {r.version_juego},{' '}
           {r.capa}) dio «{resultado[r.resultado].texto}» después de reportes que funcionaban.
@@ -63,9 +63,9 @@ export function EstadoJuego({ resumen, pendientes }: { resumen: ResumenCompatibi
           </ul>
         </>
       )}
-      {resumen.fallos.length > 0 && (
+      {resumen.failures.length > 0 && (
         <p className="pequeno">
-          Causas observadas: <ChipsFallos fallos={resumen.fallos} />
+          Causas observadas: <ChipsFallos fallos={resumen.failures} />
         </p>
       )}
       {pendientes > 0 && (

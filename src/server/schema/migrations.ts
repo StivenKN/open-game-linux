@@ -3,13 +3,13 @@
 import { Effect, Schema } from 'effect'
 import { Migrator, SqlClient } from 'effect/sql'
 import { PgMigrator } from '@effect/sql-pg'
-import { Sistema, SoporteVulkan } from '../../domain/evaluation.ts'
-import { EstadoGuia, TipoGuia } from '../../domain/guides.ts'
-import { ApiGrafica, FamiliaCapa, Resultado, VarianteProton } from '../../domain/literals.ts'
-import { ArranqueSeguro, NivelX86, Tpm } from '../../domain/platform.ts'
-import { type EstadoRevision, Rol } from '../../domain/review.ts'
-import { largo as L } from '../../domain/max-lengths.ts'
-import { BloqueRevision } from '../../domain/tables.ts'
+import { OperatingSystem, VulkanSupport } from '../../domain/evaluation.ts'
+import { GuideStatus, GuideType } from '../../domain/guides.ts'
+import { GraphicsApi, LayerFamily, Outcome, ProtonVariant } from '../../domain/literals.ts'
+import { SecureBoot, X86Level, Tpm } from '../../domain/platform.ts'
+import { type ReviewStatus, Role } from '../../domain/review.ts'
+import { maxLengths as L } from '../../domain/max-lengths.ts'
+import { ReviewFields } from '../../domain/tables.ts'
 import { unaFila } from '../rows.ts'
 
 const ejecutar = (sentencias: ReadonlyArray<string>) =>
@@ -29,7 +29,7 @@ const noVacio = (t: string, ...columnas: ReadonlyArray<string>) =>
 
 const check = (t: string, nombre: string, expr: string) => `ALTER TABLE ${t} ADD CONSTRAINT ${t}_${nombre} CHECK (${expr})`
 
-const inicial: EstadoRevision = 'pendiente'
+const inicial: ReviewStatus = 'pendiente'
 
 const bloqueRevision = `
   estado_revision varchar(${L.bloque_revision.estado_revision}) NOT NULL DEFAULT '${inicial}',
@@ -45,7 +45,7 @@ const formaPorEstado = {
   aprobado: `${revisado} AND ${conTexto('evidencia_revision')}`,
   rechazado: revisado,
   retirado: revisado,
-} satisfies Record<EstadoRevision, string>
+} satisfies Record<ReviewStatus, string>
 
 const reglasRevision = (t: string, congelar: 'og_solo_revision' | 'og_perfil_contenido') => [
   check(t, 'bloque_revision', Object.entries(formaPorEstado).map(([estado, forma]) => `(estado_revision = '${estado}' AND ${forma})`).join(' OR ')),
@@ -75,7 +75,7 @@ const funciones = [
        USING ERRCODE = 'check_violation', CONSTRAINT = 'og_inmutable';
    END $$`,
   `CREATE FUNCTION og_contenido(fila jsonb) RETURNS jsonb LANGUAGE sql IMMUTABLE
-   AS $$ SELECT fila - ARRAY[${Object.keys(BloqueRevision.fields).map((c) => `'${c}'`).join(', ')}] $$`,
+   AS $$ SELECT fila - ARRAY[${Object.keys(ReviewFields.fields).map((c) => `'${c}'`).join(', ')}] $$`,
   `CREATE FUNCTION og_solo_revision() RETURNS trigger LANGUAGE plpgsql AS $$
    BEGIN
      IF og_contenido(to_jsonb(NEW)) IS DISTINCT FROM og_contenido(to_jsonb(OLD)) THEN
@@ -116,7 +116,7 @@ const funciones = [
 ]
 
 const usuario = [
-  dominio('usuario', 'rol', Rol.literals),
+  dominio('usuario', 'rol', Role.literals),
   check('usuario', 'correo_normalizado', 'correo = lower(btrim(correo))'),
   check('usuario', 'alias_largo', `char_length(alias) <= ${L.usuario.alias}`),
   check('usuario', 'correo_largo', `char_length(correo) <= ${L.usuario.correo}`),
@@ -143,7 +143,7 @@ const catalogo = [
   `CREATE TABLE version_capa (${id}, familia varchar(${L.version_capa.familia}) NOT NULL,
      variante varchar(${L.version_capa.variante}) NOT NULL, version varchar(${L.version_capa.version}) NOT NULL,
      CONSTRAINT version_capa_uq UNIQUE (familia, variante, version))`,
-  dominio('version_capa', 'familia', FamiliaCapa.literals),
+  dominio('version_capa', 'familia', LayerFamily.literals),
   ...noVacio('version_capa', 'variante', 'version'),
   check('version_capa', 'version_exacta', "lower(btrim(version)) NOT IN ('latest', 'ultima', 'última')"),
 ]
@@ -173,8 +173,8 @@ const diagnosticos = [
      soporte_vulkan varchar(${L.diagnostico.soporte_vulkan}) NOT NULL,
      version_vulkan varchar(${L.diagnostico.version_vulkan}),
      CONSTRAINT diagnostico_captura_uq UNIQUE (equipo_id, capturado_en))`,
-  dominio('diagnostico', 'sistema', Sistema.literals),
-  dominio('diagnostico', 'soporte_vulkan', SoporteVulkan.literals),
+  dominio('diagnostico', 'sistema', OperatingSystem.literals),
+  dominio('diagnostico', 'soporte_vulkan', VulkanSupport.literals),
   ...noVacio('diagnostico', 'version_sistema', 'arquitectura', 'cpu_modelo', 'gpu_modelo', 'controlador', 'version_controlador', 'version_vulkan'),
   check('diagnostico', 'ram_positiva', 'ram_mb > 0'),
   check('diagnostico', 'vram_no_negativa', 'vram_mb IS NULL OR vram_mb >= 0'),
@@ -264,7 +264,7 @@ const resultados = [
   `CREATE INDEX reporte_diagnostico_idx ON reporte (diagnostico_id)`,
   `CREATE INDEX reporte_edicion_estado_fecha_idx ON reporte (edicion_id, estado_revision, fecha_prueba)`,
   ...reglasRevision('reporte', 'og_solo_revision'),
-  dominio('reporte', 'resultado', Resultado.literals),
+  dominio('reporte', 'resultado', Outcome.literals),
   ...noVacio('reporte', 'version_juego', 'version_lanzador', 'resolucion', 'calidad_grafica', 'metodo_medicion', 'observaciones'),
   check('reporte', 'fps_no_negativo', 'fps_promedio IS NULL OR fps_promedio >= 0'),
   check('reporte', 'fps_con_contexto', 'fps_promedio IS NULL OR (resolucion IS NOT NULL AND calidad_grafica IS NOT NULL AND metodo_medicion IS NOT NULL)'),
@@ -304,8 +304,8 @@ const guias = [
      creado_en timestamptz NOT NULL DEFAULT now(),
      actualizado_en timestamptz NOT NULL DEFAULT now())`,
   `CREATE INDEX guia_adopcion_tipo_estado_idx ON guia_adopcion (tipo, estado)`,
-  dominio('guia_adopcion', 'tipo', TipoGuia.literals),
-  dominio('guia_adopcion', 'estado', EstadoGuia.literals),
+  dominio('guia_adopcion', 'tipo', GuideType.literals),
+  dominio('guia_adopcion', 'estado', GuideStatus.literals),
   ...noVacio('guia_adopcion', 'titulo', 'contenido'),
   check('guia_adopcion', 'revision_positiva', 'revision > 0'),
   check('guia_adopcion', 'fechas_ordenadas', 'actualizado_en >= creado_en'),
@@ -330,19 +330,19 @@ const hechosSistema = [
      ADD COLUMN tpm varchar(${L.diagnostico.tpm}),
      ADD COLUMN zram_mb integer,
      ADD COLUMN swap_mb integer`,
-  dominio('diagnostico', 'nivel_x86', NivelX86.literals),
-  dominio('diagnostico', 'arranque_seguro', ArranqueSeguro.literals),
+  dominio('diagnostico', 'nivel_x86', X86Level.literals),
+  dominio('diagnostico', 'arranque_seguro', SecureBoot.literals),
   dominio('diagnostico', 'tpm', Tpm.literals),
   check('diagnostico', 'zram_no_negativa', 'zram_mb IS NULL OR zram_mb >= 0'),
   check('diagnostico', 'swap_no_negativa', 'swap_mb IS NULL OR swap_mb >= 0'),
   `ALTER TABLE juego ADD COLUMN nivel_x86_min varchar(${L.juego.nivel_x86_min})`,
-  dominio('juego', 'nivel_x86_min', NivelX86.literals),
+  dominio('juego', 'nivel_x86_min', X86Level.literals),
   // A set by construction; a game with no rows has unknown APIs.
   `CREATE TABLE juego_api (
      juego_id integer NOT NULL REFERENCES juego(id) ON DELETE RESTRICT,
      api varchar(${L.juego_api.api}) NOT NULL,
      PRIMARY KEY (juego_id, api))`,
-  dominio('juego_api', 'api', ApiGrafica.literals),
+  dominio('juego_api', 'api', GraphicsApi.literals),
 ]
 
 const protondb = [
@@ -358,7 +358,7 @@ const protondb = [
      capa_variante varchar(${L.protondb_resumen.capa_variante}),
      capa_version varchar(${L.protondb_resumen.capa_version}),
      capa_reportes integer NOT NULL)`,
-  dominio('protondb_resumen', 'capa_variante', VarianteProton.literals),
+  dominio('protondb_resumen', 'capa_variante', ProtonVariant.literals),
   ...noVacio('protondb_resumen', 'capa_version'),
   check(
     'protondb_resumen',

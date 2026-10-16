@@ -1,11 +1,11 @@
 import { Effect } from 'effect'
 import { SqlClient } from 'effect/sql'
-import type { Rol } from '../src/domain/review.ts'
+import type { Role } from '../src/domain/review.ts'
 import { idDe } from './support.ts'
 
 export const base = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
-  const usuario = (id: string, rol: Rol) =>
+  const usuario = (id: string, rol: Role) =>
     sql`INSERT INTO usuario (id, alias, correo, correo_verificado, rol, activo) VALUES (${id}, ${id}, ${`${id}@demo.opengame.test`}, false, ${rol}, true)`
   yield* usuario('autor', 'usuario')
   yield* usuario('revisor', 'revisor')

@@ -1,12 +1,12 @@
 import { Option, Schema } from 'effect'
-import { EntradaDiagnostico } from '../../domain/contributions.ts'
-import { SoporteVulkan } from '../../domain/evaluation.ts'
-import { Diagnostico, Distribucion } from '../../domain/tables.ts'
+import { DiagnosticInput } from '../../domain/contributions.ts'
+import { VulkanSupport } from '../../domain/evaluation.ts'
+import { Diagnostic, Distribution } from '../../domain/tables.ts'
 
-export type Entrada = typeof EntradaDiagnostico.Encoded
+export type Entrada = typeof DiagnosticInput.Encoded
 
 const CLAVE = 'opengame:diagnostico-pendiente'
-const Guardada = Schema.fromJsonString(Schema.toEncoded(EntradaDiagnostico))
+const Guardada = Schema.fromJsonString(Schema.toEncoded(DiagnosticInput))
 
 export const guardarPendiente = (entrada: Entrada) => sessionStorage.setItem(CLAVE, JSON.stringify(entrada))
 
@@ -17,21 +17,21 @@ export const leerPendiente = (): Option.Option<Entrada> => Schema.decodeUnknownO
 export const Pegado = Schema.Struct({ texto: Schema.String.pipe(Schema.check(Schema.isNonEmpty({ message: 'Pega la salida del detector.' }))) })
 
 const comunes = {
-  version_sistema: Diagnostico.fields.version_sistema,
-  arquitectura: Diagnostico.fields.arquitectura,
-  cpu_modelo: Diagnostico.fields.cpu_modelo,
-  gpu_modelo: Diagnostico.fields.gpu_modelo,
-  ram_mb: Diagnostico.fields.ram_mb,
-  vram_mb: Diagnostico.fields.vram_mb,
+  version_sistema: Diagnostic.fields.version_sistema,
+  arquitectura: Diagnostic.fields.arquitectura,
+  cpu_modelo: Diagnostic.fields.cpu_modelo,
+  gpu_modelo: Diagnostic.fields.gpu_modelo,
+  ram_mb: Diagnostic.fields.ram_mb,
+  vram_mb: Diagnostic.fields.vram_mb,
 }
 
 export const FormularioManual = Schema.Union([
   Schema.Struct({
     ...comunes,
     sistema: Schema.Literal('Linux'),
-    distribucion: Schema.Struct({ nombre: Distribucion.fields.nombre, version: Distribucion.fields.version }),
-    soporte_vulkan: SoporteVulkan,
-    version_vulkan: Diagnostico.fields.version_vulkan,
+    distribucion: Schema.Struct({ nombre: Distribution.fields.nombre, version: Distribution.fields.version }),
+    soporte_vulkan: VulkanSupport,
+    version_vulkan: Diagnostic.fields.version_vulkan,
   }),
   Schema.Struct({ ...comunes, sistema: Schema.Literal('Windows') }),
 ])

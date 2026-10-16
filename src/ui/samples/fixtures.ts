@@ -1,5 +1,5 @@
-import type { EntornoProbado, ResumenCompatibilidad } from '../../domain/compatibility.ts'
-import { DistribucionId, EdicionId, PerfilId, VersionCapaId } from '../../domain/ids.ts'
+import type { TestedSetup, CompatibilitySummary } from '../../domain/compatibility.ts'
+import { DistributionId, EditionId, ProfileId, LayerVersionId } from '../../domain/ids.ts'
 import type { Personal } from '../compatibility/VerdictForMe.tsx'
 
 export type Muestra = {
@@ -8,62 +8,62 @@ export type Muestra = {
   readonly titulo: string
   readonly estudio: string
   readonly ediciones: ReadonlyArray<string>
-  readonly resumen: ResumenCompatibilidad
+  readonly resumen: CompatibilitySummary
   readonly pendientes: number
   readonly personal: Personal
 }
 
 export const diagnostico = {
   resumen: 'Portátil de ejemplo · Intel Core i5-8250U · Intel UHD 620 · RAM 8 GB · VRAM desconocida · Vulkan 1.3 · Linux Mint 21.3',
-  distribucion_id: DistribucionId.make(1),
+  distribucion_id: DistributionId.make(1),
 }
 
 const distro = {
   mint: { distribucion_id: diagnostico.distribucion_id, distribucion: 'Linux Mint 21.3' },
-  fedora: { distribucion_id: DistribucionId.make(2), distribucion: 'Fedora 40' },
-  arch: { distribucion_id: DistribucionId.make(3), distribucion: 'Arch Linux' },
-  ubuntu: { distribucion_id: DistribucionId.make(4), distribucion: 'Ubuntu 24.04' },
-  pop: { distribucion_id: DistribucionId.make(5), distribucion: 'Pop!_OS 22.04' },
+  fedora: { distribucion_id: DistributionId.make(2), distribucion: 'Fedora 40' },
+  arch: { distribucion_id: DistributionId.make(3), distribucion: 'Arch Linux' },
+  ubuntu: { distribucion_id: DistributionId.make(4), distribucion: 'Ubuntu 24.04' },
+  pop: { distribucion_id: DistributionId.make(5), distribucion: 'Pop!_OS 22.04' },
 }
 const capa = {
-  proton8: { version_capa_id: VersionCapaId.make(1), capa: 'Proton 8.0-5' },
-  proton9: { version_capa_id: VersionCapaId.make(2), capa: 'Proton 9.0-3' },
-  ge94: { version_capa_id: VersionCapaId.make(3), capa: 'GE-Proton 9-4' },
-  wine9: { version_capa_id: VersionCapaId.make(4), capa: 'Wine 9.0' },
+  proton8: { version_capa_id: LayerVersionId.make(1), capa: 'Proton 8.0-5' },
+  proton9: { version_capa_id: LayerVersionId.make(2), capa: 'Proton 9.0-3' },
+  ge94: { version_capa_id: LayerVersionId.make(3), capa: 'GE-Proton 9-4' },
+  wine9: { version_capa_id: LayerVersionId.make(4), capa: 'Wine 9.0' },
 }
 const sinPerfil = { perfil_id: null, perfil: null }
 const dia = (iso: string) => new Date(`${iso}T12:00:00Z`)
 
-const entorno = (e: Omit<EntornoProbado, 'clave' | 'vigentes'>): EntornoProbado => ({
+const entorno = (e: Omit<TestedSetup, 'key' | 'recent_count'>): TestedSetup => ({
   ...e,
-  vigentes: e.pruebas,
-  clave: [e.edicion_id, e.version_juego, e.distribucion_id, e.version_capa_id, e.perfil_id ?? '-'].join('|'),
+  recent_count: e.test_count,
+  key: [e.edicion_id, e.version_juego, e.distribucion_id, e.version_capa_id, e.perfil_id ?? '-'].join('|'),
 })
 
-type Reciente = Omit<ResumenCompatibilidad, 'vigentes' | 'sin_confirmacion_reciente' | 'regresiones'> &
-  Partial<Pick<ResumenCompatibilidad, 'regresiones'>>
+type Reciente = Omit<CompatibilitySummary, 'recent_count' | 'no_recent_confirmation' | 'regressions'> &
+  Partial<Pick<CompatibilitySummary, 'regressions'>>
 
 /** Every fixture test is from the last year. */
-const alDia = (r: Reciente): ResumenCompatibilidad => ({ vigentes: r.pruebas, sin_confirmacion_reciente: false, regresiones: [], ...r })
+const alDia = (r: Reciente): CompatibilitySummary => ({ recent_count: r.test_count, no_recent_confirmation: false, regressions: [], ...r })
 
 const gtaFedora = entorno({
-  edicion_id: EdicionId.make(1), lanzador: 'Steam', version_juego: '1.0.3258', ...distro.fedora, ...capa.proton9, ...sinPerfil,
-  estado: 'falla_en_ejecucion', pruebas: 1, por_resultado: { falla_en_ejecucion: 1 }, ultima_prueba: dia('2026-10-02'),
-  fallos: [{ codigo: 'lanzador', reportes: 1 }], fps: [],
+  edicion_id: EditionId.make(1), lanzador: 'Steam', version_juego: '1.0.3258', ...distro.fedora, ...capa.proton9, ...sinPerfil,
+  status: 'falla_en_ejecucion', test_count: 1, by_outcome: { falla_en_ejecucion: 1 }, last_tested: dia('2026-10-02'),
+  failures: [{ code: 'lanzador', reports: 1 }], fps: [],
 })
 const gtaMint = entorno({
-  edicion_id: EdicionId.make(1), lanzador: 'Steam', version_juego: '1.0.3179', ...distro.mint, ...capa.proton8,
-  perfil_id: PerfilId.make(1), perfil: 'GTAV-BAJO r2',
-  estado: 'funciona', pruebas: 2, por_resultado: { funciona: 2 }, ultima_prueba: dia('2026-09-28'), fallos: [],
+  edicion_id: EditionId.make(1), lanzador: 'Steam', version_juego: '1.0.3179', ...distro.mint, ...capa.proton8,
+  perfil_id: ProfileId.make(1), perfil: 'GTAV-BAJO r2',
+  status: 'funciona', test_count: 2, by_outcome: { funciona: 2 }, last_tested: dia('2026-09-28'), failures: [],
   fps: [
-    { resolucion: '1280x720', calidad: 'Bajo', promedio: 54, mediciones: 1 },
-    { resolucion: '1920x1080', calidad: 'Bajo', promedio: 41.5, mediciones: 1 },
+    { resolution: '1280x720', quality: 'Bajo', average: 54, samples: 1 },
+    { resolution: '1920x1080', quality: 'Bajo', average: 41.5, samples: 1 },
   ],
 })
 const gtaArch = entorno({
-  edicion_id: EdicionId.make(2), lanzador: 'Epic (Heroic)', version_juego: '1.0.3179', ...distro.arch, ...capa.ge94, ...sinPerfil,
-  estado: 'funciona_con_ajustes', pruebas: 1, por_resultado: { funciona_con_ajustes: 1 }, ultima_prueba: dia('2026-09-02'),
-  fallos: [], fps: [{ resolucion: '1920x1080', calidad: 'Medio', promedio: 60, mediciones: 1 }],
+  edicion_id: EditionId.make(2), lanzador: 'Epic (Heroic)', version_juego: '1.0.3179', ...distro.arch, ...capa.ge94, ...sinPerfil,
+  status: 'funciona_con_ajustes', test_count: 1, by_outcome: { funciona_con_ajustes: 1 }, last_tested: dia('2026-09-02'),
+  failures: [], fps: [{ resolution: '1920x1080', quality: 'Medio', average: 60, samples: 1 }],
 })
 
 const gta: Muestra = {
@@ -73,26 +73,26 @@ const gta: Muestra = {
   estudio: 'Rockstar Games',
   ediciones: ['Steam', 'Epic (Heroic)'],
   resumen: alDia({
-    estado: 'resultados_variables', pruebas: 4, ultima_prueba: dia('2026-10-02'),
-    entornos: [gtaFedora, gtaMint, gtaArch], fallos: [{ codigo: 'lanzador', reportes: 1 }],
-    regresiones: [
-      { edicion_id: EdicionId.make(1), lanzador: 'Steam', fecha_prueba: dia('2026-10-02'), version_juego: '1.0.3258', capa: 'Proton 9.0-3', resultado: 'falla_en_ejecucion' },
+    status: 'resultados_variables', test_count: 4, last_tested: dia('2026-10-02'),
+    setups: [gtaFedora, gtaMint, gtaArch], failures: [{ code: 'lanzador', reports: 1 }],
+    regressions: [
+      { edicion_id: EditionId.make(1), lanzador: 'Steam', fecha_prueba: dia('2026-10-02'), version_juego: '1.0.3258', capa: 'Proton 9.0-3', resultado: 'falla_en_ejecucion' },
     ],
   }),
   pendientes: 1,
   personal: {
-    ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
+    ruta: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
-      resumen: alDia({ estado: 'funciona', pruebas: 2, ultima_prueba: dia('2026-09-28'), entornos: [gtaMint], fallos: [] }),
+      resumen: alDia({ status: 'funciona', test_count: 2, last_tested: dia('2026-09-28'), setups: [gtaMint], failures: [] }),
     },
     perfil: {
       titulo: 'GTAV-BAJO', revision: 2,
       evaluacion: {
-        veredicto: 'cumple', solo_orientativa: false,
-        comprobaciones: [
-          { requisito: 'ram', estado: 'cumple', exigido: '8192', detectado: { valor: '8192', origen: 'medido' } },
-          { requisito: 'vulkan', estado: 'cumple', exigido: '1.1', detectado: { valor: '1.3', origen: 'medido' } },
+        verdict: 'cumple', advisory_only: false,
+        checks: [
+          { requirement: 'ram', status: 'cumple', required: '8192', detected: { value: '8192', origin: 'medido' } },
+          { requirement: 'vulkan', status: 'cumple', required: '1.1', detected: { value: '1.3', origin: 'medido' } },
         ],
       },
     },
@@ -100,14 +100,14 @@ const gta: Muestra = {
 }
 
 const valArch = entorno({
-  edicion_id: EdicionId.make(5), lanzador: 'Riot Client', version_juego: '9.07', ...distro.arch, ...capa.ge94, ...sinPerfil,
-  estado: 'no_inicia', pruebas: 1, por_resultado: { no_inicia: 1 }, ultima_prueba: dia('2026-08-03'),
-  fallos: [{ codigo: 'anti_cheat', reportes: 1 }], fps: [],
+  edicion_id: EditionId.make(5), lanzador: 'Riot Client', version_juego: '9.07', ...distro.arch, ...capa.ge94, ...sinPerfil,
+  status: 'no_inicia', test_count: 1, by_outcome: { no_inicia: 1 }, last_tested: dia('2026-08-03'),
+  failures: [{ code: 'anti_cheat', reports: 1 }], fps: [],
 })
 const valMint = entorno({
-  edicion_id: EdicionId.make(5), lanzador: 'Riot Client', version_juego: '9.07', ...distro.mint, ...capa.wine9, ...sinPerfil,
-  estado: 'no_inicia', pruebas: 1, por_resultado: { no_inicia: 1 }, ultima_prueba: dia('2026-07-11'),
-  fallos: [{ codigo: 'anti_cheat', reportes: 1 }], fps: [],
+  edicion_id: EditionId.make(5), lanzador: 'Riot Client', version_juego: '9.07', ...distro.mint, ...capa.wine9, ...sinPerfil,
+  status: 'no_inicia', test_count: 1, by_outcome: { no_inicia: 1 }, last_tested: dia('2026-07-11'),
+  failures: [{ code: 'anti_cheat', reports: 1 }], fps: [],
 })
 
 const valorant: Muestra = {
@@ -117,15 +117,15 @@ const valorant: Muestra = {
   estudio: 'Riot Games',
   ediciones: ['Riot Client'],
   resumen: alDia({
-    estado: 'no_inicia', pruebas: 2, ultima_prueba: dia('2026-08-03'),
-    entornos: [valArch, valMint], fallos: [{ codigo: 'anti_cheat', reportes: 2 }],
+    status: 'no_inicia', test_count: 2, last_tested: dia('2026-08-03'),
+    setups: [valArch, valMint], failures: [{ code: 'anti_cheat', reports: 2 }],
   }),
   pendientes: 0,
   personal: {
-    ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
+    ruta: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
-      resumen: alDia({ estado: 'no_inicia', pruebas: 1, ultima_prueba: dia('2026-07-11'), entornos: [valMint], fallos: [{ codigo: 'anti_cheat', reportes: 1 }] }),
+      resumen: alDia({ status: 'no_inicia', test_count: 1, last_tested: dia('2026-07-11'), setups: [valMint], failures: [{ code: 'anti_cheat', reports: 1 }] }),
     },
     perfil: null,
   },
@@ -137,29 +137,29 @@ const ets2: Muestra = {
   titulo: 'Euro Truck Simulator 2',
   estudio: 'SCS Software',
   ediciones: ['Steam'],
-  resumen: alDia({ estado: 'sin_evidencia', pruebas: 0, ultima_prueba: null, entornos: [], fallos: [] }),
+  resumen: alDia({ status: 'sin_evidencia', test_count: 0, last_tested: null, setups: [], failures: [] }),
   pendientes: 2,
   personal: {
-    ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
+    ruta: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
-      resumen: alDia({ estado: 'sin_evidencia', pruebas: 0, ultima_prueba: null, entornos: [], fallos: [] }),
+      resumen: alDia({ status: 'sin_evidencia', test_count: 0, last_tested: null, setups: [], failures: [] }),
     },
     perfil: null,
   },
 }
 
 const erUbuntu = entorno({
-  edicion_id: EdicionId.make(4), lanzador: 'Steam', version_juego: '1.12', ...distro.ubuntu, ...capa.proton9,
-  perfil_id: PerfilId.make(3), perfil: 'ER-BASE r3',
-  estado: 'funciona_con_ajustes', pruebas: 1, por_resultado: { funciona_con_ajustes: 1 }, ultima_prueba: dia('2026-09-30'),
-  fallos: [], fps: [],
+  edicion_id: EditionId.make(4), lanzador: 'Steam', version_juego: '1.12', ...distro.ubuntu, ...capa.proton9,
+  perfil_id: ProfileId.make(3), perfil: 'ER-BASE r3',
+  status: 'funciona_con_ajustes', test_count: 1, by_outcome: { funciona_con_ajustes: 1 }, last_tested: dia('2026-09-30'),
+  failures: [], fps: [],
 })
 const erMint = entorno({
-  edicion_id: EdicionId.make(4), lanzador: 'Steam', version_juego: '1.12', ...distro.mint, ...capa.proton9,
-  perfil_id: PerfilId.make(3), perfil: 'ER-BASE r3',
-  estado: 'funciona_con_ajustes', pruebas: 1, por_resultado: { funciona_con_ajustes: 1 }, ultima_prueba: dia('2026-09-21'),
-  fallos: [], fps: [{ resolucion: '1600x900', calidad: 'Bajo + FSR', promedio: 38, mediciones: 1 }],
+  edicion_id: EditionId.make(4), lanzador: 'Steam', version_juego: '1.12', ...distro.mint, ...capa.proton9,
+  perfil_id: ProfileId.make(3), perfil: 'ER-BASE r3',
+  status: 'funciona_con_ajustes', test_count: 1, by_outcome: { funciona_con_ajustes: 1 }, last_tested: dia('2026-09-21'),
+  failures: [], fps: [{ resolution: '1600x900', quality: 'Bajo + FSR', average: 38, samples: 1 }],
 })
 
 const eldenRing: Muestra = {
@@ -168,22 +168,22 @@ const eldenRing: Muestra = {
   titulo: 'Elden Ring',
   estudio: 'FromSoftware',
   ediciones: ['Steam'],
-  resumen: alDia({ estado: 'funciona_con_ajustes', pruebas: 2, ultima_prueba: dia('2026-09-30'), entornos: [erUbuntu, erMint], fallos: [] }),
+  resumen: alDia({ status: 'funciona_con_ajustes', test_count: 2, last_tested: dia('2026-09-30'), setups: [erUbuntu, erMint], failures: [] }),
   pendientes: 0,
   personal: {
-    ruta: { estado: 'con_ruta', camino: 'vkd3d_proton' }, nivel_x86_min: null, orientativa: false,
+    ruta: { status: 'con_ruta', path: 'vkd3d_proton' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
-      resumen: alDia({ estado: 'funciona_con_ajustes', pruebas: 1, ultima_prueba: dia('2026-09-21'), entornos: [erMint], fallos: [] }),
+      resumen: alDia({ status: 'funciona_con_ajustes', test_count: 1, last_tested: dia('2026-09-21'), setups: [erMint], failures: [] }),
     },
     perfil: {
       titulo: 'ER-BASE', revision: 3,
       evaluacion: {
-        veredicto: 'no_cumple', solo_orientativa: false,
-        comprobaciones: [
-          { requisito: 'ram', estado: 'no_cumple', exigido: '12288', detectado: { valor: '8192', origen: 'medido' } },
-          { requisito: 'vram', estado: 'desconocido', exigido: '4096', detectado: null },
-          { requisito: 'vulkan', estado: 'cumple', exigido: '1.3', detectado: { valor: '1.3', origen: 'medido' } },
+        verdict: 'no_cumple', advisory_only: false,
+        checks: [
+          { requirement: 'ram', status: 'no_cumple', required: '12288', detected: { value: '8192', origin: 'medido' } },
+          { requirement: 'vram', status: 'desconocido', required: '4096', detected: null },
+          { requirement: 'vulkan', status: 'cumple', required: '1.3', detected: { value: '1.3', origin: 'medido' } },
         ],
       },
     },
@@ -191,14 +191,14 @@ const eldenRing: Muestra = {
 }
 
 const twPop = entorno({
-  edicion_id: EdicionId.make(7), lanzador: 'GOG (Heroic)', version_juego: '4.04', ...distro.pop, ...capa.ge94, ...sinPerfil,
-  estado: 'funciona', pruebas: 1, por_resultado: { funciona: 1 }, ultima_prueba: dia('2026-09-10'), fallos: [], fps: [],
+  edicion_id: EditionId.make(7), lanzador: 'GOG (Heroic)', version_juego: '4.04', ...distro.pop, ...capa.ge94, ...sinPerfil,
+  status: 'funciona', test_count: 1, by_outcome: { funciona: 1 }, last_tested: dia('2026-09-10'), failures: [], fps: [],
 })
 const twMint = entorno({
-  edicion_id: EdicionId.make(6), lanzador: 'Steam', version_juego: '4.04', ...distro.mint, ...capa.proton8,
-  perfil_id: PerfilId.make(2), perfil: 'TW3-IGPU r1',
-  estado: 'funciona', pruebas: 1, por_resultado: { funciona: 1 }, ultima_prueba: dia('2026-08-20'), fallos: [],
-  fps: [{ resolucion: '1280x720', calidad: 'Bajo', promedio: 31, mediciones: 1 }],
+  edicion_id: EditionId.make(6), lanzador: 'Steam', version_juego: '4.04', ...distro.mint, ...capa.proton8,
+  perfil_id: ProfileId.make(2), perfil: 'TW3-IGPU r1',
+  status: 'funciona', test_count: 1, by_outcome: { funciona: 1 }, last_tested: dia('2026-08-20'), failures: [],
+  fps: [{ resolution: '1280x720', quality: 'Bajo', average: 31, samples: 1 }],
 })
 
 const witcher: Muestra = {
@@ -207,22 +207,22 @@ const witcher: Muestra = {
   titulo: 'The Witcher 3: Wild Hunt',
   estudio: 'CD PROJEKT RED',
   ediciones: ['Steam', 'GOG (Heroic)'],
-  resumen: alDia({ estado: 'funciona', pruebas: 2, ultima_prueba: dia('2026-09-10'), entornos: [twPop, twMint], fallos: [] }),
+  resumen: alDia({ status: 'funciona', test_count: 2, last_tested: dia('2026-09-10'), setups: [twPop, twMint], failures: [] }),
   pendientes: 0,
   personal: {
-    ruta: { estado: 'con_ruta', camino: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
+    ruta: { status: 'con_ruta', path: 'dxvk_2' }, nivel_x86_min: null, orientativa: false,
     en_mi_distribucion: {
       nombre: 'Linux Mint 21.3',
-      resumen: alDia({ estado: 'funciona', pruebas: 1, ultima_prueba: dia('2026-08-20'), entornos: [twMint], fallos: [] }),
+      resumen: alDia({ status: 'funciona', test_count: 1, last_tested: dia('2026-08-20'), setups: [twMint], failures: [] }),
     },
     perfil: {
       titulo: 'TW3-IGPU', revision: 1,
       evaluacion: {
-        veredicto: 'informacion_insuficiente', solo_orientativa: false,
-        comprobaciones: [
-          { requisito: 'ram', estado: 'cumple', exigido: '6144', detectado: { valor: '8192', origen: 'medido' } },
-          { requisito: 'vram', estado: 'desconocido', exigido: '2048', detectado: null },
-          { requisito: 'vulkan', estado: 'cumple', exigido: '1.1', detectado: { valor: '1.3', origen: 'medido' } },
+        verdict: 'informacion_insuficiente', advisory_only: false,
+        checks: [
+          { requirement: 'ram', status: 'cumple', required: '6144', detected: { value: '8192', origin: 'medido' } },
+          { requirement: 'vram', status: 'desconocido', required: '2048', detected: null },
+          { requirement: 'vulkan', status: 'cumple', required: '1.1', detected: { value: '1.3', origin: 'medido' } },
         ],
       },
     },

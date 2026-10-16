@@ -1,14 +1,14 @@
-import type { EstadoCompatibilidad } from '../domain/compatibility.ts'
-import type { ApiGrafica, Resultado, VarianteProton } from '../domain/literals.ts'
-import type { Comprobacion, OrigenDato, Sistema, SoporteVulkan, VeredictoRequisitos } from '../domain/evaluation.ts'
-import type { AvisoGpu, ControladorLinux, FamiliaGpu, RutaD3d } from '../domain/gpu.ts'
-import type { PayloadInvalido } from '../domain/errors.ts'
-import type { Bloqueo, EstadoRevision } from '../domain/review.ts'
-import type { TipoGuia } from '../domain/guides.ts'
-import type { ArranqueSeguro, NivelX86, Tpm } from '../domain/platform.ts'
-import type { Camino, CaminoSinAntiTrampas, Requisito, RutaJuego } from '../domain/graphics-path.ts'
-import type { CodigoObjecion, Objecion, VeredictoDistro } from '../domain/distros.ts'
-import type { MotivoNoExportable, MotivoOmision, MotivoSinInforme } from '../domain/upstream.ts'
+import type { CompatibilityStatus } from '../domain/compatibility.ts'
+import type { GraphicsApi, Outcome, ProtonVariant } from '../domain/literals.ts'
+import type { RequirementCheck, DataOrigin, OperatingSystem, VulkanSupport, RequirementsVerdict } from '../domain/evaluation.ts'
+import type { GpuWarning, LinuxDriver, GpuFamily, D3dPath } from '../domain/gpu.ts'
+import type { InvalidPayload } from '../domain/errors.ts'
+import type { Blocker, ReviewStatus } from '../domain/review.ts'
+import type { GuideType } from '../domain/guides.ts'
+import type { SecureBoot, X86Level, Tpm } from '../domain/platform.ts'
+import type { RenderPath, AntiCheatRiskPath, Requirement, GamePath } from '../domain/graphics-path.ts'
+import type { ObjectionCode, Objection, DistroVerdict } from '../domain/distros.ts'
+import type { NotExportableReason, SkipReason, NoReportReason } from '../domain/upstream.ts'
 
 export type Tono = 'verde' | 'amarillo' | 'rojo' | 'gris' | 'morado' | 'azul'
 export type Etiqueta = { readonly texto: string; readonly tono: Tono; readonly icono: string }
@@ -20,36 +20,36 @@ export const estadoCompatibilidad = {
   no_inicia: { texto: 'No inicia', tono: 'rojo', icono: '✕' },
   falla_en_ejecucion: { texto: 'Falla en ejecución', tono: 'rojo', icono: '✕' },
   resultados_variables: { texto: 'Resultados variables', tono: 'morado', icono: '◐' },
-} as const satisfies Record<EstadoCompatibilidad, Etiqueta>
+} as const satisfies Record<CompatibilityStatus, Etiqueta>
 
 export const resultado = {
   funciona: estadoCompatibilidad.funciona,
   funciona_con_ajustes: estadoCompatibilidad.funciona_con_ajustes,
   no_inicia: estadoCompatibilidad.no_inicia,
   falla_en_ejecucion: estadoCompatibilidad.falla_en_ejecucion,
-} as const satisfies Record<Resultado, Etiqueta>
+} as const satisfies Record<Outcome, Etiqueta>
 
 export const veredictoRequisitos = {
   no_cumple: { texto: 'No cumple', tono: 'rojo', icono: '✕' },
   informacion_insuficiente: { texto: 'Información insuficiente', tono: 'gris', icono: '?' },
   cumple: { texto: 'Cumple las condiciones conocidas', tono: 'verde', icono: '✓' },
-} as const satisfies Record<VeredictoRequisitos, Etiqueta>
+} as const satisfies Record<RequirementsVerdict, Etiqueta>
 
 export const estadoComprobacion = {
   cumple: { texto: 'Cumple', tono: 'verde', icono: '✓' },
   no_cumple: { texto: 'No cumple', tono: 'rojo', icono: '✕' },
   desconocido: { texto: 'Desconocido', tono: 'amarillo', icono: '?' },
-} as const satisfies Record<Comprobacion['estado'], Etiqueta>
+} as const satisfies Record<RequirementCheck['status'], Etiqueta>
 
-export const requisito = { ram: 'RAM', vram: 'VRAM', vulkan: 'Vulkan' } as const satisfies Record<Comprobacion['requisito'], string>
+export const requisito = { ram: 'RAM', vram: 'VRAM', vulkan: 'Vulkan' } as const satisfies Record<RequirementCheck['requirement'], string>
 
 export const soporteVulkan = {
   si: 'Compatible',
   no: 'Sin soporte',
   desconocido: 'Desconocido',
-} as const satisfies Record<SoporteVulkan, string>
+} as const satisfies Record<VulkanSupport, string>
 
-export const sistema = { Linux: 'Linux', Windows: 'Windows' } as const satisfies Record<Sistema, string>
+export const sistema = { Linux: 'Linux', Windows: 'Windows' } as const satisfies Record<OperatingSystem, string>
 
 export const apiGrafica = {
   d3d9: 'Direct3D 9',
@@ -58,13 +58,13 @@ export const apiGrafica = {
   d3d12: 'Direct3D 12',
   vulkan: 'Vulkan',
   opengl: 'OpenGL',
-} as const satisfies Record<ApiGrafica, string>
+} as const satisfies Record<GraphicsApi, string>
 
 export const arranqueSeguro = {
   activo: 'Activado',
   inactivo: 'Desactivado',
   bios: 'Sin UEFI (BIOS)',
-} as const satisfies Record<ArranqueSeguro, string>
+} as const satisfies Record<SecureBoot, string>
 
 export const tpm = { '2.0': 'TPM 2.0', '1.2': 'TPM 1.2', no_detectado: 'Sin TPM' } as const satisfies Record<Tpm, string>
 
@@ -74,21 +74,21 @@ export const nivelX86 = {
   v2: 'x86-64-v2 (SSE4.2)',
   v3: 'x86-64-v3 (AVX2)',
   v4: 'x86-64-v4',
-} as const satisfies Record<NivelX86, string>
+} as const satisfies Record<X86Level, string>
 
 export const estadoRevision = {
   pendiente: { texto: 'Pendiente de revisión', tono: 'gris', icono: '…' },
   aprobado: { texto: 'Aprobado', tono: 'verde', icono: '✓' },
   rechazado: { texto: 'Rechazado', tono: 'rojo', icono: '✕' },
   retirado: { texto: 'Retirado', tono: 'gris', icono: '–' },
-} as const satisfies Record<EstadoRevision, Etiqueta>
+} as const satisfies Record<ReviewStatus, Etiqueta>
 
 export const bloqueo = {
   perfil_sin_reporte_funcional_aprobado: 'Falta un reporte aprobado que use este perfil con resultado funcional.',
   solucion_fallo_origen_no_aprobado: 'El reporte con el fallo de origen aún no está aprobado.',
   solucion_perfil_no_aprobado: 'El perfil que recomienda la solución aún no está aprobado.',
   reporte_incomparable: 'El perfil no coincide con el entorno del diagnóstico.',
-} as const satisfies Record<Bloqueo, string>
+} as const satisfies Record<Blocker, string>
 
 type EtiquetaFallo = Omit<Etiqueta, 'icono'>
 const tiposFallo: Readonly<Record<string, EtiquetaFallo>> = {
@@ -107,13 +107,13 @@ export const tipoGuia = {
   eleccion_distribucion: 'Elegir distribución',
   instalacion: 'Instalación',
   arranque_dual: 'Arranque dual',
-} as const satisfies Record<TipoGuia, string>
+} as const satisfies Record<GuideType, string>
 
 export const motivoPayload = {
   ilegible: 'No pudimos leer ese texto. Copia toda la salida del detector, o la dirección completa que abrió tu navegador.',
   version_esquema: 'Ese diagnóstico viene de otra versión del detector. Descárgalo de nuevo y vuelve a ejecutarlo.',
   campo_invalido: 'Al diagnóstico le falta un dato o trae uno que no reconocemos.',
-} as const satisfies Record<PayloadInvalido['motivo'], string>
+} as const satisfies Record<InvalidPayload['reason'], string>
 
 export const significadoEstado = {
   sin_evidencia: 'Ningún revisor ha aprobado todavía una prueba de este juego.',
@@ -122,9 +122,9 @@ export const significadoEstado = {
   no_inicia: 'En todas las pruebas aprobadas el juego no llega a iniciar, por ejemplo por un anti-cheat a nivel de kernel.',
   falla_en_ejecucion: 'En todas las pruebas aprobadas el juego inicia, pero falla durante la partida.',
   resultados_variables: 'Las pruebas aprobadas dan resultados distintos. La ficha muestra cada entorno.',
-} as const satisfies Record<EstadoCompatibilidad, string>
+} as const satisfies Record<CompatibilityStatus, string>
 
-export const origenVulkan = { medido: 'Detectado', proyectado: 'Proyectado' } as const satisfies Record<OrigenDato, string>
+export const origenVulkan = { medido: 'Detectado', proyectado: 'Proyectado' } as const satisfies Record<DataOrigin, string>
 
 export const familiaGpu = {
   intel_gen5_o_anterior: 'Intel GMA o HD de primera generación (Ironlake o anterior)',
@@ -142,7 +142,7 @@ export const familiaGpu = {
   nvidia_kepler: 'NVIDIA GeForce 600/700 (Kepler)',
   nvidia_maxwell_a_volta: 'NVIDIA GeForce GTX 750 a 10 (Maxwell, Pascal, Volta)',
   nvidia_turing_o_posterior: 'NVIDIA GeForce GTX 16, RTX (Turing o posterior)',
-} as const satisfies Record<FamiliaGpu, string>
+} as const satisfies Record<GpuFamily, string>
 
 export const controladorLinux = {
   i915: 'i915 (Intel, incluido en Linux)',
@@ -151,7 +151,7 @@ export const controladorLinux = {
   nouveau: 'nouveau (libre, incluido en Linux; Vulkan con NVK)',
   nvidia_580xx: 'NVIDIA 580xx (rama heredada del controlador propietario)',
   nvidia: 'NVIDIA (controlador propietario actual)',
-} as const satisfies Record<ControladorLinux, string>
+} as const satisfies Record<LinuxDriver, string>
 
 export type EtiquetaRuta = { readonly texto: string; readonly detalle: string | null; readonly opcion: string | null }
 
@@ -160,7 +160,7 @@ export const rutaD3d = {
   dxvk_2: { texto: 'DXVK 2.x', detalle: 'Si un Proton reciente no abre el juego, prueba uno con DXVK 2.x.', opcion: null },
   dxvk_sarek: { texto: 'DXVK-Sarek con Proton-CachyOS', detalle: 'No es seguro con anti-cheat.', opcion: 'PROTON_DXVK_SAREK=1 %command%' },
   wined3d: { texto: 'WineD3D sobre OpenGL', detalle: 'Solo DirectX 9–11, más lento.', opcion: 'PROTON_USE_WINED3D=1 %command%' },
-} as const satisfies Record<RutaD3d, EtiquetaRuta>
+} as const satisfies Record<D3dPath, EtiquetaRuta>
 
 export const avisoGpu = {
   gcn_usar_amdgpu:
@@ -174,7 +174,7 @@ export const avisoGpu = {
   vulkan_sin_verificar: 'Nadie ha medido todavía el Vulkan de esta generación en hardware real; por eso mostramos un rango.',
   vulkan_no_detectado:
     'Tu equipo no detectó Vulkan, pero tu GPU lo tiene: instala los controladores Vulkan de tu distribución (por ejemplo, mesa-vulkan-drivers).',
-} as const satisfies Record<AvisoGpu, string>
+} as const satisfies Record<GpuWarning, string>
 
 export type EtiquetaCamino = {
   readonly nombre: string
@@ -199,12 +199,12 @@ export const camino = {
     opcion: rutaD3d.dxvk_sarek.opcion,
   },
   wined3d: { nombre: 'WineD3D', frase: 'Solo con WineD3D: funciona, pero lento.', tono: 'amarillo', nota: null, opcion: rutaD3d.wined3d.opcion },
-} as const satisfies Record<Camino, EtiquetaCamino> & Record<CaminoSinAntiTrampas, { readonly nota: string }>
+} as const satisfies Record<RenderPath, EtiquetaCamino> & Record<AntiCheatRiskPath, { readonly nota: string }>
 
-export const etiquetaRuta = (r: RutaJuego): Etiqueta => {
-  switch (r.estado) {
+export const etiquetaRuta = (r: GamePath): Etiqueta => {
+  switch (r.status) {
     case 'con_ruta':
-      return { texto: camino[r.camino].nombre, tono: camino[r.camino].tono, icono: '✓' }
+      return { texto: camino[r.path].nombre, tono: camino[r.path].tono, icono: '✓' }
     case 'sin_ruta':
       return { texto: 'No puede correr', tono: 'rojo', icono: '✕' }
     case 'sin_datos':
@@ -217,21 +217,21 @@ export const etiquetaRuta = (r: RutaJuego): Etiqueta => {
 const falta = {
   grafica: 'Falta saber hasta qué versión de Vulkan llega tu tarjeta gráfica: en Linux, instala vulkan-tools y vuelve a ejecutar el detector.',
   cpu: 'Falta el nivel x86-64 de tu procesador: lo mide la versión actual del detector de Linux.',
-} as const satisfies Record<Requisito, string>
+} as const satisfies Record<Requirement, string>
 
 /** The verdict as sentences. `minimo` is the game's minimum x86-64 level, named when the CPU decides. */
-export const fraseRuta = (r: RutaJuego, minimo: NivelX86 | null): ReadonlyArray<string> => {
-  switch (r.estado) {
+export const fraseRuta = (r: GamePath, minimo: X86Level | null): ReadonlyArray<string> => {
+  switch (r.status) {
     case 'con_ruta':
-      return [camino[r.camino].frase]
+      return [camino[r.path].frase]
     case 'sin_ruta':
       return [
-        r.motivo === 'grafica'
+        r.reason === 'grafica'
           ? 'Tu tarjeta gráfica no tiene una ruta para las APIs de este juego.'
           : `Tu procesador no llega al nivel ${minimo === null ? 'x86-64' : nivelX86[minimo]} que pide.`,
       ]
     case 'sin_datos':
-      return [r.al_menos === null ? 'Todavía no sabemos si puede correr.' : `Al menos con ${camino[r.al_menos].nombre}.`, ...r.faltan.map((f) => falta[f])]
+      return [r.at_least === null ? 'Todavía no sabemos si puede correr.' : `Al menos con ${camino[r.at_least].nombre}.`, ...r.missing.map((f) => falta[f])]
     case 'sin_apis':
       return ['APIs gráficas sin declarar: no podemos calcular una ruta.']
   }
@@ -241,13 +241,13 @@ export const veredictoDistro = {
   sin_objeciones: { texto: 'Sin objeciones', tono: 'verde', icono: '✓' },
   con_ajustes: { texto: 'Con ajustes', tono: 'amarillo', icono: '⚙' },
   descartada: { texto: 'Descartadas', tono: 'rojo', icono: '✕' },
-} as const satisfies Record<VeredictoDistro, Etiqueta>
+} as const satisfies Record<DistroVerdict, Etiqueta>
 
-const objeciones: { readonly [K in CodigoObjecion]: (o: Extract<Objecion, { readonly codigo: K }>) => string } = {
-  arquitectura: (o) => `Steam y Proton necesitan un procesador x86_64; el tuyo es ${o.tiene}.`,
+const objeciones: { readonly [K in ObjectionCode]: (o: Extract<Objection, { readonly code: K }>) => string } = {
+  arquitectura: (o) => `Steam y Proton necesitan un procesador x86_64; el tuyo es ${o.has}.`,
   kepler_sin_soporte: () => 'No da soporte a las NVIDIA Kepler (GeForce 600/700).',
   kepler_470: (o) =>
-    o.salida === 'kernel_6_8'
+    o.kernel === 'kernel_6_8'
       ? 'Tu NVIDIA Kepler: quédate en su kernel 6.8 para seguir con el controlador 470, o usa NVK (Mesa 25.2 o más reciente).'
       : 'Tu NVIDIA Kepler: el controlador 470 no compila en kernels posteriores a 6.8. Usa NVK y comprueba que traiga Mesa 25.2 o más reciente.',
   rama_580: (o) =>
@@ -255,15 +255,15 @@ const objeciones: { readonly [K in CodigoObjecion]: (o: Extract<Objecion, { read
       paquete_580xx: 'Tu NVIDIA necesita la rama 580 y Arch ya va en la 590: instala nvidia-580xx-dkms.',
       imagen_nvidia: 'Tu NVIDIA necesita la rama 580: instala la imagen bazzite-nvidia.',
       desconocido: 'Tu NVIDIA necesita la rama 580, la última para su generación. Comprueba que esta distribución la ofrezca y fíjala.',
-    })[o.como],
+    })[o.via],
   gcn_amdgpu: (o) =>
-    o.como === 'kernel_hwe'
+    o.via === 'kernel_hwe'
       ? 'Tu AMD GCN 1/2 tiene Vulkan solo con amdgpu. Usa el kernel HWE (7.0), donde ya es el predeterminado; con el kernel 6.8 agrega radeon.si_support=0 radeon.cik_support=0 amdgpu.si_support=1 amdgpu.cik_support=1.'
       : 'Tu AMD GCN 1/2 tiene Vulkan solo con amdgpu, predeterminado desde Linux 6.19. Comprueba el kernel; si es anterior, agrega radeon.si_support=0 radeon.cik_support=0 amdgpu.si_support=1 amdgpu.cik_support=1.',
   gpu_desconocida: () => 'No reconocemos tu tarjeta gráfica, así que no pudimos revisar sus controladores aquí.',
 }
 
-export const objecion = <K extends CodigoObjecion>(o: Extract<Objecion, { readonly codigo: K }>): string => objeciones[o.codigo](o)
+export const objecion = <K extends ObjectionCode>(o: Extract<Objection, { readonly code: K }>): string => objeciones[o.code](o)
 
 export const varianteProton = {
   official: 'Proton oficial',
@@ -271,7 +271,7 @@ export const varianteProton = {
   ge: 'GE-Proton',
   native: 'Versión nativa de Linux',
   older: 'Proton (versión antigua)',
-} as const satisfies Record<VarianteProton, string>
+} as const satisfies Record<ProtonVariant, string>
 
 export const motivoOmision = {
   programa_envoltorio: 'es un programa que envuelve el juego, no un arreglo',
@@ -281,17 +281,17 @@ export const motivoOmision = {
   forma_invalida: 'tiene una forma que el archivo de arreglo no admite',
   paquete_del_sistema: 'es un paquete del sistema; se instala fuera del juego',
   dependencia_opcional: 'es opcional en el perfil; el archivo la volvería obligatoria',
-} as const satisfies Record<MotivoOmision, string>
+} as const satisfies Record<SkipReason, string>
 
 export const motivoNoExportable = {
   no_es_steam: 'Solo los perfiles de juegos de Steam se convierten en un arreglo de umu-protonfixes.',
   sin_appid: 'Esta edición de Steam no tiene AppID registrado, así que no hay archivo de arreglo.',
   capa_sin_protonfixes: 'Wine y los juegos nativos no usan umu-protonfixes.',
-} as const satisfies Record<MotivoNoExportable, string>
+} as const satisfies Record<NotExportableReason, string>
 
 export const motivoSinInforme = {
   no_es_steam: 'Valve solo atiende informes de juegos de Steam.',
   sin_appid: 'La edición de Steam de este juego no tiene AppID registrado.',
   capa_no_valve: 'Valve solo atiende informes de su propio Proton; GE-Proton y Wine tienen sus propios canales.',
   funciona: 'El juego funcionó sin ajustes: no hay nada que informar a Valve.',
-} as const satisfies Record<MotivoSinInforme, string>
+} as const satisfies Record<NoReportReason, string>

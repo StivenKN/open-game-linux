@@ -1,6 +1,6 @@
-import type { EntornoProbado } from '../../domain/compatibility.ts'
-import type { DistribucionId } from '../../domain/ids.ts'
-import { Resultado } from '../../domain/literals.ts'
+import type { TestedSetup } from '../../domain/compatibility.ts'
+import type { DistributionId } from '../../domain/ids.ts'
+import { Outcome } from '../../domain/literals.ts'
 import { contar, fecha, fps } from '../format.ts'
 import { Chip, Insignia } from '../Badge.tsx'
 import { estadoCompatibilidad, resultado } from '../vocabulary.ts'
@@ -10,16 +10,16 @@ import { ChipsFallos } from './FailureChips.tsx'
 const inicial = (distribucion: string) =>
   (distribucion.split(' ').find((p) => /^\p{L}/u.test(p) && p !== 'Linux') ?? distribucion).charAt(0).toUpperCase()
 
-export function MatrizEntornos({ entornos, miDistribucion }: { entornos: ReadonlyArray<EntornoProbado>; miDistribucion: DistribucionId | null }) {
+export function MatrizEntornos({ entornos, miDistribucion }: { entornos: ReadonlyArray<TestedSetup>; miDistribucion: DistributionId | null }) {
   if (entornos.length === 0) return <p className="tarjeta tenue">Sin entornos con evidencia aprobada.</p>
   return (
     <ul className="entornos" aria-label="Entornos probados con reportes aprobados">
       {entornos.map((e) => {
         const mia = e.distribucion_id === miDistribucion
-        const estado = estadoCompatibilidad[e.estado]
+        const estado = estadoCompatibilidad[e.status]
         return (
-          <li key={e.clave} className="entorno" data-mia={mia || undefined}>
-            <span className="entorno-franja" data-tono={estado.tono} data-forma="relleno" data-estado={e.estado} />
+          <li key={e.key} className="entorno" data-mia={mia || undefined}>
+            <span className="entorno-franja" data-tono={estado.tono} data-forma="relleno" data-estado={e.status} />
             <span className="entorno-inicial" aria-hidden="true">
               {inicial(e.distribucion)}
             </span>
@@ -47,10 +47,10 @@ export function MatrizEntornos({ entornos, miDistribucion }: { entornos: Readonl
                   <dd className="tenue">no medido</dd>
                 ) : (
                   e.fps.map((f) => (
-                    <dd key={`${f.resolucion}|${f.calidad}`}>
-                      <b className="fps">{fps(f.promedio)}</b>{' '}
+                    <dd key={`${f.resolution}|${f.quality}`}>
+                      <b className="fps">{fps(f.average)}</b>{' '}
                       <span className="pequeno tenue">
-                        FPS · {f.resolucion} · {f.calidad} · {contar(f.mediciones, 'medición', 'mediciones')}
+                        FPS · {f.resolution} · {f.quality} · {contar(f.samples, 'medición', 'mediciones')}
                       </span>
                     </dd>
                   ))
@@ -59,21 +59,21 @@ export function MatrizEntornos({ entornos, miDistribucion }: { entornos: Readonl
             </dl>
             <div className="entorno-resultado">
               <Insignia etiqueta={estado} />
-              {e.estado === 'resultados_variables' && (
+              {e.status === 'resultados_variables' && (
                 <span className="pequeno tenue">
-                  {Resultado.literals
+                  {Outcome.literals
                     .flatMap((r) => {
-                      const n = e.por_resultado[r]
+                      const n = e.by_outcome[r]
                       return n ? [`${n} ${resultado[r].texto.toLowerCase()}`] : []
                     })
                     .join(' · ')}
                 </span>
               )}
-              {e.fallos.length > 0 && <ChipsFallos fallos={e.fallos} />}
+              {e.failures.length > 0 && <ChipsFallos fallos={e.failures} />}
               <span className="pequeno tenue">
-                {contar(e.pruebas, 'prueba', 'pruebas')} · última {fecha(e.ultima_prueba)}
+                {contar(e.test_count, 'prueba', 'pruebas')} · última {fecha(e.last_tested)}
               </span>
-              {e.vigentes === 0 && <span className="pequeno tenue">ninguna del último año</span>}
+              {e.recent_count === 0 && <span className="pequeno tenue">ninguna del último año</span>}
             </div>
           </li>
         )

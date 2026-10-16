@@ -1,5 +1,5 @@
 import { type ReactNode, useId } from 'react'
-import type { EstadoCompatibilidad } from '../domain/compatibility.ts'
+import type { CompatibilityStatus } from '../domain/compatibility.ts'
 import { azar, disenoPortada, type Motivo } from './cover-art.ts'
 import { SelloEjemplo } from './DemoStamp.tsx'
 import { estadoCompatibilidad } from './vocabulary.ts'
@@ -104,7 +104,7 @@ export function Arte({ titulo, ancho, alto }: { titulo: string; ancho: number; a
 }
 
 /** A game's cover: seeded art, its title, and a status band that is the loudest thing on it. */
-export function Portada({ titulo, estado, ejemplo = false }: { titulo: string; estado?: EstadoCompatibilidad; ejemplo?: boolean }) {
+export function Portada({ titulo, estado, ejemplo = false }: { titulo: string; estado?: CompatibilityStatus; ejemplo?: boolean }) {
   const { rotulo } = disenoPortada(titulo)
   return (
     <div className="portada" data-estado={estado}>
@@ -124,7 +124,7 @@ export function Portada({ titulo, estado, ejemplo = false }: { titulo: string; e
   )
 }
 
-function Banda({ estado }: { estado: EstadoCompatibilidad }) {
+function Banda({ estado }: { estado: CompatibilityStatus }) {
   const etiqueta = estadoCompatibilidad[estado]
   return (
     <div className="banda" data-tono={etiqueta.tono} data-forma="relleno" data-estado={estado}>

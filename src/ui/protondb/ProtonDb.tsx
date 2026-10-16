@@ -1,9 +1,9 @@
-import type { VarianteProton } from '../../domain/literals.ts'
-import type { ProtonDbResumen } from '../../domain/tables.ts'
+import type { ProtonVariant } from '../../domain/literals.ts'
+import type { ProtonDbSummary } from '../../domain/tables.ts'
 import { contar, fecha } from '../format.ts'
 import { varianteProton } from '../vocabulary.ts'
 
-type Recientes = Pick<ProtonDbResumen, 'recientes' | 'recientes_funcionan' | 'reportes_total'>
+type Recientes = Pick<ProtonDbSummary, 'recientes' | 'recientes_funcionan' | 'reportes_total'>
 
 /** The license asks for this on every page that shows ProtonDB data. */
 export function AtribucionProtonDb() {
@@ -28,11 +28,11 @@ export function LineaProtonDb({ resumen }: { resumen: Recientes }) {
   )
 }
 
-const capa = (variante: VarianteProton, version: string | null) =>
+const capa = (variante: ProtonVariant, version: string | null) =>
   version === null ? varianteProton[variante] : `${varianteProton[variante]} (${version})`
 
 /** The ficha's section: aggregates only, never individual reports (8.9). */
-export function SeccionProtonDb({ protondb: p }: { protondb: (ProtonDbResumen & { readonly app_id: string }) | null }) {
+export function SeccionProtonDb({ protondb: p }: { protondb: (ProtonDbSummary & { readonly app_id: string }) | null }) {
   if (p === null) return <p className="tarjeta tenue">Sin datos de ProtonDB para este juego todavía.</p>
   return (
     <div className="tarjeta pila">

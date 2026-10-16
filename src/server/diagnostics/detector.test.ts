@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, w
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Diagnostico } from '../../domain/tables.ts'
+import { Diagnostic } from '../../domain/tables.ts'
 import { parsearPayload } from './payload.ts'
 
 const script = fileURLToPath(new URL('../../detector/opengame-detect.sh', import.meta.url))
@@ -14,7 +14,7 @@ const ejecutar = (...args: Array<string>) =>
 
 // Required keys, unlike the parser: an omitted fact would decode to null there and hide the regression.
 const hechos = ['nivel_x86', 'arranque_seguro', 'tpm', 'zram_mb', 'swap_mb'] as const
-const Hechos = Diagnostico.mapFields(Struct.pick(hechos))
+const Hechos = Diagnostic.mapFields(Struct.pick(hechos))
 
 describe.skipIf(process.platform !== 'linux')('opengame-detect.sh', () => {
   it('prints a payload the server parses, and --open carries it in #d=', () => {

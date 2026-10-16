@@ -1,9 +1,9 @@
 import { Effect, Schema, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { DistribucionId } from '../../domain/ids.ts'
-import { ResultadoFuncional } from '../../domain/literals.ts'
-import { type AporteRef, type Bloqueo, estadosVigentes, type TipoAporte } from '../../domain/review.ts'
-import { Diagnostico, Juego, Lanzador, PerfilConfiguracion, Reporte, Solucion, TipoFallo, Usuario } from '../../domain/tables.ts'
+import { DistributionId } from '../../domain/ids.ts'
+import { WorkingOutcome } from '../../domain/literals.ts'
+import { type ContributionRef, type Blocker, activeStatuses, type ContributionType } from '../../domain/review.ts'
+import { Diagnostic, Game, Launcher, Profile, Report, Solution, FailureType, User } from '../../domain/tables.ts'
 import { bloqueosAprobacion } from '../commands/review.ts'
 import { exigirRevisor } from '../auth.ts'
 import { filas } from '../rows.ts'
@@ -13,17 +13,17 @@ const Nombre = Schema.String
 
 const Comun = {
   creado_en: Schema.Date,
-  estado_revision: PerfilConfiguracion.fields.estado_revision,
-  autor: Usuario.fields.alias,
+  estado_revision: Profile.fields.estado_revision,
+  autor: User.fields.alias,
   demo: Schema.Boolean,
   es_propio: Schema.Boolean,
-  juego: Juego.fields.titulo,
-  lanzador: Lanzador.fields.nombre,
+  juego: Game.fields.titulo,
+  lanzador: Launcher.fields.nombre,
 }
 
 const ColaPerfil = Schema.Struct({
   ...Comun,
-  ...PerfilConfiguracion.mapFields(Struct.pick(['id', 'titulo', 'revision', 'arquitectura', 'version_juego_objetivo', 'parametros_lanzamiento'])).fields,
+  ...Profile.mapFields(Struct.pick(['id', 'titulo', 'revision', 'arquitectura', 'version_juego_objetivo', 'parametros_lanzamiento'])).fields,
   distribucion: Nombre,
   capa: Nombre,
   pasos: Schema.Int,
@@ -32,36 +32,36 @@ const ColaPerfil = Schema.Struct({
 
 const ColaReporte = Schema.Struct({
   ...Comun,
-  ...Reporte.mapFields(
+  ...Report.mapFields(
     Struct.pick(['id', 'resultado', 'version_juego', 'fecha_prueba', 'fps_promedio', 'resolucion', 'calidad_grafica', 'metodo_medicion', 'observaciones']),
   ).fields,
   distribucion: Nombre,
-  distribucion_id: DistribucionId,
-  arquitectura: Diagnostico.fields.arquitectura,
+  distribucion_id: DistributionId,
+  arquitectura: Diagnostic.fields.arquitectura,
   capa: Nombre,
   perfil: Schema.NullOr(Nombre),
-  fallos: Schema.Array(Schema.Struct({ codigo: TipoFallo.fields.codigo, detalle: Schema.String })),
+  fallos: Schema.Array(Schema.Struct({ codigo: FailureType.fields.codigo, detalle: Schema.String })),
 })
 
 const ColaSolucion = Schema.Struct({
   ...Comun,
-  ...Solucion.mapFields(Struct.pick(['id', 'titulo', 'instrucciones', 'reporte_id'])).fields,
-  tipo_fallo: TipoFallo.fields.codigo,
+  ...Solution.mapFields(Struct.pick(['id', 'titulo', 'instrucciones', 'reporte_id'])).fields,
+  tipo_fallo: FailureType.fields.codigo,
   fallo: Schema.String,
-  estado_reporte: Reporte.fields.estado_revision,
+  estado_reporte: Report.fields.estado_revision,
   perfil: Schema.NullOr(Nombre),
 })
 
-const conBloqueos = <A extends { readonly estado_revision: string }>(elementos: ReadonlyArray<A>, refDe: (a: A) => AporteRef) =>
+const conBloqueos = <A extends { readonly estado_revision: string }>(elementos: ReadonlyArray<A>, refDe: (a: A) => ContributionRef) =>
   Effect.forEach(elementos, (e) =>
-    Effect.map(e.estado_revision === 'pendiente' ? bloqueosAprobacion(refDe(e)) : Effect.succeed([]), (bloqueos: ReadonlyArray<Bloqueo>) => ({ ...e, bloqueos })),
+    Effect.map(e.estado_revision === 'pendiente' ? bloqueosAprobacion(refDe(e)) : Effect.succeed([]), (bloqueos: ReadonlyArray<Blocker>) => ({ ...e, bloqueos })),
   )
 
-export const cola = (tipo: TipoAporte) =>
+export const cola = (tipo: ContributionType) =>
   Effect.gen(function* () {
     const revisor = yield* exigirRevisor
     const sql = yield* SqlClient.SqlClient
-    const vigentes = sql.in(estadosVigentes)
+    const vigentes = sql.in(activeStatuses)
     const demo = sql.literal(esDemo('u'))
     const orden = sql`(estado_revision = 'pendiente') DESC, creado_en`
 
@@ -76,7 +76,7 @@ export const cola = (tipo: TipoAporte) =>
                        ${sql.literal(etiquetaCapa('c'))} AS capa,
                        (SELECT count(*)::int FROM paso_configuracion WHERE perfil_id = p.id) AS pasos,
                        (SELECT count(*)::int FROM reporte r WHERE r.perfil_id = p.id AND r.estado_revision = 'aprobado'
-                          AND r.resultado IN ${sql.in(ResultadoFuncional.literals)}) AS reportes_funcionales
+                          AND r.resultado IN ${sql.in(WorkingOutcome.literals)}) AS reportes_funcionales
                 FROM perfil_configuracion p JOIN usuario u ON u.id = p.autor_id
                   JOIN edicion_juego e ON e.id = p.edicion_id JOIN juego j ON j.id = e.juego_id JOIN lanzador l ON l.id = e.lanzador_id
                   JOIN distribucion di ON di.id = p.distribucion_id JOIN version_capa c ON c.id = p.version_capa_id

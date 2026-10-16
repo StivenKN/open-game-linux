@@ -1,21 +1,21 @@
 import { Schema } from 'effect'
-import { Texto } from './ids.ts'
-import { largo } from './max-lengths.ts'
+import { RequiredText } from './ids.ts'
+import { maxLengths } from './max-lengths.ts'
 
-export const LANZADOR_STEAM = 'Steam'
+export const STEAM_LAUNCHER = 'Steam'
 
-export const MAX_JUEGOS_BIBLIOTECA = 1000
+export const MAX_LIBRARY_GAMES = 1000
 
-export const AppIdSteam = Schema.Int.pipe(Schema.check(Schema.isGreaterThan(0)), Schema.brand('AppIdSteam'))
-export type AppIdSteam = typeof AppIdSteam.Type
+export const SteamAppId = Schema.Int.pipe(Schema.check(Schema.isGreaterThan(0)), Schema.brand('AppIdSteam'))
+export type SteamAppId = typeof SteamAppId.Type
 
-export const JuegoBiblioteca = Schema.Struct({ app_id: AppIdSteam, nombre: Texto.pipe(Schema.check(Schema.isMaxLength(largo.biblioteca.nombre))) })
-export type JuegoBiblioteca = typeof JuegoBiblioteca.Type
+export const LibraryGame = Schema.Struct({ app_id: SteamAppId, nombre: RequiredText.pipe(Schema.check(Schema.isMaxLength(maxLengths.biblioteca.nombre))) })
+export type LibraryGame = typeof LibraryGame.Type
 
-export const BibliotecaSteam = Schema.Array(JuegoBiblioteca).pipe(Schema.check(Schema.isMaxLength(MAX_JUEGOS_BIBLIOTECA)))
-export type BibliotecaSteam = typeof BibliotecaSteam.Type
+export const SteamLibrary = Schema.Array(LibraryGame).pipe(Schema.check(Schema.isMaxLength(MAX_LIBRARY_GAMES)))
+export type SteamLibrary = typeof SteamLibrary.Type
 
-export type BibliotecaEvaluada = { readonly total: number; readonly desconocidos: ReadonlyArray<JuegoBiblioteca> }
+export type EvaluatedLibrary = { readonly total: number; readonly unknown: ReadonlyArray<LibraryGame> }
 
-export const esHerramientaSteam = (nombre: string): boolean =>
-  /^(Proton\b|Steam Linux Runtime|Steamworks Common Redistributables)/i.test(nombre)
+export const isSteamTool = (name: string): boolean =>
+  /^(Proton\b|Steam Linux Runtime|Steamworks Common Redistributables)/i.test(name)

@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { GuiaId } from '../../domain/ids.ts'
+import { GuideId } from '../../domain/ids.ts'
 import { guiaFn } from '../../fns/guides.ts'
 import { fecha } from '../../ui/format.ts'
 import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
 import { tipoGuia } from '../../ui/vocabulary.ts'
 import { idDeRuta } from '../-ids.ts'
 
-const guiaId = idDeRuta(GuiaId)
+const guiaId = idDeRuta(GuideId)
 
 export const Route = createFileRoute('/guias/$guiaId')({
   params: { parse: (p) => ({ guiaId: guiaId(p.guiaId) }), stringify: (p) => ({ guiaId: String(p.guiaId) }) },

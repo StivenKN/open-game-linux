@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Result, Schema } from 'effect'
-import { NuevoReporte } from '../domain/contributions.ts'
-import { Usuario } from '../domain/tables.ts'
+import { NewReport } from '../domain/contributions.ts'
+import { User } from '../domain/tables.ts'
 import { leerFormulario } from './useAction.ts'
 
 const reporte: Record<string, string> = {
@@ -26,14 +26,14 @@ const formulario = (cambios: Record<string, string | null>) => {
   return datos
 }
 
-const errores = (cambios: Record<string, string | null>) => Result.match(leerFormulario(NuevoReporte, formulario(cambios)), {
+const errores = (cambios: Record<string, string | null>) => Result.match(leerFormulario(NewReport, formulario(cambios)), {
   onSuccess: () => ({}),
   onFailure: (e) => e,
 })
 
 describe('leerFormulario', () => {
   it('entrega el valor codificado que espera el validador del servidor', () => {
-    const leido = leerFormulario(NuevoReporte, formulario({}))
+    const leido = leerFormulario(NewReport, formulario({}))
     expect(Result.isSuccess(leido) && leido.success).toEqual({
       edicion_id: 1,
       diagnostico_id: 2,
@@ -72,7 +72,7 @@ describe('leerFormulario', () => {
   it('un texto más largo que su columna dice el límite', () => {
     const datos = new FormData()
     datos.append('alias', 'a'.repeat(61))
-    const leido = leerFormulario(Schema.Struct({ alias: Usuario.fields.alias }), datos)
+    const leido = leerFormulario(Schema.Struct({ alias: User.fields.alias }), datos)
     expect(Result.isFailure(leido) && leido.failure).toEqual({ alias: 'Usa como máximo 60 caracteres.' })
   })
 

@@ -1,13 +1,13 @@
 import { Link } from '@tanstack/react-router'
-import type { DistroEvaluada, VeredictoDistro } from '../../domain/distros.ts'
-import type { GuiaId } from '../../domain/ids.ts'
+import type { EvaluatedDistro, DistroVerdict } from '../../domain/distros.ts'
+import type { GuideId } from '../../domain/ids.ts'
 import { Insignia } from '../Badge.tsx'
 import { objecion, veredictoDistro } from '../vocabulary.ts'
 
-const GRUPOS = ['sin_objeciones', 'con_ajustes', 'descartada'] as const satisfies ReadonlyArray<VeredictoDistro>
+const GRUPOS = ['sin_objeciones', 'con_ajustes', 'descartada'] as const satisfies ReadonlyArray<DistroVerdict>
 
 /** Distros ruled out by the hardware, grouped by verdict. Order inside a group is the registry's, never a ranking. */
-export function Distribuciones({ evaluadas, guia }: { evaluadas: ReadonlyArray<DistroEvaluada>; guia: GuiaId | null }) {
+export function Distribuciones({ evaluadas, guia }: { evaluadas: ReadonlyArray<EvaluatedDistro>; guia: GuideId | null }) {
   return (
     <section className="pila" aria-labelledby="distribuciones">
       <h2 id="distribuciones" className="titulo-seccion">
@@ -20,19 +20,19 @@ export function Distribuciones({ evaluadas, guia }: { evaluadas: ReadonlyArray<D
       </p>
       <div className="mosaico mosaico-ancho">
         {GRUPOS.map((grupo) => {
-          const distros = evaluadas.filter((d) => d.veredicto === grupo)
+          const distros = evaluadas.filter((d) => d.verdict === grupo)
           if (distros.length === 0) return null
           return (
             <section key={grupo} className="tarjeta pila" aria-label={veredictoDistro[grupo].texto}>
               <Insignia etiqueta={veredictoDistro[grupo]} forma="punteado" />
               <ul className="lista-tarjetas">
                 {distros.map((d) => (
-                  <li key={d.clave} className="pila">
+                  <li key={d.key} className="pila">
                     <a href={d.url} target="_blank" rel="noreferrer" className="nombre-juego">
-                      {d.nombre}
+                      {d.name}
                     </a>
-                    {d.objeciones.map((o) => (
-                      <p key={o.codigo} className="pequeno tenue">
+                    {d.objections.map((o) => (
+                      <p key={o.code} className="pequeno tenue">
                         {objecion(o)}
                       </p>
                     ))}

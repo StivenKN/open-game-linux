@@ -1,8 +1,8 @@
 import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Option } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { EdicionId, JuegoId } from '../src/domain/ids.ts'
-import { ProtonDbResumen } from '../src/domain/tables.ts'
+import { EditionId, GameId } from '../src/domain/ids.ts'
+import { ProtonDbSummary } from '../src/domain/tables.ts'
 import { Visitante } from '../src/server/auth.ts'
 import { catalogo } from '../src/server/queries/catalog.ts'
 import { fichaJuego } from '../src/server/queries/game.ts'
@@ -53,10 +53,10 @@ const escenario = Effect.gen(function* () {
   yield* insertar('edicion_juego', { juego_id: uno, lanzador_id: epic, identificador_externo: '2000' })
   const dosSteam = yield* insertar('edicion_juego', { juego_id: dos, lanzador_id: steam, identificador_externo: '2000' })
   yield* insertar('edicion_juego', { juego_id: tres, lanzador_id: steam, identificador_externo: null })
-  return { uno: JuegoId.make(uno), tres: JuegoId.make(tres), unoSteam: EdicionId.make(unoSteam), dosSteam: EdicionId.make(dosSteam) }
+  return { uno: GameId.make(uno), tres: GameId.make(tres), unoSteam: EditionId.make(unoSteam), dosSteam: EditionId.make(dosSteam) }
 })
 
-const guardados = Effect.flatMap(SqlClient.SqlClient, (sql) => filas(ProtonDbResumen, sql`SELECT * FROM protondb_resumen ORDER BY edicion_id`))
+const guardados = Effect.flatMap(SqlClient.SqlClient, (sql) => filas(ProtonDbSummary, sql`SELECT * FROM protondb_resumen ORDER BY edicion_id`))
 
 const importar = (texto: string) => importarProtonDb(trozos(texto))
 const motivoDe = (texto: string) => Effect.map(Effect.flip(importar(texto)), (e) => ('motivo' in e ? e.motivo : e._tag))
@@ -174,7 +174,7 @@ layer(PgTest)('importarProtonDb', (it) => {
             ['Juego Uno', 'sin_evidencia', { recientes: 3, recientes_funcionan: 2, reportes_total: 4 }],
           ])
           const uno = yield* Effect.provideService(fichaJuego(e.uno), Visitante, invitado)
-          expect(uno.resumen.estado).toBe('sin_evidencia')
+          expect(uno.resumen.status).toBe('sin_evidencia')
           expect(uno.protondb).toEqual({
             juego_id: e.uno,
             app_id: '1000',

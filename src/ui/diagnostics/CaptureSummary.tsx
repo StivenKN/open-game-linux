@@ -1,11 +1,11 @@
 import { Link } from '@tanstack/react-router'
-import type { Captura } from '../../domain/contributions.ts'
+import type { Capture } from '../../domain/contributions.ts'
 import { memoria, memoriaAproximada, momento } from '../format.ts'
 import { arranqueSeguro, sistema, soporteVulkan, tpm } from '../vocabulary.ts'
 
 const intercambio = (nombre: string, mb: number | null) => (mb === null ? [] : [mb === 0 ? `sin ${nombre}` : `${nombre} ${memoriaAproximada(mb)}`])
 
-export function ResumenCaptura({ captura }: { captura: Captura }) {
+export function ResumenCaptura({ captura }: { captura: Capture }) {
   const datos = [
     ['Sistema', captura.sistema === 'Linux' ? `${captura.distribucion.nombre} ${captura.distribucion.version}` : sistema.Windows, `${captura.version_sistema} · ${captura.arquitectura}`],
     ['Procesador', captura.cpu_modelo, captura.nivel_x86 === null ? 'Nivel x86-64 no capturado' : `x86-64-${captura.nivel_x86}`],

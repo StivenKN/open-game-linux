@@ -42,7 +42,7 @@ const resumen = resumir(pruebas)                       // PruebaAprobada has est
 return { juego, ediciones, resumen, personal, perfiles, causas, aprobados, pendientes }
 ```
 
-A missing game makes the program fail with `NoEncontrado`. `leer` turns that into `throw notFound()`, and the root `notFoundComponent` renders it, on SSR and on client navigation alike.
+A missing game makes the program fail with `NotFound`. `leer` turns that into `throw notFound()`, and the root `notFoundComponent` renders it, on SSR and on client navigation alike.
 
 **A report breaks a rule, and the field shows the error.**
 
@@ -59,7 +59,7 @@ const r = useAccion(NuevoReporte, registrarReporteFn, {
 </form>
 ```
 
-`useAccion` checks the input in two places. First, the browser decodes the FormData with `NuevoReporte`, so a blank observation or a failing result without a fallo shows its field error before any request. If that passes, the server fn validates the same Encoded value with the same schema. The program then fails with `ReglaIncumplida({ regla: 'perfil_otra_distribucion' })` from `discrepancias`, and `accion` returns `{ ok: false, fallo: { _tag: 'ReglaIncumplida', regla: 'perfil_otra_distribucion' } }`. The `reglas` table (`domain/errors.ts`) maps each rule to `{ campo, mensaje }`.
+`useAccion` checks the input in two places. First, the browser decodes the FormData with `NewReport`, so a blank observation or a failing result without a fallo shows its field error before any request. If that passes, the server fn validates the same Encoded value with the same schema. The program then fails with `RuleViolated({ regla: 'perfil_otra_distribucion' })` from `mismatches`, and `accion` returns `{ ok: false, fallo: { _tag: 'RuleViolated', regla: 'perfil_otra_distribucion' } }`. The `rules` table (`domain/errors.ts`) maps each rule to `{ campo, mensaje }`.
 
 **A reviewer approves.**
 
@@ -83,7 +83,7 @@ export const decidirFn = createServerFn({ method: 'POST' })
   .handler(({ data }) => accion(Schema.Union([ReglaIncumplida, AprobacionBloqueada]), decidir(data.ref, data.decision)))
 ```
 
-`decidir` requires a `Revisor`, a branded `Usuario` that only `exigirRevisor` can mint. It locks the row, rejects self-review, and runs `planificar(estado, decision)`. The result `sin_cambios` makes a double click a no-op. It checks `bloqueosAprobacion` and writes the five columns. All of this happens inside the one transaction `accion` opens.
+`decidir` requires a `Revisor`, a branded `User` that only `exigirRevisor` can mint. It locks the row, rejects self-review, and runs `planTransition(estado, decision)`. The result `sin_cambios` makes a double click a no-op. It checks `bloqueosAprobacion` and writes the five columns. All of this happens inside the one transaction `accion` opens.
 
 **The pure core, as its tests call it.**
 
@@ -107,14 +107,14 @@ discrepancias(prueba, perfil)                          // ['perfil_otra_distribu
 
 A request crosses three files: route → `fns/x.ts` → `server/.../program.ts`, plus pure `domain` calls. `run.ts` is infrastructure every handler shares, not a per-request layer.
 
-**Start-native boundary, with two runners.** `server/run.ts` exports exactly two functions. Both resolve the better-auth session once into the per-request `Visitante` service (`Option<Usuario>`, where a deactivated account becomes `None`).
+**Start-native boundary, with two runners.** `server/run.ts` exports exactly two functions. Both resolve the better-auth session once into the per-request `Visitante` service (`Option<User>`, where a deactivated account becomes `None`).
 
-- `leer(programa): Promise<A>` is for loaders. Its type allows only `NoEncontrado | NoAutenticado | SinPermiso | SqlError | SchemaError`. The first three become the router's own `notFound()` / `redirect()`, which Start already carries over SSR and RPC. Infra errors are thrown as defects and the route's `errorComponent` renders them.
-- `accion(Fallos, programa): Promise<Respuesta<A, Fallos['Encoded']>>` is for everything a UI event triggers: every write, plus the guest's hardware evaluation. It runs the program in **one transaction**. A program whose error channel holds a domain failure missing from `Fallos` does not compile (verified by deleting `AprobacionBloqueada` from `decidirFn`).
+- `leer(programa): Promise<A>` is for loaders. Its type allows only `NotFound | Unauthenticated | Forbidden | SqlError | SchemaError`. The first three become the router's own `notFound()` / `redirect()`, which Start already carries over SSR and RPC. Infra errors are thrown as defects and the route's `errorComponent` renders them.
+- `accion(Fallos, programa): Promise<Reply<A, Fallos['Encoded']>>` is for everything a UI event triggers: every write, plus the guest's hardware evaluation. It runs the program in **one transaction**. A program whose error channel holds a domain failure missing from `Fallos` does not compile (verified by deleting `ApprovalBlocked` from `decidirFn`).
 
 **Domain-error transport: returned typed union, not a serialization adapter.** The evidence:
 
-1. With an adapter, a server fn still returns `Promise<A>` and the rejection is `unknown`. The compiler cannot make the report form handle `ReglaIncumplida`. With `Respuesta`, `r.valor` cannot be read without narrowing `r.ok`, and `alFallar`'s switch is exhaustive over the exact tags the program can produce. I verified both failure directions with `tsc`.
+1. With an adapter, a server fn still returns `Promise<A>` and the rejection is `unknown`. The compiler cannot make the report form handle `RuleViolated`. With `Reply`, `r.valor` cannot be read without narrowing `r.ok`, and `alFallar`'s switch is exhaustive over the exact tags the program can produce. I verified both failure directions with `tsc`.
 2. An adapter is a global registry: one `createSerializationAdapter` per class, about 7 lines each, a dev-server restart on change (gotcha 9), and `instanceof` across bundles. A union member is just `Schema.encodeSync(Fallos)(e)`, a plain `{ _tag, ... }` that seroval carries (Q3 variant B, observed).
 3. In-process SSR hides a missing adapter (gotcha 4), so that bug only shows in the browser. A returned value behaves the same on every path.
 4. Control flow (not found, login, forbidden) uses the router's native throwables, and those already work.
@@ -127,10 +127,10 @@ Structural input errors never travel at all. The browser decodes the form with t
 - Row decoding uses `SqlSchema.findAll({ Result })`.
 - The browser form decode uses `Schema.fromFormData(Schema.toCodecStringTree(S))`.
 - The server fn validator uses `Schema.toStandardSchemaV1(S)`.
-- The route search params use `validateSearch: toStandardSchemaV1(FiltroCatalogo)`.
+- The route search params use `validateSearch: toStandardSchemaV1(CatalogFilter)`.
 - Page data is not a Schema. It is the program's inferred success type, which flows through `createServerFn` into `useLoaderData()`.
 
-The only lists the compiler cannot derive are the `Record<Union, …>` tables (`reglas`, `vocabulario`, `exigeFallo`, `tablas`), and `satisfies Record<…>` fails the build on any gap. Constraint names mapped back to rules (`constraints.ts`) get a DB test that asserts each name exists.
+The only lists the compiler cannot derive are the `Record<Union, …>` tables (`rules`, `vocabulario`, `requiresFailure`, `tablas`), and `satisfies Record<…>` fails the build on any gap. Constraint names mapped back to rules (`constraints.ts`) get a DB test that asserts each name exists.
 
 **Data decisions the stack forced:**
 
@@ -138,13 +138,13 @@ The only lists the compiler cannot derive are the `Record<Union, …>` tables (`
 - **`numeric(7,2)` FPS decodes through `FiniteFromString`**, and U0 confirms the driver type.
 - **Column names stay snake_case Spanish from the DB through TS to JSX** (`estado_revision`, `ultima_prueba`). No rename layer exists to drift.
 
-**Rules have one home each.** The index sits in the header of `server/schema/migrations.ts`. Row-local rules are DB CHECKs, keys and three triggers. Every trigger now raises `USING ERRCODE='check_violation', CONSTRAINT='og_*'`, so `conReglasDeBd` can map it (Q5). Cross-row rules live in the two single writers. Comparability is one pure function, `discrepancias`, called at save, at approval, and by the report form's loader to offer only comparable profiles. The failing-result rule is a filter on `NuevoReporte`, so the browser shows it before any request.
+**Rules have one home each.** The index sits in the header of `server/schema/migrations.ts`. Row-local rules are DB CHECKs, keys and three triggers. Every trigger now raises `USING ERRCODE='check_violation', CONSTRAINT='og_*'`, so `conReglasDeBd` can map it (Q5). Cross-row rules live in the two single writers. Comparability is one pure function, `mismatches`, called at save, at approval, and by the report form's loader to offer only comparable profiles. The failing-result rule is a filter on `NewReport`, so the browser shows it before any request.
 
-**Auth: the literal `usuario` table.** Round 1 kept Laravel's `users` because renaming meant forking the starter kit. That reason is gone. better-auth's `modelName: 'usuario'` plus `fields` maps the doc's names (alias and correo were observed in the spike; the timestamp fields are a U0 probe), and `rol`/`activo` are `additionalFields` with `input: false`, so sign-up cannot set them. Two recorded deviations go in a `COMMENT ON`: `id` is text, and `contrasena_hash` lives in `account.password`. Roles are enforced by type. `exigirUsuario` yields a `Usuario`. `exigirRevisor` yields a `Revisor` brand, and `decidir` cannot run without one. Promotion happens only through `pnpm rol`. Route `beforeLoad` guards are UX only.
+**Auth: the literal `usuario` table.** Round 1 kept Laravel's `users` because renaming meant forking the starter kit. That reason is gone. better-auth's `modelName: 'usuario'` plus `fields` maps the doc's names (alias and correo were observed in the spike; the timestamp fields are a U0 probe), and `rol`/`activo` are `additionalFields` with `input: false`, so sign-up cannot set them. Two recorded deviations go in a `COMMENT ON`: `id` is text, and `contrasena_hash` lives in `account.password`. Roles are enforced by type. `exigirUsuario` yields a `User`. `exigirRevisor` yields a `Revisor` brand, and `decidir` cannot run without one. Promotion happens only through `pnpm rol`. Route `beforeLoad` guards are UX only.
 
 **Migrations and seeds.** The Effect `PgMigrator` owns every table. `1_auth` is better-auth's own `compileMigrations()` output, pasted verbatim. A DB test asserts that `getMigrations(auth.options)` then has nothing left to create, so the config and the SQL cannot drift. The seed writes approvals only through `decidir` (the fronteras test forbids any other write of `estado_revision`), so it replays the 8.10 walkthrough and proves the rules admit the demo.
 
-**Detector handoff.** `GET /opengame-detect.sh` is a Start server route. It serves the script (Vite `?raw`) with `__OPENGAME_URL__` replaced by the request origin, so `--open` lands on whichever host served it: dev, preview, or the defense laptop. `/diagnostico/importar` is `ssr: false`. It reads `#d=`, strips it with `replaceState`, keeps the raw string in `sessionStorage`, and posts it untouched to `evaluarDiagnosticoFn` through `accion(PayloadInvalido, …)`. Guests get the evaluation and nothing is stored. "Guardar en mi equipo" requires login and is idempotent on `UNIQUE (equipo_id, capturado_en)`. The parser lives under `server/`, so the browser cannot import it.
+**Detector handoff.** `GET /opengame-detect.sh` is a Start server route. It serves the script (Vite `?raw`) with `__OPENGAME_URL__` replaced by the request origin, so `--open` lands on whichever host served it: dev, preview, or the defense laptop. `/diagnostico/importar` is `ssr: false`. It reads `#d=`, strips it with `replaceState`, keeps the raw string in `sessionStorage`, and posts it untouched to `evaluarDiagnosticoFn` through `accion(InvalidPayload, …)`. Guests get the evaluation and nothing is stored. "Guardar en mi equipo" requires login and is idempotent on `UNIQUE (equipo_id, capturado_en)`. The parser lives under `server/`, so the browser cannot import it.
 
 **Where Effect pays, and where it doesn't.** It pays on the server:
 
@@ -166,10 +166,10 @@ See `ARCHITECTURE.md`, section Synthesis. The grafts listed there amend this rat
 ## Tradeoffs accepted
 
 - We accept a `fns/` directory of one-line server fns in exchange for a boundary the test can police. The Start compiler would also let handlers live in route files, but then "never import servidor from UI" could not be checked by path.
-- We accept writing each action's failure schema at the call (`accion(ReglaIncumplida, …)`) in exchange for a compiler check that it matches the program. This is the spike's variant B made generic.
+- We accept writing each action's failure schema at the call (`accion(RuleViolated, …)`) in exchange for a compiler check that it matches the program. This is the spike's variant B made generic.
 - We accept about 29 kB gzip of Effect Schema in the browser in exchange for the same schema producing field errors client-side, with no second validator.
 - We accept a transaction around every action, including the read-only guest evaluation, in exchange for writes that never remember to open one.
-- We accept the composite FK `reporte_perfil_fk` as a backstop of `discrepancias` (same `Regla`, never the one that fires in-app), because it is a round 1 fixed decision and costs nothing.
+- We accept the composite FK `reporte_perfil_fk` as a backstop of `mismatches` (same `Rule`, never the one that fires in-app), because it is a round 1 fixed decision and costs nothing.
 - We accept text `usuario.id` and the password hash in `account` as documented deviations in exchange for not owning auth code.
 - We accept that an old migration's `CHECK (… IN …)` reads today's literal list on a fresh DB (as in round 1). A new literal means a new migration.
 - We accept the `/diagnostico/importar` page rendering client-only (`ssr: false`), because the fragment exists only in the browser.
@@ -189,19 +189,19 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 | Unit | Deviation | Accepted because | Source |
 |---|---|---|---|
 | U0 | App at the repo root, `routeTree.gen.ts` gitignored, `docs/architecture/probes.md` | One app; the tree is regenerated by `pnpm check` | Synthesis amendment, U0 report |
-| U0 | Nullable form fields send `"null"`; `NuevoReporte.fallos` defaults to `[]` | Probe (a) observed `fromFormData` semantics | `probes.md` |
+| U0 | Nullable form fields send `"null"`; `NewReport.fallos` defaults to `[]` | Probe (a) observed `fromFormData` semantics | `probes.md` |
 | U1 | A profile freezes once reviewed or used by a report, not from creation | Section 8.5 and 8.9 say so; the doc wins over the sketch | U1 report, owner default (doc is the spec) |
 | U1 | An equipo's owner can change until its first diagnosis exists (trigger `og_propietario_fijo`) | Section 8.3 "no transferible si ya hay pruebas" | U1 report |
 | U1 | Partial index `reporte_aprobados_por_edicion` dropped | The doc's index on `reporte(edicion_id, estado_revision, fecha_prueba)` covers the same queries | U1 report |
-| U1 + U2 | `reporte_perfil_fk` is not mapped to a `Regla` | `discrepancias` rejects first with `PerfilNoComparable`; a hit is a writer bug and stays an infra error | Integration fix `762ca1b` |
-| U2 | `NuevoReporte` is one flat member per `Resultado`, no nested `ResultadoObservado` | Keeps the form error path at `["fallos"]`; a union picks its member only on a single literal | U2 report |
-| U2 | `planificar` returns `'transicion_invalida'`; `decidir` builds `TransicionInvalida` | Avoids an import cycle between `errors.ts` and `review.ts` | U2 report |
+| U1 + U2 | `reporte_perfil_fk` is not mapped to a `Rule` | `mismatches` rejects first with `IncomparableProfile`; a hit is a writer bug and stays an infra error | Integration fix `762ca1b` |
+| U2 | `NewReport` is one flat member per `Outcome`, no nested `ResultadoObservado` | Keeps the form error path at `["fallos"]`; a union picks its member only on a single literal | U2 report |
+| U2 | `planTransition` returns `'transicion_invalida'`; `decidir` builds `InvalidTransition` | Avoids an import cycle between `errors.ts` and `review.ts` | U2 report |
 | U2c | Route file `src/routes/[_]muestras.tsx` | `_muestras.tsx` is a pathless layout to the router generator | U2c report |
 
 **U3** departs from the sketch as follows.
 
 - **`useAccion` binds `onSubmit`, not `<form action>`.** React 19 resets an action form's fields after every action, so a field error would wipe what the user typed. `enviar` builds the FormData with the submitter, so `<button name="decision[_tag]" value="Aprobar">` still posts its value.
-- **Field errors are keyed by the input's name.** A nested issue lands on `fallos[0][detalle]`, not on `fallos`. A rule from `reglas` still lands on its `campo`. Decoding reports every invalid field at once.
+- **Field errors are keyed by the input's name.** A nested issue lands on `fallos[0][detalle]`, not on `fallos`. A rule from `rules` still lands on its `campo`. Decoding reports every invalid field at once.
 - **No better-auth cookie cache.** With it, `pnpm rol` and deactivation would take up to five minutes to apply. Each request reads the session from the database instead.
 - **`asignarRol` lives in `server/auth.ts`.** `pnpm rol` and the seed share it, so role writes have one home.
 - **Demo content is marked by its author.** No table has a demo column. Every seeded profile and guide belongs to a `@demo.opengame.test` account (`dominioDemo`), a reserved domain. A `hooks.before` in `server/auth.ts` rejects it on any `/sign-up/email` request that reaches `/api/auth` (`DOMINIO_RESERVADO`, shown under the correo field), while the seed's in-process `auth.api.signUpEmail` carries no request and passes. Queries can derive "Datos de ejemplo" from the author's correo.
@@ -212,12 +212,12 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 
 **U4** departs from the sketch as follows.
 
-- **Path ids decode in the route, not in the server fn.** Each `$id` route has `params.parse` built by `routes/-ids.ts`, which throws `notFound()` for anything but digits, so `/juegos/1.0` is not a second address for `/juegos/1`. A server fn validator failure renders the error page, not a 404. The server fns take the branded integer, and an unknown id still comes back as `NoEncontrado`.
+- **Path ids decode in the route, not in the server fn.** Each `$id` route has `params.parse` built by `routes/-ids.ts`, which throws `notFound()` for anything but digits, so `/juegos/1.0` is not a second address for `/juegos/1`. A server fn validator failure renders the error page, not a 404. The server fns take the branded integer, and an unknown id still comes back as `NotFound`.
 - **The ficha ships pending reports as a count only.** Section 8.9 makes only the alias, the approved result and its technical context public, so the ficha has no `pendientes` rows and no list of approved report cards. The matrix and the causes section show the approved evidence.
 - **The catalog search is lenient.** `validateSearch` drops a value that does not decode instead of failing the page, and reads a title the router parsed as a number (`?q=2`) back as text. router-core keeps the raw query keys in `search`, so `loaderDeps` decodes again and the page reads `useLoaderDeps()`.
 - **The four counters** are games with an approved report, approved reports, approved profiles, and distributions with an approved report.
 - **Display labels come from `server/queries/labels.ts`.** A layer reads "Proton 8.0-5 (Valve)", and a profile reads "título rN". The same file holds the `@demo.opengame.test` test that sets the `ejemplo` flag.
-- **The profile page names why it has no evaluation.** `evaluacion` is an `Evaluacion`, `'perfil_en_prueba'` or `'sin_diagnostico'`.
+- **The profile page names why it has no evaluation.** `evaluacion` is an `Evaluation`, `'perfil_en_prueba'` or `'sin_diagnostico'`.
 - **Retired profiles and the evidence that used them.** An approved report keeps its profile's name in the matrix after the profile is retired, because the test ran with it. An approved solution that recommends a retired profile is hidden (8.9 "comprueba la vigencia").
 - **`tests/queries.test.ts` writes approved rows with direct SQL.** U3 seeds no approved report, and the fronteras single-writer test scans `src/` and `scripts/` only. The rows satisfy the review-block CHECK and roll back with the test.
 
@@ -225,8 +225,8 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 
 - **`server/commands/diagnostic.ts` is the single writer of `equipo` and `diagnostico`**, not `contributions.ts`, so lanes U5 and U6 never share a file. `src/boundaries.test.ts` fails on an `INSERT INTO`/`UPDATE` of either table anywhere else.
 - **Saving converges.** `registrarDiagnostico` locks the user's row, reuses the user's equipo with the same alias (case-insensitive) for `nuevo`, and returns `{ id, nuevo }`. A double click, a retry or a re-import of the same payload leaves one equipo and one diagnostico.
-- **Column limits are checked in `capturaDe`.** `Captura` in `domain/contributions.ts` has unbounded text, so `server/diagnostics/payload.ts` checks the `tables.ts` limits and answers `campo_invalido` instead of an SQL error at INSERT. The parser also names a null `cpu_modelo` "CPU no detectada" (ARM kernels).
-- **The manual form has its own schema**, `FormularioManual` in `routes/diagnostico/-input.ts`. It covers only what a person types, with the column limits, and `entradaManual` turns it into a `CapturaManual` taken now. That schema has no PCI id or library, which only a detector reads, so a manual entry cannot store a library the parser never normalized. Nullable selects post `"null"` ("No sé").
+- **Column limits are checked in `capturaDe`.** `Capture` in `domain/contributions.ts` has unbounded text, so `server/diagnostics/payload.ts` checks the `tables.ts` limits and answers `campo_invalido` instead of an SQL error at INSERT. The parser also names a null `cpu_modelo` "CPU no detectada" (ARM kernels).
+- **The manual form has its own schema**, `FormularioManual` in `routes/diagnostico/-input.ts`. It covers only what a person types, with the column limits, and `entradaManual` turns it into a `ManualCapture` taken now. That schema has no PCI id or library, which only a detector reads, so a manual entry cannot store a library the parser never normalized. Nullable selects post `"null"` ("No sé").
 - **Paste and manual entries are evaluated twice.** `/diagnostico` evaluates first, so a bad paste keeps its error under the box. Then `/diagnostico/importar` evaluates again from sessionStorage. That page owns the result and the save. The read is cheap, and one result page is simpler than two.
 - **`/entrar` and `/registro` accept `?volver=`** from a closed list (`/diagnostico/importar`), so a guest who signs in to save returns to the unsaved result.
 - **The public origin comes from `BETTER_AUTH_URL`** (`server/origin.ts`), with the request URL only as a dev fallback. `origenFn` and `/opengame-detect.sh` use it for the `curl … | bash` command. That route is allowlisted in `boundaries.test.ts`, like `/api/auth/$`.
@@ -256,23 +256,23 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 
 **Freshness and ProtonDB**, after the first delivery, add the following.
 
-- **The state comes from the approved reports of the last 365 days.** `resumir(pruebas, ahora)` is the one state function for the ficha and the catalog, so their filters and counters cannot disagree. When no approved report is that recent, the state comes from all of them and `sin_confirmacion_reciente` says so on the ficha and the card. Causes come from the same base set as the state, so a cause seen only in stale reports leaves the card and the `sin_anti_cheat` filter once a recent report exists. `ahora` is a required argument, read once per loader from Effect's `Clock`; `domain/` never reads a clock. `combinar` is gone: merging summarized environments cannot apply a per-row window.
+- **The state comes from the approved reports of the last 365 days.** `summarize(pruebas, ahora)` is the one state function for the ficha and the catalog, so their filters and counters cannot disagree. When no approved report is that recent, the state comes from all of them and `sin_confirmacion_reciente` says so on the ficha and the card. Causes come from the same base set as the state, so a cause seen only in stale reports leaves the card and the `sin_anti_cheat` filter once a recent report exists. `ahora` is a required argument, read once per loader from Effect's `Clock`; `domain/` never reads a clock. `combinar` is gone: merging summarized environments cannot apply a per-row window.
 - **An edition's regression ignores the window.** When an edition's newest approved report fails after an earlier one worked, the ficha says "Dejó de funcionar" with that report's date, version and layer, however old it is. Same-instant reports are ordered by id.
 - **Dates always print the year.** The rule asked for the year only on dates before the current year. That needs `ahora` on the browser too, and every page that prints a date would have to receive the server's `ahora` to hydrate the same text. Always printing the year gives the same protection, stays deterministic, and needs no plumbing.
 - **ProtonDB is stored as one aggregate row per catalog Steam edition, never as reports.** The UI may show only aggregates (8.9), and the catalog must not load rows per request. Every number the ficha and the card show is computable at import time, so `protondb_resumen` holds those counts and nothing else: privacy holds by construction, the card line is one small query, and we hold a handful of counts, not a derived database. Changing what an aggregate means takes a rerun of the last export, the same command the operator runs monthly.
-- **ProtonDB's "last year" ends at the export date, not at the request.** Without stored reports, the window can only be computed at import time. The export date is the newest report in the file, and the ficha prints it next to the numbers, so they read as a dated snapshot. `esVigente` in `domain/recency.ts` is the window for both sources.
+- **ProtonDB's "last year" ends at the export date, not at the request.** Without stored reports, the window can only be computed at import time. The export date is the newest report in the file, and the ficha prints it next to the numbers, so they read as a dated snapshot. `isRecent` in `domain/recency.ts` is the window for both sources.
 - **The import reads the whole export, then replaces every row in one transaction.** It streams the top-level array with a hand-written splitter (the October 2026 file is 529 MB, just under V8's maximum string length) and parses each element with `JSON.parse` and a boundary Schema. A rerun converges, an empty or truncated file fails before the transaction, and an export older than the stored one is refused. A record over 4 MiB is counted as discarded rather than failing the import: the October 2026 export holds one with 1 MB of notes. A record dated after the import is discarded too, since it would move the export date forward and lock out every real export after it. About 8% of the records carry the appId as a number. `notListed` is read as no layer.
 
 ## Follow-ups after the first delivery
 
 Found by the pre-PR comment audit. None is a correctness bug; each would make an illegal state unrepresentable or remove a hand-synced copy.
 
-- `Comprobacion.exigido` and `detectado.valor` hold either MB or a Vulkan version in one string. A union tagged by requisito would remove the `Number()` parse in `ChecklistEvaluacion`.
-- `Personal` (`VeredictoParaMi`) and the FPS fields of `PruebaAprobada` are sets of nullables whose combinations mean different things. Each should be a tagged union or one nullable struct, like `MedicionFps`.
-- `MedicionFps.fps_promedio`'s maximum copies `numeric(7,2)` by hand, and the failure-type codes live in both `scripts/sembrar.ts` and `ui/vocabulary.ts`. Derive both from one source.
+- `RequirementCheck.exigido` and `detectado.valor` hold either MB or a Vulkan version in one string. A union tagged by requisito would remove the `Number()` parse in `ChecklistEvaluacion`.
+- `Personal` (`VeredictoParaMi`) and the FPS fields of `ApprovedTest` are sets of nullables whose combinations mean different things. Each should be a tagged union or one nullable struct, like `FpsMeasurement`.
+- `FpsMeasurement.fps_promedio`'s maximum copies `numeric(7,2)` by hand, and the failure-type codes live in both `scripts/sembrar.ts` and `ui/vocabulary.ts`. Derive both from one source.
 - Migrations build their CHECK lists from today's literal Schemas, so an old migration renders different SQL after a literal changes. Snapshot the lists per migration before the first real deploy.
 - `registrarDiagnostico` serializes per user with a row lock. A unique index on `(usuario_id, lower(alias))` with `ON CONFLICT` would make convergence structural.
-- `ui/samples/fixtures.ts` is hand-written and could be derived with `resumir` and `evaluar`.
+- `ui/samples/fixtures.ts` is hand-written and could be derived with `summarize` and `evaluate`.
 - `pnpm db:up` from a second checkout recreates `opengame-pg` because the init-script mount path differs per checkout. The data survives, but connections drop.
 - Open product gaps from `cobertura.md`: no game editing after creation (RF-03), guides and profiles only from the seed (RF-09), no distribution recommendation from hardware, no "hardware modesto" filter (wireframe 9.1).
 
@@ -283,10 +283,10 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 **Shape.**
 
 - `detector/opengame-detect.ps1` is the Windows twin of the bash script. `irm <origen>/opengame-detect.ps1 | iex` reads the OS, the CPU, the installed RAM, the GPU's name, PCI id and VRAM, and the installed Steam games. It needs no admin rights and makes no network call. It hands off through `/diagnostico/importar#d=` like bash. When that URL is over 2000 characters, it copies the JSON to the clipboard and opens `/diagnostico?pegar=1`, which focuses the paste box. `Start-Process` opens a URL through ShellExecute, which cuts it at about 2048 characters, so a library of a few dozen games already takes the clipboard path.
-- Both detectors send `gpu_pci_id` and `biblioteca_steam`. The payload stays `version_esquema: 1`. `parsearPayload` picks a member by `sistema`, and the Windows member has no Vulkan keys and no kernel driver, in the payload and in `Captura`. Its row stores those columns as unknown. The manual form asks for Vulkan only on Linux.
+- Both detectors send `gpu_pci_id` and `biblioteca_steam`. The payload stays `version_esquema: 1`. `parsearPayload` picks a member by `sistema`, and the Windows member has no Vulkan keys and no kernel driver, in the payload and in `Capture`. Its row stores those columns as unknown. The manual form asks for Vulkan only on Linux.
 - Migration `3_gpu_biblioteca` adds `gpu_pci_id varchar(9)` and `biblioteca_steam jsonb` to `diagnostico`, each with a CHECK. It does not backfill, because captures are immutable. An older row has no PCI id, and the card asks the user to run the detector again.
-- `server/gpu/capability.ts` `equipoEnLinux` turns the stored columns into what `evaluar` consumes, plus the data for "Tu tarjeta gráfica en Linux". The diagnosis, the ficha and the profile page all call it, and nothing else builds `Capacidades`. Vulkan follows one precedence: Linux Vulkan measured by `vulkaninfo`, then the family's projection, then `desconocido`. A Windows row's stored Vulkan is never read.
-- `VulkanEquipo` carries its `origen` whenever support is known. Its level is a range: a measured version is a one-point range, and a projection can be wider because some levels are unverified. `evaluar` answers `cumple` only when the whole range meets the minimum, `no_cumple` when none of it does, and `desconocido` when the range straddles it, so an unverified level never gives a false `cumple`. The UI labels each value "Detectado" or "Proyectado".
+- `server/gpu/capability.ts` `equipoEnLinux` turns the stored columns into what `evaluate` consumes, plus the data for "Tu tarjeta gráfica en Linux". The diagnosis, the ficha and the profile page all call it, and nothing else builds `Capabilities`. Vulkan follows one precedence: Linux Vulkan measured by `vulkaninfo`, then the family's projection, then `desconocido`. A Windows row's stored Vulkan is never read.
+- `MachineVulkan` carries its `origen` whenever support is known. Its level is a range: a measured version is a one-point range, and a projection can be wider because some levels are unverified. `evaluate` answers `cumple` only when the whole range meets the minimum, `no_cumple` when none of it does, and `desconocido` when the range straddles it, so an unverified level never gives a false `cumple`. The UI labels each value "Detectado" or "Proyectado".
 - The library read model matches app ids against Steam's `edicion_juego.identificador_externo`. `matriz` marks each row `en_biblioteca`, so library games get the same evaluation as every other game. Games the catalog does not know are listed by name with a link to their Steam page.
 
 **The Linux capability is projected from the PCI id and never stored.** The PCI id is the fact the detector reads, and it does not go stale. What a family can do on Linux changes with Mesa and kernel releases. A stored projection would freeze today's answer into an immutable row, and after the next `pnpm gpu:generar` old and new rows would disagree about the same GPU. Projecting at read time keeps sentence 4 of `ARCHITECTURE.md` true. The id table is generated from pinned Mesa, Linux and pci.ids sources, so a reviewer can rerun the generator and diff its output.
@@ -310,7 +310,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 1. On a hybrid laptop, bash projects the first DRM card, which can be the integrated GPU. The PowerShell script picks the adapter with the most VRAM (ties go to NVIDIA, then AMD, then Intel), so a Ryzen iGPU listed before a GeForce does not win.
 2. The Haswell (Vulkan 1.0 to 1.1) and Broadwell (1.1 to 1.2) ranges are unverified. Both show the warning `vulkan_sin_verificar` until someone reads `vulkaninfo` on that hardware.
 3. No run on a real Windows PowerShell 5.1 was possible. A static test rejects PowerShell 7-only syntax and non-ASCII source, and the behavior tests run pwsh 7 against stubbed cmdlets.
-4. The library match joins on `lanzador.nombre = 'Steam'` (`LANZADOR_STEAM`), a string key older than U10. Renaming that launcher row would turn every library game into an unknown game.
+4. The library match joins on `lanzador.nombre = 'Steam'` (`STEAM_LAUNCHER`), a string key older than U10. Renaming that launcher row would turn every library game into an unknown game.
 5. An id the table does not list projects nothing; the card says the GPU is not recognized. The table has no ids for AMD's IP-discovery parts (Radeon RX 7000 and newer), which `amdgpu_drv.c` matches by class, so those cards get no projection yet. A guessed "newest family" was tried and removed: it projected Vulkan 1.3 to 1.4 for PowerVR and pre-GCN parts that are also missing from the sources.
 6. A pasted payload over 300 000 characters fails the server fn validator and shows a generic error, not a field message. A full library of 1000 games with 120-character names is about 200 000 characters in base64url, so a real detector stays under the limit with ASCII names. PowerShell writes a non-ASCII character as `\uXXXX`, so a full library of long non-ASCII names can exceed it.
 
@@ -332,8 +332,8 @@ U0: scaffold with the spike's exact command and pins, drop in `sketch/src/domini
 
 - `tsr generate && tsc -p .` gives 0 errors over all of `sketch/src`, `tests`, `scripts`, with strict, `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.
 - Negative type checks:
-  - Removing `AprobacionBloqueada` from `decidirFn`'s failure schema fails with "AprobacionBloqueada is not assignable to ReglaIncumplida | Control | Infra".
+  - Removing `ApprovalBlocked` from `decidirFn`'s failure schema fails with "AprobacionBloqueada is not assignable to ReglaIncumplida | Control | Infra".
   - Removing its `case` from the review page fails with TS2366.
   - Removing `resultados_variables` from `vocabulary.ts` fails at every use.
 - `vite build` passes. `dist/client` has no match for better-auth server code, `PgClient`, `withTransaction`, `getSession` or the SQL. The Effect Schema chunk is 29.2 kB gzip, against 98 kB for React + router.
-- `vitest run src` passes `boundaries.test.ts` (7 tests) and `estadoDe`. Three planted violations each failed the matching test with its fix message: a module-scope `const` in `fns/`, a route importing `server/auth.ts`, and an `UPDATE … SET estado_revision` in `contributions.ts`.
+- `vitest run src` passes `boundaries.test.ts` (7 tests) and `statusOf`. Three planted violations each failed the matching test with its fix message: a module-scope `const` in `fns/`, a route importing `server/auth.ts`, and an `UPDATE … SET estado_revision` in `contributions.ts`.

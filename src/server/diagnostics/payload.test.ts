@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Result, Schema } from 'effect'
 import { readFileSync } from 'node:fs'
-import { PayloadInvalido } from '../../domain/errors.ts'
+import { InvalidPayload } from '../../domain/errors.ts'
 import { parsearPayload } from './payload.ts'
 
 const outJson = readFileSync(new URL('../../../prototypes/detector/out.json', import.meta.url), 'utf8')
@@ -147,12 +147,12 @@ describe('parsearPayload', () => {
 
   it('rejects another version_esquema, telling the user to download the detector again', () => {
     expect(parsearPayload(JSON.stringify({ ...prototipo, version_esquema: 2 }))).toEqual(
-      Result.fail(new PayloadInvalido({ motivo: 'version_esquema', campo: 'version_esquema' })),
+      Result.fail(new InvalidPayload({ reason: 'version_esquema', field: 'version_esquema' })),
     )
   })
 
   it.each(['', 'hola', '{no es json', '#d=@@@', base64url('solo texto'), '[1,2]'])('%o is ilegible', (texto) => {
-    expect(parsearPayload(texto)).toEqual(Result.fail(new PayloadInvalido({ motivo: 'ilegible', campo: null })))
+    expect(parsearPayload(texto)).toEqual(Result.fail(new InvalidPayload({ reason: 'ilegible', field: null })))
   })
 
   it.each([
@@ -170,7 +170,7 @@ describe('parsearPayload', () => {
     [{ swap_mb: 1.5 }, 'swap_mb'],
   ])('a bad field %o is campo_invalido at %s', (cambio, campo) => {
     expect(parsearPayload(JSON.stringify({ ...prototipo, ...cambio }))).toEqual(
-      Result.fail(new PayloadInvalido({ motivo: 'campo_invalido', campo })),
+      Result.fail(new InvalidPayload({ reason: 'campo_invalido', field: campo })),
     )
   })
 })

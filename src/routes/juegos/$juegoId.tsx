@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { JuegoId } from '../../domain/ids.ts'
+import { GameId } from '../../domain/ids.ts'
 import { fichaJuegoFn } from '../../fns/catalog.ts'
 import { EstadoJuego } from '../../ui/compatibility/GameStatus.tsx'
 import { MatrizEntornos } from '../../ui/compatibility/EnvironmentMatrix.tsx'
@@ -12,7 +12,7 @@ import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
 import { apiGrafica, nivelX86, tipoFallo, veredictoRequisitos } from '../../ui/vocabulary.ts'
 import { idDeRuta } from '../-ids.ts'
 
-const juegoId = idDeRuta(JuegoId)
+const juegoId = idDeRuta(GameId)
 
 export const Route = createFileRoute('/juegos/$juegoId')({
   params: { parse: (p) => ({ juegoId: juegoId(p.juegoId) }), stringify: (p) => ({ juegoId: String(p.juegoId) }) },
@@ -69,7 +69,7 @@ function Ficha() {
       <section className="seccion" aria-labelledby="entornos">
         <h2 id="entornos">Dónde lo probaron</h2>
         <p className="tenue">Cada fila es un entorno con reportes aprobados.</p>
-        <MatrizEntornos entornos={resumen.entornos} miDistribucion={diagnostico?.distribucion_id ?? null} />
+        <MatrizEntornos entornos={resumen.setups} miDistribucion={diagnostico?.distribucion_id ?? null} />
       </section>
 
       <section className="seccion" aria-labelledby="protondb">
@@ -105,7 +105,7 @@ function Ficha() {
                     p.evaluacion && (
                       <div className="fila pequeno">
                         <span>Tu equipo:</span>
-                        <Insignia etiqueta={veredictoRequisitos[p.evaluacion.veredicto]} forma="punteado" />
+                        <Insignia etiqueta={veredictoRequisitos[p.evaluacion.verdict]} forma="punteado" />
                       </div>
                     )
                   )}
@@ -122,12 +122,12 @@ function Ficha() {
           ) : (
             <ul className="lista-tarjetas">
               {causas.map((c) => {
-                const etiqueta = tipoFallo(c.codigo)
+                const etiqueta = tipoFallo(c.code)
                 return (
-                  <li key={c.codigo} className="tarjeta pila">
+                  <li key={c.code} className="tarjeta pila">
                     <div className="fila">
                       <Chip tono={etiqueta.tono}>{etiqueta.texto}</Chip>
-                      <span className="pequeno tenue">{contar(c.reportes, 'reporte aprobado', 'reportes aprobados')}</span>
+                      <span className="pequeno tenue">{contar(c.reports, 'reporte aprobado', 'reportes aprobados')}</span>
                     </div>
                     {c.descripcion && <p>{c.descripcion}</p>}
                     {c.soluciones.length === 0 ? (

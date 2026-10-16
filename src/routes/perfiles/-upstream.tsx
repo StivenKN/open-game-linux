@@ -1,7 +1,7 @@
 // Lives under routes/ rather than ui/ because the reviewer forms call a server fn, which ui/ may not import.
 import { useRouter } from '@tanstack/react-router'
-import type { PerfilId } from '../../domain/ids.ts'
-import { type ExportacionFix, NotaArreglo, type NumeroPr, type Omitido, prsDeOpenGame, urlPr } from '../../domain/upstream.ts'
+import type { ProfileId } from '../../domain/ids.ts'
+import { type FixExport, FixNote, type PrNumber, type Skipped, openGamePrs, prUrl } from '../../domain/upstream.ts'
 import { anotarArregloFn } from '../../fns/upstream.ts'
 import { CajaCopiar } from '../../ui/compatibility/CopyBox.tsx'
 import { ErrorCampo } from '../../ui/FieldError.tsx'
@@ -11,7 +11,7 @@ import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
 import { erroresDeRegla, useAccion } from '../../ui/useAction.ts'
 import { motivoNoExportable, motivoOmision } from '../../ui/vocabulary.ts'
 
-type Arreglo = { readonly pr: NumeroPr; readonly registrado_en: Date }
+type Arreglo = { readonly pr: PrNumber; readonly registrado_en: Date }
 
 /** "Compartir con umu-protonfixes" on an approved profile: its fix file, what did not translate, and the merged PRs it led to. */
 export function CompartirUpstream({
@@ -20,8 +20,8 @@ export function CompartirUpstream({
   arreglos,
   revisor,
 }: {
-  perfilId: PerfilId
-  exportacion: ExportacionFix
+  perfilId: ProfileId
+  exportacion: FixExport
   arreglos: ReadonlyArray<Arreglo>
   revisor: boolean
 }) {
@@ -30,40 +30,40 @@ export function CompartirUpstream({
       <h2 id="upstream" className="titulo-seccion">
         Compartir con umu-protonfixes
       </h2>
-      {x._tag === 'no_exportable' && <p className="tarjeta tenue">{motivoNoExportable[x.motivo]}</p>}
+      {x._tag === 'no_exportable' && <p className="tarjeta tenue">{motivoNoExportable[x.reason]}</p>}
       {x._tag === 'nada_traducible' && (
         <div className="tarjeta pila">
           <p>
-            {x.omitidos.length === 0
+            {x.skipped.length === 0
               ? 'Este perfil no tiene opciones de lanzamiento ni dependencias que se conviertan en un arreglo de umu-protonfixes.'
               : 'Nada de este perfil se convierte en un arreglo de umu-protonfixes:'}
           </p>
-          <Omitidos omitidos={x.omitidos} />
+          <Omitidos omitidos={x.skipped} />
         </div>
       )}
       {x._tag === 'archivo' && (
         <>
           <p>
             umu-protonfixes aplica arreglos por juego cuando lo abres con GE-Proton o umu. Este perfil se traduce en el archivo{' '}
-            <code>{x.ruta}</code>; puedes usarlo hoy mismo y proponerlo al proyecto para que llegue a todos.
+            <code>{x.path}</code>; puedes usarlo hoy mismo y proponerlo al proyecto para que llegue a todos.
           </p>
-          <CajaCopiar etiqueta="Úsalo ya en tu PC" texto={x.comando_local} />
+          <CajaCopiar etiqueta="Úsalo ya en tu PC" texto={x.local_command} />
           <p className="pequeno nota" data-tono="azul">
             Solo GE-Proton y umu leen esta carpeta; el Proton de Valve no.
           </p>
-          <CajaCopiar etiqueta={`Archivo ${x.ruta}`} texto={x.contenido} />
-          {x.omitidos.length > 0 && (
+          <CajaCopiar etiqueta={`Archivo ${x.path}`} texto={x.content} />
+          {x.skipped.length > 0 && (
             <div className="pila">
               <p className="pequeno">No pasó al archivo:</p>
-              <Omitidos omitidos={x.omitidos} />
+              <Omitidos omitidos={x.skipped} />
             </div>
           )}
           <p className="fila">
-            <a href={x.ver_existente} target="_blank" rel="noreferrer">
+            <a href={x.view_existing} target="_blank" rel="noreferrer">
               ¿Ya existe un arreglo? Revísalo primero
             </a>
-            {x.proponer._tag === 'enlace' ? (
-              <a className="boton" href={x.proponer.url} target="_blank" rel="noreferrer">
+            {x.propose._tag === 'enlace' ? (
+              <a className="boton" href={x.propose.url} target="_blank" rel="noreferrer">
                 Proponerlo en GitHub
               </a>
             ) : (
@@ -76,7 +76,7 @@ export function CompartirUpstream({
             <ul className="lista-tarjetas">
               {arreglos.map((a) => (
                 <li key={a.pr} className="tarjeta fila">
-                  <a href={urlPr(a.pr)} target="_blank" rel="noreferrer">
+                  <a href={prUrl(a.pr)} target="_blank" rel="noreferrer">
                     Aceptado en umu-protonfixes · PR #{a.pr}
                   </a>
                   <span className="pequeno tenue">registrado el {fecha(a.registrado_en)}</span>
@@ -93,21 +93,21 @@ export function CompartirUpstream({
   )
 }
 
-function Omitidos({ omitidos }: { omitidos: ReadonlyArray<Omitido> }) {
+function Omitidos({ omitidos }: { omitidos: ReadonlyArray<Skipped> }) {
   return (
     <ul className="pequeno">
       {omitidos.map((o, i) => (
         <li key={i}>
-          <code>{o.texto}</code>: {motivoOmision[o.motivo]}.
+          <code>{o.text}</code>: {motivoOmision[o.reason]}.
         </li>
       ))}
     </ul>
   )
 }
 
-function RegistrarArreglo({ perfilId }: { perfilId: PerfilId }) {
+function RegistrarArreglo({ perfilId }: { perfilId: ProfileId }) {
   const router = useRouter()
-  const r = useAccion(NotaArreglo, anotarArregloFn, { alFallar: erroresDeRegla, alCompletar: () => router.invalidate() })
+  const r = useAccion(FixNote, anotarArregloFn, { alFallar: erroresDeRegla, alCompletar: () => router.invalidate() })
   return (
     <form className="tarjeta formulario" {...r.formulario}>
       <ErrorCampo errores={r.errores} campo="formulario" />
@@ -118,7 +118,7 @@ function RegistrarArreglo({ perfilId }: { perfilId: PerfilId }) {
       </Campo>
       <p className="pequeno tenue">
         Solo PR ya fusionados: cada uno suma al contador público.{' '}
-        <a href={prsDeOpenGame} target="_blank" rel="noreferrer">
+        <a href={openGamePrs} target="_blank" rel="noreferrer">
           Buscar PR fusionados de OpenGame
         </a>
       </p>
@@ -129,9 +129,9 @@ function RegistrarArreglo({ perfilId }: { perfilId: PerfilId }) {
   )
 }
 
-function Anular({ pr }: { pr: NumeroPr }) {
+function Anular({ pr }: { pr: PrNumber }) {
   const router = useRouter()
-  const r = useAccion(NotaArreglo, anotarArregloFn, { alFallar: erroresDeRegla, alCompletar: () => router.invalidate() })
+  const r = useAccion(FixNote, anotarArregloFn, { alFallar: erroresDeRegla, alCompletar: () => router.invalidate() })
   return (
     <form className="fila" {...r.formulario}>
       <input type="hidden" name="_tag" value="Anular" />

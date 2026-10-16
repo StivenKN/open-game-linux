@@ -1,32 +1,32 @@
 import { Effect, Schema, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { NoEncontrado } from '../../domain/errors.ts'
-import type { ReporteId } from '../../domain/ids.ts'
-import { estadosVigentes } from '../../domain/review.ts'
-import { Diagnostico, EdicionJuego, Juego, Lanzador, Reporte, ReporteFallo, VersionCapa } from '../../domain/tables.ts'
-import { informeProton } from '../../domain/upstream.ts'
+import { NotFound } from '../../domain/errors.ts'
+import type { ReportId } from '../../domain/ids.ts'
+import { activeStatuses } from '../../domain/review.ts'
+import { Diagnostic, GameEdition, Game, Launcher, Report, ReportFailure, LayerVersion } from '../../domain/tables.ts'
+import { protonReport } from '../../domain/upstream.ts'
 import { exigirUsuario } from '../auth.ts'
 import { filas } from '../rows.ts'
 import { esDemo, etiquetaDistribucion } from './labels.ts'
 
 const FilaInforme = Schema.Struct({
-  juego_id: Juego.fields.id,
-  juego: Juego.fields.titulo,
-  lanzador: Lanzador.fields.nombre,
-  identificador_externo: EdicionJuego.fields.identificador_externo,
-  ...VersionCapa.mapFields(Struct.pick(['familia', 'variante', 'version'])).fields,
-  ...Reporte.mapFields(Struct.pick(['resultado', 'version_juego', 'fecha_prueba', 'observaciones'])).fields,
-  ...Diagnostico.mapFields(Struct.pick(['gpu_modelo', 'controlador', 'version_controlador', 'version_sistema'])).fields,
+  juego_id: Game.fields.id,
+  juego: Game.fields.titulo,
+  lanzador: Launcher.fields.nombre,
+  identificador_externo: GameEdition.fields.identificador_externo,
+  ...LayerVersion.mapFields(Struct.pick(['familia', 'variante', 'version'])).fields,
+  ...Report.mapFields(Struct.pick(['resultado', 'version_juego', 'fecha_prueba', 'observaciones'])).fields,
+  ...Diagnostic.mapFields(Struct.pick(['gpu_modelo', 'controlador', 'version_controlador', 'version_sistema'])).fields,
   distribucion: Schema.String,
   ejemplo: Schema.Boolean,
 })
-const FilaFallo = ReporteFallo.mapFields(Struct.pick(['detalle']))
+const FilaFallo = ReportFailure.mapFields(Struct.pick(['detalle']))
 
 /**
  * The Proton report for one of the visitor's own reports. It embeds the diagnosis hardware, which only its
  * owner sees, and needs the steam-<appid>.log that only the tester has, so anyone else gets NoEncontrado.
  */
-export const informeProtonDe = (reporteId: ReporteId) =>
+export const informeProtonDe = (reporteId: ReportId) =>
   Effect.gen(function* () {
     const usuario = yield* exigirUsuario
     const sql = yield* SqlClient.SqlClient
@@ -45,12 +45,12 @@ export const informeProtonDe = (reporteId: ReporteId) =>
           JOIN distribucion di ON di.id = d.distribucion_id
           JOIN equipo eq ON eq.id = d.equipo_id
           JOIN usuario u ON u.id = eq.usuario_id
-          WHERE r.id = ${reporteId} AND eq.usuario_id = ${usuario.id} AND r.estado_revision IN ${sql.in(estadosVigentes)}`,
+          WHERE r.id = ${reporteId} AND eq.usuario_id = ${usuario.id} AND r.estado_revision IN ${sql.in(activeStatuses)}`,
     )
-    if (fila === undefined) return yield* Effect.fail(new NoEncontrado())
+    if (fila === undefined) return yield* Effect.fail(new NotFound())
     const fallos = yield* filas(FilaFallo, sql`SELECT detalle FROM reporte_fallo WHERE reporte_id = ${reporteId} ORDER BY tipo_fallo_id`)
     return {
       reporte: { id: reporteId, juego_id: fila.juego_id, juego: fila.juego },
-      informe: informeProton({ ...fila, fallos: fallos.map((f) => f.detalle) }),
+      informe: protonReport({ ...fila, failures: fallos.map((f) => f.detalle) }),
     }
   })

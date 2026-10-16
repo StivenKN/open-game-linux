@@ -1,4 +1,4 @@
-import type { BibliotecaEvaluada } from '../../domain/library.ts'
+import type { EvaluatedLibrary } from '../../domain/library.ts'
 import { contar } from '../format.ts'
 import { type FilaMatriz, MatrizDiagnostico } from './DiagnosticMatrix.tsx'
 
@@ -10,7 +10,7 @@ export function JuegosDelEquipo({
   orientativa,
 }: {
   filas: ReadonlyArray<FilaMatriz>
-  biblioteca: BibliotecaEvaluada | null
+  biblioteca: EvaluatedLibrary | null
   orientativa: boolean
 }) {
   if (biblioteca === null)
@@ -22,7 +22,7 @@ export function JuegosDelEquipo({
     )
   const propias = filas.filter((f) => f.en_biblioteca)
   const resto = filas.filter((f) => !f.en_biblioteca)
-  const { desconocidos } = biblioteca
+  const { unknown: desconocidos } = biblioteca
   return (
     <>
       <section className="pila" aria-labelledby="biblioteca-steam">

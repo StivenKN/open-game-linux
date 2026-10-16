@@ -3,8 +3,8 @@ import { isNotFound, isRedirect } from '@tanstack/react-router'
 import { createServerEntry } from '@tanstack/react-start/server'
 import { Effect, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { AprobacionBloqueada, ReglaIncumplida } from '../src/domain/errors.ts'
-import type { Rol } from '../src/domain/review.ts'
+import { ApprovalBlocked, RuleViolated } from '../src/domain/errors.ts'
+import type { Role } from '../src/domain/review.ts'
 import { auth, exigirRevisor, exigirUsuario } from '../src/server/auth.ts'
 import { accion, leer } from '../src/server/run.ts'
 import { runtime } from '../src/server/runtime.ts'
@@ -29,7 +29,7 @@ const lanzado = <A>(d: Desenlace<A>): unknown => (d.ok ? undefined : d.lanzado)
 
 const sql = <A>(f: (sql: SqlClient.SqlClient) => Effect.Effect<A, unknown>) => runtime.runPromise(Effect.flatMap(SqlClient.SqlClient, f))
 
-const cuenta = async (rol: Rol, activo = true) => {
+const cuenta = async (rol: Role, activo = true) => {
   const correo = `${rol}-${crypto.randomUUID()}@opengame.test`
   const { headers } = await auth.api.signUpEmail({
     body: { name: `demo_${rol}`, email: correo, password: 'contrasena-de-prueba' },
@@ -73,23 +73,23 @@ describe('accion', () => {
 
   it('un fallo de dominio vuelve como dato y revierte lo que el programa ya escribió', async () => {
     const nombre = `revertido-${crypto.randomUUID()}`
-    const programa = Effect.andThen(insertar(nombre), Effect.fail(new ReglaIncumplida({ regla: 'fallo_duplicado' })))
-    const d = await enPeticion(null, () => accion(ReglaIncumplida, programa))
-    expect(d).toEqual({ ok: true, valor: { ok: false, fallo: { _tag: 'ReglaIncumplida', regla: 'fallo_duplicado' } } })
+    const programa = Effect.andThen(insertar(nombre), Effect.fail(new RuleViolated({ rule: 'fallo_duplicado' })))
+    const d = await enPeticion(null, () => accion(RuleViolated, programa))
+    expect(d).toEqual({ ok: true, valor: { ok: false, error: { _tag: 'ReglaIncumplida', rule: 'fallo_duplicado' } } })
     expect(await lanzadores(nombre)).toEqual([{ n: 0 }])
   })
 
   it('un programa que termina bien confirma lo que escribió', async () => {
     const nombre = `confirmado-${crypto.randomUUID()}`
-    const d = await enPeticion(null, () => accion(ReglaIncumplida, Effect.as(insertar(nombre), 'hecho')))
-    expect(d).toEqual({ ok: true, valor: { ok: true, valor: 'hecho' } })
+    const d = await enPeticion(null, () => accion(RuleViolated, Effect.as(insertar(nombre), 'hecho')))
+    expect(d).toEqual({ ok: true, valor: { ok: true, value: 'hecho' } })
     expect(await lanzadores(nombre)).toEqual([{ n: 1 }])
   })
 
   it('no compila si el programa puede fallar con algo que `fallos` no declara', () => {
     const sinDeclarar = () =>
       // @ts-expect-error AprobacionBloqueada is not listed in fallos, so the browser could not narrow it
-      accion(ReglaIncumplida, Effect.fail(new AprobacionBloqueada({ bloqueos: ['reporte_incomparable'] })))
+      accion(RuleViolated, Effect.fail(new ApprovalBlocked({ blockers: ['reporte_incomparable'] })))
     expect(sinDeclarar).toBeTypeOf('function')
   })
 })

@@ -1,15 +1,15 @@
 import { Effect, Option, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
-import { NoEncontrado } from '../../domain/errors.ts'
-import { GuiaId } from '../../domain/ids.ts'
-import { GuiaAdopcion } from '../../domain/tables.ts'
+import { NotFound } from '../../domain/errors.ts'
+import { GuideId } from '../../domain/ids.ts'
+import { AdoptionGuide } from '../../domain/tables.ts'
 import { esDemo, etiquetaDistribucion } from './labels.ts'
 
 const extra = { distribucion: Schema.NullOr(Schema.String), ejemplo: Schema.Boolean }
 
-const FilaGuia = GuiaAdopcion.mapFields(Struct.pick(['id', 'tipo', 'titulo', 'actualizado_en'])).mapFields(Struct.assign(extra))
+const FilaGuia = AdoptionGuide.mapFields(Struct.pick(['id', 'tipo', 'titulo', 'actualizado_en'])).mapFields(Struct.assign(extra))
 
-const DetalleGuia = GuiaAdopcion.mapFields(Struct.pick(['id', 'tipo', 'titulo', 'contenido', 'revision', 'actualizado_en'])).mapFields(
+const DetalleGuia = AdoptionGuide.mapFields(Struct.pick(['id', 'tipo', 'titulo', 'contenido', 'revision', 'actualizado_en'])).mapFields(
   Struct.assign({ ...extra, autor: Schema.String }),
 )
 
@@ -28,11 +28,11 @@ export const guias = Effect.flatMap(SqlClient.SqlClient, (sql) =>
   })(undefined),
 )
 
-export const guia = (id: GuiaId) =>
+export const guia = (id: GuideId) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     const fila = yield* SqlSchema.findOneOption({
-      Request: GuiaId,
+      Request: GuideId,
       Result: DetalleGuia,
       execute: (id) => sql`
         SELECT g.id, g.tipo, g.titulo, g.contenido, g.revision, g.actualizado_en, ${sql.literal(etiquetaDistribucion('d'))} AS distribucion,
@@ -42,6 +42,6 @@ export const guia = (id: GuiaId) =>
         LEFT JOIN distribucion d ON d.id = g.distribucion_id
         WHERE g.id = ${id} AND g.estado = 'publicada'`,
     })(id)
-    if (Option.isNone(fila)) return yield* new NoEncontrado()
+    if (Option.isNone(fila)) return yield* new NotFound()
     return fila.value
   })

@@ -1,8 +1,8 @@
 import { createFileRoute, notFound, redirect, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { NuevoJuego } from '../../domain/contributions.ts'
-import { ApiGrafica } from '../../domain/literals.ts'
-import type { NivelX86 } from '../../domain/platform.ts'
+import { NewGame } from '../../domain/contributions.ts'
+import { GraphicsApi } from '../../domain/literals.ts'
+import type { X86Level } from '../../domain/platform.ts'
 import { crearJuegoFn, opcionesJuegoFn } from '../../fns/contributions.ts'
 import { ErrorCampo } from '../../ui/FieldError.tsx'
 import { Campo, campo, nulo } from '../../ui/form.tsx'
@@ -11,7 +11,7 @@ import { apiGrafica, nivelX86 } from '../../ui/vocabulary.ts'
 import { volverAqui } from '../-return-to.ts'
 
 // v1 is every x86-64 CPU, so it is no requirement.
-const nivelesMinimos = ['v2', 'v3', 'v4'] as const satisfies ReadonlyArray<NivelX86>
+const nivelesMinimos = ['v2', 'v3', 'v4'] as const satisfies ReadonlyArray<X86Level>
 
 export const Route = createFileRoute('/catalogo/nuevo')({
   beforeLoad: ({ context, location }) => {
@@ -29,7 +29,7 @@ function NuevoJuegoPagina() {
   // Row keys, not indexes: removing a middle edition must not shift what the other rows show.
   const [ediciones, setEdiciones] = useState<ReadonlyArray<number>>([0])
   const [siguiente, setSiguiente] = useState(1)
-  const r = useAccion(NuevoJuego, crearJuegoFn, {
+  const r = useAccion(NewGame, crearJuegoFn, {
     alFallar: erroresDeRegla,
     alCompletar: ({ id }) => void navegar({ to: '/juegos/$juegoId', params: { juegoId: id } }),
   })
@@ -91,7 +91,7 @@ function NuevoJuegoPagina() {
           <legend>APIs gráficas</legend>
           <p className="pequeno tenue">Marca cada API con la que el juego puede dibujar, aunque sea un modo alternativo.</p>
           <div className="fila">
-            {ApiGrafica.literals.map((api) => (
+            {GraphicsApi.literals.map((api) => (
               <label key={api} className="casilla">
                 <input type="checkbox" name="apis[]" value={api} />
                 {apiGrafica[api]}

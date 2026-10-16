@@ -62,7 +62,7 @@ function Ficha({ muestra, numero }: { muestra: Muestra; numero: number }) {
         <VeredictoParaMi personal={muestra.personal} />
       </div>
       <h4 className="titulo-seccion">Entornos probados</h4>
-      <MatrizEntornos entornos={muestra.resumen.entornos} miDistribucion={diagnostico.distribucion_id} />
+      <MatrizEntornos entornos={muestra.resumen.setups} miDistribucion={diagnostico.distribucion_id} />
     </article>
   )
 }

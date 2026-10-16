@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { PerfilId } from '../../domain/ids.ts'
-import { puedeRevisar } from '../../domain/review.ts'
+import { ProfileId } from '../../domain/ids.ts'
+import { canReview } from '../../domain/review.ts'
 import { perfilFn } from '../../fns/catalog.ts'
 import { CajaCopiar } from '../../ui/compatibility/CopyBox.tsx'
 import { ChecklistEvaluacion } from '../../ui/compatibility/EvaluationChecklist.tsx'
@@ -13,7 +13,7 @@ import { estadoRevision } from '../../ui/vocabulary.ts'
 import { idDeRuta } from '../-ids.ts'
 import { CompartirUpstream } from './-upstream.tsx'
 
-const perfilId = idDeRuta(PerfilId)
+const perfilId = idDeRuta(ProfileId)
 
 export const Route = createFileRoute('/perfiles/$perfilId')({
   params: { parse: (p) => ({ perfilId: perfilId(p.perfilId) }), stringify: (p) => ({ perfilId: String(p.perfilId) }) },
@@ -158,7 +158,7 @@ function Perfil() {
           perfilId={p.id}
           exportacion={exportacion}
           arreglos={arreglos}
-          revisor={visitante !== null && puedeRevisar[visitante.rol]}
+          revisor={visitante !== null && canReview[visitante.rol]}
         />
       )}
     </main>

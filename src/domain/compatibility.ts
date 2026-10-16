@@ -1,9 +1,9 @@
 import { Schema } from 'effect'
-import { DistribucionId, EdicionId, PerfilId, ReporteId, VersionCapaId } from './ids.ts'
-import { Resultado, ResultadoFallido, ResultadoFuncional } from './literals.ts'
-import { esVigente } from './recency.ts'
+import { DistributionId, EditionId, ProfileId, ReportId, LayerVersionId } from './ids.ts'
+import { Outcome, FailingOutcome, WorkingOutcome } from './literals.ts'
+import { isRecent } from './recency.ts'
 
-export const EstadoCompatibilidad = Schema.Literals([
+export const CompatibilityStatus = Schema.Literals([
   'sin_evidencia',
   'funciona',
   'funciona_con_ajustes',
@@ -11,34 +11,34 @@ export const EstadoCompatibilidad = Schema.Literals([
   'falla_en_ejecucion',
   'resultados_variables',
 ])
-export type EstadoCompatibilidad = typeof EstadoCompatibilidad.Type
+export type CompatibilityStatus = typeof CompatibilityStatus.Type
 
-const estadoDeResultado = {
+const statusByOutcome = {
   funciona: 'funciona',
   funciona_con_ajustes: 'funciona_con_ajustes',
   no_inicia: 'no_inicia',
   falla_en_ejecucion: 'falla_en_ejecucion',
-} as const satisfies Record<Resultado, EstadoCompatibilidad>
+} as const satisfies Record<Outcome, CompatibilityStatus>
 
-export const estadoDe = (resultados: Iterable<Resultado>): EstadoCompatibilidad => {
-  const [unico, ...resto] = new Set(resultados)
-  if (unico === undefined) return 'sin_evidencia'
-  return resto.length === 0 ? estadoDeResultado[unico] : 'resultados_variables'
+export const statusOf = (outcomes: Iterable<Outcome>): CompatibilityStatus => {
+  const [only, ...rest] = new Set(outcomes)
+  if (only === undefined) return 'sin_evidencia'
+  return rest.length === 0 ? statusByOutcome[only] : 'resultados_variables'
 }
 
-export const PruebaAprobada = Schema.Struct({
-  reporte_id: ReporteId,
+export const ApprovedTest = Schema.Struct({
+  reporte_id: ReportId,
   estado_revision: Schema.Literal('aprobado'),
-  edicion_id: EdicionId,
+  edicion_id: EditionId,
   lanzador: Schema.String,
   version_juego: Schema.String,
-  distribucion_id: DistribucionId,
+  distribucion_id: DistributionId,
   distribucion: Schema.String,
-  version_capa_id: VersionCapaId,
+  version_capa_id: LayerVersionId,
   capa: Schema.String,
-  perfil_id: Schema.NullOr(PerfilId),
+  perfil_id: Schema.NullOr(ProfileId),
   perfil: Schema.NullOr(Schema.String),
-  resultado: Resultado,
+  resultado: Outcome,
   fecha_prueba: Schema.Date,
   // numeric(7,2) arrives as text from the driver (probe c).
   fps_promedio: Schema.NullOr(Schema.FiniteFromString),
@@ -47,92 +47,92 @@ export const PruebaAprobada = Schema.Struct({
   metodo_medicion: Schema.NullOr(Schema.String),
   fallos: Schema.Array(Schema.String),
 })
-export type PruebaAprobada = typeof PruebaAprobada.Type
+export type ApprovedTest = typeof ApprovedTest.Type
 
-export type FalloContado = { readonly codigo: string; readonly reportes: number }
-export type FpsMedido = {
-  readonly resolucion: string
-  readonly calidad: string
-  readonly promedio: number
-  readonly mediciones: number
+export type FailureCount = { readonly code: string; readonly reports: number }
+export type MeasuredFps = {
+  readonly resolution: string
+  readonly quality: string
+  readonly average: number
+  readonly samples: number
 }
 
-export type EntornoProbado = Pick<
-  PruebaAprobada,
+export type TestedSetup = Pick<
+  ApprovedTest,
   'edicion_id' | 'lanzador' | 'version_juego' | 'distribucion_id' | 'distribucion' | 'version_capa_id' | 'capa' | 'perfil_id' | 'perfil'
 > & {
-  readonly clave: string
-  readonly estado: EstadoCompatibilidad
-  readonly pruebas: number
-  readonly vigentes: number
-  readonly por_resultado: Partial<Record<Resultado, number>>
-  readonly ultima_prueba: Date
-  readonly fallos: ReadonlyArray<FalloContado>
-  readonly fps: ReadonlyArray<FpsMedido>
+  readonly key: string
+  readonly status: CompatibilityStatus
+  readonly test_count: number
+  readonly recent_count: number
+  readonly by_outcome: Partial<Record<Outcome, number>>
+  readonly last_tested: Date
+  readonly failures: ReadonlyArray<FailureCount>
+  readonly fps: ReadonlyArray<MeasuredFps>
 }
 
 /** An edition whose newest approved test fails after an earlier one worked. */
-export type Regresion = Pick<PruebaAprobada, 'edicion_id' | 'lanzador' | 'fecha_prueba' | 'version_juego' | 'capa'> & {
-  readonly resultado: ResultadoFallido
+export type Regression = Pick<ApprovedTest, 'edicion_id' | 'lanzador' | 'fecha_prueba' | 'version_juego' | 'capa'> & {
+  readonly resultado: FailingOutcome
 }
 
-export type ResumenCompatibilidad = {
-  readonly estado: EstadoCompatibilidad
-  readonly pruebas: number
-  readonly vigentes: number
+export type CompatibilitySummary = {
+  readonly status: CompatibilityStatus
+  readonly test_count: number
+  readonly recent_count: number
   /** Every approved test is older than a year, so `estado` comes from stale evidence. */
-  readonly sin_confirmacion_reciente: boolean
-  readonly ultima_prueba: Date | null
-  readonly entornos: ReadonlyArray<EntornoProbado>
-  readonly fallos: ReadonlyArray<FalloContado>
-  readonly regresiones: ReadonlyArray<Regresion>
+  readonly no_recent_confirmation: boolean
+  readonly last_tested: Date | null
+  readonly setups: ReadonlyArray<TestedSetup>
+  readonly failures: ReadonlyArray<FailureCount>
+  readonly regressions: ReadonlyArray<Regression>
 }
 
 /**
  * The one state function for the ficha and the catalog. State, result counts and causes come from the
  * tests of the last year when there is any, else from all of them; totals, dates and FPS from all.
  */
-export const resumir = (pruebas: ReadonlyArray<PruebaAprobada>, ahora: Date): ResumenCompatibilidad => {
-  const { vigentes, base } = baseDe(pruebas, ahora)
-  const entornos = agrupar(pruebas, claveDe)
-    .map((grupo) => entorno(grupo, ahora))
-    .sort((a, b) => b.ultima_prueba.getTime() - a.ultima_prueba.getTime() || a.clave.localeCompare(b.clave))
+export const summarize = (tests: ReadonlyArray<ApprovedTest>, now: Date): CompatibilitySummary => {
+  const { recent, base } = baseOf(tests, now)
+  const setups = groupBy(tests, keyOf)
+    .map((group) => testedSetup(group, now))
+    .sort((a, b) => b.last_tested.getTime() - a.last_tested.getTime() || a.key.localeCompare(b.key))
   return {
-    estado: estadoDe(base.map((p) => p.resultado)),
-    pruebas: pruebas.length,
-    vigentes: vigentes.length,
-    sin_confirmacion_reciente: pruebas.length > 0 && vigentes.length === 0,
-    ultima_prueba: entornos[0]?.ultima_prueba ?? null,
-    entornos,
-    fallos: contarFallos(base),
-    regresiones: agrupar(pruebas, (p) => String(p.edicion_id))
-      .flatMap(regresionDe)
+    status: statusOf(base.map((p) => p.resultado)),
+    test_count: tests.length,
+    recent_count: recent.length,
+    no_recent_confirmation: tests.length > 0 && recent.length === 0,
+    last_tested: setups[0]?.last_tested ?? null,
+    setups,
+    failures: countFailures(base),
+    regressions: groupBy(tests, (p) => String(p.edicion_id))
+      .flatMap(regressionOf)
       .sort((a, b) => b.fecha_prueba.getTime() - a.fecha_prueba.getTime()),
   }
 }
 
-export const enDistribucion = (pruebas: ReadonlyArray<PruebaAprobada>, distribucion: DistribucionId, ahora: Date): ResumenCompatibilidad =>
-  resumir(pruebas.filter((p) => p.distribucion_id === distribucion), ahora)
+export const onDistribution = (tests: ReadonlyArray<ApprovedTest>, distribution: DistributionId, now: Date): CompatibilitySummary =>
+  summarize(tests.filter((p) => p.distribucion_id === distribution), now)
 
-const baseDe = (pruebas: ReadonlyArray<PruebaAprobada>, ahora: Date) => {
-  const vigentes = pruebas.filter((p) => esVigente(p.fecha_prueba, ahora))
-  return { vigentes, base: vigentes.length > 0 ? vigentes : pruebas }
+const baseOf = (tests: ReadonlyArray<ApprovedTest>, now: Date) => {
+  const recent = tests.filter((p) => isRecent(p.fecha_prueba, now))
+  return { recent, base: recent.length > 0 ? recent : tests }
 }
 
 // Tests at the same instant are ordered by id, the order they were registered in.
-const masReciente = (pruebas: readonly [PruebaAprobada, ...PruebaAprobada[]]): PruebaAprobada =>
-  pruebas.reduce((a, b) => ((b.fecha_prueba.getTime() - a.fecha_prueba.getTime() || b.reporte_id - a.reporte_id) > 0 ? b : a))
+const newest = (tests: readonly [ApprovedTest, ...ApprovedTest[]]): ApprovedTest =>
+  tests.reduce((a, b) => ((b.fecha_prueba.getTime() - a.fecha_prueba.getTime() || b.reporte_id - a.reporte_id) > 0 ? b : a))
 
-const claveDe = (p: PruebaAprobada): string =>
+const keyOf = (p: ApprovedTest): string =>
   JSON.stringify([p.edicion_id, p.version_juego, p.distribucion_id, p.version_capa_id, p.perfil_id])
 
-const entorno = (pruebas: readonly [PruebaAprobada, ...PruebaAprobada[]], ahora: Date): EntornoProbado => {
-  const [p] = pruebas
-  const { vigentes, base } = baseDe(pruebas, ahora)
-  const por_resultado: Partial<Record<Resultado, number>> = {}
-  for (const { resultado } of base) por_resultado[resultado] = (por_resultado[resultado] ?? 0) + 1
+const testedSetup = (tests: readonly [ApprovedTest, ...ApprovedTest[]], now: Date): TestedSetup => {
+  const [p] = tests
+  const { recent, base } = baseOf(tests, now)
+  const by_outcome: Partial<Record<Outcome, number>> = {}
+  for (const { resultado } of base) by_outcome[resultado] = (by_outcome[resultado] ?? 0) + 1
   return {
-    clave: claveDe(p),
+    key: keyOf(p),
     edicion_id: p.edicion_id,
     lanzador: p.lanzador,
     version_juego: p.version_juego,
@@ -142,54 +142,54 @@ const entorno = (pruebas: readonly [PruebaAprobada, ...PruebaAprobada[]], ahora:
     capa: p.capa,
     perfil_id: p.perfil_id,
     perfil: p.perfil,
-    estado: estadoDe(base.map((x) => x.resultado)),
-    pruebas: pruebas.length,
-    vigentes: vigentes.length,
-    por_resultado,
-    ultima_prueba: masReciente(pruebas).fecha_prueba,
-    fallos: contarFallos(base),
-    fps: fpsPorContexto(pruebas),
+    status: statusOf(base.map((x) => x.resultado)),
+    test_count: tests.length,
+    recent_count: recent.length,
+    by_outcome,
+    last_tested: newest(tests).fecha_prueba,
+    failures: countFailures(base),
+    fps: fpsBySetting(tests),
   }
 }
 
-const esFallido = Schema.is(ResultadoFallido)
-const esFuncional = Schema.is(ResultadoFuncional)
+const isFailing = Schema.is(FailingOutcome)
+const isWorking = Schema.is(WorkingOutcome)
 
-const regresionDe = (pruebas: readonly [PruebaAprobada, ...PruebaAprobada[]]): ReadonlyArray<Regresion> => {
-  const ultima = masReciente(pruebas)
-  const { resultado } = ultima
-  if (!esFallido(resultado) || !pruebas.some((p) => p !== ultima && esFuncional(p.resultado))) return []
-  const { edicion_id, lanzador, fecha_prueba, version_juego, capa } = ultima
+const regressionOf = (tests: readonly [ApprovedTest, ...ApprovedTest[]]): ReadonlyArray<Regression> => {
+  const latest = newest(tests)
+  const { resultado } = latest
+  if (!isFailing(resultado) || !tests.some((p) => p !== latest && isWorking(p.resultado))) return []
+  const { edicion_id, lanzador, fecha_prueba, version_juego, capa } = latest
   return [{ edicion_id, lanzador, fecha_prueba, version_juego, capa, resultado }]
 }
 
-const contarFallos = (pruebas: ReadonlyArray<PruebaAprobada>): ReadonlyArray<FalloContado> =>
-  agrupar(pruebas.flatMap((p) => p.fallos), (codigo) => codigo)
-    .map((grupo) => ({ codigo: grupo[0], reportes: grupo.length }))
-    .sort((a, b) => b.reportes - a.reportes || a.codigo.localeCompare(b.codigo))
+const countFailures = (tests: ReadonlyArray<ApprovedTest>): ReadonlyArray<FailureCount> =>
+  groupBy(tests.flatMap((p) => p.fallos), (code) => code)
+    .map((group) => ({ code: group[0], reports: group.length }))
+    .sort((a, b) => b.reports - a.reports || a.code.localeCompare(b.code))
 
-const fpsPorContexto = (pruebas: ReadonlyArray<PruebaAprobada>): ReadonlyArray<FpsMedido> =>
-  agrupar(
-    pruebas.flatMap(({ fps_promedio, resolucion, calidad_grafica }) =>
+const fpsBySetting = (tests: ReadonlyArray<ApprovedTest>): ReadonlyArray<MeasuredFps> =>
+  groupBy(
+    tests.flatMap(({ fps_promedio, resolucion, calidad_grafica }) =>
       fps_promedio === null || resolucion === null || calidad_grafica === null
         ? []
-        : [{ fps: fps_promedio, resolucion, calidad: calidad_grafica }],
+        : [{ fps: fps_promedio, resolucion, quality: calidad_grafica }],
     ),
-    (m) => JSON.stringify([m.resolucion, m.calidad]),
-  ).map((grupo) => ({
-    resolucion: grupo[0].resolucion,
-    calidad: grupo[0].calidad,
-    promedio: grupo.reduce((n, m) => n + m.fps, 0) / grupo.length,
-    mediciones: grupo.length,
+    (m) => JSON.stringify([m.resolucion, m.quality]),
+  ).map((group) => ({
+    resolution: group[0].resolucion,
+    quality: group[0].quality,
+    average: group.reduce((n, m) => n + m.fps, 0) / group.length,
+    samples: group.length,
   }))
 
-const agrupar = <T>(elementos: ReadonlyArray<T>, clave: (x: T) => string): ReadonlyArray<readonly [T, ...T[]]> => {
-  const grupos = new Map<string, [T, ...T[]]>()
-  for (const x of elementos) {
-    const k = clave(x)
-    const grupo = grupos.get(k)
-    if (grupo === undefined) grupos.set(k, [x])
-    else grupo.push(x)
+const groupBy = <T>(items: ReadonlyArray<T>, key: (x: T) => string): ReadonlyArray<readonly [T, ...T[]]> => {
+  const groups = new Map<string, [T, ...T[]]>()
+  for (const x of items) {
+    const k = key(x)
+    const group = groups.get(k)
+    if (group === undefined) groups.set(k, [x])
+    else group.push(x)
   }
-  return [...grupos.values()]
+  return [...groups.values()]
 }

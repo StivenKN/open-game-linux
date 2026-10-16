@@ -1,7 +1,7 @@
-import type { FamiliaGpu, VendorGpu } from '../src/domain/gpu.ts'
+import type { GpuFamily, GpuVendor } from '../src/domain/gpu.ts'
 import { codificarTramos } from '../src/server/gpu/ranges.ts'
 
-export type Dispositivo = { readonly vendor: VendorGpu; readonly device: string; readonly familia: FamiliaGpu }
+export type Dispositivo = { readonly vendor: GpuVendor; readonly device: string; readonly familia: GpuFamily }
 
 const hex4 = (s: string) => s.toLowerCase().padStart(4, '0')
 
@@ -13,13 +13,13 @@ export const chipsetsMesa = (texto: string, fuente: string): ReadonlyArray<{ rea
     return [{ device: hex4(m[1]), token: m[2] }]
   })
 
-const reglas = (fuente: string, token: string, tabla: ReadonlyArray<readonly [RegExp, FamiliaGpu]>, otro?: FamiliaGpu): FamiliaGpu => {
+const reglas = (fuente: string, token: string, tabla: ReadonlyArray<readonly [RegExp, GpuFamily]>, otro?: GpuFamily): GpuFamily => {
   const familia = tabla.find(([re]) => re.test(token))?.[1] ?? otro
   if (familia === undefined) throw new Error(`${fuente}: token desconocido «${token}»; agrega su familia en scripts/gpu-fuentes.ts`)
   return familia
 }
 
-export const familiaCrocus = (token: string): FamiliaGpu =>
+export const familiaCrocus = (token: string): GpuFamily =>
   reglas('crocus', token, [
     [/^(i965|g4x|ilk)$/, 'intel_gen5_o_anterior'],
     [/^snb_/, 'intel_gen6'],
@@ -29,7 +29,7 @@ export const familiaCrocus = (token: string): FamiliaGpu =>
   ])
 
 /** iris starts at Broadwell; every later platform (and any new token) is gen9 or newer. */
-export const familiaIris = (token: string): FamiliaGpu =>
+export const familiaIris = (token: string): GpuFamily =>
   reglas('iris', token, [[/^(bdw_|chv$)/, 'intel_gen8']], 'intel_gen9_o_posterior')
 
 const chipsAmdgpu = {
@@ -68,7 +68,7 @@ const chipsAmdgpu = {
   DIMGREY_CAVEFISH: 'amd_gcn3_o_posterior',
   BEIGE_GOBY: 'amd_gcn3_o_posterior',
   YELLOW_CARP: 'amd_gcn3_o_posterior',
-} as const satisfies Record<string, FamiliaGpu>
+} as const satisfies Record<string, GpuFamily>
 
 const esChip = (chip: string): chip is keyof typeof chipsAmdgpu => Object.hasOwn(chipsAmdgpu, chip)
 
@@ -97,7 +97,7 @@ export const idsAmdgpu = (texto: string): ReadonlyArray<Dispositivo> => {
   })
 }
 
-const codenamesNvidia: ReadonlyArray<readonly [RegExp, FamiliaGpu]> = [
+const codenamesNvidia: ReadonlyArray<readonly [RegExp, GpuFamily]> = [
   [/^GF\d/, 'nvidia_fermi'],
   [/^GK\d/, 'nvidia_kepler'],
   [/^G[MPV]\d/, 'nvidia_maxwell_a_volta'],
@@ -131,7 +131,7 @@ export const conPiso = <A>(fuente: string, piso: number, ids: ReadonlyArray<A>):
   return ids
 }
 
-export type Tabla = Record<VendorGpu, Partial<Record<FamiliaGpu, string>>>
+export type Tabla = Record<GpuVendor, Partial<Record<GpuFamily, string>>>
 
 export const tablaDe = (dispositivos: ReadonlyArray<Dispositivo>): Tabla => {
   const unicos = new Map<string, Dispositivo>()
@@ -141,7 +141,7 @@ export const tablaDe = (dispositivos: ReadonlyArray<Dispositivo>): Tabla => {
     if (previa !== undefined && previa !== d.familia) throw new Error(`${clave} aparece como ${previa} y como ${d.familia}`)
     unicos.set(clave, d)
   }
-  const grupos = new Map<string, { readonly vendor: VendorGpu; readonly familia: FamiliaGpu; readonly numeros: Array<number> }>()
+  const grupos = new Map<string, { readonly vendor: GpuVendor; readonly familia: GpuFamily; readonly numeros: Array<number> }>()
   for (const d of unicos.values()) {
     const clave = `${d.vendor} ${d.familia}`
     const grupo = grupos.get(clave) ?? { vendor: d.vendor, familia: d.familia, numeros: [] }

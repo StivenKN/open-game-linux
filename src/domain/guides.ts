@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 
-export const TipoGuia = Schema.Literals(['eleccion_distribucion', 'instalacion', 'arranque_dual'])
-export type TipoGuia = typeof TipoGuia.Type
+export const GuideType = Schema.Literals(['eleccion_distribucion', 'instalacion', 'arranque_dual'])
+export type GuideType = typeof GuideType.Type
 
-export const EstadoGuia = Schema.Literals(['borrador', 'publicada', 'archivada'])
-export type EstadoGuia = typeof EstadoGuia.Type
+export const GuideStatus = Schema.Literals(['borrador', 'publicada', 'archivada'])
+export type GuideStatus = typeof GuideStatus.Type

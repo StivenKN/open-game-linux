@@ -1,4 +1,4 @@
-export const largo = {
+export const maxLengths = {
   usuario: { alias: 60, correo: 254 },
   equipo: { alias: 80 },
   diagnostico: {

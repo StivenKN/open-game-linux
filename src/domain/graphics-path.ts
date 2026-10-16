@@ -1,75 +1,75 @@
 import { Array as Arr } from 'effect'
-import { type Comprobacion, estadoVulkan } from './evaluation.ts'
-import type { EquipoEnLinux, RutaD3d } from './gpu.ts'
-import type { ApiGrafica } from './literals.ts'
-import { NivelX86 } from './platform.ts'
+import { type RequirementCheck, vulkanStatus } from './evaluation.ts'
+import type { MachineOnLinux, D3dPath } from './gpu.ts'
+import type { GraphicsApi } from './literals.ts'
+import { X86Level } from './platform.ts'
 
 /**
  * Every way a game can reach the GPU on Linux, best first. This order alone picks between a game's
  * APIs. Native Vulkan needs no translation, so it leads. D3D11 sits above VKD3D on purpose: for a
  * {d3d11, d3d12} game the lighter path wins.
  */
-export const CAMINOS = ['vulkan', 'dxvk', 'dxvk_2', 'vkd3d_proton', 'opengl', 'dxvk_sarek', 'wined3d'] as const satisfies ReadonlyArray<
-  RutaD3d | 'vkd3d_proton' | 'vulkan' | 'opengl'
+export const RENDER_PATHS = ['vulkan', 'dxvk', 'dxvk_2', 'vkd3d_proton', 'opengl', 'dxvk_sarek', 'wined3d'] as const satisfies ReadonlyArray<
+  D3dPath | 'vkd3d_proton' | 'vulkan' | 'opengl'
 >
-export type Camino = (typeof CAMINOS)[number]
+export type RenderPath = (typeof RENDER_PATHS)[number]
 
 /** Paths that compile shaders asynchronously, which online anti-cheat can flag. Their label must carry a warning. */
-export type CaminoSinAntiTrampas = Extract<Camino, 'dxvk_sarek'>
+export type AntiCheatRiskPath = Extract<RenderPath, 'dxvk_sarek'>
 
 /** The fact a verdict rests on: the GPU's graphics path or the CPU's x86-64 level. */
-export type Requisito = 'grafica' | 'cpu'
+export type Requirement = 'grafica' | 'cpu'
 
 /**
  * Hardware-only verdict for one game: no reports involved. `sin_datos` lists every missing fact
  * (an old diagnosis can lack both) and `al_menos` is the best path already certain.
  */
-export type RutaJuego =
-  | { readonly estado: 'sin_apis' }
-  | { readonly estado: 'con_ruta'; readonly camino: Camino }
-  | { readonly estado: 'sin_ruta'; readonly motivo: Requisito }
-  | { readonly estado: 'sin_datos'; readonly faltan: Arr.NonEmptyReadonlyArray<Requisito>; readonly al_menos: Camino | null }
+export type GamePath =
+  | { readonly status: 'sin_apis' }
+  | { readonly status: 'con_ruta'; readonly path: RenderPath }
+  | { readonly status: 'sin_ruta'; readonly reason: Requirement }
+  | { readonly status: 'sin_datos'; readonly missing: Arr.NonEmptyReadonlyArray<Requirement>; readonly at_least: RenderPath | null }
 
 /** What one API gets on this machine: the best path we are sure of, and a better one we can't rule out. */
-type Oferta = { readonly segura: Camino | null; readonly posible: Camino | null }
+type Offer = { readonly certain: RenderPath | null; readonly possible: RenderPath | null }
 
 // Unknown D3D support still leaves WineD3D, which needs no Vulkan.
-const d3d9a11 = ({ ruta }: EquipoEnLinux): Oferta => (ruta === null ? { segura: 'wined3d', posible: 'dxvk' } : { segura: ruta.d3d9_11, posible: null })
+const d3d9to11 = ({ paths }: MachineOnLinux): Offer => (paths === null ? { certain: 'wined3d', possible: 'dxvk' } : { certain: paths.d3d9_11, possible: null })
 
-const vulkanNativo = {
-  cumple: { segura: 'vulkan', posible: null },
-  no_cumple: { segura: null, posible: null },
-  desconocido: { segura: null, posible: 'vulkan' },
-} as const satisfies Record<Comprobacion['estado'], Oferta>
+const nativeVulkan = {
+  cumple: { certain: 'vulkan', possible: null },
+  no_cumple: { certain: null, possible: null },
+  desconocido: { certain: null, possible: 'vulkan' },
+} as const satisfies Record<RequirementCheck['status'], Offer>
 
-const OFERTA = {
-  d3d9: d3d9a11,
-  d3d10: d3d9a11,
-  d3d11: d3d9a11,
-  d3d12: ({ ruta }) => (ruta === null ? { segura: null, posible: 'vkd3d_proton' } : { segura: ruta.d3d12 ? 'vkd3d_proton' : null, posible: null }),
-  vulkan: ({ vulkan }) => vulkanNativo[estadoVulkan(vulkan, null)],
-  opengl: () => ({ segura: 'opengl', posible: null }),
-} as const satisfies Record<ApiGrafica, (equipo: EquipoEnLinux) => Oferta>
+const OFFERS = {
+  d3d9: d3d9to11,
+  d3d10: d3d9to11,
+  d3d11: d3d9to11,
+  d3d12: ({ paths }) => (paths === null ? { certain: null, possible: 'vkd3d_proton' } : { certain: paths.d3d12 ? 'vkd3d_proton' : null, possible: null }),
+  vulkan: ({ vulkan }) => nativeVulkan[vulkanStatus(vulkan, null)],
+  opengl: () => ({ certain: 'opengl', possible: null }),
+} as const satisfies Record<GraphicsApi, (machine: MachineOnLinux) => Offer>
 
-const mejor = (caminos: ReadonlyArray<Camino | null>): Camino | null => CAMINOS.find((c) => caminos.includes(c)) ?? null
+const best = (paths: ReadonlyArray<RenderPath | null>): RenderPath | null => RENDER_PATHS.find((c) => paths.includes(c)) ?? null
 
-const nivel = (n: NivelX86) => NivelX86.literals.indexOf(n)
+const levelIndex = (n: X86Level) => X86Level.literals.indexOf(n)
 
 /** `cpu` is the captured x86-64 level, null when the detector didn't read it. Windows captures get the same rules. */
-export const rutaJuego = (
-  equipo: EquipoEnLinux,
-  cpu: NivelX86 | null,
-  juego: { readonly apis: ReadonlyArray<ApiGrafica>; readonly nivel_x86_min: NivelX86 | null },
-): RutaJuego => {
-  const minimo = juego.nivel_x86_min
-  if (minimo !== null && cpu !== null && nivel(cpu) < nivel(minimo)) return { estado: 'sin_ruta', motivo: 'cpu' }
-  if (juego.apis.length === 0) return { estado: 'sin_apis' }
-  const ofertas = juego.apis.map((api) => OFERTA[api](equipo))
-  const segura = mejor(ofertas.map((o) => o.segura))
-  const posible = mejor(ofertas.map((o) => o.posible))
-  const cpuFalta = minimo !== null && cpu === null ? (['cpu'] as const) : []
+export const gamePath = (
+  machine: MachineOnLinux,
+  cpu: X86Level | null,
+  game: { readonly apis: ReadonlyArray<GraphicsApi>; readonly nivel_x86_min: X86Level | null },
+): GamePath => {
+  const minimum = game.nivel_x86_min
+  if (minimum !== null && cpu !== null && levelIndex(cpu) < levelIndex(minimum)) return { status: 'sin_ruta', reason: 'cpu' }
+  if (game.apis.length === 0) return { status: 'sin_apis' }
+  const offers = game.apis.map((api) => OFFERS[api](machine))
+  const certain = best(offers.map((o) => o.certain))
+  const possible = best(offers.map((o) => o.possible))
+  const cpuMissing = minimum !== null && cpu === null ? (['cpu'] as const) : []
   // A certain "no path" outranks a CPU level we don't know.
-  if (segura === null) return posible === null ? { estado: 'sin_ruta', motivo: 'grafica' } : { estado: 'sin_datos', faltan: ['grafica', ...cpuFalta], al_menos: null }
-  const faltan = [...(posible !== null && CAMINOS.indexOf(posible) < CAMINOS.indexOf(segura) ? (['grafica'] as const) : []), ...cpuFalta]
-  return Arr.isReadonlyArrayNonEmpty(faltan) ? { estado: 'sin_datos', faltan, al_menos: segura } : { estado: 'con_ruta', camino: segura }
+  if (certain === null) return possible === null ? { status: 'sin_ruta', reason: 'grafica' } : { status: 'sin_datos', missing: ['grafica', ...cpuMissing], at_least: null }
+  const missing = [...(possible !== null && RENDER_PATHS.indexOf(possible) < RENDER_PATHS.indexOf(certain) ? (['grafica'] as const) : []), ...cpuMissing]
+  return Arr.isReadonlyArrayNonEmpty(missing) ? { status: 'sin_datos', missing, at_least: certain } : { status: 'con_ruta', path: certain }
 }

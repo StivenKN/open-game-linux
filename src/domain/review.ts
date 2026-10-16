@@ -1,59 +1,59 @@
 import { Schema } from 'effect'
-import { PerfilId, ReporteId, SolucionId, Texto } from './ids.ts'
+import { ProfileId, ReportId, SolutionId, RequiredText } from './ids.ts'
 
-export const EstadoRevision = Schema.Literals(['pendiente', 'aprobado', 'rechazado', 'retirado'])
-export type EstadoRevision = typeof EstadoRevision.Type
+export const ReviewStatus = Schema.Literals(['pendiente', 'aprobado', 'rechazado', 'retirado'])
+export type ReviewStatus = typeof ReviewStatus.Type
 
-export const siguientes = {
+export const nextStatuses = {
   pendiente: ['aprobado', 'rechazado'],
   aprobado: ['retirado'],
   rechazado: [],
   retirado: [],
-} as const satisfies Record<EstadoRevision, ReadonlyArray<EstadoRevision>>
+} as const satisfies Record<ReviewStatus, ReadonlyArray<ReviewStatus>>
 
-export const estadosVigentes = ['pendiente', 'aprobado'] as const satisfies ReadonlyArray<EstadoRevision>
+export const activeStatuses = ['pendiente', 'aprobado'] as const satisfies ReadonlyArray<ReviewStatus>
 
-export const Rol = Schema.Literals(['usuario', 'revisor', 'administrador'])
-export type Rol = typeof Rol.Type
-export const puedeRevisar = { usuario: false, revisor: true, administrador: true } as const satisfies Record<Rol, boolean>
+export const Role = Schema.Literals(['usuario', 'revisor', 'administrador'])
+export type Role = typeof Role.Type
+export const canReview = { usuario: false, revisor: true, administrador: true } as const satisfies Record<Role, boolean>
 
 export const Decision = Schema.Union([
-  Schema.TaggedStruct('Aprobar', { motivo: Texto, evidencia: Texto }),
-  Schema.TaggedStruct('Rechazar', { motivo: Texto }),
-  Schema.TaggedStruct('Retirar', { motivo: Texto }),
+  Schema.TaggedStruct('Aprobar', { motivo: RequiredText, evidencia: RequiredText }),
+  Schema.TaggedStruct('Rechazar', { motivo: RequiredText }),
+  Schema.TaggedStruct('Retirar', { motivo: RequiredText }),
 ])
 export type Decision = typeof Decision.Type
 
-export const destinoDe = {
+export const targetOf = {
   Aprobar: 'aprobado',
   Rechazar: 'rechazado',
   Retirar: 'retirado',
-} as const satisfies Record<Decision['_tag'], EstadoRevision>
+} as const satisfies Record<Decision['_tag'], ReviewStatus>
 
-export const planificar = (
-  actual: EstadoRevision,
+export const planTransition = (
+  current: ReviewStatus,
   decision: Decision,
 ): 'sin_cambios' | 'aplicar' | 'transicion_invalida' => {
-  const destino = destinoDe[decision._tag]
-  if (actual === destino) return 'sin_cambios'
-  const permitidos: ReadonlyArray<EstadoRevision> = siguientes[actual]
-  return permitidos.includes(destino) ? 'aplicar' : 'transicion_invalida'
+  const target = targetOf[decision._tag]
+  if (current === target) return 'sin_cambios'
+  const allowed: ReadonlyArray<ReviewStatus> = nextStatuses[current]
+  return allowed.includes(target) ? 'aplicar' : 'transicion_invalida'
 }
 
-export const AporteRef = Schema.Union([
-  Schema.TaggedStruct('perfil', { id: PerfilId }),
-  Schema.TaggedStruct('reporte', { id: ReporteId }),
-  Schema.TaggedStruct('solucion', { id: SolucionId }),
+export const ContributionRef = Schema.Union([
+  Schema.TaggedStruct('perfil', { id: ProfileId }),
+  Schema.TaggedStruct('reporte', { id: ReportId }),
+  Schema.TaggedStruct('solucion', { id: SolutionId }),
 ])
-export type AporteRef = typeof AporteRef.Type
+export type ContributionRef = typeof ContributionRef.Type
 
-export const TipoAporte = Schema.Literals(['perfil', 'reporte', 'solucion'])
-export type TipoAporte = typeof TipoAporte.Type
+export const ContributionType = Schema.Literals(['perfil', 'reporte', 'solucion'])
+export type ContributionType = typeof ContributionType.Type
 
-export const Bloqueo = Schema.Literals([
+export const Blocker = Schema.Literals([
   'perfil_sin_reporte_funcional_aprobado',
   'solucion_fallo_origen_no_aprobado',
   'solucion_perfil_no_aprobado',
   'reporte_incomparable',
 ])
-export type Bloqueo = typeof Bloqueo.Type
+export type Blocker = typeof Blocker.Type

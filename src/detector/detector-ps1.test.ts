@@ -5,7 +5,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { MAX_JUEGOS_BIBLIOTECA } from '../domain/library.ts'
+import { MAX_LIBRARY_GAMES } from '../domain/library.ts'
 import { parsearPayload } from '../server/diagnostics/payload.ts'
 
 const raiz = fileURLToPath(new URL('../../', import.meta.url))
@@ -58,7 +58,7 @@ const biblioteca = (carpeta: string, cuantos: number) => {
 const esperada = (cuantos: number) => Array.from({ length: cuantos }, (_, k) => ({ app_id: cuantos - k, nombre: nombreJuego(cuantos - k) }))
 
 const powershell = (env: Record<string, string>): string => {
-  const variables = { OPENGAME_URL: 'http://ejemplo.test', OPENGAME_MAX_JUEGOS: String(MAX_JUEGOS_BIBLIOTECA), PROCESSOR_ARCHITECTURE: 'AMD64', OPENGAME_PRUEBA_STEAM: steam('nuevo'), OPENGAME_PRUEBA_REGISTRO: registro(), ...env }
+  const variables = { OPENGAME_URL: 'http://ejemplo.test', OPENGAME_MAX_JUEGOS: String(MAX_LIBRARY_GAMES), PROCESSOR_ARCHITECTURE: 'AMD64', OPENGAME_PRUEBA_STEAM: steam('nuevo'), OPENGAME_PRUEBA_REGISTRO: registro(), ...env }
   const args = ['-NoProfile', '-NonInteractive', '-Command', `. '${stubs}'; Invoke-Expression (Get-Content -Raw -LiteralPath '${ps1}')`]
   if (motor === 'pwsh') return execFileSync('pwsh', args, { encoding: 'utf8', env: { ...process.env, ...variables } }).trim()
   const docker = [
@@ -69,7 +69,7 @@ const powershell = (env: Record<string, string>): string => {
   return execFileSync('docker', [...docker, IMAGEN, 'pwsh', ...args], { encoding: 'utf8' }).trim()
 }
 const bash = (env: Record<string, string>, ...args: Array<string>): string =>
-  execFileSync('bash', [sh, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, HOME: join(tmp, 'sin-steam'), OPENGAME_MAX_JUEGOS: String(MAX_JUEGOS_BIBLIOTECA), ...env } }).trim()
+  execFileSync('bash', [sh, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, HOME: join(tmp, 'sin-steam'), OPENGAME_MAX_JUEGOS: String(MAX_LIBRARY_GAMES), ...env } }).trim()
 const leerRegistro = (): Array<string> => {
   const lineas = readFileSync(registro(), 'utf8').trim().split('\n')
   rmSync(registro())
@@ -173,7 +173,7 @@ describe.skipIf(motor === null)(`opengame-detect.ps1 under ${motor ?? `pwsh (ski
 
   it('sends at most MAX_JUEGOS_BIBLIOTECA games, the most recently played', () => {
     const salida = powershell({ OPENGAME_STEAM_DIR: join(tmp, 'grande'), OPENGAME_IMPRIMIR: '1' })
-    expect(leer(salida)).toMatchObject({ biblioteca_steam: esperada(2000).slice(0, MAX_JUEGOS_BIBLIOTECA) })
+    expect(leer(salida)).toMatchObject({ biblioteca_steam: esperada(2000).slice(0, MAX_LIBRARY_GAMES) })
   })
 })
 
@@ -191,6 +191,6 @@ describe.skipIf(motor === null || process.platform !== 'linux')('Steam library: 
 describe.skipIf(process.platform !== 'linux')('opengame-detect.sh with a large Steam library', () => {
   it('prints the JSON, capped at MAX_JUEGOS_BIBLIOTECA games, instead of a --open URL longer than 100 000 chars', () => {
     const salida = bash({ OPENGAME_STEAM_DIR: join(tmp, 'grande'), OPENGAME_DRY: '1', OPENGAME_URL: 'http://ejemplo.test' }, '--open')
-    expect(leer(salida)).toMatchObject({ sistema: 'Linux', biblioteca_steam: esperada(2000).slice(0, MAX_JUEGOS_BIBLIOTECA) })
+    expect(leer(salida)).toMatchObject({ sistema: 'Linux', biblioteca_steam: esperada(2000).slice(0, MAX_LIBRARY_GAMES) })
   })
 })

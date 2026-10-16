@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Result, Schema } from 'effect'
-import { NuevoJuego, NuevoReporte } from '../domain/contributions.ts'
-import { Casilla, NumeroOpcional } from '../domain/ids.ts'
+import { NewGame, NewReport } from '../domain/contributions.ts'
+import { Checkbox, OptionalNumber } from '../domain/ids.ts'
 import { leerFormulario } from './useAction.ts'
 
 const datos = (pares: Record<string, string>) => {
@@ -10,7 +10,7 @@ const datos = (pares: Record<string, string>) => {
   return f
 }
 
-const Ejemplo = Schema.Struct({ vram_mb: NumeroOpcional(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))), obligatoria: Casilla })
+const Ejemplo = Schema.Struct({ vram_mb: OptionalNumber(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))), obligatoria: Checkbox })
 
 describe('convenciones de formulario', () => {
   it('un número en blanco y una casilla sin marcar llegan como null y false', () => {
@@ -29,7 +29,7 @@ describe('convenciones de formulario', () => {
       const f = new FormData()
       for (const [k, v] of juego) f.append(k, v)
       for (const api of apis) f.append('apis[]', api)
-      return Result.map(leerFormulario(NuevoJuego, f), (j) => j.apis)
+      return Result.map(leerFormulario(NewGame, f), (j) => j.apis)
     }
     expect(leer('d3d11')).toEqual(Result.succeed(['d3d11']))
     expect(leer('d3d11', 'vulkan')).toEqual(Result.succeed(['d3d11', 'vulkan']))
@@ -63,7 +63,7 @@ describe('límites de columna en el reporte', () => {
 
   it('un texto más largo que su columna es un error del campo, no un fallo del insert', () => {
     const largo = leerFormulario(
-      NuevoReporte,
+      NewReport,
       datos({ ...reporte, version_juego: 'v'.repeat(81), version_lanzador: 'l'.repeat(81), 'medicion[resolucion]': 'r'.repeat(31), 'version_capa[version]': 'x'.repeat(61) }),
     )
     expect(largo).toEqual(
@@ -77,7 +77,7 @@ describe('límites de columna en el reporte', () => {
   })
 
   it('un promedio de FPS que no cabe en numeric(7,2) dice el rango', () => {
-    expect(leerFormulario(NuevoReporte, datos({ ...reporte, 'medicion[fps_promedio]': '100000' }))).toEqual(
+    expect(leerFormulario(NewReport, datos({ ...reporte, 'medicion[fps_promedio]': '100000' }))).toEqual(
       Result.fail({ 'medicion[fps_promedio]': 'Escribe un promedio de FPS entre 0 y 99999.99.' }),
     )
   })

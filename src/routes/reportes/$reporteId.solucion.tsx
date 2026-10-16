@@ -1,8 +1,8 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useState } from 'react'
-import { NuevaSolucion } from '../../domain/contributions.ts'
-import { ReporteId, TipoFalloId } from '../../domain/ids.ts'
+import { NewSolution } from '../../domain/contributions.ts'
+import { ReportId, FailureTypeId } from '../../domain/ids.ts'
 import { opcionesSolucionFn, registrarSolucionFn } from '../../fns/contributions.ts'
 import { ErrorCampo } from '../../ui/FieldError.tsx'
 import { momento } from '../../ui/format.ts'
@@ -13,11 +13,11 @@ import { estadoRevision, resultado, tipoFallo } from '../../ui/vocabulary.ts'
 import { idDeRuta } from '../-ids.ts'
 import { volverAqui } from '../-return-to.ts'
 
-const reporteId = idDeRuta(ReporteId)
+const reporteId = idDeRuta(ReportId)
 
 export const Route = createFileRoute('/reportes/$reporteId/solucion')({
   params: { parse: (p) => ({ reporteId: reporteId(p.reporteId) }), stringify: (p) => ({ reporteId: String(p.reporteId) }) },
-  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipoFallo: Schema.optionalKey(TipoFalloId) })),
+  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipoFallo: Schema.optionalKey(FailureTypeId) })),
   beforeLoad: ({ context, location }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
   },
@@ -30,7 +30,7 @@ function ProponerSolucion() {
   const { reporte, fallos, perfiles } = Route.useLoaderData()
   const { tipoFallo: preseleccion } = Route.useSearch()
   const [enviada, setEnviada] = useState(false)
-  const r = useAccion(NuevaSolucion, registrarSolucionFn, { alFallar: erroresDeRegla, alCompletar: () => setEnviada(true) })
+  const r = useAccion(NewSolution, registrarSolucionFn, { alFallar: erroresDeRegla, alCompletar: () => setEnviada(true) })
 
   return (
     <main className="envoltura">

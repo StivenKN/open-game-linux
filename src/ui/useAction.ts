@@ -4,7 +4,7 @@
 import { type FormEvent, useRef, useState } from 'react'
 import { isNotFound, isRedirect, useRouter } from '@tanstack/react-router'
 import { Option, Result, Schema, SchemaIssue } from 'effect'
-import { reglas, type Regla, type Respuesta } from '../domain/errors.ts'
+import { rules, type Rule, type Reply } from '../domain/errors.ts'
 
 export type Errores = Readonly<Partial<Record<string, string>>>
 
@@ -67,13 +67,13 @@ export const leerFormulario = <T, E>(esquema: Schema.Codec<T, E>, form: FormData
     Result.mapError((e) => erroresDeIssue(e.issue)),
   )
 
-export const erroresDeRegla = (f: { readonly _tag: 'ReglaIncumplida'; readonly regla: Regla }): Errores => ({
-  [reglas[f.regla].campo]: reglas[f.regla].mensaje,
+export const erroresDeRegla = (f: { readonly _tag: 'ReglaIncumplida'; readonly rule: Rule }): Errores => ({
+  [rules[f.rule].field]: rules[f.rule].message,
 })
 
 export function useAccion<T, E, A, F>(
   esquema: Schema.Codec<T, E>,
-  fn: (opciones: { readonly data: E }) => Promise<Respuesta<A, F>>,
+  fn: (opciones: { readonly data: E }) => Promise<Reply<A, F>>,
   manejo: { readonly alFallar: (fallo: F) => Errores; readonly alCompletar: (valor: A) => void | Promise<void> },
 ) {
   const router = useRouter()
@@ -100,8 +100,8 @@ export function useAccion<T, E, A, F>(
     if (r === null) return
     if (r.ok) {
       setErrores({})
-      await manejo.alCompletar(r.valor)
-    } else setErrores(manejo.alFallar(r.fallo))
+      await manejo.alCompletar(r.value)
+    } else setErrores(manejo.alFallar(r.error))
   }
 
   const enviar = (evento: FormEvent<HTMLFormElement>) => {

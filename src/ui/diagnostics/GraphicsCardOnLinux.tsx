@@ -1,16 +1,16 @@
-import { rangoVulkan, type VulkanEquipo } from '../../domain/evaluation.ts'
-import type { EquipoEnLinux, PciId } from '../../domain/gpu.ts'
+import { vulkanRangeText, type MachineVulkan } from '../../domain/evaluation.ts'
+import type { MachineOnLinux, PciId } from '../../domain/gpu.ts'
 import { CajaCopiar } from '../compatibility/CopyBox.tsx'
 import { avisoGpu, controladorLinux, familiaGpu, origenVulkan, rutaD3d } from '../vocabulary.ts'
 
-const vulkanTexto = (vulkan: VulkanEquipo): string => {
-  if (vulkan.soporte === 'desconocido') return 'Desconocido'
-  const valor = vulkan.soporte === 'no' ? 'sin soporte' : vulkan.rango === null ? 'compatible' : rangoVulkan(vulkan.rango)
-  return `${origenVulkan[vulkan.origen]}: ${valor}`
+const vulkanTexto = (vulkan: MachineVulkan): string => {
+  if (vulkan.support === 'desconocido') return 'Desconocido'
+  const valor = vulkan.support === 'no' ? 'sin soporte' : vulkan.range === null ? 'compatible' : vulkanRangeText(vulkan.range)
+  return `${origenVulkan[vulkan.origin]}: ${valor}`
 }
 
-export function TarjetaGraficaEnLinux({ equipo, pci }: { equipo: EquipoEnLinux; pci: PciId | null }) {
-  const { gpu, ruta, vulkan } = equipo
+export function TarjetaGraficaEnLinux({ equipo, pci }: { equipo: MachineOnLinux; pci: PciId | null }) {
+  const { gpu, paths: ruta, vulkan } = equipo
   const opcion = ruta === null ? null : rutaD3d[ruta.d3d9_11].opcion
   return (
     <section className="panel-equipo" aria-label="Tu tarjeta gráfica en Linux">
@@ -28,13 +28,13 @@ export function TarjetaGraficaEnLinux({ equipo, pci }: { equipo: EquipoEnLinux; 
             <div>
               <dt className="rotulo">Generación</dt>
               <dd>
-                <strong>{familiaGpu[gpu.familia]}</strong>
+                <strong>{familiaGpu[gpu.family]}</strong>
               </dd>
             </div>
             <div>
               <dt className="rotulo">Controlador en Linux</dt>
               <dd>
-                <strong>{controladorLinux[gpu.controlador]}</strong>
+                <strong>{controladorLinux[gpu.driver]}</strong>
               </dd>
             </div>
           </>
@@ -66,12 +66,12 @@ export function TarjetaGraficaEnLinux({ equipo, pci }: { equipo: EquipoEnLinux; 
       </dl>
       {opcion !== null && <CajaCopiar etiqueta="Opción de lanzamiento en Steam" texto={opcion} />}
       {gpu !== null &&
-        gpu.avisos.map((a) => (
+        gpu.warnings.map((a) => (
           <p key={a} className="pequeno nota" data-tono="amarillo">
             {avisoGpu[a]}
           </p>
         ))}
-      {vulkan.soporte !== 'desconocido' && vulkan.origen === 'proyectado' && (
+      {vulkan.support !== 'desconocido' && vulkan.origin === 'proyectado' && (
         <p className="pequeno tenue">Proyección a partir del modelo de tu GPU, no una medición.</p>
       )}
     </section>

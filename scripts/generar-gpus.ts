@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs'
-import { FamiliaGpu, VendorGpu } from '../src/domain/gpu.ts'
+import { GpuFamily, GpuVendor } from '../src/domain/gpu.ts'
 import { chipsetsMesa, conPiso, type Dispositivo, familiaCrocus, familiaIris, idsAmdgpu, idsNvidia, tablaDe } from './gpu-fuentes.ts'
 
 const fuentes = {
@@ -39,9 +39,9 @@ const dispositivos: ReadonlyArray<Dispositivo> = [
 ]
 const tabla = tablaDe(dispositivos)
 
-const bloque = VendorGpu.literals
+const bloque = GpuVendor.literals
   .map((v) => {
-    const familias = FamiliaGpu.literals.flatMap((f) => {
+    const familias = GpuFamily.literals.flatMap((f) => {
       const ids = tabla[v][f]
       return ids === undefined ? [] : [`      ${f}: '${ids}',`]
     })
@@ -68,5 +68,5 @@ ${bloque}
 )
 
 const unicos = new Map(dispositivos.map((d) => [`${d.vendor}:${d.device}`, d.familia]))
-for (const f of FamiliaGpu.literals) console.log(`${f.padEnd(28)}${[...unicos.values()].filter((u) => u === f).length}`)
+for (const f of GpuFamily.literals) console.log(`${f.padEnd(28)}${[...unicos.values()].filter((u) => u === f).length}`)
 console.log(`Escrito ${destino.pathname}`)

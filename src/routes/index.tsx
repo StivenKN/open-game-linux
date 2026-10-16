@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Effect, Schema, SchemaTransformation, Struct } from 'effect'
 import type { FormEvent, ReactNode } from 'react'
-import { FiltroCatalogo } from '../domain/contributions.ts'
-import { EstadoCompatibilidad } from '../domain/compatibility.ts'
+import { CatalogFilter } from '../domain/contributions.ts'
+import { CompatibilityStatus } from '../domain/compatibility.ts'
 import { catalogoFn } from '../fns/catalog.ts'
 import { ChipsFallos } from '../ui/compatibility/FailureChips.tsx'
 import { contar, fecha } from '../ui/format.ts'
@@ -15,7 +15,7 @@ const opcional = <S extends Schema.Constraint>(campo: S) => Schema.catchDecoding
 const TextoBuscado = Schema.Union([Schema.String, Schema.Finite, Schema.Boolean]).pipe(
   Schema.decodeTo(Schema.String, SchemaTransformation.transform<string, string | number | boolean>({ decode: String, encode: (s) => s })),
 )
-const Busqueda = FiltroCatalogo.mapFields((f) => ({
+const Busqueda = CatalogFilter.mapFields((f) => ({
   q: opcional(Schema.optionalKey(TextoBuscado)),
   estado: opcional(f.estado),
   lanzador: opcional(f.lanzador),
@@ -35,10 +35,10 @@ export const Route = createFileRoute('/')({
 })
 
 const alternar = <K extends 'estado' | 'lanzador' | 'sin_anti_cheat'>(
-  filtro: FiltroCatalogo,
+  filtro: CatalogFilter,
   clave: K,
-  valor: NonNullable<FiltroCatalogo[K]>,
-): FiltroCatalogo => (filtro[clave] === valor ? Struct.omit(filtro, [clave]) : { ...filtro, [clave]: valor })
+  valor: NonNullable<CatalogFilter[K]>,
+): CatalogFilter => (filtro[clave] === valor ? Struct.omit(filtro, [clave]) : { ...filtro, [clave]: valor })
 
 // A filter link points at the toggled-off search, which the router's default partial match would call the
 // current page; exact matching leaves aria-current to the filter's own state.
@@ -125,7 +125,7 @@ function Catalogo() {
               Estado
             </h2>
             <ul className="opciones">
-              {EstadoCompatibilidad.literals.map((e) => {
+              {CompatibilityStatus.literals.map((e) => {
                 const etiqueta = estadoCompatibilidad[e]
                 return (
                   <li key={e}>
@@ -229,7 +229,7 @@ function Catalogo() {
   )
 }
 
-function Filtro({ activo, search, cuenta, children }: { activo: boolean; search: FiltroCatalogo; cuenta?: number; children: ReactNode }) {
+function Filtro({ activo, search, cuenta, children }: { activo: boolean; search: CatalogFilter; cuenta?: number; children: ReactNode }) {
   return (
     <Link to="/" search={search} activeOptions={soloIgual} className="opcion" aria-current={activo || undefined}>
       {children}

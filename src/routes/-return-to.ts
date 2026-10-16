@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import { TipoAporte } from '../domain/review.ts'
+import { ContributionType } from '../domain/review.ts'
 
 export type Destino =
   | '/diagnostico/importar'
@@ -9,7 +9,7 @@ export type Destino =
   | `/reportes/${number}/solucion`
   | `/reportes/${number}/solucion?tipoFallo=${number}`
   | '/revision'
-  | `/revision?tipo=${TipoAporte}`
+  | `/revision?tipo=${ContributionType}`
   | '/catalogo/nuevo'
 
 // Resolving against a fixed origin turns `//host/…`, `/\host/…` and absolute URLs into another origin.
@@ -18,7 +18,7 @@ const id = (texto: string | null | undefined) => {
   const n = typeof texto === 'string' && /^[1-9]\d*$/.test(texto) ? Number(texto) : Number.NaN
   return Number.isSafeInteger(n) ? n : undefined
 }
-const esTipoAporte = Schema.is(TipoAporte)
+const esTipoAporte = Schema.is(ContributionType)
 // `new URL` in a try, not `URL.parse`, which browsers before 2024 lack.
 const leerUrl = (texto: string) => {
   try {

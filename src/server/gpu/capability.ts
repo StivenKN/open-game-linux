@@ -1,86 +1,86 @@
-import { alMenos, type RangoVulkan, type VersionVulkan, versionVulkan, type VulkanEquipo } from '../../domain/evaluation.ts'
-import { type AvisoGpu, type ControladorLinux, type EquipoEnLinux, FamiliaGpu, type PciId, type RutaD3d, type RutaLinux, VendorGpu } from '../../domain/gpu.ts'
-import type { Diagnostico } from '../../domain/tables.ts'
+import { atLeast, type VulkanRange, type VulkanVersion, vulkanVersion, type MachineVulkan } from '../../domain/evaluation.ts'
+import { type GpuWarning, type LinuxDriver, type MachineOnLinux, GpuFamily, type PciId, type D3dPath, type LinuxPaths, GpuVendor } from '../../domain/gpu.ts'
+import type { Diagnostic } from '../../domain/tables.ts'
 import { tablaGpu } from './families.generated.ts'
 import { decodificarTramos } from './ranges.ts'
 
-export type ColumnasEquipo = Pick<Diagnostico, 'ram_mb' | 'vram_mb' | 'gpu_pci_id'> &
-  ({ readonly sistema: 'Linux' } & Pick<Diagnostico, 'soporte_vulkan' | 'version_vulkan' | 'controlador'> | { readonly sistema: 'Windows' })
+export type ColumnasEquipo = Pick<Diagnostic, 'ram_mb' | 'vram_mb' | 'gpu_pci_id'> &
+  ({ readonly sistema: 'Linux' } & Pick<Diagnostic, 'soporte_vulkan' | 'version_vulkan' | 'controlador'> | { readonly sistema: 'Windows' })
 
-const v = (mayor: number, menor: number): VersionVulkan => ({ texto: `${mayor}.${menor}`, partes: [mayor, menor] })
+const v = (mayor: number, menor: number): VulkanVersion => ({ text: `${mayor}.${menor}`, parts: [mayor, menor] })
 
 type Politica = {
-  readonly controlador: ControladorLinux
-  readonly vulkan: RangoVulkan | null
-  readonly avisos: ReadonlyArray<{ readonly aviso: AvisoGpu; readonly salvo_con: ControladorLinux | null }>
+  readonly controlador: LinuxDriver
+  readonly vulkan: VulkanRange | null
+  readonly avisos: ReadonlyArray<{ readonly aviso: GpuWarning; readonly salvo_con: LinuxDriver | null }>
 }
 
 const POLITICA = {
   intel_gen5_o_anterior: { controlador: 'i915', vulkan: null, avisos: [] },
   intel_gen6: { controlador: 'i915', vulkan: null, avisos: [] },
   intel_gen7: { controlador: 'i915', vulkan: null, avisos: [{ aviso: 'hasvk_incompleto', salvo_con: null }] },
-  intel_gen7_5: { controlador: 'i915', vulkan: { desde: v(1, 0), hasta: v(1, 1) }, avisos: [{ aviso: 'vulkan_sin_verificar', salvo_con: null }] },
-  intel_gen8: { controlador: 'i915', vulkan: { desde: v(1, 1), hasta: v(1, 2) }, avisos: [{ aviso: 'vulkan_sin_verificar', salvo_con: null }] },
-  intel_gen9_o_posterior: { controlador: 'i915', vulkan: { desde: v(1, 3), hasta: v(1, 4) }, avisos: [] },
+  intel_gen7_5: { controlador: 'i915', vulkan: { from: v(1, 0), to: v(1, 1) }, avisos: [{ aviso: 'vulkan_sin_verificar', salvo_con: null }] },
+  intel_gen8: { controlador: 'i915', vulkan: { from: v(1, 1), to: v(1, 2) }, avisos: [{ aviso: 'vulkan_sin_verificar', salvo_con: null }] },
+  intel_gen9_o_posterior: { controlador: 'i915', vulkan: { from: v(1, 3), to: v(1, 4) }, avisos: [] },
   amd_terascale_o_anterior: { controlador: 'radeon', vulkan: null, avisos: [] },
-  amd_gcn1: { controlador: 'amdgpu', vulkan: { desde: v(1, 3), hasta: v(1, 4) }, avisos: [{ aviso: 'gcn_usar_amdgpu', salvo_con: 'amdgpu' }] },
-  amd_gcn2: { controlador: 'amdgpu', vulkan: { desde: v(1, 3), hasta: v(1, 4) }, avisos: [{ aviso: 'gcn_usar_amdgpu', salvo_con: 'amdgpu' }] },
-  amd_gcn3_o_posterior: { controlador: 'amdgpu', vulkan: { desde: v(1, 3), hasta: v(1, 4) }, avisos: [] },
+  amd_gcn1: { controlador: 'amdgpu', vulkan: { from: v(1, 3), to: v(1, 4) }, avisos: [{ aviso: 'gcn_usar_amdgpu', salvo_con: 'amdgpu' }] },
+  amd_gcn2: { controlador: 'amdgpu', vulkan: { from: v(1, 3), to: v(1, 4) }, avisos: [{ aviso: 'gcn_usar_amdgpu', salvo_con: 'amdgpu' }] },
+  amd_gcn3_o_posterior: { controlador: 'amdgpu', vulkan: { from: v(1, 3), to: v(1, 4) }, avisos: [] },
   nvidia_tesla_o_anterior: { controlador: 'nouveau', vulkan: null, avisos: [{ aviso: 'nvidia_sin_controlador', salvo_con: null }] },
   nvidia_fermi: { controlador: 'nouveau', vulkan: null, avisos: [{ aviso: 'nvidia_sin_controlador', salvo_con: null }] },
-  nvidia_kepler: { controlador: 'nouveau', vulkan: { desde: v(1, 2), hasta: v(1, 2) }, avisos: [{ aviso: 'kepler_470_fin', salvo_con: null }] },
-  nvidia_maxwell_a_volta: { controlador: 'nvidia_580xx', vulkan: { desde: v(1, 4), hasta: v(1, 4) }, avisos: [{ aviso: 'fijar_nvidia_580xx', salvo_con: null }] },
-  nvidia_turing_o_posterior: { controlador: 'nvidia', vulkan: { desde: v(1, 4), hasta: v(1, 4) }, avisos: [] },
-} as const satisfies Record<FamiliaGpu, Politica>
+  nvidia_kepler: { controlador: 'nouveau', vulkan: { from: v(1, 2), to: v(1, 2) }, avisos: [{ aviso: 'kepler_470_fin', salvo_con: null }] },
+  nvidia_maxwell_a_volta: { controlador: 'nvidia_580xx', vulkan: { from: v(1, 4), to: v(1, 4) }, avisos: [{ aviso: 'fijar_nvidia_580xx', salvo_con: null }] },
+  nvidia_turing_o_posterior: { controlador: 'nvidia', vulkan: { from: v(1, 4), to: v(1, 4) }, avisos: [] },
+} as const satisfies Record<GpuFamily, Politica>
 
-const ids: Record<VendorGpu, Partial<Record<FamiliaGpu, string>>> = tablaGpu.ids
+const ids: Record<GpuVendor, Partial<Record<GpuFamily, string>>> = tablaGpu.ids
 
-const familiaPorId: ReadonlyMap<string, FamiliaGpu> = new Map(
-  VendorGpu.literals.flatMap((vendor) =>
-    FamiliaGpu.literals.flatMap((familia) =>
-      decodificarTramos(ids[vendor][familia] ?? '').map((device): [string, FamiliaGpu] => [`${vendor}:${device.toString(16).padStart(4, '0')}`, familia]),
+const familiaPorId: ReadonlyMap<string, GpuFamily> = new Map(
+  GpuVendor.literals.flatMap((vendor) =>
+    GpuFamily.literals.flatMap((familia) =>
+      decodificarTramos(ids[vendor][familia] ?? '').map((device): [string, GpuFamily] => [`${vendor}:${device.toString(16).padStart(4, '0')}`, familia]),
     ),
   ),
 )
 
-const identificar = (pci: PciId | null): { readonly familia: FamiliaGpu; readonly politica: Politica } | null => {
+const identificar = (pci: PciId | null): { readonly familia: GpuFamily; readonly politica: Politica } | null => {
   const familia = pci === null ? undefined : familiaPorId.get(pci)
   return familia === undefined ? null : { familia, politica: POLITICA[familia] }
 }
 
-const vulkanEnLinux = (c: ColumnasEquipo, politica: Politica | null): VulkanEquipo => {
+const vulkanEnLinux = (c: ColumnasEquipo, politica: Politica | null): MachineVulkan => {
   if (c.sistema === 'Linux' && c.soporte_vulkan === 'si') {
-    const version = versionVulkan(c.version_vulkan)
-    return { soporte: 'si', origen: 'medido', rango: version === null ? null : { desde: version, hasta: version } }
+    const version = vulkanVersion(c.version_vulkan)
+    return { support: 'si', origin: 'medido', range: version === null ? null : { from: version, to: version } }
   }
-  if (c.sistema === 'Linux' && c.soporte_vulkan === 'no') return { soporte: 'no', origen: 'medido' }
-  if (politica === null) return { soporte: 'desconocido' }
-  return politica.vulkan === null ? { soporte: 'no', origen: 'proyectado' } : { soporte: 'si', origen: 'proyectado', rango: politica.vulkan }
+  if (c.sistema === 'Linux' && c.soporte_vulkan === 'no') return { support: 'no', origin: 'medido' }
+  if (politica === null) return { support: 'desconocido' }
+  return politica.vulkan === null ? { support: 'no', origin: 'proyectado' } : { support: 'si', origin: 'proyectado', range: politica.vulkan }
 }
 
-const rutas: ReadonlyArray<readonly [VersionVulkan, RutaD3d]> = [
+const rutas: ReadonlyArray<readonly [VulkanVersion, D3dPath]> = [
   [v(1, 4), 'dxvk'],
   [v(1, 3), 'dxvk_2'],
   [v(1, 1), 'dxvk_sarek'],
 ]
 
-const rutaDe = (vulkan: VulkanEquipo): RutaLinux | null => {
-  if (vulkan.soporte === 'no') return { d3d9_11: 'wined3d', d3d12: false }
-  const piso = vulkan.soporte === 'si' ? vulkan.rango?.desde : undefined
+const rutaDe = (vulkan: MachineVulkan): LinuxPaths | null => {
+  if (vulkan.support === 'no') return { d3d9_11: 'wined3d', d3d12: false }
+  const piso = vulkan.support === 'si' ? vulkan.range?.from : undefined
   if (piso === undefined) return null
-  return { d3d9_11: rutas.find(([minimo]) => alMenos(piso, minimo))?.[1] ?? 'wined3d', d3d12: alMenos(piso, v(1, 3)) }
+  return { d3d9_11: rutas.find(([minimo]) => atLeast(piso, minimo))?.[1] ?? 'wined3d', d3d12: atLeast(piso, v(1, 3)) }
 }
 
-const avisosDe = (c: ColumnasEquipo, politica: Politica, vulkan: VulkanEquipo): ReadonlyArray<AvisoGpu> => {
+const avisosDe = (c: ColumnasEquipo, politica: Politica, vulkan: MachineVulkan): ReadonlyArray<GpuWarning> => {
   const medidoEnLinux = c.sistema === 'Linux' ? c.controlador : null
-  const faltaVulkan = vulkan.soporte === 'no' && vulkan.origen === 'medido' && politica.vulkan !== null
+  const faltaVulkan = vulkan.support === 'no' && vulkan.origin === 'medido' && politica.vulkan !== null
   return [
     ...politica.avisos.filter((a) => a.salvo_con === null || a.salvo_con !== medidoEnLinux).map((a) => a.aviso),
     ...(faltaVulkan ? (['vulkan_no_detectado'] as const) : []),
   ]
 }
 
-export const equipoEnLinux = (c: ColumnasEquipo): EquipoEnLinux => {
+export const equipoEnLinux = (c: ColumnasEquipo): MachineOnLinux => {
   const gpu = identificar(c.gpu_pci_id)
   const vulkan = vulkanEnLinux(c, gpu?.politica ?? null)
   return {
@@ -89,7 +89,7 @@ export const equipoEnLinux = (c: ColumnasEquipo): EquipoEnLinux => {
     vram_mb: c.vram_mb,
     vulkan,
     gpu:
-      gpu === null ? null : { familia: gpu.familia, controlador: gpu.politica.controlador, avisos: avisosDe(c, gpu.politica, vulkan) },
-    ruta: rutaDe(vulkan),
+      gpu === null ? null : { family: gpu.familia, driver: gpu.politica.controlador, warnings: avisosDe(c, gpu.politica, vulkan) },
+    paths: rutaDe(vulkan),
   }
 }

@@ -2,9 +2,9 @@
 // row is replaced in one transaction: a rerun converges, and a failed read leaves the last import intact.
 import { Array as Arr, Clock, Effect, Option, Schema, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
-import type { EdicionId } from '../../domain/ids.ts'
-import { interpretarReporte, type ReporteProtonDb, resumirProtonDb } from '../../domain/protondb.ts'
-import { EdicionJuego } from '../../domain/tables.ts'
+import type { EditionId } from '../../domain/ids.ts'
+import { parseReport, type ProtonDbReport, summarizeProtonDb } from '../../domain/protondb.ts'
+import { GameEdition } from '../../domain/tables.ts'
 import { filas, unaFila } from '../rows.ts'
 
 export class ExportacionInvalida extends Schema.TaggedError<ExportacionInvalida>()('ExportacionInvalida', { motivo: Schema.String }) {}
@@ -115,7 +115,7 @@ export async function* elementosDeArreglo(trozos: AsyncIterable<string>): AsyncG
   if (!terminado) throw new ExportacionInvalida({ motivo: 'el archivo está truncado' })
 }
 
-const EdicionSteam = EdicionJuego.mapFields(Struct.pick(['id'])).mapFields(Struct.assign({ app_id: Schema.String }))
+const EdicionSteam = GameEdition.mapFields(Struct.pick(['id'])).mapFields(Struct.assign({ app_id: Schema.String }))
 
 const edicionesSteam = Effect.flatMap(SqlClient.SqlClient, (sql) =>
   filas(
@@ -127,21 +127,21 @@ const edicionesSteam = Effect.flatMap(SqlClient.SqlClient, (sql) =>
   ),
 )
 
-const leer = async (trozos: AsyncIterable<string>, ediciones: ReadonlyMap<string, EdicionId>, hasta: number) => {
+const leer = async (trozos: AsyncIterable<string>, ediciones: ReadonlyMap<string, EditionId>, hasta: number) => {
   let leidos = 0
   let descartados = 0
   let coincidentes = 0
   let exportado = 0
-  const porEdicion = new Map<EdicionId, [ReporteProtonDb, ...ReporteProtonDb[]]>()
+  const porEdicion = new Map<EditionId, [ProtonDbReport, ...ProtonDbReport[]]>()
   for await (const texto of elementosDeArreglo(trozos)) {
     leidos++
-    const reporte = Option.getOrNull(interpretarReporte(texto))
+    const reporte = Option.getOrNull(parseReport(texto))
     // A report dated after the import would move the export date forward and lock out every real export.
-    if (reporte === null || reporte.reportado_en.getTime() > hasta) {
+    if (reporte === null || reporte.reported_at.getTime() > hasta) {
       descartados++
       continue
     }
-    exportado = Math.max(exportado, reporte.reportado_en.getTime())
+    exportado = Math.max(exportado, reporte.reported_at.getTime())
     const edicion = ediciones.get(reporte.app_id)
     if (edicion === undefined) continue
     coincidentes++
@@ -172,7 +172,7 @@ export const importarProtonDb = (trozos: AsyncIterable<string>) =>
     })
     if (lectura.exportado === 0) return yield* new ExportacionInvalida({ motivo: 'ningún reporte válido' })
     const exportado_en = new Date(lectura.exportado)
-    const resumenes = [...lectura.porEdicion].map(([edicion, reportes]) => resumirProtonDb(edicion, reportes, exportado_en))
+    const resumenes = [...lectura.porEdicion].map(([edicion, reportes]) => summarizeProtonDb(edicion, reportes, exportado_en))
 
     yield* sql.withTransaction(
       Effect.gen(function* () {

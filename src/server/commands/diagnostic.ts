@@ -1,19 +1,19 @@
 import { Effect, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import type { Captura, GuardarDiagnostico } from '../../domain/contributions.ts'
-import { type PayloadInvalido, ReglaIncumplida } from '../../domain/errors.ts'
-import { Diagnostico, Distribucion, Equipo } from '../../domain/tables.ts'
+import type { Capture, SaveDiagnostic } from '../../domain/contributions.ts'
+import { type InvalidPayload, RuleViolated } from '../../domain/errors.ts'
+import { Diagnostic, Distribution, Machine } from '../../domain/tables.ts'
 import { exigirUsuario } from '../auth.ts'
 import { capturaDe } from '../diagnostics/payload.ts'
 import { filas, unaFila } from '../rows.ts'
 import type { Escritura } from './contributions.ts'
 
-const IdEquipo = Schema.Struct({ id: Equipo.fields.id })
-const Guardado = Schema.Struct({ id: Diagnostico.fields.id, nuevo: Schema.Boolean })
+const IdEquipo = Schema.Struct({ id: Machine.fields.id })
+const Guardado = Schema.Struct({ id: Diagnostic.fields.id, nuevo: Schema.Boolean })
 
 export const registrarDiagnostico = (
-  g: typeof GuardarDiagnostico.Type,
-): Escritura<{ readonly id: typeof Diagnostico.Type.id; readonly nuevo: boolean }, ReglaIncumplida | PayloadInvalido> =>
+  g: typeof SaveDiagnostic.Type,
+): Escritura<{ readonly id: typeof Diagnostic.Type.id; readonly nuevo: boolean }, RuleViolated | InvalidPayload> =>
   Effect.gen(function* () {
     const usuario = yield* exigirUsuario
     const captura = yield* capturaDe(g.entrada)
@@ -30,7 +30,7 @@ export const registrarDiagnostico = (
                    creado AS (INSERT INTO equipo (usuario_id, alias) SELECT ${usuario.id}, ${g.equipo.alias} WHERE NOT EXISTS (SELECT 1 FROM previo) RETURNING id)
               SELECT id FROM previo UNION ALL SELECT id FROM creado`,
           )
-    if (equipo === undefined) return yield* Effect.fail(new ReglaIncumplida({ regla: 'equipo_ajeno' }))
+    if (equipo === undefined) return yield* Effect.fail(new RuleViolated({ rule: 'equipo_ajeno' }))
 
     const soloLinux =
       captura.sistema === 'Linux'
@@ -72,7 +72,7 @@ export const registrarDiagnostico = (
     )
   })
 
-type DistribucionCapturada = Extract<Captura, { readonly sistema: 'Linux' }>['distribucion']
+type DistribucionCapturada = Extract<Capture, { readonly sistema: 'Linux' }>['distribucion']
 
 /**
  * The distribucion row for a captured (nombre, version), created on first sight. Two statements on
@@ -83,6 +83,6 @@ const distribucionDe = (d: DistribucionCapturada) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     yield* sql`INSERT INTO distribucion (nombre, version) VALUES (${d.nombre}, ${d.version}) ON CONFLICT (nombre, version) DO NOTHING`
-    const fila = yield* unaFila(Schema.Struct({ id: Distribucion.fields.id }), sql`SELECT id FROM distribucion WHERE nombre = ${d.nombre} AND version = ${d.version}`)
+    const fila = yield* unaFila(Schema.Struct({ id: Distribution.fields.id }), sql`SELECT id FROM distribucion WHERE nombre = ${d.nombre} AND version = ${d.version}`)
     return fila.id
   })

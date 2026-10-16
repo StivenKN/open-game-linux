@@ -1,8 +1,8 @@
 import { createFileRoute, Link, notFound, redirect, useRouter } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import type { ReactNode } from 'react'
-import { avisoTransicionInvalida, type AprobacionBloqueada, type Codificado, type ReglaIncumplida, type TransicionInvalida } from '../domain/errors.ts'
-import { AporteRef, Decision, TipoAporte } from '../domain/review.ts'
+import { invalidTransitionNotice, type ApprovalBlocked, type Encoded, type RuleViolated, type InvalidTransition } from '../domain/errors.ts'
+import { ContributionRef, Decision, ContributionType } from '../domain/review.ts'
 import { colaFn, decidirFn } from '../fns/review.ts'
 import { Chip, Insignia } from '../ui/Badge.tsx'
 import { ErrorCampo } from '../ui/FieldError.tsx'
@@ -12,7 +12,7 @@ import { bloqueo, estadoRevision, resultado, tipoFallo } from '../ui/vocabulary.
 import { volverAqui } from './-return-to.ts'
 
 export const Route = createFileRoute('/revision')({
-  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipo: Schema.optionalKey(TipoAporte) })),
+  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ tipo: Schema.optionalKey(ContributionType) })),
   beforeLoad: ({ context, location }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
     if (context.visitante.rol === 'usuario') throw notFound()
@@ -23,7 +23,7 @@ export const Route = createFileRoute('/revision')({
   component: Revision,
 })
 
-const pestanas = { reporte: 'Reportes', perfil: 'Perfiles', solucion: 'Soluciones' } as const satisfies Record<TipoAporte, string>
+const pestanas = { reporte: 'Reportes', perfil: 'Perfiles', solucion: 'Soluciones' } as const satisfies Record<ContributionType, string>
 
 type Cola = Awaited<ReturnType<typeof colaFn>>
 type ElementoDe<T extends Cola['tipo']> = Extract<Cola, { tipo: T }>['elementos'][number]
@@ -38,7 +38,7 @@ function Revision() {
         Aprobar exige evidencia verificable. Lo pendiente no cuenta en ningún resumen; lo aprobado se puede retirar si deja de ser válido.
       </p>
       <nav aria-label="Tipo de aporte" className="fila pestanas">
-        {TipoAporte.literals.map((t) => (
+        {ContributionType.literals.map((t) => (
           <Link key={t} to="/revision" search={{ tipo: t }} aria-current={t === cola.tipo ? 'page' : undefined} className={t === cola.tipo ? 'boton' : 'boton-secundario'}>
             {pestanas[t]}
           </Link>
@@ -71,19 +71,19 @@ function Revision() {
   )
 }
 
-const FormDecision = Schema.Struct({ ref: AporteRef, decision: Decision })
+const FormDecision = Schema.Struct({ ref: ContributionRef, decision: Decision })
 
-function Elemento({ refAporte, elemento, children }: { refAporte: AporteRef; elemento: ElementoDe<Cola['tipo']>; children: ReactNode }) {
+function Elemento({ refAporte, elemento, children }: { refAporte: ContributionRef; elemento: ElementoDe<Cola['tipo']>; children: ReactNode }) {
   const router = useRouter()
   const r = useAccion(FormDecision, decidirFn, {
-    alFallar: (f: Codificado<ReglaIncumplida | TransicionInvalida | AprobacionBloqueada>): Errores => {
+    alFallar: (f: Encoded<RuleViolated | InvalidTransition | ApprovalBlocked>): Errores => {
       switch (f._tag) {
         case 'ReglaIncumplida':
           return erroresDeRegla(f)
         case 'TransicionInvalida':
-          return { decision: avisoTransicionInvalida.mensaje }
+          return { decision: invalidTransitionNotice.message }
         case 'AprobacionBloqueada':
-          return { decision: f.bloqueos.map((b) => bloqueo[b]).join(' ') }
+          return { decision: f.blockers.map((b) => bloqueo[b]).join(' ') }
       }
     },
     alCompletar: () => router.invalidate(),

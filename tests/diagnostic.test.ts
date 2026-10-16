@@ -2,8 +2,8 @@ import { expect, layer } from '@effect/vitest'
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { readFileSync } from 'node:fs'
-import { NoAutenticado } from '../src/domain/errors.ts'
-import { DiagnosticoId, EquipoId, UsuarioId } from '../src/domain/ids.ts'
+import { Unauthenticated } from '../src/domain/errors.ts'
+import { DiagnosticId, MachineId, UserId } from '../src/domain/ids.ts'
 import { registrarDiagnostico } from '../src/server/commands/diagnostic.ts'
 import { Visitante } from '../src/server/auth.ts'
 import { evaluarSinGuardar, type FilaMatriz, miDiagnostico, misEquipos } from '../src/server/queries/diagnostic.ts'
@@ -21,14 +21,14 @@ const bibliotecaWindows = [
   { app_id: 292030, nombre: 'The Witcher 3: Wild Hunt' },
 ]
 
-const como = (id: string) => Effect.provideService(Visitante, Option.some({ id: Schema.decodeSync(UsuarioId)(id), alias: id, rol: 'usuario' as const }))
+const como = (id: string) => Effect.provideService(Visitante, Option.some({ id: Schema.decodeSync(UserId)(id), alias: id, rol: 'usuario' as const }))
 const comoInvitado = Effect.provideService(Visitante, Option.none())
 
 const guardar = (g: Omit<Parameters<typeof registrarDiagnostico>[0], 'con_biblioteca'> & { readonly con_biblioteca?: boolean }) =>
   registrarDiagnostico({ con_biblioteca: false, ...g })
 
 const nuevo = (alias: string) => ({ _tag: 'nuevo' as const, alias })
-const existente = (id: number) => ({ _tag: 'existente' as const, id: Schema.decodeSync(EquipoId)(id) })
+const existente = (id: number) => ({ _tag: 'existente' as const, id: Schema.decodeSync(MachineId)(id) })
 
 const Cuenta = Schema.NonEmptyArray(Schema.Struct({ n: Schema.Int }))
 const contar = (f: Base, tabla: 'diagnostico' | 'equipo' | 'distribucion') =>
@@ -90,7 +90,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       const antes = yield* contar(f, 'diagnostico')
       for (const equipo of [existente(f.equipo), existente(999999)]) {
         const fallo = yield* Effect.flip(guardar({ equipo, entrada: payload() }).pipe(como(f.revisor)))
-        expect(fallo).toMatchObject({ _tag: 'ReglaIncumplida', regla: 'equipo_ajeno' })
+        expect(fallo).toMatchObject({ _tag: 'ReglaIncumplida', rule: 'equipo_ajeno' })
       }
       expect(yield* contar(f, 'diagnostico')).toBe(antes)
     })))
@@ -110,7 +110,7 @@ layer(PgTest)('registrarDiagnostico', (it) => {
       const hechos = { nivel_x86: 'v3', arranque_seguro: 'activo', tpm: '2.0', zram_mb: 8192, swap_mb: 0 }
       const con = yield* guardar({ equipo: nuevo('Con hechos'), entrada: payload(hechos) }).pipe(como(f.autor))
       const sin = yield* guardar({ equipo: nuevo('Sin hechos'), entrada: payload() }).pipe(como(f.autor))
-      const leer = (id: number) => Effect.map(miDiagnostico(Schema.decodeSync(DiagnosticoId)(id)).pipe(como(f.autor)), (d) => d.captura)
+      const leer = (id: number) => Effect.map(miDiagnostico(Schema.decodeSync(DiagnosticId)(id)).pipe(como(f.autor)), (d) => d.captura)
       expect(yield* leer(con.id)).toMatchObject(hechos)
       expect(yield* leer(sin.id)).toMatchObject({ nivel_x86: null, arranque_seguro: null, tpm: null, zram_mb: null, swap_mb: null })
     })))
@@ -118,9 +118,9 @@ layer(PgTest)('registrarDiagnostico', (it) => {
   it.effect('sin sesión o con un payload ilegible no guarda nada', conBase((f) =>
     Effect.gen(function* () {
       const antes = yield* contar(f, 'diagnostico')
-      expect(yield* Effect.flip(guardar({ equipo: nuevo('x'), entrada: payload() }).pipe(comoInvitado))).toBeInstanceOf(NoAutenticado)
+      expect(yield* Effect.flip(guardar({ equipo: nuevo('x'), entrada: payload() }).pipe(comoInvitado))).toBeInstanceOf(Unauthenticated)
       const ilegible = yield* Effect.flip(guardar({ equipo: nuevo('x'), entrada: { _tag: 'detector', texto: 'no es un payload' } }).pipe(como(f.autor)))
-      expect(ilegible).toMatchObject({ _tag: 'PayloadInvalido', motivo: 'ilegible' })
+      expect(ilegible).toMatchObject({ _tag: 'PayloadInvalido', reason: 'ilegible' })
       expect(yield* contar(f, 'diagnostico')).toBe(antes)
       expect(yield* f.sql`SELECT count(*)::int AS n FROM equipo WHERE alias = 'x'`).toEqual([{ n: 0 }])
     })))
@@ -143,8 +143,8 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       expect(yield* Effect.all([contar(f, 'diagnostico'), contar(f, 'equipo'), contar(f, 'distribucion')])).toEqual(antes)
       expect(captura.ram_mb).toBe(15766)
       const fila = (titulo: string) => matriz.find((m) => m.titulo === titulo)
-      expect(fila('Juego')).toMatchObject({ estado: 'sin_evidencia', pruebas: 0, perfil: { id: f.perfil, evaluacion: { veredicto: 'no_cumple' } } })
-      expect(fila('Juego')?.perfil?.evaluacion.comprobaciones.map((c) => [c.requisito, c.estado])).toEqual([['ram', 'no_cumple'], ['vram', 'desconocido']])
+      expect(fila('Juego')).toMatchObject({ estado: 'sin_evidencia', pruebas: 0, perfil: { id: f.perfil, evaluacion: { verdict: 'no_cumple' } } })
+      expect(fila('Juego')?.perfil?.evaluacion.checks.map((c) => [c.requirement, c.status])).toEqual([['ram', 'no_cumple'], ['vram', 'desconocido']])
       expect(fila('Otro juego')?.perfil).toBeNull()
     })))
 
@@ -152,9 +152,9 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
     Effect.gen(function* () {
       const { equipo } = yield* evaluarSinGuardar(payload({ gpu_pci_id: '8086:9a49', controlador: 'i915' }))
       expect(equipo).toMatchObject({
-        vulkan: { soporte: 'si', origen: 'proyectado', rango: { desde: { texto: '1.3' }, hasta: { texto: '1.4' } } },
-        gpu: { familia: 'intel_gen9_o_posterior', controlador: 'i915', avisos: [] },
-        ruta: { d3d9_11: 'dxvk_2', d3d12: true },
+        vulkan: { support: 'si', origin: 'proyectado', range: { from: { text: '1.3' }, to: { text: '1.4' } } },
+        gpu: { family: 'intel_gen9_o_posterior', driver: 'i915', warnings: [] },
+        paths: { d3d9_11: 'dxvk_2', d3d12: true },
       })
     })))
 
@@ -167,15 +167,15 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       const entrada = payload({ gpu_pci_id: '10de:1187', controlador: 'nouveau', nivel_x86: 'v1' })
       const rutas = (matriz: ReadonlyArray<FilaMatriz>) => matriz.map((m) => [m.titulo, m.ruta])
       const esperado = [
-        ['Juego', { estado: 'con_ruta', camino: 'dxvk_sarek' }],
-        ['Otro juego', { estado: 'sin_ruta', motivo: 'cpu' }],
+        ['Juego', { status: 'con_ruta', path: 'dxvk_sarek' }],
+        ['Otro juego', { status: 'sin_ruta', reason: 'cpu' }],
       ]
       const evaluado = yield* evaluarSinGuardar(entrada)
       expect(rutas(evaluado.matriz)).toEqual(esperado)
       const { id } = yield* guardar({ equipo: existente(f.equipo), entrada }).pipe(como(f.autor))
       const guardado = yield* miDiagnostico(id).pipe(como(f.autor))
       expect(rutas(guardado.matriz)).toEqual(esperado)
-      expect(guardado.distribuciones.evaluadas.map((d) => [d.clave, d.veredicto])).toEqual([
+      expect(guardado.distribuciones.evaluadas.map((d) => [d.key, d.verdict])).toEqual([
         ['mint_22', 'con_ajustes'],
         ['ubuntu_2404', 'con_ajustes'],
         ['fedora', 'con_ajustes'],
@@ -204,7 +204,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       expect(guardado.matriz.map((m) => m.titulo)).toEqual(['Grand Theft Auto V', 'Juego', 'Otro juego'])
       expect(guardado.biblioteca).toEqual({
         total: 4,
-        desconocidos: [
+        unknown: [
           { app_id: 9999990, nombre: 'Café "Noir": Édition™' },
           { app_id: 227300, nombre: 'Euro Truck Simulator 2' },
           { app_id: 292030, nombre: 'The Witcher 3: Wild Hunt' },
@@ -228,16 +228,16 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       const evaluado = yield* evaluarSinGuardar(payloadWindows()).pipe(comoInvitado)
       expect(yield* Effect.all([contar(f, 'diagnostico'), contar(f, 'equipo')])).toEqual(antes)
       expect(enBiblioteca(evaluado.matriz)).toEqual(['Grand Theft Auto V'])
-      expect(evaluado.biblioteca?.desconocidos.map((j) => j.app_id)).toEqual([9999990, 227300, 292030])
+      expect(evaluado.biblioteca?.unknown.map((j) => j.app_id)).toEqual([9999990, 227300, 292030])
     })))
 
   it.effect('miDiagnostico es solo del dueño; misEquipos de un invitado está vacío', conBase((f) =>
     Effect.gen(function* () {
       yield* perfiles(f)
-      const id = Schema.decodeSync(DiagnosticoId)(f.diag)
+      const id = Schema.decodeSync(DiagnosticId)(f.diag)
       const propio = yield* miDiagnostico(id).pipe(como(f.autor))
       expect(propio).toMatchObject({ alias: 'portátil', captura: { sistema: 'Linux', distribucion: { nombre: 'Linux Mint', version: '22' }, ram_mb: 8192 } })
-      expect(propio.matriz.find((m) => m.titulo === 'Juego')?.perfil?.evaluacion.veredicto).toBe('no_cumple')
+      expect(propio.matriz.find((m) => m.titulo === 'Juego')?.perfil?.evaluacion.verdict).toBe('no_cumple')
       expect(yield* Effect.flip(miDiagnostico(id).pipe(como(f.revisor)))).toMatchObject({ _tag: 'NoEncontrado' })
       expect(yield* misEquipos().pipe(comoInvitado)).toEqual([])
     })))

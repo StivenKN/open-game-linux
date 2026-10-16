@@ -1,5 +1,5 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { ReporteId } from '../../domain/ids.ts'
+import { ReportId } from '../../domain/ids.ts'
 import { informeProtonFn } from '../../fns/upstream.ts'
 import { CajaCopiar } from '../../ui/compatibility/CopyBox.tsx'
 import { SelloEjemplo } from '../../ui/DemoStamp.tsx'
@@ -7,7 +7,7 @@ import { motivoSinInforme } from '../../ui/vocabulary.ts'
 import { idDeRuta } from '../-ids.ts'
 import { volverAqui } from '../-return-to.ts'
 
-const reporteId = idDeRuta(ReporteId)
+const reporteId = idDeRuta(ReportId)
 
 export const Route = createFileRoute('/reportes/$reporteId/proton')({
   params: { parse: (p) => ({ reporteId: reporteId(p.reporteId) }), stringify: (p) => ({ reporteId: String(p.reporteId) }) },
@@ -32,7 +32,7 @@ function InformeParaValve() {
       <h1>{reporte.juego}</h1>
       {x._tag === 'no_aplica' ? (
         <section className="tarjeta pila">
-          <p>{motivoSinInforme[x.motivo]}</p>
+          <p>{motivoSinInforme[x.reason]}</p>
           <p>{volver}</p>
         </section>
       ) : (
@@ -51,12 +51,12 @@ function InformeParaValve() {
                 En Steam, clic derecho sobre el juego &gt; Propiedades &gt; General. Pon esto en «Opciones de lanzamiento» y juega hasta que
                 aparezca el fallo. Si ya tenías opciones, añade PROTON_LOG=1 al principio y deja %command% una sola vez.
               </p>
-              <CajaCopiar etiqueta="Opciones de lanzamiento" texto={x.comando_registro} />
+              <CajaCopiar etiqueta="Opciones de lanzamiento" texto={x.log_command} />
             </li>
             <li className="tarjeta pila">
               <b>Comprime el registro</b>
               <p className="texto-largo">Proton lo deja en tu carpeta personal. Comprimido pesa mucho menos y GitHub lo acepta como adjunto.</p>
-              <CajaCopiar etiqueta="Comprimir el registro" texto={x.comando_comprimir} />
+              <CajaCopiar etiqueta="Comprimir el registro" texto={x.compress_command} />
             </li>
             <li className="tarjeta pila">
               <b>Busca si ya hay un informe</b>
@@ -65,7 +65,7 @@ function InformeParaValve() {
                 lugar de abrir otro.
               </p>
               <p>
-                <a href={x.buscar} target="_blank" rel="noreferrer">
+                <a href={x.search} target="_blank" rel="noreferrer">
                   Buscar informes del AppID {x.appid}
                 </a>
               </p>
@@ -76,8 +76,8 @@ function InformeParaValve() {
                 Arrastra steam-{x.appid}.log.gz al informe y marca las casillas «I confirm» solo si son ciertas.
               </p>
               <p className="fila">
-                {x.abrir._tag === 'enlace' ? (
-                  <a className="boton" href={x.abrir.url} target="_blank" rel="noreferrer">
+                {x.open._tag === 'enlace' ? (
+                  <a className="boton" href={x.open.url} target="_blank" rel="noreferrer">
                     Abrir el informe en GitHub
                   </a>
                 ) : (
@@ -86,12 +86,12 @@ function InformeParaValve() {
                   </span>
                 )}
               </p>
-              <p className="pequeno nota" data-tono={x.cuerpo_en_enlace ? 'azul' : 'amarillo'}>
-                {x.cuerpo_en_enlace
+              <p className="pequeno nota" data-tono={x.body_in_link ? 'azul' : 'amarillo'}>
+                {x.body_in_link
                   ? 'Si el formulario no trae el informe, reemplaza su texto con este.'
                   : 'El informe es demasiado largo para el enlace: pega este texto en el formulario.'}
               </p>
-              <CajaCopiar etiqueta={`Informe: ${x.titulo}`} texto={x.cuerpo} />
+              <CajaCopiar etiqueta={`Informe: ${x.title}`} texto={x.body} />
             </li>
           </ol>
           <p>{volver}</p>

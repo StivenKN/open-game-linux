@@ -2,11 +2,11 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useState } from 'react'
-import { discrepancias, NuevoReporte } from '../../domain/contributions.ts'
-import { type Codificado, discrepanciasPerfil, type PerfilNoComparable, type ReglaIncumplida } from '../../domain/errors.ts'
-import { FamiliaCapa, exigeFallo, Resultado } from '../../domain/literals.ts'
-import { JuegoId, PerfilId, type ReporteId } from '../../domain/ids.ts'
-import { informeProtonPosible } from '../../domain/upstream.ts'
+import { mismatches, NewReport } from '../../domain/contributions.ts'
+import { type Encoded, profileMismatches, type IncomparableProfile, type RuleViolated } from '../../domain/errors.ts'
+import { LayerFamily, requiresFailure, Outcome } from '../../domain/literals.ts'
+import { GameId, ProfileId, type ReportId } from '../../domain/ids.ts'
+import { protonReportPossible } from '../../domain/upstream.ts'
 import { opcionesReporteFn, registrarReporteFn } from '../../fns/contributions.ts'
 import { ErrorCampo } from '../../ui/FieldError.tsx'
 import { momento } from '../../ui/format.ts'
@@ -16,12 +16,12 @@ import { estadoRevision, resultado as etiquetaResultado, tipoFallo } from '../..
 import { idDeRuta } from '../-ids.ts'
 import { volverAqui } from '../-return-to.ts'
 
-const juegoId = idDeRuta(JuegoId)
+const juegoId = idDeRuta(GameId)
 
 export const Route = createFileRoute('/juegos/$juegoId_/reportar')({
   params: { parse: (p) => ({ juegoId: juegoId(p.juegoId) }), stringify: (p) => ({ juegoId: String(p.juegoId) }) },
   // The router already parses `?perfil=7` into a number.
-  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ perfil: Schema.optionalKey(PerfilId) })),
+  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ perfil: Schema.optionalKey(ProfileId) })),
   beforeLoad: ({ context, location }) => {
     if (context.visitante === null) throw redirect({ to: '/entrar', search: volverAqui(location) })
   },
@@ -32,7 +32,7 @@ export const Route = createFileRoute('/juegos/$juegoId_/reportar')({
 })
 
 type Opciones = Awaited<ReturnType<typeof opcionesReporteFn>>
-type Enviado = { readonly id: ReporteId; readonly conFallos: boolean; readonly proton: boolean }
+type Enviado = { readonly id: ReportId; readonly conFallos: boolean; readonly proton: boolean }
 
 function Reportar() {
   const opciones = Route.useLoaderData()
@@ -93,17 +93,17 @@ const nombres = (o: Opciones) => {
     const c = o.capas.find((x) => x.id === id)
     return c === undefined ? 'otra capa' : `${c.familia} ${c.variante} ${c.version}`
   }
-  return (d: Codificado<PerfilNoComparable>['discrepancias'][number]): readonly [string, string] => {
-    switch (d.de) {
+  return (d: Encoded<IncomparableProfile>['mismatches'][number]): readonly [string, string] => {
+    switch (d.aspect) {
       case 'edicion':
-        return [o.ediciones.find((e) => e.id === d.esperado)?.lanzador ?? 'otra edición', o.ediciones.find((e) => e.id === d.observado)?.lanzador ?? 'otra edición']
+        return [o.ediciones.find((e) => e.id === d.expected)?.lanzador ?? 'otra edición', o.ediciones.find((e) => e.id === d.actual)?.lanzador ?? 'otra edición']
       case 'capa':
-        return [capa(d.esperado), capa(d.observado)]
+        return [capa(d.expected), capa(d.actual)]
       case 'distribucion':
-        return [distribuciones.get(d.esperado) ?? 'otra distribución', distribuciones.get(d.observado) ?? 'otra distribución']
+        return [distribuciones.get(d.expected) ?? 'otra distribución', distribuciones.get(d.actual) ?? 'otra distribución']
       case 'arquitectura':
       case 'version_juego':
-        return [d.esperado, d.observado]
+        return [d.expected, d.actual]
     }
   }
 }
@@ -116,10 +116,10 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
   const [edicionId, setEdicionId] = useState(elegido?.edicion_id ?? ediciones.at(0)?.id)
   const [tipoCapa, setTipoCapa] = useState<'existente' | 'nueva'>('existente')
   const [capaId, setCapaId] = useState(elegido?.version_capa_id ?? capas.at(0)?.id)
-  const [capaNueva, setCapaNueva] = useState<{ readonly familia: FamiliaCapa; readonly variante: string }>({ familia: 'Wine', variante: '' })
+  const [capaNueva, setCapaNueva] = useState<{ readonly familia: LayerFamily; readonly variante: string }>({ familia: 'Wine', variante: '' })
   const [versionJuego, setVersionJuego] = useState(elegido?.version_juego_objetivo ?? '')
   const [perfilId, setPerfilId] = useState(elegido === undefined ? nulo : String(elegido.id))
-  const [resultado, setResultado] = useState<Resultado>('funciona')
+  const [resultado, setResultado] = useState<Outcome>('funciona')
   const [fallos, setFallos] = useState<ReadonlyArray<number>>([])
   const [siguienteFallo, setSiguienteFallo] = useState(0)
 
@@ -128,19 +128,19 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
     diagnostico !== undefined && edicionId !== undefined && capaId !== undefined && tipoCapa === 'existente'
       ? { edicion_id: edicionId, version_capa_id: capaId, distribucion_id: diagnostico.distribucion_id, arquitectura: diagnostico.arquitectura, version_juego: versionJuego.trim() }
       : null
-  const comparables = perfiles.filter((p) => p.id === perfilElegido || (prueba !== null && discrepancias(prueba, p).length === 0))
+  const comparables = perfiles.filter((p) => p.id === perfilElegido || (prueba !== null && mismatches(prueba, p).length === 0))
   const perfilValor = comparables.some((p) => String(p.id) === perfilId) ? perfilId : nulo
 
   const nombreDe = nombres(opciones)
-  const r = useAccion(NuevoReporte, registrarReporteFn, {
-    alFallar: (f: Codificado<ReglaIncumplida | PerfilNoComparable>): Errores => {
+  const r = useAccion(NewReport, registrarReporteFn, {
+    alFallar: (f: Encoded<RuleViolated | IncomparableProfile>): Errores => {
       switch (f._tag) {
         case 'ReglaIncumplida':
           return erroresDeRegla(f)
         case 'PerfilNoComparable': {
           const errores: Record<string, string> = {}
-          for (const d of f.discrepancias) {
-            const { campo: c, mensaje } = discrepanciasPerfil[d.de]
+          for (const d of f.mismatches) {
+            const { field: c, message: mensaje } = profileMismatches[d.aspect]
             errores[c] = [errores[c], mensaje(...nombreDe(d))].filter((m) => m !== undefined).join(' ')
           }
           return errores
@@ -150,7 +150,7 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
     alCompletar: (v) => {
       const capa = tipoCapa === 'existente' ? capas.find((c) => c.id === capaId) : capaNueva
       const lanzador = ediciones.find((e) => e.id === edicionId)?.lanzador
-      const proton = capa !== undefined && lanzador !== undefined && informeProtonPosible({ lanzador, familia: capa.familia, variante: capa.variante.trim(), resultado })
+      const proton = capa !== undefined && lanzador !== undefined && protonReportPossible({ lanzador, familia: capa.familia, variante: capa.variante.trim(), resultado })
       alEnviar({ id: v.id, conFallos: fallos.length > 0, proton })
     },
   })
@@ -212,9 +212,9 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
               <select
                 {...campo(r.errores, 'version_capa[familia]')}
                 value={capaNueva.familia}
-                onChange={(e) => setCapaNueva({ ...capaNueva, familia: FamiliaCapa.literals.find((f) => f === e.currentTarget.value) ?? capaNueva.familia })}
+                onChange={(e) => setCapaNueva({ ...capaNueva, familia: LayerFamily.literals.find((f) => f === e.currentTarget.value) ?? capaNueva.familia })}
               >
-                {FamiliaCapa.literals.map((f) => (
+                {LayerFamily.literals.map((f) => (
                   <option key={f}>{f}</option>
                 ))}
               </select>
@@ -267,7 +267,7 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
       <fieldset className="grupo">
         <legend>Resultado</legend>
         <div className="fila">
-          {Resultado.literals.map((valor) => (
+          {Outcome.literals.map((valor) => (
             <label key={valor} className="casilla">
               <input type="radio" name="resultado" value={valor} checked={resultado === valor} onChange={() => setResultado(valor)} />
               {etiquetaResultado[valor].texto}
@@ -279,7 +279,7 @@ function FormReporte({ opciones, alEnviar }: { opciones: Opciones; alEnviar: (en
       <fieldset className="grupo">
         <legend>Fallos observados</legend>
         <p className="pequeno tenue">
-          {exigeFallo[resultado]
+          {requiresFailure[resultado]
             ? 'Indica al menos un tipo de fallo. Si no sabes la causa, elige «Otro» y describe el síntoma.'
             : 'Opcional: anota cualquier problema aunque el juego funcione.'}
         </p>

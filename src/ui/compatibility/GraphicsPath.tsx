@@ -1,5 +1,5 @@
-import type { NivelX86 } from '../../domain/platform.ts'
-import type { RutaJuego } from '../../domain/graphics-path.ts'
+import type { X86Level } from '../../domain/platform.ts'
+import type { GamePath } from '../../domain/graphics-path.ts'
 import { Insignia } from '../Badge.tsx'
 import { camino, etiquetaRuta, fraseRuta } from '../vocabulary.ts'
 
@@ -7,9 +7,9 @@ import { camino, etiquetaRuta, fraseRuta } from '../vocabulary.ts'
  * The hardware-only graphics path for one game. It stands apart from the community state and the
  * profile check: it needs no reports. `minimo` is the game's minimum x86-64 level.
  */
-export function RutaGrafica({ ruta, minimo, orientativa }: { ruta: RutaJuego; minimo: NivelX86 | null; orientativa: boolean }) {
+export function RutaGrafica({ ruta, minimo, orientativa }: { ruta: GamePath; minimo: X86Level | null; orientativa: boolean }) {
   // The warning and launch option follow the path wherever it shows, a certain floor included.
-  const visible = ruta.estado === 'con_ruta' ? ruta.camino : ruta.estado === 'sin_datos' ? ruta.al_menos : null
+  const visible = ruta.status === 'con_ruta' ? ruta.path : ruta.status === 'sin_datos' ? ruta.at_least : null
   const { nota, opcion, tono } = visible === null ? { nota: null, opcion: null, tono: null } : camino[visible]
   return (
     <div className="pila">

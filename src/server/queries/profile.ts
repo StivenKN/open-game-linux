@@ -1,17 +1,17 @@
 import { Effect, Option, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
-import { condiciones, evaluar } from '../../domain/evaluation.ts'
-import { NoEncontrado } from '../../domain/errors.ts'
-import { PerfilId } from '../../domain/ids.ts'
-import { EstadoRevision, estadosVigentes } from '../../domain/review.ts'
-import { FamiliaCapa } from '../../domain/literals.ts'
-import { Dependencia, EdicionJuego, Juego, PasoConfiguracion, PerfilConfiguracion, PerfilDependencia } from '../../domain/tables.ts'
-import { exportarFix, NumeroPr } from '../../domain/upstream.ts'
+import { requirements, evaluate } from '../../domain/evaluation.ts'
+import { NotFound } from '../../domain/errors.ts'
+import { ProfileId } from '../../domain/ids.ts'
+import { ReviewStatus, activeStatuses } from '../../domain/review.ts'
+import { LayerFamily } from '../../domain/literals.ts'
+import { Dependency, GameEdition, Game, ProfileStep, Profile, ProfileDependency } from '../../domain/tables.ts'
+import { exportFix, PrNumber } from '../../domain/upstream.ts'
 import { equipoEnLinux } from '../gpu/capability.ts'
 import { esDemo, etiquetaCapa, etiquetaDistribucion } from './labels.ts'
 import { diagnosticoDelVisitante } from './game.ts'
 
-const FilaPerfil = PerfilConfiguracion.mapFields(
+const FilaPerfil = Profile.mapFields(
   Struct.pick([
     'id',
     'titulo',
@@ -29,12 +29,12 @@ const FilaPerfil = PerfilConfiguracion.mapFields(
   ]),
 ).mapFields(
   Struct.assign({
-    estado_revision: EstadoRevision.pick(estadosVigentes),
-    juego_id: Juego.fields.id,
-    juego: Juego.fields.titulo,
+    estado_revision: ReviewStatus.pick(activeStatuses),
+    juego_id: Game.fields.id,
+    juego: Game.fields.titulo,
     lanzador: Schema.String,
-    identificador_externo: EdicionJuego.fields.identificador_externo,
-    familia: FamiliaCapa,
+    identificador_externo: GameEdition.fields.identificador_externo,
+    familia: LayerFamily,
     distribucion: Schema.String,
     capa: Schema.String,
     autor: Schema.String,
@@ -42,19 +42,19 @@ const FilaPerfil = PerfilConfiguracion.mapFields(
   }),
 )
 
-const FilaArreglo = Schema.Struct({ pr: NumeroPr, registrado_en: Schema.Date })
+const FilaArreglo = Schema.Struct({ pr: PrNumber, registrado_en: Schema.Date })
 
-const FilaPaso = PasoConfiguracion.mapFields(Struct.pick(['orden', 'titulo', 'instruccion']))
+const FilaPaso = ProfileStep.mapFields(Struct.pick(['orden', 'titulo', 'instruccion']))
 
-const FilaDependencia = PerfilDependencia.mapFields(Struct.pick(['version_requerida', 'obligatoria', 'instruccion_instalacion'])).mapFields(
-  Struct.assign(Struct.pick(Dependencia.fields, ['nombre', 'gestor', 'descripcion'])),
+const FilaDependencia = ProfileDependency.mapFields(Struct.pick(['version_requerida', 'obligatoria', 'instruccion_instalacion'])).mapFields(
+  Struct.assign(Struct.pick(Dependency.fields, ['nombre', 'gestor', 'descripcion'])),
 )
 
-export const perfil = (id: PerfilId) =>
+export const perfil = (id: ProfileId) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     const fila = yield* SqlSchema.findOneOption({
-      Request: PerfilId,
+      Request: ProfileId,
       Result: FilaPerfil,
       execute: (id) => sql`
         SELECT p.id, p.titulo, p.revision, p.revisado_en, p.arquitectura, p.version_juego_objetivo, p.ram_min_mb, p.vram_min_mb,
@@ -69,19 +69,19 @@ export const perfil = (id: PerfilId) =>
         JOIN distribucion dist ON dist.id = p.distribucion_id
         JOIN version_capa vc ON vc.id = p.version_capa_id
         JOIN usuario u ON u.id = p.autor_id
-        WHERE p.id = ${id} AND p.estado_revision IN ${sql.in(estadosVigentes)}`,
+        WHERE p.id = ${id} AND p.estado_revision IN ${sql.in(activeStatuses)}`,
     })(id)
-    if (Option.isNone(fila)) return yield* new NoEncontrado()
+    if (Option.isNone(fila)) return yield* new NotFound()
     const p = fila.value
 
     const pasos = yield* SqlSchema.findAll({
-      Request: PerfilId,
+      Request: ProfileId,
       Result: FilaPaso,
       execute: (id) => sql`SELECT orden, titulo, instruccion FROM paso_configuracion WHERE perfil_id = ${id} ORDER BY orden`,
     })(id)
 
     const dependencias = yield* SqlSchema.findAll({
-      Request: PerfilId,
+      Request: ProfileId,
       Result: FilaDependencia,
       execute: (id) => sql`
         SELECT pd.version_requerida, pd.obligatoria, pd.instruccion_instalacion, d.nombre, d.gestor, d.descripcion
@@ -95,12 +95,12 @@ export const perfil = (id: PerfilId) =>
         ? ('perfil_en_prueba' as const)
         : Option.match(yield* diagnosticoDelVisitante, {
             onNone: () => 'sin_diagnostico' as const,
-            onSome: (d) => evaluar(equipoEnLinux(d), condiciones(p)),
+            onSome: (d) => evaluate(equipoEnLinux(d), requirements(p)),
           })
 
-    const exportacion = p.estado_revision === 'aprobado' ? exportarFix({ ...p, perfil: { id: p.id, revision: p.revision }, dependencias }) : null
+    const exportacion = p.estado_revision === 'aprobado' ? exportFix({ ...p, profile: { id: p.id, revision: p.revision }, dependencies: dependencias }) : null
     const arreglos = yield* SqlSchema.findAll({
-      Request: PerfilId,
+      Request: ProfileId,
       Result: FilaArreglo,
       execute: (id) => sql`SELECT pr, registrado_en FROM arreglo_upstream WHERE perfil_id = ${id} ORDER BY registrado_en, pr`,
     })(id)

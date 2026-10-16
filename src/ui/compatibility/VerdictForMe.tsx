@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import type { ResumenCompatibilidad } from '../../domain/compatibility.ts'
-import type { NivelX86 } from '../../domain/platform.ts'
-import type { RutaJuego } from '../../domain/graphics-path.ts'
+import type { CompatibilitySummary } from '../../domain/compatibility.ts'
+import type { X86Level } from '../../domain/platform.ts'
+import type { GamePath } from '../../domain/graphics-path.ts'
 import { contar, fecha } from '../format.ts'
 import { Insignia } from '../Badge.tsx'
 import { estadoCompatibilidad } from '../vocabulary.ts'
@@ -9,10 +9,10 @@ import { ChecklistEvaluacion, type PerfilEvaluado } from './EvaluationChecklist.
 import { RutaGrafica } from './GraphicsPath.tsx'
 
 export type Personal = {
-  readonly en_mi_distribucion: { readonly nombre: string; readonly resumen: ResumenCompatibilidad } | null
+  readonly en_mi_distribucion: { readonly nombre: string; readonly resumen: CompatibilitySummary } | null
   readonly perfil: PerfilEvaluado | null
-  readonly ruta: RutaJuego
-  readonly nivel_x86_min: NivelX86 | null
+  readonly ruta: GamePath
+  readonly nivel_x86_min: X86Level | null
   readonly orientativa: boolean
 }
 
@@ -51,10 +51,10 @@ export function VeredictoParaMi({ personal, children }: { personal: Personal | n
           {mia && (
             <p className="fila pequeno">
               <span>En tu distribución, {mia.nombre}:</span>
-              <Insignia etiqueta={estadoCompatibilidad[mia.resumen.estado]} />
+              <Insignia etiqueta={estadoCompatibilidad[mia.resumen.status]} />
               <span className="tenue">
-                {mia.resumen.ultima_prueba
-                  ? `${contar(mia.resumen.pruebas, 'reporte aprobado', 'reportes aprobados')} · última prueba ${fecha(mia.resumen.ultima_prueba)}${mia.resumen.sin_confirmacion_reciente ? ' · sin confirmación en el último año' : ''}`
+                {mia.resumen.last_tested
+                  ? `${contar(mia.resumen.test_count, 'reporte aprobado', 'reportes aprobados')} · última prueba ${fecha(mia.resumen.last_tested)}${mia.resumen.no_recent_confirmation ? ' · sin confirmación en el último año' : ''}`
                   : `nadie ha aprobado una prueba en ${mia.nombre}`}
               </span>
             </p>
