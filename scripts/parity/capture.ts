@@ -252,6 +252,11 @@ const captureAll = async (browser: Browser, port: number, dir: string) => {
         await page.setViewportSize({ width, height: 800 })
         await page.goto(ORIGIN + route, { waitUntil: 'networkidle' })
         await page.evaluate(() => document.fonts.ready)
+        // Chromium can keep the pixel snapping it chose for a composited layer while the page was still
+        // loading, so a backdrop-filtered label at a fractional y sometimes lands on the whole pixel. A
+        // resize after load re-rasters the layers from the settled layout.
+        await page.setViewportSize({ width, height: 801 })
+        await page.setViewportSize({ width, height: 800 })
         await page.screenshot({ path: `${name}.${width}.png`, fullPage: true, animations: 'disabled', caret: 'hide' })
       }
     }
