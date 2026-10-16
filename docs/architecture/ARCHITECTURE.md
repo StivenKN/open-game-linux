@@ -7,6 +7,7 @@ This folder is the contract the implementation fills in.
 - `RATIONALE.md` covers the problem, caller usage, shape, tradeoffs and alternatives.
 - `MODULES.md` says which directory owns which rule, and how a test enforces the direction.
 - `PLAN.md` holds the build units, the lanes and the cuts.
+- [`GLOSSARY.md`](GLOSSARY.md) maps each Spanish term in the interface to its English name in the code, and lists the Spanish names that are frozen contracts.
 - `sketch/` holds the types, Schemas, signatures, the migration and the routes, with `not implemented` bodies. It typechecks under TypeScript 7.0.2 strict and passes `vite build` against the spike's packages.
 
 Section 8 of the project document is the spec. Where a wireframe contradicts it, section 8 wins, and `PLAN.md` lists each cut. Round 1 (Laravel) is archived in `.scratch/round1-laravel/`. Its domain decisions carry over unchanged.

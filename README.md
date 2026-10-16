@@ -242,4 +242,4 @@ Every later deploy rebuilds the image and keeps the database.
 
 ## Architecture
 
-`docs/architecture/` holds the design. Start with `ARCHITECTURE.md`. `MODULES.md` maps the directories, `PLAN.md` lists the build units and cuts, `RATIONALE.md` records the decisions, and `cobertura.md` maps each requirement to its route, server program, tests and screenshots.
+`docs/architecture/` holds the design. Start with `ARCHITECTURE.md`. `MODULES.md` maps the directories, `PLAN.md` lists the build units and cuts, `RATIONALE.md` records the decisions, and `cobertura.md` maps each requirement to its route, server program, tests and screenshots. The interface is in Spanish and the code is in English. [`GLOSSARY.md`](docs/architecture/GLOSSARY.md) maps each Spanish term to its English code name and lists the Spanish names that stay because they are URLs, stored data or other contracts.
