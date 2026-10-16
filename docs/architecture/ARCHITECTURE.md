@@ -51,14 +51,14 @@ Three candidates ran in parallel with assigned shapes.
 | From | Graft |
 |---|---|
 | Fable | `domain/tables.ts`: one row Schema per table built from `RequiredText(n)`, branded ids and a spread `ReviewFields`. Queries pick from it instead of declaring ad-hoc Structs, and input Schemas spread its fields. The migration reads `varchar(n)` lengths from the same `RequiredText(n)` constants, so no drift test is needed. |
-| Fable | Fixtures for app tests come from an `escenario()` helper that writes through the real writers, so a fixture cannot encode a state the app cannot reach. Route components are named functions (an inline arrow loses the loader type). |
-| Fable | `InvalidTransition { de, a }` is its own failure class, not a `Rule` case. |
-| Sonnet | `Capture` is a union of Linux and Windows members. `ResultadoObservado` requires a `NonEmptyArray` of fallos for a failing result, replacing the filter with a TODO. |
-| Sonnet | The review CHECK is built from `shapeByStatus satisfies Record<ReviewStatus, string>`. That makes the separate `estado_revision IN (...)` CHECK redundant, so it goes. |
-| Sonnet | `test/ayudas/db.ts` (savepoint-based `constraintOf`) and the `schema.test.ts` bodies that ran green on PostgreSQL 18.6 replace the sketch's `it.todo` list, renamed to the sketch's constraint names. A report's content is frozen from birth, so FPS rules are tested with INSERT. |
-| Sonnet | `IncomparableProfile { mismatches: NonEmptyArray<Mismatch> }` with `{ de, esperado, observado }`, so the message can say "perfil para x86_64, tu diagnóstico es aarch64". |
+| Fable | Fixtures for app tests come from the `seed` helper in `tests/fixtures.ts`, which writes through the real writers, so a fixture cannot encode a state the app cannot reach. Route components are named functions (an inline arrow loses the loader type). |
+| Fable | `InvalidTransition { from, to }` is its own failure class, not a `Rule` case. |
+| Sonnet | `Capture` is a union of Linux and Windows members. `NewReport` requires a non-empty `failures` array for a failing outcome, replacing the filter with a TODO. |
+| Sonnet | The review CHECK is built from `shapeByStatus satisfies Record<ReviewStatus, string>`. That makes the separate `review_status IN (...)` CHECK redundant, so it goes. |
+| Sonnet | `tests/support.ts` (savepoint-based `constraintOf`) and the `schema.test.ts` bodies that ran green on PostgreSQL 18.6 replace the sketch's `it.todo` list, renamed to the sketch's constraint names. A report's content is frozen from birth, so FPS rules are tested with INSERT. |
+| Sonnet | `IncomparableProfile { mismatches: NonEmptyArray<Mismatch> }` with `{ aspect, expected, actual }`, so the message can say "perfil para x86_64, tu diagnóstico es aarch64". |
 | Sonnet | `.oxlintrc.json` with `no-explicit-any`, `consistent-type-assertions: never` and `no-non-null-assertion`, inside `pnpm check`. |
-| Judge | Author ≠ reviewer gets one home, in `decide`, for all three reviewable tables. The `*_sin_autoaprobacion` CHECKs go, because `reporte`'s author is only reachable through a join. |
+| Judge | Author ≠ reviewer gets one home, in `decide`, for all three reviewable tables. The sketch's `*_sin_autoaprobacion` CHECKs go, because `report`'s author is only reachable through a join. |
 | Judge | The detector route reads the script inside its handler, not at module scope, so its text stays out of the client chunk. |
 
 **Rejected.**
@@ -70,12 +70,12 @@ Three candidates ran in parallel with assigned shapes.
 - **`bigserial` ids.** They add bigint friction to every URL and React key. Ids are `integer GENERATED ALWAYS AS IDENTITY`.
 - **Running `evaluate` in the browser for guests.** It is attractive, but the server already evaluates in a read-only `runAction`, so there is one path for guests and users.
 
-**Known double homes, kept on purpose.** The FPS context rule is both the `FpsMeasurement` input type (for field errors before a request) and the CHECK `reporte_fps_con_contexto` (the enforcement). "Solo revisores publican guías" has no code home because there is no guide authoring UI. Guides come from seeders, and the defense deck says so.
+**Known double homes, kept on purpose.** The FPS context rule is both the `FpsMeasurement` input type (for field errors before a request) and the CHECK `report_fps_with_context` (the enforcement). "Solo revisores publican guías" has no code home because there is no guide authoring UI. Guides come from seeders, and the defense deck says so.
 
 ## Open decisions, with the defaults the build follows
 
-1. **`usuario`.** The doc's table name and columns are literal (`alias`, `correo`, `rol`, `activo`), owned by better-auth. Two recorded deviations go in `COMMENT ON`. The id is text, and the password hash lives in `account.password`. The alternative is a hand-written session layer with `usuario.contrasena_hash` and integer ids.
-2. **Native Linux games** (CS2, ETS2). `familia` gains `Nativo` next to Wine and Proton. The alternative is to keep native titles out of the catalog.
+1. **`app_user`.** The doc's `usuario` table, owned by better-auth, with the columns `alias`, `email`, `role` and `active`. Two recorded deviations go in `COMMENT ON`. The id is text, and the password hash lives in `account.password`. The alternative is a hand-written session layer with the doc's `usuario.contrasena_hash` column and integer ids.
+2. **Native Linux games** (CS2, ETS2). `family` gains `Nativo` next to Wine and Proton. The alternative is to keep native titles out of the catalog.
 3. **Seed data.** Demo content is marked "Datos de ejemplo". Approved reports come only from the team's own real runs, so at least one game honestly shows "Sin evidencia verificada".
 4. **Wireframe screens that change shape.** The 5-step wizard becomes ficha plus profile page. The CPU/GPU dropdowns become a manual form. The Windows vs Linux RAM comparator is cut. Profiles and guides come from seeders.
 5. **Strict "Resultados variables".** A mix of `funciona` and `funciona_con_ajustes` shows purple, as 8.10 says literally.

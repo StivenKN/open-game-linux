@@ -10,9 +10,9 @@ Three probes from `PLAN.md` row U0, run on 2026-10-10 against the pinned stack (
 
 ## (a) Form decode
 
-**Setup.** The probe uses the real `NewReport` from `src/domain/contributions.ts` rather than a stand-in, because the real schema is already in place. It builds a `FormData` with bracket keys (`fallos[0][tipo_fallo_id]`, `version_capa[_tag]`, `medicion[fps_promedio]`) and validates it through `Schema.toStandardSchemaV1`, which reports issue paths the way the form hook will read them.
+**Setup.** The probe uses the real `NewReport` from `src/domain/contributions.ts` rather than a stand-in, because the real schema is already in place. It builds a `FormData` with bracket keys (`failures[0][failure_type_id]`, `layer_version[_tag]`, `measurement[avg_fps]`) and validates it through `Schema.toStandardSchemaV1`, which reports issue paths the way the form hook will read them.
 
-**Observed.**
+**Observed** on 2026-10-10, before the English rename, so the output shows the Spanish field names.
 
 ```
 ## perfil_id "" y medicion ""
@@ -51,19 +51,19 @@ issue at ["version_capa","id"]: Expected a string representing a finite number
 
 **What works.** Nested arrays of structs, the `_tag` union, numeric ids from text, `RequiredText` trimming (`'  1.0.3  '` became `'1.0.3'`), `OptionalText` turning `''` into `null`, and `DateFromString`.
 
-**What does not.** An empty `perfil_id` does not mean null. The StringTree codec writes null as the literal string `"null"`, and only that string decodes to null. `""` fails, and an absent key fails. FormData also cannot express an empty array, so a report with no `fallos` fails with `Missing key`.
+**What does not.** An empty `profile_id` does not mean null. The StringTree codec writes null as the literal string `"null"`, and only that string decodes to null. `""` fails, and an absent key fails. FormData also cannot express an empty array, so a report with no `failures` fails with `Missing key`.
 
 **Decision.** Keep `fromFormData(toCodecStringTree(S))` in `ui/useAction.ts`. The fallback (a controlled form object plus `decodeUnknownResult`) is not needed. The forms and schemas follow three rules.
 
-1. A nullable field posts `"null"` for "none". The profile select uses `<option value="null">Sin profile</option>`. The FPS block posts a hidden `medicion=null` and disables it while the measurement inputs are on.
-2. An array that a form can leave empty takes `Schema.withDecodingDefaultKey(Effect.succeed([]))` in its input schema. `NewReport.fallos` needs it (lane B, U2). The server fn validator still accepts an explicit array.
-3. The 8.7 filter reports at path `[]`, not `['fallos']`. The sketch's `TODO(U2)` to attach it to `fallos` is required, or the message has no field to land on.
+1. A nullable field posts `"null"` for "none". The profile select uses `<option value="null">Sin perfil</option>`. The FPS block posts a hidden `measurement=null` and disables it while the measurement inputs are on.
+2. An array that a form can leave empty takes `Schema.withDecodingDefaultKey(Effect.succeed([]))` in its input schema. `NewReport.failures` needs it (lane B, U2). The server fn validator still accepts an explicit array.
+3. The 8.7 filter reports at path `[]`, not `['failures']`. The sketch's `TODO(U2)` to attach it to `failures` is required, or the message has no field to land on.
 
 **Side findings.**
 
 - Rebuilding a Struct from `NewReport.fields` drops its `.check` filters. The probe's first version silently lost the 8.7 rule this way. This matters for the `domain/tables.ts` graft, where input Schemas spread row fields: restate the filters after a spread.
 - A user who types the word `null` into a `OptionalText` field gets `null`. This is cosmetic and accepted.
-- `DateFromString` reads `'2026-10-01'` as UTC midnight. In `America/Bogota` that renders as 30 September. U5 renders `fecha_prueba` with `timeZone: 'UTC'`, or the column becomes `date`.
+- `DateFromString` reads `'2026-10-01'` as UTC midnight. In `America/Bogota` that renders as 30 September. U5 renders `tested_at` with `timeZone: 'UTC'`, or the column becomes `date`.
 
 ## (b) better-auth field mapping
 
@@ -101,8 +101,8 @@ create index "verification_identifier_idx" on "verification" ("identifier");
 
 **Decision.** Keep the mapping as written. The camelCase fallback is not needed. U1 and U3 inherit four facts.
 
-- `image` is not mapped in this config and stays `image`. The sketch's `server/auth.ts` maps it to `imagen`, which is consistent with this result.
-- `rol` and `activo` are `not null` with no DB default, because better-auth applies `defaultValue` in JS. A seeder that inserts into `usuario` directly must set both. U1 adds the `rol` CHECK from `Role.literals`.
+- `image` is not mapped in this config and stays `image`. The sketch's `servidor/auth.ts` maps it to `imagen`, which is consistent with this result.
+- `role` and `active` (then `rol` and `activo`) are `not null` with no DB default, because better-auth applies `defaultValue` in JS. A seeder that inserts into `app_user` directly must set both. U1 adds the `role` CHECK from `Role.literals`.
 - `session`, `account` and `verification` keep camelCase columns (`userId`, `expiresAt`). These are better-auth's own tables, and the app does not query them.
 - better-auth logs `Database schema mismatch` at startup while its tables are missing. The log is expected before `1_auth` runs.
 
@@ -110,7 +110,7 @@ create index "verification_identifier_idx" on "verification" ("identifier");
 
 **Setup.** One `SELECT` of typed literals through `PgClient.layer` against PostgreSQL 18.6. The session time zone is `Etc/UTC` and the process time zone is `America/Bogota`. The probe ran a second time with `TZ=America/Bogota` set explicitly, with the same output.
 
-**Observed.**
+**Observed** on 2026-10-10. The probe now names the last two Spanish aliases `text_array_empty` and `session_zone`.
 
 ```
 integer            number 42
@@ -130,8 +130,8 @@ process TZ         America/Bogota
 **Decision.** The sketch's row Schemas are correct as written, so no Schema swap is needed.
 
 - `integer` is a `number`. The branded `Schema.Int` ids hold.
-- `numeric(7,2)` is a `string`. `ApprovedTest.fps_promedio: Schema.NullOr(Schema.FiniteFromString)` is right. The sketch's "verify in U1" comment can go.
-- `timestamptz` is a `Date`. `Schema.Date` holds for `fecha_prueba` and `capturado_en`.
+- `numeric(7,2)` is a `string`. `ApprovedTest.avg_fps: Schema.NullOr(Schema.FiniteFromString)` is right. The sketch's "verify in U1" comment can go.
+- `timestamptz` is a `Date`. `Schema.Date` holds for `tested_at` and `captured_at`.
 - `text[]` is an array of strings. An empty array stays `[]`, but `array_agg` over zero rows is SQL `NULL`. The sketch already wraps it in `COALESCE(..., '{}')`.
 - `boolean` is a `boolean`.
 - `date` is a `'YYYY-MM-DD'` string, not a `Date`, so the type has no time zone trap. The schema has no `date` column today. If one appears, decode it with `Schema.String` or `DateFromString`, never `Schema.Date`.
