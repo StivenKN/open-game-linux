@@ -22,6 +22,7 @@
     "rol": "node --env-file-if-exists=.env scripts/rol.ts",
     "db:auth-sql": "node --env-file-if-exists=.env scripts/auth-sql.ts",
     "gpu:generar": "node scripts/generar-gpus.ts",
+    "parity": "node scripts/parity/parity.ts",
     "check": "tsr generate && tsc --noEmit && oxlint && vitest run && vite build && node scripts/sin-servidor-en-cliente.ts"
   },
   "dependencies": {
@@ -48,6 +49,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "nitro": "3.0.260903-beta",
     "oxlint": "1.87.0",
+    "playwright-core": "1.62.1",
     "typescript": "7.0.2",
     "vite": "^8.0.0",
     "vitest": "5.0.3"
