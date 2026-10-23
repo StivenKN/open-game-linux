@@ -69,7 +69,8 @@ layer(PgTest)('game requests', (it) => {
 
       expect(yield* requests(e)).toEqual([
         { title: 'Cyberpunk 2077', steam_app_id: 1091500, status: 'abierto', requesters: 3 },
-        { title: 'Hollow Knight', steam_app_id: null, status: 'abierto', requesters: 2 },
+        // bruno's App ID stays with the request he joined.
+        { title: 'Hollow Knight', steam_app_id: 367520, status: 'abierto', requesters: 2 },
         { title: 'DOOM', steam_app_id: 2280, status: 'abierto', requesters: 1 },
         { title: 'Doom', steam_app_id: 379720, status: 'abierto', requesters: 1 },
       ])
@@ -154,6 +155,33 @@ layer(PgTest)('game requests', (it) => {
       yield* asUser(e.rita)(reject(rejected))
       expect(yield* Effect.flip(asUser(e.rita)(newGame('Hades', '1145360', rejected)))).toEqual(new RuleViolated({ rule: 'pedido_cerrado' }))
       expect(yield* e.sql`SELECT count(*)::int AS n FROM game WHERE title = 'Hades'`).toEqual([{ n: 0 }])
+    })))
+
+  it.effect('creating a game without its request still fulfils every open request that asks for it', inScenario((e) =>
+    Effect.gen(function* () {
+      const byAppId = yield* opened(e.ana, 'cyberpunk', '1091500')
+      const byTitle = yield* opened(e.bruno, 'Hades')
+      const other = yield* opened(e.bruno, 'Celeste')
+      const { id } = yield* asUser(e.rita)(
+        createGame(
+          Schema.decodeUnknownSync(NewGame)({
+            title: 'Cyberpunk 2077',
+            description: 'd',
+            editions: [{ launcher_id: e.steam, external_id: '1091500' }],
+            apis: ['d3d12'],
+            x86_level_min: null,
+            request_id: null,
+          }),
+        ),
+      )
+      const { id: hades } = yield* asUser(e.rita)(
+        createGame(Schema.decodeUnknownSync(NewGame)({ title: 'HADES', description: 'd', editions: [{ launcher_id: e.steam, external_id: '1145360' }], apis: ['vulkan'], x86_level_min: null, request_id: null })),
+      )
+      expect(yield* e.sql`SELECT id, status, game_id FROM game_request ORDER BY id`).toEqual([
+        { id: byAppId, status: 'cumplido', game_id: id },
+        { id: byTitle, status: 'cumplido', game_id: hades },
+        { id: other, status: 'abierto', game_id: null },
+      ])
     })))
 
   it.effect('the page lists open requests by requester count, and each requester sees their requests in every state', inScenario((e) =>

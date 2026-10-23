@@ -98,7 +98,7 @@ describe('boundaries', () => {
     const write = /\b(INSERT INTO|UPDATE|DELETE FROM)\s+game_request(_user)?\b/
     const violations = [...files('src'), ...files('scripts')]
       .filter((f) => f !== 'src/server/commands/game-requests.ts' && !f.startsWith('src/server/schema/') && write.test(read(f)))
-      .map((f) => `${f} writes game_request; call requestGame(), withdrawRequest(), rejectRequest() or fulfillRequest() from server/commands/game-requests.ts instead`)
+      .map((f) => `${f} writes game_request; call requestGame(), withdrawRequest(), rejectRequest() or fulfillRequests() from server/commands/game-requests.ts instead`)
     expect(violations).toEqual([])
   })
 

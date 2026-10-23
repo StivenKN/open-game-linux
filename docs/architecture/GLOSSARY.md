@@ -73,7 +73,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | crear | create; sign up (`SignUpPage`, the sign-up page) |
 | cuenta | account (`AccountFailure`; `accounts`, the list on /admin/usuarios); count (a tally: `doneCount`, total) |
 | cuerpo | body |
-| cumplido | fulfilled (`fulfillRequest`; the request status cumplido stays) |
+| cumplido | fulfilled (`fulfillRequests`; the request status cumplido stays) |
 | decidir | decide |
 | dependencia | dependency |
 | descartar | screen (distros) |

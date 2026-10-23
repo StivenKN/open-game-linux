@@ -11,6 +11,8 @@ import { oneRow, rows } from '../rows.ts'
 import type { Write } from './contributions.ts'
 
 const open: GameRequestStatus = 'abierto'
+const fulfilled: GameRequestStatus = 'cumplido'
+const rejected: GameRequestStatus = 'rechazado'
 
 const RequestRow = GameRequest.mapFields(Struct.pick(['id', 'title']))
 const RequestStatus = GameRequest.mapFields(Struct.pick(['id', 'title', 'status']))
@@ -24,11 +26,18 @@ export type RequestOutcome =
 /** Two titles name the same game when their letters and digits match, ignoring case, spaces and punctuation. */
 const titleKey = (sql: SqlClient.SqlClient, title: string | Statement.Fragment) => sql`lower(regexp_replace(${title}, '[^[:alnum:]]+', '', 'g'))`
 
-/** True when the catalog game aliased `game` has a Steam edition with this App ID, or with any App ID. */
-const steamEdition = (sql: SqlClient.SqlClient, appid: SteamAppId | null) =>
-  sql`EXISTS (SELECT 1 FROM game_edition e JOIN launcher l ON l.id = e.launcher_id
-              WHERE e.game_id = game.id AND l.name = ${STEAM_LAUNCHER}
-                AND ${appid === null ? sql`e.external_id IS NOT NULL` : sql`e.external_id = ${String(appid)}`})`
+/** The catalog game aliased `game` has a Steam edition where `edition` (on alias `e`) holds. */
+const steamEdition = (sql: SqlClient.SqlClient, edition: Statement.Fragment) =>
+  sql`EXISTS (SELECT 1 FROM game_edition e JOIN launcher l ON l.id = e.launcher_id WHERE e.game_id = game.id AND l.name = ${STEAM_LAUNCHER} AND ${edition})`
+
+/**
+ * A request with this title and App ID (values, or columns of a request row) asks for the catalog game aliased
+ * `game` when its Steam edition has that App ID, or when the titles match and one of the two has no App ID.
+ */
+const asksFor = (sql: SqlClient.SqlClient, title: string | Statement.Fragment, appid: SteamAppId | null | Statement.Fragment) =>
+  sql`(${steamEdition(sql, sql`e.external_id = (${appid})::integer::text`)}
+       OR (${titleKey(sql, sql`game.title`)} = ${titleKey(sql, title)}
+           AND ((${appid})::integer IS NULL OR NOT ${steamEdition(sql, sql`e.external_id IS NOT NULL`)})))`
 
 // Every writer takes this lock first, so two first requests for one game cannot both create it, and a join,
 // a withdrawal and a close never interleave.
@@ -44,27 +53,28 @@ const openRequest = (id: GameRequestId) =>
     return Struct.pick(request, ['id', 'title'])
   })
 
-/** The catalog game or the open request a new request names, matched as `requestGame` describes, else a new request. */
+/**
+ * The catalog game a new request asks for, else the open request it joins (same App ID, or same title when either
+ * has no App ID; an App ID it brings is kept), else a new request.
+ */
 const matchOrCreate = (title: string, appid: SteamAppId | null) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     yield* lockRequests
-    const sameTitle = (column: string) => sql`${titleKey(sql, sql.literal(column))} = ${titleKey(sql, title)}`
-    const [game] = yield* rows(
-      CatalogGame,
-      sql`SELECT game.id, game.title FROM game
-          WHERE ${appid === null ? sameTitle('game.title') : sql`${steamEdition(sql, appid)} OR (${sameTitle('game.title')} AND NOT ${steamEdition(sql, null)})`}
-          ORDER BY game.id LIMIT 1`,
-    )
+    const [game] = yield* rows(CatalogGame, sql`SELECT game.id, game.title FROM game WHERE ${asksFor(sql, title, appid)} ORDER BY game.id LIMIT 1`)
     if (game !== undefined) return { _tag: 'en_catalogo', game } as const
     const [existing] = yield* rows(
       RequestRow,
       sql`SELECT id, title FROM game_request
-          WHERE status = ${open} AND ${appid === null ? sameTitle('title') : sql`(steam_app_id = ${appid} OR (steam_app_id IS NULL AND ${sameTitle('title')}))`}
+          WHERE status = ${open}
+            AND (steam_app_id = (${appid})::integer
+                 OR (${titleKey(sql, sql`title`)} = ${titleKey(sql, title)} AND (steam_app_id IS NULL OR (${appid})::integer IS NULL)))
           ORDER BY id LIMIT 1`,
     )
-    const request = existing ?? (yield* oneRow(RequestRow, sql`INSERT INTO game_request ${sql.insert({ title, steam_app_id: appid })} RETURNING id, title`))
-    return { _tag: 'pedido', request } as const
+    if (existing === undefined)
+      return { _tag: 'pedido', request: yield* oneRow(RequestRow, sql`INSERT INTO game_request ${sql.insert({ title, steam_app_id: appid })} RETURNING id, title`) } as const
+    if (appid !== null) yield* sql`UPDATE game_request SET steam_app_id = ${appid} WHERE id = ${existing.id} AND steam_app_id IS NULL`
+    return { _tag: 'pedido', request: existing } as const
   })
 
 /**
@@ -94,21 +104,24 @@ export const withdrawRequest = (id: GameRequestId): Write<{ readonly id: GameReq
     return { id }
   })
 
-type Resolution =
-  | { readonly status: 'rechazado'; readonly rejection_reason: string; readonly game_id: null }
-  | { readonly status: 'cumplido'; readonly rejection_reason: null; readonly game_id: GameId }
-
-const close = (reviewer: Reviewer, id: GameRequestId, resolution: Resolution) =>
+export const rejectRequest = (r: RejectRequest): Write<{ readonly id: GameRequestId }, RuleViolated | NotFound | Forbidden> =>
   Effect.gen(function* () {
+    const reviewer = yield* requireReviewer
     const sql = yield* SqlClient.SqlClient
-    yield* openRequest(id)
-    yield* sql`UPDATE game_request SET ${sql.update({ ...resolution, resolved_by: reviewer.id })}, resolved_at = now() WHERE id = ${id}`
-    return { id }
+    yield* openRequest(r.id)
+    yield* sql`UPDATE game_request SET status = ${rejected}, resolved_by = ${reviewer.id}, resolved_at = now(), rejection_reason = ${r.reason} WHERE id = ${r.id}`
+    return { id: r.id }
   })
 
-export const rejectRequest = (r: RejectRequest): Write<{ readonly id: GameRequestId }, RuleViolated | NotFound | Forbidden> =>
-  Effect.flatMap(requireReviewer, (reviewer) => close(reviewer, r.id, { status: 'rechazado', rejection_reason: r.reason, game_id: null }))
-
-/** Called by createGame, inside its transaction: the request becomes cumplido and links to the new game. */
-export const fulfillRequest = (reviewer: Reviewer, id: GameRequestId, game_id: GameId) =>
-  close(reviewer, id, { status: 'cumplido', rejection_reason: null, game_id })
+/**
+ * Called by createGame, inside its transaction, once the game and its editions exist. The request it started from,
+ * which must still be open, and every other open request that asks for the game become cumplido and link to it.
+ */
+export const fulfillRequests = (reviewer: Reviewer, game_id: GameId, from: GameRequestId | null) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    yield* from === null ? lockRequests : openRequest(from)
+    yield* sql`UPDATE game_request r SET status = ${fulfilled}, resolved_by = ${reviewer.id}, resolved_at = now(), game_id = ${game_id}
+               FROM game
+               WHERE game.id = ${game_id} AND r.status = ${open} AND (r.id = ${from} OR ${asksFor(sql, sql`r.title`, sql`r.steam_app_id`)})`
+  })

@@ -1,6 +1,6 @@
 import { createFileRoute, notFound, redirect, useNavigate } from '@tanstack/react-router'
 import { Schema } from 'effect'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { NewGame, SteamLookup } from '../../domain/contributions.ts'
 import { GameRequestId } from '../../domain/ids.ts'
 import { STEAM_LAUNCHER } from '../../domain/library.ts'
@@ -24,6 +24,8 @@ export const Route = createFileRoute('/catalogo/nuevo')({
     if (context.visitor.role === 'usuario') throw notFound()
   },
   loaderDeps: ({ search }) => ({ pedido: search.pedido ?? null }),
+  // The form's state starts from the request, so another request, or none, starts a fresh form.
+  remountDeps: ({ loaderDeps }) => loaderDeps,
   loader: ({ deps }) => gameOptionsFn({ data: deps }),
   head: () => ({ meta: [{ title: 'Nuevo juego · OpenGame Linux' }] }),
   component: NewGamePage,
@@ -44,7 +46,8 @@ function NewGamePage() {
   const [editions, setEditions] = useState<ReadonlyArray<EditionRow>>([
     { key: 0, launcher_id: String((steam ?? launchers[0])?.id ?? ''), external_id: appid === null ? '' : String(appid) },
   ])
-  const [nextKey, setNextKey] = useState(1)
+  const nextKey = useRef(1)
+  const newKey = () => nextKey.current++
   const [filledFrom, setFilledFrom] = useState<string | null>(null)
 
   const r = useAction(NewGame, createGameFn, {
@@ -64,20 +67,20 @@ function NewGamePage() {
       setFilledFrom(game.title)
       if (steam === undefined) return
       const steamRow = { launcher_id: String(steam.id), external_id: String(game.appid) }
-      if (editions.some((e) => e.launcher_id === steamRow.launcher_id))
-        setEditions(editions.map((e) => (e.launcher_id === steamRow.launcher_id ? { ...e, ...steamRow } : e)))
-      else {
-        setEditions([{ key: nextKey, ...steamRow }, ...editions])
-        setNextKey(nextKey + 1)
-      }
+      // Updaters, not this render's rows: the reviewer may have edited the editions while Steam answered.
+      setEditions((current) =>
+        current.some((e) => e.launcher_id === steamRow.launcher_id)
+          ? current.map((e) => (e.launcher_id === steamRow.launcher_id ? { ...e, ...steamRow } : e))
+          : [{ key: newKey(), ...steamRow }, ...current],
+      )
     },
   })
 
-  const setEdition = (key: number, change: Partial<Omit<EditionRow, 'key'>>) => setEditions(editions.map((e) => (e.key === key ? { ...e, ...change } : e)))
+  const setEdition = (key: number, change: Partial<Omit<EditionRow, 'key'>>) =>
+    setEditions((current) => current.map((e) => (e.key === key ? { ...e, ...change } : e)))
   const addEdition = () => {
     const unused = launchers.find((l) => !editions.some((e) => e.launcher_id === String(l.id)))
-    setEditions([...editions, { key: nextKey, launcher_id: String((unused ?? launchers[0])?.id ?? ''), external_id: '' }])
-    setNextKey(nextKey + 1)
+    setEditions([...editions, { key: newKey(), launcher_id: String((unused ?? launchers[0])?.id ?? ''), external_id: '' }])
   }
 
   return (

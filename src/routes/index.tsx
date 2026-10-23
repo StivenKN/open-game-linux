@@ -227,6 +227,14 @@ function CatalogPage() {
               ))}
             </ul>
           )}
+          {/* A near miss can stand in for a missing game: «The Witcher 2» finds The Witcher 3. */}
+          {filter.q !== undefined && games.length > 0 && (
+            <p className="small muted">
+              <Link to="/pedidos" search={{ titulo: filter.q }}>
+                ¿No es ninguno de estos? Pídelo
+              </Link>
+            </p>
+          )}
           {games.some((j) => j.protondb) && <ProtonDbAttribution />}
         </section>
       </div>
