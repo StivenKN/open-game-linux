@@ -12,14 +12,15 @@ it('uses the colors styles.css defines', () => {
 
 it('names each state in its badge, in the state color', async () => {
   for (const status of CompatibilityStatus.literals) {
-    const svg = await badgeSvg(status)
+    const svg = await badgeSvg({ status, demo: false })
     expect(svg).toMatch(/^<svg [^>]*><title>OpenGame Linux: [^<]+<\/title>/)
   }
-  expect(await badgeSvg('no_inicia')).toContain(`fill="${palette.red}"`)
+  expect(await badgeSvg({ status: 'no_inicia', demo: false })).toContain(`fill="${palette.red}"`)
+  expect(await badgeSvg({ status: 'funciona', demo: true })).toContain('<title>OpenGame Linux: Funciona (datos de ejemplo)</title>')
 })
 
 it('draws the preview at the size the meta tags announce', async () => {
-  const png = await gamePreviewPng({ title: 'Elden Ring', status: 'funciona', reports: 3, no_recent_confirmation: false })
+  const png = await gamePreviewPng({ title: 'Elden Ring', status: 'funciona', reports: 3, no_recent_confirmation: false, demo: false })
   const header = new DataView(png.buffer, png.byteOffset, 24)
   expect([header.getUint32(16), header.getUint32(20)]).toEqual([1200, 630])
 })

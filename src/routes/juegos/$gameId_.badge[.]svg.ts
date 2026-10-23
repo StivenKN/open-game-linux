@@ -8,7 +8,7 @@ export const Route = createFileRoute('/juegos/$gameId_/badge.svg')({
         gameImage(params.gameId, 'image/svg+xml; charset=utf-8', async (card) => {
           // Imported here so satori loads only when an image is asked for.
           const { badgeSvg } = await import('../../images/render.tsx')
-          return badgeSvg(card.status)
+          return badgeSvg(card)
         }),
     },
   },

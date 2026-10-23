@@ -167,6 +167,8 @@ Each game has two images, computed from its approved reports on every request li
 - `/juegos/<id>/badge.svg` is a badge that reads "OpenGame Linux | <estado>" in the state's color. The game page's "Compartir" section shows it with its Markdown and HTML codes, ready to paste into a README, a forum or a website.
 - `/juegos/<id>/og.png` is a 1200×630 preview with the game's title over its cover art, its state and its number of approved reports.
 
+When a demo account's report counts toward the state, both images and the link preview carry the "Datos de ejemplo" stamp, as the game page does.
+
 Both answer 404 for an id that names no game, and let caches keep them for five minutes, so a new approval shows within that time. Every page carries Open Graph and Twitter card tags, so a shared link unfurls with a preview: a game's page uses its own image, and every other page uses `/og.png`. The badge codes and the tags use absolute URLs built from `BETTER_AUTH_URL`.
 
 ## Update the GPU table

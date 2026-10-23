@@ -13,8 +13,9 @@ const scenario = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
   const insert = (table: string, row: Record<string, Value>) => idOf(sql`INSERT INTO ${sql(table)} ${sql.insert(row)} RETURNING id`)
   // Ids and names no other test file uses: db files run in parallel, and two transactions inserting the same keys deadlock.
-  for (const [id, role] of [['sh_autor', 'usuario'], ['sh_rita', 'revisor']])
-    yield* sql`INSERT INTO app_user (id, alias, email, email_verified, role, active) VALUES (${id}, ${id}, ${`${id}@opengame.test`}, false, ${role}, true)`
+  // The author is a demo account, so the card carries the stamp once one of its reports counts.
+  for (const [id, email, role] of [['sh_autor', 'sh_autor@demo.opengame.test', 'usuario'], ['sh_rita', 'sh_rita@opengame.test', 'revisor']])
+    yield* sql`INSERT INTO app_user (id, alias, email, email_verified, role, active) VALUES (${id}, ${id}, ${email}, false, ${role}, true)`
   const launcher = yield* insert('launcher', { name: 'sh_lanzador' })
   const game = GameId.make(yield* insert('game', { title: 'sh_juego', description: 'd' }))
   const edition = yield* insert('game_edition', { game_id: game, launcher_id: launcher })
@@ -63,9 +64,9 @@ layer(PgTest)('la insignia y la vista previa de un juego', (it) => {
         yield* e.report('no_inicia', { review_status: 'pendiente' })
         yield* e.report('no_inicia', { ...e.approved, review_status: 'retirado' })
         const card = () => onDay(today)(gameCard(e.game))
-        expect(yield* card()).toEqual(Option.some({ title: 'sh_juego', status: 'sin_evidencia', reports: 0, no_recent_confirmation: false }))
+        expect(yield* card()).toEqual(Option.some({ title: 'sh_juego', status: 'sin_evidencia', reports: 0, no_recent_confirmation: false, demo: false }))
         yield* e.report('funciona', e.approved)
-        expect(yield* card()).toEqual(Option.some({ title: 'sh_juego', status: 'funciona', reports: 1, no_recent_confirmation: false }))
+        expect(yield* card()).toEqual(Option.some({ title: 'sh_juego', status: 'funciona', reports: 1, no_recent_confirmation: false, demo: true }))
       }),
     ))
 

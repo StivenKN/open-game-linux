@@ -28,20 +28,21 @@ export const Route = createFileRoute('/juegos/$gameId')({
   loader: ({ params }) => gamePageFn({ data: params }),
   head: ({ loaderData, match }) => ({
     meta: loaderData
-      ? [{ title: `${loaderData.game.title} · OpenGame Linux` }, ...previewMeta(match.context.origin, preview(loaderData.game, loaderData.summary))]
+      ? [{ title: `${loaderData.game.title} · OpenGame Linux` }, ...previewMeta(match.context.origin, preview(loaderData.game, loaderData.summary, loaderData.demo))]
       : [{ title: 'OpenGame Linux' }],
   }),
   component: GamePage,
 })
 
-/** The link preview of a game: its state as the title says it, and the approved reports behind it. */
-const preview = (game: { id: GameId; title: string }, summary: CompatibilitySummary) => {
+/** The link preview of a game: its state as the title says it, the approved reports behind it, and the page's demo stamp. */
+const preview = (game: { id: GameId; title: string }, summary: CompatibilitySummary, demo: boolean) => {
   const state = `${game.title} en Linux: ${compatibilityStatus[summary.status].text}`
   const reports =
     summary.test_count === 0
       ? 'Todavía no hay reportes aprobados. ¿Lo jugaste en Linux? Cuenta cómo te fue.'
       : `Según ${count(summary.test_count, 'reporte aprobado', 'reportes aprobados')} de jugadores en Linux.${summary.no_recent_confirmation ? ' Sin confirmación en el último año.' : ''}`
-  return { title: state, description: reports, image: `/juegos/${game.id}/og.png`, imageAlt: `${state}. ${reports}` }
+  const description = demo ? `${reports} Datos de ejemplo, de cuentas de demostración.` : reports
+  return { title: state, description, image: `/juegos/${game.id}/og.png`, imageAlt: `${state}. ${description}` }
 }
 
 function GamePage() {

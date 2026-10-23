@@ -6,8 +6,9 @@ import { Game } from '../../domain/tables.ts'
 import { approvedTests } from './game.ts'
 
 /**
- * What a game's badge and preview image show: its title, and its computed state and approved reports as
- * its catalog card counts them. None when the id names no game.
+ * What a game's badge and preview image show: its title, its computed state and approved reports as its
+ * catalog card counts them, and whether a demo account's report is among them, as the game page stamps it.
+ * None when the id names no game.
  */
 export const gameCard = (gameId: GameId) =>
   Effect.gen(function* () {
@@ -19,6 +20,7 @@ export const gameCard = (gameId: GameId) =>
     })(gameId)
     if (Option.isNone(game)) return Option.none()
     const now = new Date(yield* Clock.currentTimeMillis)
-    const { status, test_count, no_recent_confirmation } = summarize(yield* approvedTests({ game: gameId }), now)
-    return Option.some({ title: game.value.title, status, reports: test_count, no_recent_confirmation })
+    const tests = yield* approvedTests({ game: gameId })
+    const { status, test_count, no_recent_confirmation } = summarize(tests, now)
+    return Option.some({ title: game.value.title, status, reports: test_count, no_recent_confirmation, demo: tests.some((t) => t.demo) })
   })

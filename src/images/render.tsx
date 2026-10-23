@@ -2,8 +2,9 @@
 // preview (1200×630 PNG). satori lays out the JSX below with the app's own fonts and draws text as paths,
 // so the badge looks the same wherever it is embedded; resvg rasterizes the preview. Only the server
 // route handlers import this module: resvg is native and the fonts are read from disk.
-import { readFile } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 import { Resvg } from '@resvg/resvg-js'
 import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -20,6 +21,8 @@ export type GameCard = {
   readonly status: CompatibilityStatus
   readonly reports: number
   readonly no_recent_confirmation: boolean
+  /** The state rests on a demo account's report, which the app stamps "Datos de ejemplo". */
+  readonly demo: boolean
 }
 
 /** The colors of `styles.css` `:root` that the images use; `render.test.ts` keeps the two in sync. */
@@ -62,15 +65,28 @@ const faces = [
   ['Big Shoulders Display', 'big-shoulders-display', 900],
 ] as const satisfies ReadonlyArray<readonly [string, string, FontWeight]>
 
-const loadFonts = () =>
-  Promise.all(
-    faces.flatMap(([name, file, weight]) =>
-      ['latin', 'latin-ext'].map(async (subset): Promise<Font> => {
-        const data = await readFile(require.resolve(`@fontsource/${file}/files/${file}-${subset}-${weight}-normal.woff`))
-        return { name, data, weight, style: 'normal' }
-      }),
-    ),
+// Every subset a package ships (Latin, Cyrillic, Vietnamese…). satori draws a face with one font per name and
+// takes a character that font lacks from a font of another name, so each subset but Latin loads under its own
+// name. No face here covers Greek, CJK or emoji, which draw as boxes.
+const loadFonts = async () => {
+  const sets = await Promise.all(
+    faces.map(async ([name, file, weight]) => {
+      const dir = join(dirname(require.resolve(`@fontsource/${file}/package.json`)), 'files')
+      const subsets = (await readdir(dir)).filter((f) => f.endsWith(`-${weight}-normal.woff`))
+      return Promise.all(
+        subsets.map(
+          async (f): Promise<Font> => ({
+            name: f === `${file}-latin-${weight}-normal.woff` ? name : `${name} ${f}`,
+            data: await readFile(join(dir, f)),
+            weight,
+            style: 'normal',
+          }),
+        ),
+      )
+    }),
   )
+  return sets.flat()
+}
 
 // Read once per process. satori also caches its parse of each font by this array's identity.
 let fonts: ReturnType<typeof loadFonts> | undefined
@@ -89,28 +105,35 @@ const artworkImage = (title: string, width: number, height: number) => {
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`
 }
 
-/** "OpenGame Linux | Funciona", shields-style, in the state's own color. Its width follows the label. */
-export const badgeSvg = async (status: CompatibilityStatus) => {
+const segment = { display: 'flex', alignItems: 'center', padding: '0 8px' } as const
+
+/** "OpenGame Linux | Funciona", shields-style, in the state's own color, then "Datos de ejemplo" when it applies. */
+export const badgeSvg = async ({ status, demo }: Pick<GameCard, 'status' | 'demo'>) => {
   const label = compatibilityStatus[status].text
   const svg = await draw(
     <div style={{ display: 'flex', height: 22, borderRadius: 6, overflow: 'hidden', fontFamily: 'Onest', fontSize: 12.5, fontWeight: 700 }}>
-      <div style={{ display: 'flex', alignItems: 'center', padding: '0 8px', backgroundColor: palette['card-2'], color: palette.text }}>OpenGame Linux</div>
-      <div style={{ display: 'flex', alignItems: 'center', padding: '0 8px', ...filled(status) }}>{label}</div>
+      <div style={{ ...segment, backgroundColor: palette['card-2'], color: palette.text }}>OpenGame Linux</div>
+      <div style={{ ...segment, ...filled(status) }}>{label}</div>
+      {demo && <div style={{ ...segment, backgroundColor: palette.background, color: palette.text, fontWeight: 500 }}>Datos de ejemplo</div>}
     </div>,
     { height: 22 },
   )
   // satori draws the text as paths, so a <title> names the badge for screen readers and tooltips.
-  return svg.replace('>', `><title>OpenGame Linux: ${label}</title>`)
+  return svg.replace('>', `><title>OpenGame Linux: ${label}${demo ? ' (datos de ejemplo)' : ''}</title>`)
 }
 
-// Copied out of resvg's Buffer into a plain Uint8Array, which a Response body accepts.
-const png = (svg: string) => new Uint8Array(new Resvg(svg).render().asPng())
+// satori already drew every glyph, so resvg needs no fonts. Copied out of resvg's Buffer into a plain
+// Uint8Array, which a Response body accepts.
+const png = (svg: string) => new Uint8Array(new Resvg(svg, { font: { loadSystemFonts: false } }).render().asPng())
 
 const width = 1200
 const height = 630
 
-/** The 1200×630 canvas of both previews: the masthead on top and the content at the bottom, over `background`. */
-function Frame({ background, children }: { background: string; children: ReactNode }) {
+/**
+ * The 1200×630 canvas of both previews: the masthead on top, with the "Datos de ejemplo" stamp (`.stamp`) when
+ * `demo`, and the content at the bottom, over `background`.
+ */
+function Frame({ background, demo = false, children }: { background: string; demo?: boolean; children: ReactNode }) {
   return (
     <div
       style={{
@@ -127,9 +150,16 @@ function Frame({ background, children }: { background: string; children: ReactNo
         fontFamily: 'Onest',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontFamily: 'Unbounded', fontWeight: 800, fontSize: 30 }}>
-        <Brand size={56} />
-        OpenGame Linux
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontFamily: 'Unbounded', fontWeight: 800, fontSize: 30 }}>
+          <Brand size={56} />
+          OpenGame Linux
+        </div>
+        {demo && (
+          <div style={{ display: 'flex', padding: '6px 20px', borderRadius: 999, border: '2px solid #fff6', backgroundColor: '#0008', fontSize: 22, fontWeight: 700 }}>
+            Datos de ejemplo
+          </div>
+        )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>{children}</div>
     </div>
@@ -143,7 +173,7 @@ export const gamePreviewPng = async (game: GameCard) => {
   // The game page banner's shade (`.game-page-banner::after`), so the text reads over any cover.
   const shade = 'linear-gradient(90deg, #1c1422e6 0%, #1c142280 45%, transparent 75%), linear-gradient(0deg, #1c1422 0%, transparent 45%)'
   const svg = await draw(
-    <Frame background={`${shade}, url(${artworkImage(game.title, width, height)})`}>
+    <Frame background={`${shade}, url(${artworkImage(game.title, width, height)})`} demo={game.demo}>
       <div
         style={{
           display: 'block',
