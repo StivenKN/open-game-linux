@@ -40,6 +40,8 @@ export const ApprovedTest = Schema.Struct({
   profile: Schema.NullOr(Schema.String),
   outcome: Outcome,
   tested_at: Schema.Date,
+  // When the report was approved: a follower's news are the approvals after they last looked.
+  reviewed_at: Schema.Date,
   // numeric(7,2) arrives as text from the driver (probe c).
   avg_fps: Schema.NullOr(Schema.FiniteFromString),
   resolution: Schema.NullOr(Schema.String),
@@ -72,7 +74,7 @@ export type TestedSetup = Pick<
 }
 
 /** An edition whose newest approved test fails after an earlier one worked. */
-export type Regression = Pick<ApprovedTest, 'edition_id' | 'launcher' | 'tested_at' | 'game_version' | 'layer'> & {
+export type Regression = Pick<ApprovedTest, 'edition_id' | 'launcher' | 'tested_at' | 'game_version' | 'layer_version_id' | 'layer'> & {
   readonly outcome: FailingOutcome
 }
 
@@ -105,10 +107,39 @@ export const summarize = (tests: ReadonlyArray<ApprovedTest>, now: Date): Compat
     last_tested: setups[0]?.last_tested ?? null,
     setups,
     failures: countFailures(base),
-    regressions: groupBy(tests, (p) => String(p.edition_id))
-      .flatMap(regressionOf)
-      .sort((a, b) => b.tested_at.getTime() - a.tested_at.getTime()),
+    regressions: regressionsOf(tests),
   }
+}
+
+/** One layer version's approved history on the game page: its state and when it was first and last tested. */
+export type LayerHistory = Pick<ApprovedTest, 'layer_version_id' | 'layer'> & {
+  readonly status: CompatibilityStatus
+  readonly test_count: number
+  readonly first_tested: Date
+  readonly last_tested: Date
+  /** The editions whose newest approved test ran on this version and stopped working there. */
+  readonly regressions: ReadonlyArray<Regression>
+}
+
+/**
+ * How compatibility changed from one layer version to the next, for "Historial por versión": the approved
+ * tests grouped by layer version, in the order each version was first tested (version strings do not
+ * order across families). It is history, so no window applies, as with regressions; the dates show its age.
+ */
+export const timeline = (tests: ReadonlyArray<ApprovedTest>): ReadonlyArray<LayerHistory> => {
+  const regressions = regressionsOf(tests)
+  return groupBy(tests, (p) => String(p.layer_version_id))
+    .map((group) => ({ group, first: oldest(group) }))
+    .sort((a, b) => byAge(a.first, b.first))
+    .map(({ group, first }) => ({
+      layer_version_id: first.layer_version_id,
+      layer: first.layer,
+      status: statusOf(group.map((p) => p.outcome)),
+      test_count: group.length,
+      first_tested: first.tested_at,
+      last_tested: newest(group).tested_at,
+      regressions: regressions.filter((r) => r.layer_version_id === first.layer_version_id),
+    }))
 }
 
 export const onDistribution = (tests: ReadonlyArray<ApprovedTest>, distribution: DistributionId, now: Date): CompatibilitySummary =>
@@ -119,9 +150,12 @@ const baseOf = (tests: ReadonlyArray<ApprovedTest>, now: Date) => {
   return { recent, base: recent.length > 0 ? recent : tests }
 }
 
-// Tests at the same instant are ordered by id, the order they were registered in.
-const newest = (tests: readonly [ApprovedTest, ...ApprovedTest[]]): ApprovedTest =>
-  tests.reduce((a, b) => ((b.tested_at.getTime() - a.tested_at.getTime() || b.report_id - a.report_id) > 0 ? b : a))
+// Older first. Tests at the same instant are ordered by id, the order they were registered in.
+const byAge = (a: ApprovedTest, b: ApprovedTest) => a.tested_at.getTime() - b.tested_at.getTime() || a.report_id - b.report_id
+
+const newest = (tests: readonly [ApprovedTest, ...ApprovedTest[]]): ApprovedTest => tests.reduce((a, b) => (byAge(b, a) > 0 ? b : a))
+
+const oldest = (tests: readonly [ApprovedTest, ...ApprovedTest[]]): ApprovedTest => tests.reduce((a, b) => (byAge(b, a) < 0 ? b : a))
 
 const keyOf = (p: ApprovedTest): string =>
   JSON.stringify([p.edition_id, p.game_version, p.distribution_id, p.layer_version_id, p.profile_id])
@@ -159,9 +193,14 @@ const regressionOf = (tests: readonly [ApprovedTest, ...ApprovedTest[]]): Readon
   const latest = newest(tests)
   const { outcome } = latest
   if (!isFailing(outcome) || !tests.some((p) => p !== latest && isWorking(p.outcome))) return []
-  const { edition_id, launcher, tested_at, game_version, layer } = latest
-  return [{ edition_id, launcher, tested_at, game_version, layer, outcome }]
+  const { edition_id, launcher, tested_at, game_version, layer_version_id, layer } = latest
+  return [{ edition_id, launcher, tested_at, game_version, layer_version_id, layer, outcome }]
 }
+
+const regressionsOf = (tests: ReadonlyArray<ApprovedTest>): ReadonlyArray<Regression> =>
+  groupBy(tests, (p) => String(p.edition_id))
+    .flatMap(regressionOf)
+    .sort((a, b) => b.tested_at.getTime() - a.tested_at.getTime())
 
 const countFailures = (tests: ReadonlyArray<ApprovedTest>): ReadonlyArray<FailureCount> =>
   groupBy(tests.flatMap((p) => p.failures), (code) => code)

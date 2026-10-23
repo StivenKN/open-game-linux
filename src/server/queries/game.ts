@@ -1,13 +1,14 @@
 import { Clock, Effect, Option, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
-import { onDistribution, ApprovedTest, summarize } from '../../domain/compatibility.ts'
+import { onDistribution, ApprovedTest, summarize, timeline } from '../../domain/compatibility.ts'
 import { requirements, evaluate, suggestProfile } from '../../domain/evaluation.ts'
 import { NotFound } from '../../domain/errors.ts'
+import { newsSince } from '../../domain/follow.ts'
 import { GameId, UserId } from '../../domain/ids.ts'
 import { GraphicsApi } from '../../domain/literals.ts'
 import { ReviewStatus, activeStatuses } from '../../domain/review.ts'
 import { gamePath } from '../../domain/graphics-path.ts'
-import { Diagnostic, GameEdition, Machine, Game, GameApi, Launcher, Profile, Solution, FailureType } from '../../domain/tables.ts'
+import { Diagnostic, GameEdition, Machine, Game, GameApi, GameFollow, Launcher, Profile, Solution, FailureType } from '../../domain/tables.ts'
 import { Visitor } from '../auth.ts'
 import { rows, oneRow } from '../rows.ts'
 import { machineOnLinux } from '../gpu/capability.ts'
@@ -16,9 +17,16 @@ import { protonDbSummaries } from './protondb.ts'
 
 const GameTest = Schema.Struct({ ...ApprovedTest.fields, game_id: GameId, demo: Schema.Boolean })
 
-export const approvedTests = (game: GameId | null) =>
+/** The approved tests of one game, of the games a user follows, or (null) of the whole catalog. */
+export const approvedTests = (scope: { readonly game: GameId } | { readonly followedBy: UserId } | null) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
+    const games =
+      scope === null
+        ? []
+        : 'game' in scope
+          ? [sql`e.game_id = ${scope.game}`]
+          : [sql`e.game_id IN (SELECT game_id FROM game_follow WHERE user_id = ${scope.followedBy})`]
     return yield* rows(
       GameTest,
       sql`
@@ -26,7 +34,7 @@ export const approvedTests = (game: GameId | null) =>
              d.distribution_id, ${sql.literal(distributionLabel('dist'))} AS distribution,
              r.layer_version_id, ${sql.literal(layerLabel('vc'))} AS layer,
              r.profile_id, ${sql.literal(profileLabel('p'))} AS profile,
-             r.outcome, r.tested_at, r.avg_fps, r.resolution, r.graphics_quality, r.measurement_method,
+             r.outcome, r.tested_at, r.reviewed_at, r.avg_fps, r.resolution, r.graphics_quality, r.measurement_method,
              COALESCE(array_agg(tf.code ORDER BY tf.code) FILTER (WHERE tf.id IS NOT NULL), '{}') AS failures,
              ${sql.literal(isDemo('u'))} AS demo
       FROM report r
@@ -40,7 +48,7 @@ export const approvedTests = (game: GameId | null) =>
       LEFT JOIN profile p ON p.id = r.profile_id
       LEFT JOIN report_failure rf ON rf.report_id = r.id
       LEFT JOIN failure_type tf ON tf.id = rf.failure_type_id
-      WHERE ${sql.and([sql`r.review_status = 'aprobado'`, ...(game === null ? [] : [sql`e.game_id = ${game}`])])}
+      WHERE ${sql.and([sql`r.review_status = 'aprobado'`, ...games])}
       GROUP BY r.id, e.id, l.id, d.id, dist.id, u.id, vc.id, p.id
       ORDER BY r.tested_at DESC, r.id`,
     )
@@ -83,6 +91,17 @@ export const latestDiagnostic = (user: UserId) =>
 export const visitorDiagnostic = Effect.flatMap(Visitor, (visitor) =>
   Option.match(visitor, { onNone: () => Effect.succeedNone, onSome: (u) => latestDiagnostic(u.id) }),
 )
+
+const SeenAt = GameFollow.mapFields(Struct.pick(['seen_at']))
+
+const visitorFollow = (game: GameId) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    const visitor = yield* Visitor
+    if (Option.isNone(visitor)) return Option.none()
+    const [follow] = yield* rows(SeenAt, sql`SELECT seen_at FROM game_follow WHERE user_id = ${visitor.value.id} AND game_id = ${game}`)
+    return Option.fromNullishOr(follow)
+  })
 
 const GameRow = Game.mapFields(Struct.pick(['id', 'title', 'description', 'x86_level_min']))
 
@@ -137,8 +156,9 @@ export const gamePage = (gameId: GameId) =>
     })(gameId)
 
     const now = new Date(yield* Clock.currentTimeMillis)
-    const tests = yield* approvedTests(gameId)
+    const tests = yield* approvedTests({ game: gameId })
     const summary = summarize(tests, now)
+    const follow = yield* visitorFollow(gameId)
 
     const pending = yield* oneRow(
       Count,
@@ -232,6 +252,10 @@ export const gamePage = (gameId: GameId) =>
       game: { ...game.value, apis },
       editions,
       summary,
+      timeline: timeline(tests),
+      // What "Marcar como visto" marks seen: the instant this page was computed at.
+      as_of: now,
+      follow: Option.match(follow, { onNone: () => null, onSome: ({ seen_at }) => ({ seen_at, news: newsSince(tests, seen_at, now) }) }),
       protondb,
       demo: tests.some((p) => p.demo),
       pending: pending.n,

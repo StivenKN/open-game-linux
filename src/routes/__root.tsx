@@ -4,12 +4,14 @@ import bigShoulders from '@fontsource-variable/big-shoulders-display/files/big-s
 import onest from '@fontsource-variable/onest/files/onest-latin-wght-normal.woff2?url'
 import unbounded from '@fontsource-variable/unbounded/files/unbounded-latin-wght-normal.woff2?url'
 import icon from '../../assets/icon.svg?url'
-import { visitorFn } from '../fns/session.ts'
+import { sessionFn } from '../fns/session.ts'
 import appCss from '../styles.css?url'
+import { count } from '../ui/format.ts'
 import { authClient } from './-auth-client.ts'
 
 export const Route = createRootRoute({
-  beforeLoad: async () => ({ visitor: await visitorFn() }),
+  // Runs on every navigation, so the header's count of followed games with news stays current.
+  beforeLoad: () => sessionFn(),
   head: () => ({
     meta: [{ charSet: 'utf-8' }, { name: 'viewport', content: 'width=device-width, initial-scale=1' }, { title: 'OpenGame Linux' }],
     links: [
@@ -50,7 +52,7 @@ function RootLayout() {
 }
 
 function SiteHeader() {
-  const { visitor } = Route.useRouteContext()
+  const { visitor, followed_news: news } = Route.useRouteContext()
   const nav = useRef<HTMLElement>(null)
   const { pathname } = useLocation()
   // On narrow screens the nav scrolls sideways; bring the current page's link into view. scrollIntoView
@@ -72,7 +74,22 @@ function SiteHeader() {
         </Link>
         <Link to="/diagnostico">Diagnóstico</Link>
         <Link to="/guias">Guías</Link>
-        {visitor !== null && <Link to="/mis-aportes">Mis aportes</Link>}
+        {visitor !== null && (
+          <>
+            <Link to="/mis-aportes">Mis aportes</Link>
+            <Link to="/seguidos">
+              Seguidos
+              {news > 0 && (
+                <>
+                  <span className="nav-count" aria-hidden="true">
+                    {news}
+                  </span>
+                  <span className="sr-only"> ({count(news, 'juego con novedades', 'juegos con novedades')})</span>
+                </>
+              )}
+            </Link>
+          </>
+        )}
         {visitor !== null && visitor.role !== 'usuario' && (
           <>
             <Link to="/revision">Revisión</Link>

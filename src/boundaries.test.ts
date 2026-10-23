@@ -93,4 +93,12 @@ describe('boundaries', () => {
       .map((f) => `${f} writes upstream_fix; call noteFix() from server/commands/upstream.ts instead`)
     expect(violations).toEqual([])
   })
+
+  it('only server/commands/follow.ts writes game_follow (single writer)', () => {
+    const write = /\b(INSERT INTO|UPDATE|DELETE FROM)\s+game_follow\b/
+    const violations = [...files('src'), ...files('scripts')]
+      .filter((f) => f !== 'src/server/commands/follow.ts' && !f.startsWith('src/server/schema/') && write.test(read(f)))
+      .map((f) => `${f} writes game_follow; call changeFollow() from server/commands/follow.ts instead`)
+    expect(violations).toEqual([])
+  })
 })
