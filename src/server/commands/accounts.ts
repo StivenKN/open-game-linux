@@ -44,7 +44,7 @@ export const changeAccess = (target: UserId, change: Partial<Access>, by: Admin 
         const changed = after.role !== before.role || after.active !== before.active
         if (changed) yield* sql`UPDATE app_user SET role = ${after.role}, active = ${after.active}, updated_at = now() WHERE id = ${target}`
         // visitorOf already ignores them, but better-auth's own endpoints (update-user, change-password) would not.
-        if (before.active && !after.active) yield* sql`DELETE FROM session WHERE "userId" = ${target}`
+        if (!after.active) yield* sql`DELETE FROM session WHERE "userId" = ${target}`
         return { alias: before.alias, ...after, changed }
       }),
     ),
