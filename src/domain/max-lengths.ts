@@ -33,4 +33,5 @@ export const maxLengths = {
   solution: { title: 180 },
   adoption_guide: { type: 25, title: 180, status: 15 },
   protondb_summary: { layer_variant: 15, layer_version: 60 },
+  game_request: { status: 15 },
 } as const

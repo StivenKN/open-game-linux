@@ -298,6 +298,30 @@ layer(PgTest)('consultas', (it) => {
     )
   })
 
+  describe('catalog search', () => {
+    // pg_trgm's default word_similarity_threshold (0.6) separates these: every typo below scores 0.62 or more,
+    // and «theft» against «The Witcher 3: Wild Hunt», the closest miss, scores 0.5.
+    it.effect('finds the seeded titles through typos, ranks by similarity and matches nothing unrelated', () =>
+      inRollback(
+        Effect.gen(function* () {
+          const e = yield* scenario
+          for (const title of ['Elden Ring', 'The Witcher 3: Wild Hunt', 'Cyberpunk 2077']) yield* e.insert('game', { title, description: 'd' })
+          const search = (q: string) => Effect.map(catalog({ q }), titles)
+          expect(yield* search('cyberpnk')).toEqual(['Cyberpunk 2077'])
+          expect(yield* search('eldn ring')).toEqual(['Elden Ring'])
+          expect(yield* search('valornt')).toEqual(['Valorant'])
+          expect(yield* search('conter strike')).toEqual(['Counter-Strike 2'])
+          expect(yield* search('euro truk')).toEqual(['Euro Truck Simulator 2'])
+          expect(yield* search('witcher')).toEqual(['The Witcher 3: Wild Hunt'])
+          // Both contain «the»; the whole word ranks first, ahead of alphabetical order.
+          expect(yield* search('the')).toEqual(['The Witcher 3: Wild Hunt', 'Grand Theft Auto V'])
+          expect(yield* search('theft')).toEqual(['Grand Theft Auto V'])
+          expect(yield* search('hades')).toEqual([])
+        }),
+      ).pipe(onDay(today)),
+    )
+  })
+
   describe('vigencia', () => {
     it.effect('un año después, ficha y catálogo calculan el estado con lo reciente y marcan lo viejo', () =>
       inRollback(

@@ -657,7 +657,8 @@ label.checkbox {
   padding-top: 10px;
   margin-bottom: 0;
 }
-.decision button {
+.decision button,
+.decision .button {
   margin-top: 6px;
 }
 .instructions {

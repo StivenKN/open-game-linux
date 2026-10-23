@@ -24,7 +24,7 @@ describe('form conventions', () => {
   })
 
   it('apis[] checkboxes arrive as a list, even with one ticked', () => {
-    const game = formData({ title: 'Hades', description: 'd', 'editions[0][launcher_id]': '1', 'editions[0][external_id]': '', x86_level_min: 'null' })
+    const game = formData({ title: 'Hades', description: 'd', 'editions[0][launcher_id]': '1', 'editions[0][external_id]': '', x86_level_min: 'null', request_id: 'null' })
     const read = (...apis: ReadonlyArray<string>) => {
       const f = new FormData()
       for (const [k, v] of game) f.append(k, v)

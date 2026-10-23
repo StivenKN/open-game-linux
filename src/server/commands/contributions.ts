@@ -21,6 +21,7 @@ import { Diagnostic, Machine, Profile, Report } from '../../domain/tables.ts'
 import { requireReviewer, requireUser, type Visitor } from '../auth.ts'
 import { withDbRules } from '../schema/constraints.ts'
 import { rows, type Infra, oneRow } from '../rows.ts'
+import { fulfillRequest } from './game-requests.ts'
 
 export type Write<A, E> = Effect.Effect<A, E | Unauthenticated | Infra, SqlClient.SqlClient | Visitor>
 
@@ -144,9 +145,10 @@ export const submitSolution = (s: NewSolution): Write<{ readonly id: SolutionId 
 
 const GameIdRow = Schema.Struct({ id: GameId })
 
-export const createGame = (j: NewGame): Write<{ readonly id: GameId }, RuleViolated | Forbidden> =>
+/** Started from a request (`request_id`), the same transaction fulfils it, or fails if it already closed. */
+export const createGame = (j: NewGame): Write<{ readonly id: GameId }, RuleViolated | Forbidden | NotFound> =>
   Effect.gen(function* () {
-    yield* requireReviewer
+    const reviewer = yield* requireReviewer
     const sql = yield* SqlClient.SqlClient
     const created = yield* oneRow(
       GameIdRow,
@@ -154,6 +156,7 @@ export const createGame = (j: NewGame): Write<{ readonly id: GameId }, RuleViola
     )
     yield* withDbRules(sql`INSERT INTO game_edition ${sql.insert(j.editions.map((e) => ({ game_id: created.id, ...e })))}`)
     yield* sql`INSERT INTO game_api ${sql.insert(Arr.dedupe(j.apis).map((api) => ({ game_id: created.id, api })))}`
+    if (j.request_id !== null) yield* fulfillRequest(reviewer, j.request_id, created.id)
     return { id: created.id }
   })
 

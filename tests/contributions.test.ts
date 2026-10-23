@@ -133,7 +133,7 @@ const newGame = (
   title: string,
   editions: ReadonlyArray<{ launcher_id: number; external_id: string }>,
   graphics: { apis: ReadonlyArray<string>; x86_level_min: string | null } = { apis: ['d3d11'], x86_level_min: null },
-) => Schema.decodeUnknownSync(NewGame)({ title, description: 'Un juego de prueba', editions, ...graphics })
+) => Schema.decodeUnknownSync(NewGame)({ title, description: 'Un juego de prueba', editions, ...graphics, request_id: null })
 
 const profileContent = {
   title: 'Con DXVK',

@@ -23,6 +23,7 @@ export const Rule = Schema.Literals([
   'ultimo_administrador',
   'perfil_congelado',
   'dependencia_repetida',
+  'pedido_cerrado',
 ])
 export type Rule = typeof Rule.Type
 
@@ -60,6 +61,7 @@ export const rules: Record<Rule, { readonly field: Field; readonly message: stri
   ultimo_administrador: { field: 'form', message: 'Es la última cuenta de administrador activa. Da ese rol a otra cuenta antes de cambiar esta.' },
   perfil_congelado: { field: 'form', message: 'Este perfil ya se usó o se revisó, así que no cambia. Propón una versión nueva con tus cambios.' },
   dependencia_repetida: { field: 'dependencies', message: 'Esa dependencia ya está en el perfil; deja una sola fila para ella.' },
+  pedido_cerrado: { field: 'form', message: 'Ese pedido ya se cerró: un revisor lo cumplió o lo rechazó.' },
 }
 
 export const Mismatch = Schema.Union([
@@ -107,7 +109,12 @@ export class InvalidPayload extends Schema.TaggedError<InvalidPayload>()('Payloa
   field: Schema.NullOr(Schema.String),
 }) {}
 
-export const DomainError = Schema.Union([RuleViolated, IncomparableProfile, InvalidTransition, ApprovalBlocked, InvalidPayload])
+/** The Steam store gave nothing usable for an App ID; the reviewer fills the form by hand. */
+export class SteamUnavailable extends Schema.TaggedError<SteamUnavailable>()('SteamNoDisponible', {
+  reason: Schema.Literals(['no_encontrado', 'no_es_juego', 'sin_respuesta']),
+}) {}
+
+export const DomainError = Schema.Union([RuleViolated, IncomparableProfile, InvalidTransition, ApprovalBlocked, InvalidPayload, SteamUnavailable])
 export type DomainError = typeof DomainError.Type
 
 export type Encoded<E extends DomainError> = Extract<typeof DomainError.Encoded, { readonly _tag: E['_tag'] }>
