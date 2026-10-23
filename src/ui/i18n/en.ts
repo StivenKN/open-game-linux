@@ -1,10 +1,21 @@
 // The English dictionary. Spanish is the source: `satisfies Messages` fails the build on a missing or extra key.
 import { formats } from '../format.ts'
 import { vocabulary } from '../vocabulary.ts'
-import { catalog } from './en/catalog.tsx'
 import { common } from './en/common.ts'
+import { account } from './en/account.tsx'
+import { catalog } from './en/catalog.tsx'
+import { compatibility } from './en/compatibility.tsx'
+import { diagnosis } from './en/diagnosis.tsx'
+import { follow } from './en/follow.tsx'
+import { game } from './en/game.tsx'
+import { guides } from './en/guides.tsx'
+import { profile } from './en/profile.tsx'
+import { report } from './en/report.tsx'
+import { requests } from './en/requests.tsx'
+import { review } from './en/review.tsx'
+import { share } from './en/share.ts'
 import { sources } from './en/sources.tsx'
 import { vocabulary as words } from './en/vocabulary.ts'
 import type { Messages } from './es.ts'
 
-export const en = { ...formats('en-US'), ...vocabulary(words), ...common, catalog, sources } satisfies Messages
+export const en = { ...formats('en-US'), ...vocabulary(words), ...common, catalog, game, share, compatibility, follow, report, profile, diagnosis, account, review, requests, guides, sources } satisfies Messages

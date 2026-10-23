@@ -51,3 +51,13 @@ export const unprefixedRedirect = (url: URL, headers: Headers): string | null =>
   if (isLang(first) || first === 'api' || /\.[^/]*$/.test(url.pathname)) return null
   return localizedPath(preferredLang(headers), url.pathname) + url.search
 }
+
+/**
+ * The images (badge.svg, og.png) live outside the language prefix, so their words come from `?lang=`:
+ * `imageQuery` writes it for a page's language, `imageLang` reads it, Spanish by default.
+ */
+export const imageQuery = (lang: Lang) => (lang === 'es' ? '' : `?lang=${lang}`)
+export const imageLang = (url: URL): Lang => {
+  const lang = url.searchParams.get('lang')
+  return isLang(lang) ? lang : 'es'
+}
