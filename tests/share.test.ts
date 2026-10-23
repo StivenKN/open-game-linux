@@ -56,11 +56,12 @@ const scenario = Effect.gen(function* () {
 })
 
 layer(PgTest)('la insignia y la vista previa de un juego', (it) => {
-  it.effect('cuentan solo lo aprobado, como su tarjeta del catálogo', () =>
+  it.effect('cuentan solo lo aprobado, como su tarjeta del catálogo: ni lo pendiente ni lo retirado', () =>
     inRollback(
       Effect.gen(function* () {
         const e = yield* scenario
         yield* e.report('no_inicia', { review_status: 'pendiente' })
+        yield* e.report('no_inicia', { ...e.approved, review_status: 'retirado' })
         const card = () => onDay(today)(gameCard(e.game))
         expect(yield* card()).toEqual(Option.some({ title: 'sh_juego', status: 'sin_evidencia', reports: 0, no_recent_confirmation: false }))
         yield* e.report('funciona', e.approved)
