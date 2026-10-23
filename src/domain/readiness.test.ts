@@ -59,6 +59,10 @@ describe('libraryReadiness', () => {
     expect(r.no_evidence).toEqual([])
   })
 
+  it('a working state outweighs an old break on another edition, as the year window does', () => {
+    expect(libraryReadiness([game('Funciona hoy', 'funciona', { regressed: true })], 1)).toMatchObject({ working: 1, holding_back: [] })
+  })
+
   it('evidence older than a year still counts as working, and says so', () => {
     expect(libraryReadiness([game('Viejo', 'funciona', { stale: true })], 1)).toMatchObject({ working: 1, working_stale: 1, holding_back: [] })
   })

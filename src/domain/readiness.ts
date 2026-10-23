@@ -17,7 +17,7 @@ type RatedGame = {
   readonly status: CompatibilityStatus
   /** Every approved test is older than a year (`summarize`'s `no_recent_confirmation`). */
   readonly no_recent_confirmation: boolean
-  /** An edition's newest approved test fails after an earlier one worked: "Dejó de funcionar". */
+  /** An edition's newest approved test fails after an earlier one worked: "Dejó de funcionar", which ignores the year window. */
   readonly regressed: boolean
   readonly blocked_by_anti_cheat: boolean
   readonly out_of_reach: boolean
@@ -49,8 +49,11 @@ export const libraryReadiness = <G extends RatedGame>(games: ReadonlyArray<G>, i
     working_out_of_reach: working.filter((g) => g.out_of_reach).length,
     working_stale: working.filter((g) => g.no_recent_confirmation).length,
     blocked_by_anti_cheat: games.filter((g) => g.blocked_by_anti_cheat).length,
-    /** "Te frenan": the approved evidence fails, stopped working or is blocked, or the machine falls short. */
-    holding_back: games.filter((g) => isFailing(g.status) || g.regressed || g.blocked_by_anti_cheat || g.out_of_reach),
+    /**
+     * "Te frenan": the approved evidence fails or is blocked, or the machine falls short. A regression
+     * counts only when the state is not working, so a stale break on another store cannot contradict it.
+     */
+    holding_back: games.filter((g) => isFailing(g.status) || (g.regressed && !isWorking(g.status)) || g.blocked_by_anti_cheat || g.out_of_reach),
     /** "Sin evidencia": nobody has an approved test yet, and the machine does not rule the game out. */
     no_evidence: games.filter((g) => g.status === 'sin_evidencia' && !g.out_of_reach),
   }
