@@ -11,6 +11,7 @@ import type { DiagnosticId, GuideId, GameId } from '../../domain/ids.ts'
 import { GraphicsApi } from '../../domain/literals.ts'
 import type { X86Level } from '../../domain/platform.ts'
 import { gamePath } from '../../domain/graphics-path.ts'
+import { outOfReach } from '../../domain/readiness.ts'
 import { Diagnostic, Distribution, Machine, AdoptionGuide, Game, GameEdition, Profile } from '../../domain/tables.ts'
 import { requireUser, Visitor } from '../auth.ts'
 import { captureOf } from '../diagnostics/payload.ts'
@@ -67,18 +68,22 @@ const matrix = (machine: MachineOnLinux, setup: Setup, inLibrary: ReadonlySet<Ga
     )
     return games.map((game) => {
       const tests = allTests.filter((p) => p.game_id === game.id)
-      const { status, test_count } = summarize(tests, now)
+      const { status, test_count, no_recent_confirmation, regressions } = summarize(tests, now)
       const evaluated = profiles.filter((p) => p.game_id === game.id).map((p) => ({ ...p, evaluation: evaluate(machine, requirements(p)) }))
       const profile = suggestProfile(evaluated, setup)
+      const path = gamePath(machine, setup.x86_level, game)
       return {
         game_id: game.id,
         title: game.title,
         in_library: inLibrary.has(game.id),
         status,
         test_count,
+        no_recent_confirmation,
+        regressed: regressions.length > 0,
         blocked_by_anti_cheat: blockedByAntiCheat(tests, now),
+        out_of_reach: outOfReach(path, evaluated),
         x86_level_min: game.x86_level_min,
-        path: gamePath(machine, setup.x86_level, game),
+        path,
         profile:
           profile === null
             ? null

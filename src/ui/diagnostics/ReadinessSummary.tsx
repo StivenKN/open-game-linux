@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { CompatibilityStatus } from '../../domain/compatibility.ts'
-import { type LibraryReadiness, outOfReach } from '../../domain/readiness.ts'
+import type { LibraryReadiness } from '../../domain/readiness.ts'
 import { Badge, Chip } from '../Badge.tsx'
 import { count } from '../format.ts'
 import { compatibilityStatus, failureType } from '../vocabulary.ts'
@@ -22,23 +22,35 @@ const headline = ({ installed, in_catalog, working }: LibraryReadiness<MatrixRow
   return `${subject} ${working === 1 ? 'tiene evidencia de que funciona' : 'tienen evidencia de que funcionan'} en Linux.`
 }
 
-const outOfReachSentence = ({ working, working_out_of_reach: n }: LibraryReadiness<MatrixRow>): string => {
-  if (n === working) return n === 1 ? 'Pero pide más de lo que tiene tu equipo.' : 'Pero todos piden más de lo que tiene tu equipo.'
-  return `Pero ${n} de ellos ${n === 1 ? 'pide' : 'piden'} más de lo que tiene tu equipo.`
-}
+/** `n` of the `working` games: "pide…" when it is the only one, "todos piden…", or "2 de ellos piden…". */
+const ofThem = (n: number, working: number, one: string, many: string): string =>
+  n === working ? (n === 1 ? one : `todos ${many}`) : `${n} de ellos ${n === 1 ? one : many}`
+
+const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
+/** What qualifies the headline's evidence: games the machine cannot run, and evidence older than a year. */
+const qualifiers = ({ working, working_out_of_reach, working_stale }: LibraryReadiness<MatrixRow>): string =>
+  [
+    working_out_of_reach > 0 && `Pero ${ofThem(working_out_of_reach, working, 'pide', 'piden')} más de lo que tiene tu equipo.`,
+    working_stale > 0 && `${capitalized(ofThem(working_stale, working, 'solo tiene', 'solo tienen'))} reportes aprobados de hace más de un año.`,
+  ]
+    .filter((s) => s !== false)
+    .join(' ')
 
 /** The top of "Tu biblioteca de Steam": the one-screen answer to "can I switch to Linux?". */
 export function ReadinessSummary({ readiness: r }: { readiness: LibraryReadiness<MatrixRow> }) {
   const antiCheat = failureType('anti_cheat')
   const more = r.no_evidence.length - SHORT_LIST
+  const qualified = qualifiers(r)
+  const unknown = r.installed - r.in_catalog
   if (r.installed === 0) return <p className="small note">{headline(r)}</p>
   return (
     <div className="card stack readiness" aria-label="Resumen de tu biblioteca">
       <p className="readiness-headline">{headline(r)}</p>
-      {r.working_out_of_reach > 0 && <p>{outOfReachSentence(r)}</p>}
+      {qualified !== '' && <p>{qualified}</p>}
       <p className="small muted">
-        {count(r.installed, 'juego instalado', 'juegos instalados')}: {r.in_catalog} en el catálogo y {r.installed - r.in_catalog} que todavía no
-        conocemos.
+        {count(r.installed, 'juego instalado', 'juegos instalados')}: {r.in_catalog} en el catálogo
+        {unknown > 0 && ` y ${unknown} que todavía no conocemos`}.
       </p>
       {r.in_catalog > 0 && (
         <>
@@ -65,7 +77,7 @@ export function ReadinessSummary({ readiness: r }: { readiness: LibraryReadiness
                 Te frenan
               </h3>
               {r.holding_back.length === 0 ? (
-                <p className="small muted">Nada por ahora: ningún reporte aprobado dice que alguno de tus juegos falle, y tu equipo no descarta ninguno.</p>
+                <p className="small muted">Ninguno por ahora.</p>
               ) : (
                 <ul className="readiness-list">
                   {r.holding_back.map((g) => (
@@ -74,8 +86,9 @@ export function ReadinessSummary({ readiness: r }: { readiness: LibraryReadiness
                         {g.title}
                       </Link>
                       <Badge label={compatibilityStatus[g.status]} />
+                      {g.regressed && <Chip tone="rojo">Dejó de funcionar</Chip>}
                       {g.blocked_by_anti_cheat && <Chip tone={antiCheat.tone}>{antiCheat.text}</Chip>}
-                      {outOfReach(g) && (
+                      {g.out_of_reach && (
                         <Chip tone="rojo" shape="punteado">
                           Tu equipo no cumple
                         </Chip>
