@@ -192,7 +192,7 @@ export async function* tarFile(chunks: AsyncIterable<Uint8Array>, suffix: string
   let filled = 0
   let skip = 0
   let left = 0
-  let found = false
+  let matched = false
   for await (const chunk of chunks) {
     let i = 0
     while (i < chunk.length) {
@@ -201,7 +201,7 @@ export async function* tarFile(chunks: AsyncIterable<Uint8Array>, suffix: string
         left -= part.length
         i += part.length
         yield part
-      } else if (found) i = chunk.length
+      } else if (matched) i = chunk.length
       else if (skip > 0) {
         const n = Math.min(skip, chunk.length - i)
         skip -= n
@@ -218,12 +218,12 @@ export async function* tarFile(chunks: AsyncIterable<Uint8Array>, suffix: string
         if (!checksumMatches(header) || Number.isNaN(size)) throw new InvalidExport({ reason: 'no es un archivo .tar' })
         if (REGULAR.has(header[156] ?? -1) && field(header, 0, 100).endsWith(suffix)) {
           left = size
-          found = true
+          matched = true
         } else skip = Math.ceil(size / BLOCK) * BLOCK
       }
     }
   }
-  if (found && left === 0) return
+  if (matched && left === 0) return
   throw new InvalidExport({ reason: left > 0 || skip > 0 || filled > 0 ? 'el .tar está truncado' : `el .tar no contiene un archivo ${suffix}` })
 }
 

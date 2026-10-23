@@ -96,7 +96,7 @@ A game's page also shows what [AreWeAntiCheatYet](https://areweanticheatyet.com)
 pnpm db:anticheat --latest
 ```
 
-`--latest` downloads `games.json` only when it changed since the last import, or when a Steam game was added to the catalog. You can also pass a path to a `games.json`, or `-` to read it from standard input. The import matches entries by the Steam edition's appId, as the ProtonDB import does. When two entries name the same appId, the one the list changed most recently wins. It replaces the previous import in one transaction, and an empty, truncated or unreadable file fails and changes nothing.
+`--latest` downloads `games.json` only when it changed since the last import, or when a Steam game was added to the catalog. You can also pass a path to a `games.json`, or `-` to read it from standard input. The import matches entries by the Steam edition's appId, as the ProtonDB import does. When two entries name the same appId, the one the list changed most recently wins. It replaces the previous import in one transaction. An empty, truncated or unreadable file fails and changes nothing, and so does a download that is not the exact file GitHub lists.
 
 The list is published under the [MIT License](https://github.com/AreWeAntiCheatYet/AreWeAntiCheatYet/blob/master/LICENSE), Copyright © 2021 Starz0r and Curve, which allows reuse as long as the copyright and permission notice go with it. Every page that shows the data carries "Datos de AreWeAntiCheatYet, licencia MIT", with links to the site and to that license.
 
