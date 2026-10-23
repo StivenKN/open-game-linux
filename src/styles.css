@@ -378,7 +378,9 @@ td {
   font-weight: 700;
   vertical-align: 1px;
 }
+/* Like the brand, the greeting stays on one line; on a phone it shrinks, so a long alias cannot overflow. */
 .account {
+  flex: none;
   margin-left: auto;
   display: flex;
   align-items: center;
@@ -1622,6 +1624,9 @@ label.checkbox {
   .group,
   .optional-group {
     padding: 10px 12px 14px;
+  }
+  .account {
+    flex: 0 1 auto;
   }
   .account button,
   .account .button,
