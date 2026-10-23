@@ -138,7 +138,7 @@ function LanguageSwitch() {
       lang={other}
       title={messages[other].header.switchLanguage}
       className="language-switch"
-      // The choice outlives this page: an unprefixed link (an old bookmark, the detector) opens in it too.
+      // The choice outlives this page: an unprefixed link (an old bookmark, an old copy of the detector) opens in it too.
       onClick={() => {
         document.cookie = `${langCookie}=${other}; path=/; max-age=31536000; samesite=lax`
       }}
