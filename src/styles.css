@@ -387,6 +387,79 @@ td {
   gap: 10px;
 }
 
+.language-switch {
+  padding: 8px 6px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+.language-switch:hover {
+  color: var(--text);
+}
+/* The account's own pages and tools open from its name: a <details>, so it works with the keyboard and
+   without JavaScript. */
+.account-menu {
+  position: relative;
+}
+.account-menu > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.account-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.account-menu > summary::after {
+  content: '▾';
+  color: var(--muted);
+}
+.account-menu > summary:hover,
+.account-menu[open] > summary {
+  background: var(--card);
+  border-color: var(--muted);
+}
+.account-alias {
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-links {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  min-width: 230px;
+  padding: 8px;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.35);
+}
+.account-links a {
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.account-links a:hover,
+.account-links a[data-status='active'] {
+  background: var(--card-2);
+}
+.account-links button {
+  margin-top: 6px;
+}
+
 .narrow {
   max-width: 480px;
 }

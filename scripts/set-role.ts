@@ -3,12 +3,12 @@
 // through `changeAccess`, so the last active administrador cannot be demoted from here either.
 import { Effect, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { rules } from '../src/domain/errors.ts'
 import { UserId } from '../src/domain/ids.ts'
 import { Role } from '../src/domain/review.ts'
 import { changeAccess } from '../src/server/commands/accounts.ts'
 import { rows } from '../src/server/rows.ts'
 import { PgLive } from '../src/server/runtime.ts'
+import { en } from '../src/ui/i18n/en.ts'
 
 const [email = '', role] = process.argv.slice(2)
 
@@ -19,7 +19,7 @@ const program = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
   const [user] = yield* rows(Schema.Struct({ id: UserId }), sql`SELECT id FROM app_user WHERE email = lower(btrim(${email}))`)
   if (user === undefined) return yield* Effect.die(`No account has the email ${email}`)
-  const c = yield* changeAccess(user.id, { role: r, active: true }, null).pipe(Effect.catchTag('ReglaIncumplida', (e) => Effect.die(rules[e.rule].message)))
+  const c = yield* changeAccess(user.id, { role: r, active: true }, null).pipe(Effect.catchTag('ReglaIncumplida', (e) => Effect.die(en.rules[e.rule])))
   yield* Effect.log(c.changed ? `${c.alias} is now an active ${c.role}` : `${c.alias} was already an active ${c.role}; nothing to change`)
 }).pipe(Effect.provide(PgLive))
 

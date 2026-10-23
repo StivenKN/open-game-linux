@@ -24,7 +24,8 @@ const throwControlFlow = (e: ControlFlow): never => {
     case 'SinPermiso':
       throw notFound()
     case 'NoAutenticado':
-      throw redirect({ to: '/entrar' })
+      // No params: the router fills `lang` from the page that asked, on the server and in the browser.
+      throw redirect({ from: '/$lang', to: '/$lang/entrar' })
   }
 }
 

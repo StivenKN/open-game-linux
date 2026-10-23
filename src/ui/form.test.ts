@@ -2,6 +2,7 @@ import { describe, expect, it } from '@effect/vitest'
 import { Result, Schema } from 'effect'
 import { NewGame, NewReport } from '../domain/contributions.ts'
 import { Checkbox, OptionalNumber } from '../domain/ids.ts'
+import { es } from './i18n/es.ts'
 import { readForm } from './useAction.ts'
 
 const formData = (pairs: Record<string, string>) => {
@@ -14,12 +15,12 @@ const Sample = Schema.Struct({ vram_mb: OptionalNumber(Schema.Int.check(Schema.i
 
 describe('form conventions', () => {
   it('a blank number and an unticked checkbox arrive as null and false', () => {
-    expect(readForm(Sample, formData({ vram_mb: '  ' }))).toEqual(Result.succeed({ vram_mb: '', required: false }))
+    expect(readForm(Sample, formData({ vram_mb: '  ' }), es)).toEqual(Result.succeed({ vram_mb: '', required: false }))
     expect(Schema.decodeUnknownSync(Sample)({ vram_mb: '', required: false })).toEqual({ vram_mb: null, required: false })
   })
 
   it('a typed number and a ticked checkbox arrive with their value', () => {
-    expect(readForm(Sample, formData({ vram_mb: '4096', required: 'true' }))).toEqual(Result.succeed({ vram_mb: '4096', required: true }))
+    expect(readForm(Sample, formData({ vram_mb: '4096', required: 'true' }), es)).toEqual(Result.succeed({ vram_mb: '4096', required: true }))
     expect(Schema.decodeUnknownSync(Sample)({ vram_mb: '4096', required: true })).toEqual({ vram_mb: 4096, required: true })
   })
 
@@ -29,7 +30,7 @@ describe('form conventions', () => {
       const f = new FormData()
       for (const [k, v] of game) f.append(k, v)
       for (const api of apis) f.append('apis[]', api)
-      return Result.map(readForm(NewGame, f), (j) => j.apis)
+      return Result.map(readForm(NewGame, f, es), (j) => j.apis)
     }
     expect(read('d3d11')).toEqual(Result.succeed(['d3d11']))
     expect(read('d3d11', 'vulkan')).toEqual(Result.succeed(['d3d11', 'vulkan']))
@@ -37,7 +38,7 @@ describe('form conventions', () => {
   })
 
   it('an invalid number is a field error, not a null', () => {
-    expect(readForm(Sample, formData({ vram_mb: '-1' }))).toEqual(Result.fail({ vram_mb: 'Revisa este valor.' }))
+    expect(readForm(Sample, formData({ vram_mb: '-1' }), es)).toEqual(Result.fail({ vram_mb: 'Revisa este valor.' }))
   })
 })
 
@@ -65,6 +66,7 @@ describe('column limits in the report', () => {
     const tooLong = readForm(
       NewReport,
       formData({ ...report, game_version: 'v'.repeat(81), launcher_version: 'l'.repeat(81), 'measurement[resolution]': 'r'.repeat(31), 'layer_version[version]': 'x'.repeat(61) }),
+      es,
     )
     expect(tooLong).toEqual(
       Result.fail({
@@ -77,7 +79,7 @@ describe('column limits in the report', () => {
   })
 
   it('an FPS average that does not fit numeric(7,2) states the range', () => {
-    expect(readForm(NewReport, formData({ ...report, 'measurement[avg_fps]': '100000' }))).toEqual(
+    expect(readForm(NewReport, formData({ ...report, 'measurement[avg_fps]': '100000' }), es)).toEqual(
       Result.fail({ 'measurement[avg_fps]': 'Escribe un promedio de FPS entre 0 y 99999.99.' }),
     )
   })

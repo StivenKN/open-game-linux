@@ -1,4 +1,5 @@
 import { Array as Arr, Effect, Schema, Struct } from 'effect'
+import { says } from './checks.ts'
 import { CompatibilityStatus } from './compatibility.ts'
 import { VulkanSupport, vulkanVersionPattern } from './evaluation.ts'
 import type { Mismatch } from './errors.ts'
@@ -51,7 +52,7 @@ export const TargetMachine = Schema.Union([
 ])
 
 export const FpsMeasurement = Schema.Struct({
-  avg_fps: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 99999.99 }, { message: 'Escribe un promedio de FPS entre 0 y 99999.99.' })),
+  avg_fps: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 99999.99 }, says('fpsRange'))),
   resolution: TextUpTo(maxLengths.report.resolution),
   graphics_quality: TextUpTo(maxLengths.report.graphics_quality),
   measurement_method: RequiredText,
@@ -62,9 +63,7 @@ export const ObservedFailure = Schema.Struct({ failure_type_id: FailureTypeId, d
 // FormData cannot express an empty array, so a form with no failure rows posts no `failures` key (probe a).
 const OptionalFailures = Schema.Array(ObservedFailure).pipe(Schema.withDecodingDefaultKey(Effect.succeed([])))
 const RequiredFailures = Schema.Array(ObservedFailure).pipe(
-  Schema.refine(Arr.isReadonlyArrayNonEmpty, {
-    message: 'Si no inicia o falla, indica al menos un tipo de fallo (usa «otro» si no sabes la causa).',
-  }),
+  Schema.refine(Arr.isReadonlyArrayNonEmpty, says('failureNeeded')),
   Schema.withDecodingDefaultKey(Effect.succeed([])),
 )
 
@@ -107,7 +106,7 @@ export const NewGame = Schema.Struct({
   ),
   // Checkboxes named `apis[]`; with none checked the form posts no `apis` key at all.
   apis: Schema.Array(GraphicsApi).pipe(
-    Schema.refine(Arr.isReadonlyArrayNonEmpty, { message: 'Marca al menos una API gráfica.' }),
+    Schema.refine(Arr.isReadonlyArrayNonEmpty, says('apiNeeded')),
     Schema.withDecodingDefaultKey(Effect.succeed([])),
   ),
   x86_level_min: Game.fields.x86_level_min,
@@ -155,7 +154,7 @@ export const profileContentColumns = Struct.keys(profileColumns)
 export const ProfileContent = Schema.Struct({
   ...profileColumns,
   steps: Schema.Array(NewStep).pipe(
-    Schema.refine(Arr.isReadonlyArrayNonEmpty, { message: 'Un perfil necesita al menos un paso.' }),
+    Schema.refine(Arr.isReadonlyArrayNonEmpty, says('stepNeeded')),
     Schema.withDecodingDefaultKey(Effect.succeed([])),
   ),
   dependencies: Schema.Array(NewProfileDependency).pipe(Schema.withDecodingDefaultKey(Effect.succeed([]))),
@@ -164,7 +163,7 @@ export type ProfileContent = typeof ProfileContent.Type
 
 const vulkanMinimumNeedsVulkan = Schema.makeFilter(
   (p: { readonly requires_vulkan: boolean | null; readonly vulkan_version_min: string | null }) => p.vulkan_version_min === null || p.requires_vulkan === true,
-  { message: 'Una versión mínima de Vulkan solo cabe si el perfil exige Vulkan.' },
+  says('vulkanMinimumNeedsVulkan'),
 )
 
 export const NewProfile = Schema.Struct({
@@ -232,11 +231,7 @@ const detectedFields = {
   device: Diagnostic.fields.device.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
 }
 
-const vulkanMessage = 'Solo hay versión de Vulkan si hay soporte.'
-
-const vulkanNeedsSupport = Schema.makeFilter((c: { readonly vulkan_support: VulkanSupport; readonly vulkan_version: string | null }) => c.vulkan_support === 'si' || c.vulkan_version === null, {
-  message: vulkanMessage,
-})
+const vulkanNeedsSupport = Schema.makeFilter((c: { readonly vulkan_support: VulkanSupport; readonly vulkan_version: string | null }) => c.vulkan_support === 'si' || c.vulkan_version === null, says('vulkanVersionNeedsSupport'))
 
 export const Capture = Schema.Union([
   Schema.Struct({ ...captureFields, ...detectedFields, ...linuxFields }).check(vulkanNeedsSupport),
@@ -256,9 +251,7 @@ const manualFields = {
   dispositivo: Diagnostic.fields.device.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
 }
 
-const manualVulkanNeedsSupport = Schema.makeFilter((c: { readonly soporte_vulkan: VulkanSupport; readonly version_vulkan: string | null }) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
-  message: vulkanMessage,
-})
+const manualVulkanNeedsSupport = Schema.makeFilter((c: { readonly soporte_vulkan: VulkanSupport; readonly version_vulkan: string | null }) => c.soporte_vulkan === 'si' || c.version_vulkan === null, says('vulkanVersionNeedsSupport'))
 
 export const ManualCapture = Schema.Union([
   Schema.Struct({

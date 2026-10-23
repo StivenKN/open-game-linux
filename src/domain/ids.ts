@@ -1,5 +1,6 @@
 // usuario.id is better-auth's text id (spike Q7), the one recorded deviation from integer ids.
 import { Effect, Schema, SchemaTransformation } from 'effect'
+import { says } from './checks.ts'
 
 export const GameId = Schema.Int.pipe(Schema.brand('GameId'))
 export type GameId = typeof GameId.Type
@@ -34,7 +35,7 @@ export const UserId = Schema.String.pipe(Schema.brand('UserId'))
 export type UserId = typeof UserId.Type
 
 export const RequiredText = Schema.Trim.pipe(
-  Schema.check(Schema.isNonEmpty({ message: 'Este campo es obligatorio.' })),
+  Schema.check(Schema.isNonEmpty(says('required'))),
 )
 
 export const OptionalTextOf = <S extends Schema.Codec<unknown, string>>(schema: S) =>

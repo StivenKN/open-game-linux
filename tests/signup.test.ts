@@ -2,6 +2,8 @@ import { describe, expect, it } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { accountErrors } from '../src/routes/-account.ts'
+import { en } from '../src/ui/i18n/en.ts'
+import { es } from '../src/ui/i18n/es.ts'
 import { auth, demoDomain } from '../src/server/auth.ts'
 import { runtime } from '../src/server/runtime.ts'
 
@@ -28,7 +30,8 @@ describe('registro público', () => {
     const response = await signUpOverHttp(email)
     expect(response.status).toBe(400)
     const { code } = Schema.decodeUnknownSync(ErrorResponse)(await response.json())
-    expect(accountErrors({ code })).toEqual({ email: 'Ese dominio está reservado para los datos de ejemplo. Usa otro correo.' })
+    expect(accountErrors({ code }, es)).toEqual({ email: 'Ese dominio está reservado para los datos de ejemplo. Usa otro correo.' })
+    expect(accountErrors({ code }, en)).toEqual({ email: 'That domain is reserved for the demo data. Use another email address.' })
     expect(await accountsWith(email)).toEqual([{ n: 0 }])
   })
 
@@ -57,7 +60,7 @@ describe('entrar con una cuenta desactivada', () => {
 
     const right = await signInOverHttp(email, 'contrasena-de-prueba')
     expect([right.status, right.headers.getSetCookie()]).toEqual([403, []])
-    expect(accountErrors({ code: await codeOf(right) })).toEqual({ form: 'Esta cuenta está desactivada. Un administrador puede reactivarla.' })
+    expect(accountErrors({ code: await codeOf(right) }, es)).toEqual({ form: 'Esta cuenta está desactivada. Un administrador puede reactivarla.' })
     expect(await codeOf(await signInOverHttp(email, 'otra-contrasena'))).toBe('INVALID_EMAIL_OR_PASSWORD')
   })
 })

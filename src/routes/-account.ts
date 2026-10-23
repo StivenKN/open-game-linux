@@ -1,20 +1,18 @@
 import { Schema } from 'effect'
+import { accountFailureField } from '../domain/accounts.ts'
+import { says } from '../domain/checks.ts'
 import type { Reply } from '../domain/errors.ts'
 import { User } from '../domain/tables.ts'
+import type { Messages } from '../ui/i18n/es.ts'
 import type { FieldErrors } from '../ui/useAction.ts'
 import { authClient } from './-auth-client.ts'
 
-const email = User.fields.email.pipe(
-  Schema.check(Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { message: 'Escribe un correo válido.' })),
-)
+const email = User.fields.email.pipe(Schema.check(Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, says('email'))))
 // better-auth's defaults; it refuses anything outside them with PASSWORD_TOO_SHORT/LONG.
-const password = Schema.String.pipe(
-  Schema.check(Schema.isMinLength(8, { message: 'Usa al menos 8 caracteres.' })),
-  Schema.check(Schema.isMaxLength(128, { message: 'Usa como máximo 128 caracteres.' })),
-)
+const password = Schema.String.pipe(Schema.check(Schema.isMinLength(8)), Schema.check(Schema.isMaxLength(128)))
 
 export const SignUp = Schema.Struct({ alias: User.fields.alias, email, password })
-export const SignIn = Schema.Struct({ email, password: Schema.String.pipe(Schema.check(Schema.isNonEmpty({ message: 'Escribe tu contraseña.' }))) })
+export const SignIn = Schema.Struct({ email, password: Schema.String.pipe(Schema.check(Schema.isNonEmpty(says('passwordNeeded')))) })
 
 type AccountFailure = { readonly code: string | undefined }
 
@@ -28,17 +26,7 @@ export const signUp = async ({ data }: { readonly data: typeof SignUp.Encoded })
 export const signIn = async ({ data }: { readonly data: typeof SignIn.Encoded }) =>
   reply((await authClient.signIn.email({ email: data.email, password: data.password })).error)
 
-const messages: Readonly<Partial<Record<string, FieldErrors>>> = {
-  USER_ALREADY_EXISTS: { email: 'Ya existe una cuenta con ese correo. ¿Quieres entrar?' },
-  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: { email: 'Ya existe una cuenta con ese correo. ¿Quieres entrar?' },
-  INVALID_EMAIL: { email: 'Escribe un correo válido.' },
-  DOMINIO_RESERVADO: { email: 'Ese dominio está reservado para los datos de ejemplo. Usa otro correo.' },
-  PASSWORD_TOO_SHORT: { password: 'Usa al menos 8 caracteres.' },
-  PASSWORD_TOO_LONG: { password: 'Usa como máximo 128 caracteres.' },
-  INVALID_EMAIL_OR_PASSWORD: { form: 'El correo o la contraseña no coinciden.' },
-  CUENTA_DESACTIVADA: { form: 'Esta cuenta está desactivada. Un administrador puede reactivarla.' },
-  TOO_MANY_ATTEMPTS: { form: 'Demasiados intentos seguidos. Espera unos segundos y vuelve a intentarlo.' },
-}
+const isAccountFailure = (code: string | undefined): code is keyof typeof accountFailureField => code !== undefined && Object.hasOwn(accountFailureField, code)
 
-export const accountErrors = (f: AccountFailure): FieldErrors =>
-  (f.code === undefined ? undefined : messages[f.code]) ?? { form: 'No pudimos completar la operación. Intenta de nuevo.' }
+export const accountErrors = (f: AccountFailure, t: Messages): FieldErrors =>
+  isAccountFailure(f.code) ? { [accountFailureField[f.code]]: t.accountFailures[f.code] } : { form: t.accountFailed }
