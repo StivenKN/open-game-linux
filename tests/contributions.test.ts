@@ -82,7 +82,7 @@ const scenario = Effect.gen(function* () {
     })} RETURNING id`)
   const mintProfile = yield* profile()
 
-  return { sql, ana, bruno, rita, launcher, launcher2, ed, edGog, mint, fedora, layerVersion, layerVersion8, other, launcherFailure, vcrun, anaMachine, diagAna, diagAnaWindows, diagBruno, profile, mintProfile, diagnostic }
+  return { sql, ana, bruno, rita, launcher, launcher2, game, ed, edGog, mint, fedora, layerVersion, layerVersion8, other, launcherFailure, vcrun, anaMachine, diagAna, diagAnaWindows, diagBruno, profile, mintProfile, diagnostic }
 })
 type Scenario = Effect.Success<typeof scenario>
 
@@ -361,13 +361,12 @@ layer(PgTest)('aportes', (it) => {
 
     it.effect('empezar una versión nueva desde un perfil rechazado ajeno, aunque su autor sí puede', inScenario((e) =>
       Effect.gen(function* () {
+        const game = Schema.decodeSync(GameId)(e.game)
         const rejected = yield* e.profile({ distribution_id: e.fedora })
         yield* asUser(e.rita)(decide(ref('perfil', rejected), reject))
-        const [edition] = Schema.decodeUnknownSync(Schema.Array(Schema.Struct({ game_id: GameId })))(yield* e.sql`SELECT game_id FROM game_edition WHERE id = ${e.ed}`)
-        if (edition === undefined) return yield* Effect.die('the scenario has no edition')
-        const from = profileId(rejected)
-        expect((yield* asUser(e.ana)(profileOptions(edition.game_id, from))).draft).toBeNull()
-        expect((yield* asUser(e.bruno)(profileOptions(edition.game_id, from))).draft).toMatchObject({ id: rejected, distribution_id: e.fedora, title: 'perfil' })
+        expect((yield* asUser(e.ana)(profileOptions(game, profileId(rejected)))).draft).toBeNull()
+        expect((yield* asUser(e.bruno)(profileOptions(game, profileId(rejected)))).draft).toMatchObject({ id: rejected, distribution_id: e.fedora, title: 'perfil' })
+        expect((yield* asUser(e.ana)(profileOptions(game, profileId(e.mintProfile)))).draft).toMatchObject({ id: e.mintProfile })
       })))
 
     it.effect('la misma dependencia dos veces en un perfil, sin dejar el perfil a medias', inScenario((e) =>
