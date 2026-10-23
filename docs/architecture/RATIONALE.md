@@ -526,6 +526,7 @@ The service waits for `app` instead of running `pnpm db:migrate` itself. The mig
 - **The router's URL rewrite, with the language outside the route tree.** Routes and links would not change, but the language would live in mutable router state that building the switcher's link would also touch, and no route could read it from its params.
 - **Translated slugs (`/en/games/12`).** Twice the routes, and every shared link and the detector would need a mapping back.
 - **Server-resolved messages (the server words each failure in the request's language).** It needs the language on every server fn call, and the browser's own Schema decode would still need the dictionaries.
+- **Loading only the page's dictionary.** Both ship to every page, in the shared chunk: measured on 2026-10-23 they are 104 KB of its 272 KB minified, and 35 KB of its 91 KB gzip. Leaving one language out saves about 17 KB gzip per page, of 256 KB of client JS. Every read of a dictionary would then wait for it to load: before hydration, on a language switch, in the server's image routes, and for the switcher, which names the other language on every page.
 
 ## Open questions and risks
 
