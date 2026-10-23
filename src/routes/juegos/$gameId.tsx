@@ -122,7 +122,7 @@ function GamePage() {
                     {p.demo && <DemoStamp />}
                   </div>
                   {p.review_status === 'pendiente' ? (
-                    <p className="small muted">Aún no está aprobado. Puedes probarlo: tu reporte aporta la evidencia que su aprobación necesita.</p>
+                    <p className="small muted">Aún no está aprobado y ningún revisor ha leído sus pasos. Si lo pruebas, tu reporte aporta la evidencia que su aprobación necesita.</p>
                   ) : (
                     p.evaluation && (
                       <div className="row small">
@@ -135,6 +135,11 @@ function GamePage() {
               ))}
             </ul>
           )}
+          <p className="small block">
+            <Link to="/juegos/$gameId/perfiles/nuevo" params={{ gameId: game.id }}>
+              Proponer un perfil
+            </Link>
+          </p>
         </section>
 
         <section aria-labelledby="causes">

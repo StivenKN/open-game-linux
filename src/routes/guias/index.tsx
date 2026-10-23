@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { canReview } from '../../domain/review.ts'
 import { guidesFn } from '../../fns/guides.ts'
+import { Chip } from '../../ui/Badge.tsx'
 import { date } from '../../ui/format.ts'
 import { DemoStamp } from '../../ui/DemoStamp.tsx'
-import { guideType } from '../../ui/vocabulary.ts'
+import { guideStatus, guideType } from '../../ui/vocabulary.ts'
 
 export const Route = createFileRoute('/guias/')({
   loader: () => guidesFn(),
@@ -12,10 +14,18 @@ export const Route = createFileRoute('/guias/')({
 
 function GuidesPage() {
   const guides = Route.useLoaderData()
+  const { visitor } = Route.useRouteContext()
   return (
     <main className="wrapper">
       <h1>Guías de adopción</h1>
       <p className="muted">Para elegir una distribución, instalarla o convivir con Windows en el mismo equipo.</p>
+      {visitor !== null && canReview[visitor.role] && (
+        <p>
+          <Link to="/guias/nueva" className="button">
+            Nueva guía
+          </Link>
+        </p>
+      )}
       {guides.length === 0 ? (
         <p className="card muted">Todavía no hay guías publicadas.</p>
       ) : (
@@ -26,6 +36,7 @@ function GuidesPage() {
                 <Link to="/guias/$guideId" params={{ guideId: g.id }} className="game-name">
                   {g.title}
                 </Link>
+                {g.status !== 'publicada' && <Chip tone="gris">{guideStatus[g.status]}</Chip>}
                 {g.demo && <DemoStamp />}
               </div>
               <div className="chip-row">

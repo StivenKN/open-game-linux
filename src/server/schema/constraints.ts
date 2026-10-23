@@ -10,6 +10,8 @@ export const ruleByConstraint = {
   og_review_only: 'contenido_inmutable',
   game_edition_game_launcher_uq: 'edicion_repetida',
   game_edition_external_uq: 'identificador_en_uso',
+  og_profile_frozen: 'perfil_congelado',
+  profile_dependency_pkey: 'dependencia_repetida',
 } as const satisfies Record<string, Rule>
 
 const PgCause = Schema.Struct({ constraint: Schema.String })

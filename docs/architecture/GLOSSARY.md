@@ -11,7 +11,7 @@ Some Spanish names are not code identifiers. They are contracts with players, wi
 | Contract | Examples | Why it stays |
 |---|---|---|
 | URL paths | `/juegos/12`, `/perfiles/3`, `/diagnostico/importar`, `/reportes/10/solucion` | TanStack Router builds URLs from route file names, so the route files keep their Spanish names. Bookmarks, shared links and the detector link point at them. Route param names such as `$gameId` never reach the URL, so they are English. |
-| Search keys and values | `q`, `estado`, `lanzador`, `sin_anti_cheat`, `volver`, `tipo`, `pegar`, `perfil`, `tipoFallo` | They are part of URLs that players share and bookmark. |
+| Search keys and values | `q`, `estado`, `lanzador`, `sin_anti_cheat`, `volver`, `tipo`, `pegar`, `perfil`, `tipoFallo`, `desde` | They are part of URLs that players share and bookmark. |
 | Detector payload keys and values | `capturado_en`, `distribucion`, `biblioteca_steam`, `soporte_vulkan`, `desconocido` | Copies of the detector script that players already downloaded keep sending them. The `/diagnostico/importar#d=` link baked into the scripts and the `OPENGAME_*` environment variables stay for the same reason. |
 | Stored data values | CHECK values such as `pendiente`, `funciona` and `revisor`, `_tag` values, the `nombre` key of each game in the `steam_library` jsonb | They are rows in a deployed database, not names in code. Changing them needs a data migration. |
 | Storage keys | `opengame:diagnostico-pendiente`, `opengame:perfil:<id>:r<revision>:pasos` | A browser that saved state under the old key would lose it. |
@@ -34,6 +34,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | antes | before (an account's access before `changeAccess` applies a change) |
 | aporte | contribution (domain; `myContributions` reads "Mis aportes"); commands (the `server/commands` directory of writes) |
 | aprobados | approved |
+| archivada | archived (a `GuideStatus`; the literal archivada stays) |
 | arranque_seguro | secure boot |
 | arreglo | fix (an upstream umu-protonfixes fix); array (`arrayElements`, a JSON array in `server/external/protondb.ts`) |
 | arte | artwork |
@@ -42,6 +43,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | azar | seeded random |
 | biblioteca | library |
 | bloqueo | blocker |
+| borrador | draft (`draftOf` and `ProfileDraft`, a profile's content to fill the form; a `GuideStatus`, where the literal borrador stays) |
 | buscar | search |
 | busqueda | search |
 | cabecera | header |
@@ -74,6 +76,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | decidir | decide |
 | dependencia | dependency |
 | descartar | screen (distros) |
+| desde | from (the profile a new one starts from, `from` in `profileOptions`; the search key desde stays) |
 | destacado | featured |
 | destino | destination; target (`SaveTarget` in `routes/diagnostico/importar.tsx`, where a diagnostic is saved) |
 | detalle | detail |
@@ -82,9 +85,11 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | distribucion | distribution |
 | dominio | domain (the `_domain` CHECKs; DOMINIO_RESERVADO stays) |
 | edicion | edition |
+| editar | edit (`editProfile`, `editGuide`) |
 | ejecutar | run (`runStatements` in migrations; `runRead` and `runAction` in `server/run.ts`; run in `useAction`; `runScript` in `detector.test.ts`) |
 | ejemplo | sample (demo data); demo (`DemoStamp`, the demo-data stamp; the `demo` SQL alias and loader key) |
 | elemento | element; item (a review queue item in `routes/revision.tsx`) |
+| eliminar | delete (`deleteProfile`) |
 | entorno | setup (a tested environment); env (a shell variable) |
 | entrada | input; sign in (`SignIn`, the sign-in form schema in `routes/-account.ts`, from entrar) |
 | entrar | sign in |
@@ -179,7 +184,9 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | promedio | average; avg (the `avg_fps` column) |
 | propietario | owner |
 | propio | own (`is_own`) |
+| proponer | propose (`proposeProfile`) |
 | prueba | test (one approved test run); approved and context (test fixture locals) |
+| publicada | published (a `GuideStatus`, `published` in `server/queries/guides.ts`; the literal publicada stays) |
 | rango | range; rank (`verdictRank`) |
 | reciente | recent |
 | registrado | noted (`upstream_fix.noted_by` and `noted_at`; see registrar) |

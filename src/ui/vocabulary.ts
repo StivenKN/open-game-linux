@@ -4,7 +4,7 @@ import type { RequirementCheck, DataOrigin, OperatingSystem, VulkanSupport, Requ
 import type { GpuWarning, LinuxDriver, GpuFamily, D3dPath } from '../domain/gpu.ts'
 import type { InvalidPayload } from '../domain/errors.ts'
 import type { Blocker, ReviewStatus, Role } from '../domain/review.ts'
-import type { GuideType } from '../domain/guides.ts'
+import type { GuideStatus, GuideType } from '../domain/guides.ts'
 import type { SecureBoot, X86Level, Tpm } from '../domain/platform.ts'
 import type { RenderPath, AntiCheatRiskPath, Requirement, GamePath } from '../domain/graphics-path.ts'
 import type { ObjectionCode, Objection, DistroVerdict } from '../domain/distros.ts'
@@ -110,6 +110,12 @@ export const guideType = {
   instalacion: 'Instalación',
   arranque_dual: 'Arranque dual',
 } as const satisfies Record<GuideType, string>
+
+export const guideStatus = {
+  borrador: 'Borrador',
+  publicada: 'Publicada',
+  archivada: 'Archivada',
+} as const satisfies Record<GuideStatus, string>
 
 export const payloadReason = {
   ilegible: 'No pudimos leer ese texto. Copia toda la salida del detector, o la dirección completa que abrió tu navegador.',

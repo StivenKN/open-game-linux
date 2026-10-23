@@ -20,6 +20,7 @@ ui/ ─────┴───────────────────�
 | upstream_fix writes | only `server/commands/upstream.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
 | `app_user.role` and `app_user.active` writes | only `server/commands/accounts.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
 | game_follow writes | only `server/commands/follow.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
+| profile, profile_step, profile_dependency, adoption_guide writes | only `server/commands/contributions.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
 | browser bundle | no server code, no GPU table, no detector script | `scripts/no-server-in-client.ts` after `vite build`, inside `pnpm check` (markers include `OPENGAME_TABLA_GPU` and `Win32_VideoController`) |
 | `styles.css` | every rule closed (no accidental nesting), one rule per selector | `src/styles.test.ts` |
 
@@ -43,7 +44,7 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `domain/library.ts` | `STEAM_LAUNCHER`, `MAX_LIBRARY_GAMES` (1000), `SteamAppId`, `LibraryGame`, `SteamLibrary`, `EvaluatedLibrary`, `isSteamTool` | |
 | `domain/review.ts` | `ReviewStatus`, **`nextStatuses`** (the only transition table), `Decision` (approval requires evidence), `planTransition` (idempotence), `ContributionRef`, `Blocker`, `Role`, `canReview` | Who may decide, preconditions |
 | `domain/accounts.ts` | `AccessChange` (the `/admin/usuarios` form: account, role, active), `Access`, `isActiveAdmin` | Who may change it |
-| `domain/contributions.ts` | Every input schema (`NewReport` with the failing-result filter, `NewSolution`, `NewGame`, `Capture` with `gpu_pci_id` and `steam_library` and the Linux driver and Vulkan only on its Linux member, `ManualCapture` without the PCI id or library, `DiagnosticInput` with detector text capped at 300 000 characters (derived from `MAX_LIBRARY_GAMES` and `maxLengths.library.name`), `SaveDiagnostic` with `with_library`, `LayerVersionRef`, `TargetMachine`, `CatalogFilter`), **`mismatches`** (8.7 comparability) | Persisting |
+| `domain/contributions.ts` | Every input schema (`NewReport` with the failing-result filter, `NewSolution`, `NewGame`, `Capture` with `gpu_pci_id` and `steam_library` and the Linux driver and Vulkan only on its Linux member, `ManualCapture` without the PCI id or library, `DiagnosticInput` with detector text capped at 300 000 characters (derived from `MAX_LIBRARY_GAMES` and `maxLengths.library.name`), `SaveDiagnostic` with `with_library`, `LayerVersionRef`, `TargetMachine`, `CatalogFilter`, `NewProfile` and `ProfileEdit` over `ProfileContent` with `DependencyRef`, `NewGuide`, `GuideEdit`), **`mismatches`** (8.7 comparability) | Persisting |
 | `domain/errors.ts` | `Rule` + `rules` (field + Spanish message per rule), failure classes, `DomainError`, `Reply`, control errors | |
 | `domain/guides.ts` | `GuideType`, `GuideStatus` | |
 | `domain/upstream.ts` | `SteamAppId`, `ProtonfixesPr`, `FixNote`, **`exportFix`** (profile → umu-protonfixes file, every untranslated token listed) and **`protonReport`** (report → Valve's compatibility-report). The tokenizer, the brand-gated Python renderer and the GitHub URL builders are private | Sending anything: users open the prefilled links themselves |
@@ -52,14 +53,14 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `server/run.ts` | `runRead`, `runAction`: session → `Visitor`, transaction per action, control errors → `notFound`/`redirect`, domain failures → `Reply` | Business rules |
 | `server/schema/migrations.ts` | All DDL, the rule-home index, and CHECK lists generated from Schema literals | |
 | `server/schema/constraints.ts` | `ruleByConstraint` (constraint name → `Rule`), `withDbRules` | |
-| `server/commands/contributions.ts` | **Single writer** of report/report_failure/layer_version upsert, solution, and game/game_edition (`createGame`, reviewers only). App-side 8.7/8.9 write rules | The review block, machine/diagnostic |
+| `server/commands/contributions.ts` | **Single writer** of report/report_failure/layer_version upsert, solution, game/game_edition (`createGame`, reviewers only), profile/profile_step/profile_dependency with the dependency upsert (`proposeProfile`, `editProfile`, `deleteProfile`; `profileEditable` says when the author may still change one) and adoption_guide (`createGuide`, `editGuide`, reviewers only). App-side 8.7/8.9 write rules | The review block, machine/diagnostic |
 | `server/commands/diagnostic.ts` | **Single writer** of machine and diagnostic, and the distribution a capture names (`submitDiagnostic`, converging on one machine per alias and one capture per time). Stores `steam_library` only when `with_library` is true | |
 | `server/commands/review.ts` | **Single writer** of the review block. `decide`, `approvalBlockers`, the reviewable-table registry | |
 | `server/commands/accounts.ts` | **Single writer** of `app_user.role` and `app_user.active` (`changeAccess`, for `/admin/usuarios` through `administerAccess`, `pnpm set-role` and the seed): the last active administrador keeps that access, an administrator never removes their own, a demo administrador changes only demo accounts, and deactivating deletes the account's sessions | Sign-up, passwords, sessions (better-auth) |
 | `server/commands/follow.ts` | **Single writer** of game_follow (`changeFollow`, the visitor's own follows): idempotent follow and unfollow; `Visto` moves `seen_at` forward only and never past now | |
 | `server/commands/upstream.ts` | **Single writer** of upstream_fix (`noteFix`, reviewers only): merged umu-protonfixes PRs of approved, exportable, non-demo profiles | |
 | `server/external/protondb.ts` | **Single writer** of `protondb_summary`. `arrayElements` (streams the export's top-level array), `importProtonDb` (read all, then replace in one transaction; refuses an older export), `importSummary` | Catalog rows: it only matches existing Steam editions |
-| `server/queries/*.ts` | Read models: `catalog`, `profile`, `guides`, `guide`, `reportOptions`, `solutionOptions`, `gameOptions`, `gamePage`, `queue`, `evaluateWithoutSaving`, `myDiagnostic`, `myMachines`, `protonDbSummaries` (ficha and catalog), `myProtonReport`, `myContributions` (one query per kind; only a refusal carries the reviewer's reason), `accounts` (administrators only), `myFollows` ("Seguidos") and `session` (the header's visitor and its count of followed games with news, from the same read model). Their success types are the page types. `gamePage` and `catalog` read `now` once from the `Clock` | Writes |
+| `server/queries/*.ts` | Read models: `catalog`, `profile`, `guides`, `guide` (reviewers also see drafts and archived guides), `reportOptions`, `solutionOptions`, `gameOptions`, `profileOptions`, `profileEditOptions`, `guideOptions`, `guideEditOptions`, `gamePage`, `queue`, `evaluateWithoutSaving`, `myDiagnostic`, `myMachines`, `protonDbSummaries` (ficha and catalog), `myProtonReport`, `myContributions` (one query per kind; only a refusal carries the reviewer's reason), `accounts` (administrators only), `myFollows` ("Seguidos") and `session` (the header's visitor and its count of followed games with news, from the same read model). Their success types are the page types. `gamePage` and `catalog` read `now` once from the `Clock` | Writes |
 | `server/diagnostics/payload.ts` | **The only detector parser**: `parsePayload` over payload v1, a union on `sistema` (the Windows member has no Vulkan and no kernel driver). It normalizes `gpu_pci_id` (a malformed id becomes null), the library (drops Steam tools and bad app ids, keeps the first of each id in the detector's order, cuts at 1000) and `rolling`. The private `pciLabel` names a GPU the detector could not name | |
 | `server/gpu/capability.ts` | **`machineOnLinux`**, the only builder of what `evaluate` consumes: PCI id to family, the policy per family (Linux driver, Vulkan range, warnings), the Direct3D path. Measured Linux Vulkan wins over the projection, and a Windows row's stored Vulkan is never read | Storing anything |
 | `server/gpu/families.generated.ts` | The PCI id to `GpuFamily` table, generated by `pnpm gpu:generate` with its source pins in the header. Never edited by hand | |
@@ -80,7 +81,7 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `ui/diagnostics/Distributions.tsx` | The "Distribuciones" section: candidates grouped by verdict with their reasons | |
 | `detector/opengame-detect.sh` | The productionized prototype script: payload v1 + `gpu_pci_id` + `biblioteca_steam`, with `__OPENGAME_URL__` and `__OPENGAME_MAX_JUEGOS__` filled in by the server route | |
 | `detector/opengame-detect.ps1` | The Windows detector for Windows PowerShell 5.1 and pwsh 7, ASCII only, no admin: the same payload without Vulkan or kernel driver. A URL over 2000 characters (the ShellExecute limit) goes to the clipboard and opens `/diagnostico?pegar=1` | |
-| `scripts/` | `migrate`, `seed` (approvals only via `decide`), `set-role` (through `changeAccess`), `protondb` (`pnpm db:protondb <path \| ->`), `no-server-in-client`, `generate-gpus` (`pnpm gpu:generate`) with its pure parsers in `gpu-sources.ts`, which fail closed on an unreadable line, an unknown token or a count under its floor | |
+| `scripts/` | `migrate`, `seed` (approvals only via `decide`; profiles and guides through their writers), `set-role` (through `changeAccess`), `protondb` (`pnpm db:protondb <path \| ->`), `no-server-in-client`, `generate-gpus` (`pnpm gpu:generate`) with its pure parsers in `gpu-sources.ts`, which fail closed on an unreadable line, an unknown token or a count under its floor | |
 | `tests/` | `support.ts` (rollback-per-test, constraint-name decoder), `setup.ts` (globalSetup: refuses any DB not named `*_test`, rebuilds the schema, migrates), `schema.test.ts`, `contributions.test.ts` | |
 
 ## Route map
@@ -91,13 +92,16 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | 9.3 Ficha (RF-02, 03, 06, 08, 10) | `/juegos/$gameId` | `gamePageFn`; `changeFollowFn` | public; personal verdict when logged in with a diagnosis; following needs login |
 | followed games | `/seguidos` | `myFollowsFn` / `changeFollowFn` | login |
 | 9.4 Asistente → profile page (RF-06, 07) | `/perfiles/$profileId` | `profileFn`; reviewers record merged PRs with `noteFixFn` | public (pending shows "en prueba") |
+| propose a profile | `/juegos/$gameId/perfiles/nuevo?desde=` | `profileOptionsFn` / `proposeProfileFn` | login |
+| edit or delete a profile | `/perfiles/$profileId/editar` | `profileEditOptionsFn` / `editProfileFn`, `deleteProfileFn` | its author only (others get notFound) |
 | RF-08 report | `/juegos/$gameId/reportar?perfil=` | `reportOptionsFn` / `submitReportFn` | login |
 | RF-08 solution | `/reportes/$reportId/solucion?tipoFallo=` | `submitSolutionFn` | login |
 | 9.2 Diagnóstico (RF-04, 05, 09) | `/diagnostico` `?pegar=1` | `myMachinesFn` / `evaluateDiagnosticFn`, `saveDiagnosticFn` | public evaluation; saving needs login |
 | detector landing | `/diagnostico/importar#d=…` (`ssr: false`) | `evaluateDiagnosticFn` | public |
 | saved diagnosis | `/diagnosticos/$diagnosticId` | `myDiagnosticFn` | owner only (others get notFound) |
 | Proton report for Valve | `/reportes/$reportId/proton` | `protonReportFn` | report owner only (others get notFound) |
-| RF-09 guides | `/guias`, `/guias/$guideId` | `guidesFn`, `guideFn` | public |
+| RF-09 guides | `/guias`, `/guias/$guideId` | `guidesFn`, `guideFn` | public; reviewers also see drafts and archived guides |
+| RF-09 guide authoring | `/guias/nueva`, `/guias/$guideId/editar` | `guideOptionsFn` / `createGuideFn`, `guideEditOptionsFn` / `editGuideFn` | revisor, administrador |
 | RF-10 review | `/revision?tipo=perfil\|reporte\|solucion` | `queueFn` / `decideFn` | revisor, administrador |
 | RF-03 new game | `/catalogo/nuevo` | `createGameFn` | revisor, administrador |
 | my contributions | `/mis-aportes` | `myContributionsFn` | login |
@@ -135,7 +139,8 @@ Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names 
 | the last active administrador keeps that access; an administrator never removes their own | app: server/commands/accounts.ts changeAccess (locks every active administrador) |
 | a demo administrador (public password) sees and changes only demo accounts | app: server/commands/accounts.ts changeAccess + server/queries/accounts.ts accounts |
 | author != reviewer (all three tables), transitions, approval preconditions | app: server/commands/review.ts decide |
-| only reviewers publish guides | no write path this delivery (seeded) |
+| only reviewers publish guides | app: server/auth.ts requireReviewer, called by createGuide and editGuide |
+| a profile changes only by its author, while pending and unused by any report or solution | app: server/commands/contributions.ts profileEditable (+ DB trigger og_profile_frozen) |
 | one profile per merged PR; only approved, exportable, non-demo profiles | DB UQ upstream_fix_pr_uq + app: server/commands/upstream.ts |
 | upstream_fix rows never rewritten (Anular deletes) | DB trigger og_immutable |
 | public view hides retired rows | app: server/queries (WHERE aprobado) |
@@ -146,13 +151,13 @@ Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names 
 | a follow's news: approvals after `seen_at`, the state at `seen_at` against now; a retired report counts in neither | app: domain/follow.ts newsSince |
 | `seen_at` only moves forward, never past now | app: server/commands/follow.ts changeFollow |
 
-Single writers. `src/boundaries.test.ts` checks the SQL in `src/` and `scripts/` for the first two and the last four.
+Single writers. `src/boundaries.test.ts` checks the SQL in `src/` and `scripts/` for the first two, the profile and guide tables, and the last four.
 
 | Tables | Writer |
 |---|---|
 | `machine`, `diagnostic` (and the `distribution` a capture names) | `server/commands/diagnostic.ts` |
 | review block of `profile`, `report`, `solution` | `server/commands/review.ts` `decide` |
-| `report` (with `report_failure` and the `layer_version` upsert), `solution`, `game` (with `game_edition`) | `server/commands/contributions.ts` |
+| `report` (with `report_failure` and the `layer_version` upsert), `solution`, `game` (with `game_edition`), `profile` (with `profile_step`, `profile_dependency` and the `dependency` upsert), `adoption_guide` | `server/commands/contributions.ts` |
 | `protondb_summary` | `server/external/protondb.ts` `importProtonDb` |
 | `upstream_fix` | `server/commands/upstream.ts` `noteFix` |
 | `app_user.role`, `app_user.active` | `server/commands/accounts.ts` `changeAccess` |

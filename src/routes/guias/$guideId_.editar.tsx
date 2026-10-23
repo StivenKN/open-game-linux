@@ -1,0 +1,54 @@
+// `$guideId_` keeps this page out of the guide page's layout (it renders on its own).
+import { createFileRoute, Link, notFound, redirect, useNavigate } from '@tanstack/react-router'
+import { GuideEdit } from '../../domain/contributions.ts'
+import { GuideId } from '../../domain/ids.ts'
+import { editGuideFn, guideEditOptionsFn } from '../../fns/guides.ts'
+import { FieldError } from '../../ui/FieldError.tsx'
+import { useAction } from '../../ui/useAction.ts'
+import { routeIdParser } from '../-ids.ts'
+import { returnHere } from '../-return-to.ts'
+import { GuideFields } from './-form.tsx'
+
+const guideId = routeIdParser(GuideId)
+
+export const Route = createFileRoute('/guias/$guideId_/editar')({
+  params: { parse: (p) => ({ guideId: guideId(p.guideId) }), stringify: (p) => ({ guideId: String(p.guideId) }) },
+  beforeLoad: ({ context, location }) => {
+    if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
+    if (context.visitor.role === 'usuario') throw notFound()
+  },
+  loader: ({ params }) => guideEditOptionsFn({ data: params }),
+  head: ({ loaderData }) => ({ meta: [{ title: `Editar ${loaderData?.guide.title ?? 'la guía'} · OpenGame Linux` }] }),
+  component: EditGuidePage,
+})
+
+function EditGuidePage() {
+  const { guide, distributions } = Route.useLoaderData()
+  const navigate = useNavigate()
+  const r = useAction(GuideEdit, editGuideFn, {
+    onFailure: () => ({}),
+    onComplete: ({ id }) => void navigate({ to: '/guias/$guideId', params: { guideId: id } }),
+  })
+  return (
+    <main className="wrapper">
+      <div className="breadcrumbs">
+        <Link to="/guias">Guías</Link> / <Link to="/guias/$guideId" params={{ guideId: guide.id }}>{guide.title}</Link> / Editar
+      </div>
+      <h1>Editar la guía</h1>
+      <p className="muted">Revisión {guide.revision}. Cambiar el texto, el título, el tipo o la distribución crea la revisión siguiente; cambiar solo el estado, no.</p>
+      <form className="card form form-wide" {...r.form}>
+        <FieldError errors={r.errors} field="form" />
+        <input type="hidden" name="guide_id" value={guide.id} />
+        <GuideFields errors={r.errors} distributions={distributions} guide={guide} />
+        <p className="row">
+          <button type="submit" disabled={r.submitting}>
+            Guardar los cambios
+          </button>
+          <Link to="/guias/$guideId" params={{ guideId: guide.id }}>
+            Cancelar
+          </Link>
+        </p>
+      </form>
+    </main>
+  )
+}

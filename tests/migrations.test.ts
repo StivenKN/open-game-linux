@@ -151,6 +151,16 @@ layer(PgTest)('7_english_names', (it) => {
         f.sql`UPDATE game_edition SET external_id = '271590' WHERE id = ${f.ed}`,
         f.sql`UPDATE game_edition SET external_id = '271590' WHERE id = ${f.ed2}`,
       ),
+    og_profile_frozen: (f) =>
+      Effect.andThen(
+        f.sql`INSERT INTO report (edition_id, diagnostic_id, layer_version_id, profile_id, game_version, tested_at, outcome, observations)
+              VALUES (${f.ed}, ${f.diag}, ${f.layer}, ${f.profile}, '1.0', '2026-10-02T10:00:00Z', 'funciona', 'sin problemas')`,
+        f.sql`UPDATE profile SET title = 'otro perfil' WHERE id = ${f.profile}`,
+      ),
+    profile_dependency_pkey: (f) => {
+      const dependency = f.sql`INSERT INTO profile_dependency (profile_id, dependency_id, required, install_instruction) VALUES (${f.profile}, ${f.dependency}, true, 'winetricks vcrun2019')`
+      return Effect.andThen(dependency, dependency)
+    },
   } satisfies Record<keyof typeof ruleByConstraint, (f: Seed) => Effect.Effect<unknown, SqlError.SqlError>>
 
   for (const constraint of Record.keys(ruleByConstraint))

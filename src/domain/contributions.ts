@@ -1,24 +1,41 @@
 import { Array as Arr, Effect, Schema, Struct } from 'effect'
 import { CompatibilityStatus } from './compatibility.ts'
-import { VulkanSupport } from './evaluation.ts'
+import { VulkanSupport, vulkanVersionPattern } from './evaluation.ts'
 import type { Mismatch } from './errors.ts'
 import {
   Checkbox,
+  DependencyId,
   DiagnosticId,
   DistributionId,
   EditionId,
+  GuideId,
   MachineId,
   LauncherId,
   ProfileId,
   ReportId,
   RequiredText,
+  OptionalText,
   FailureTypeId,
   LayerVersionId,
 } from './ids.ts'
 import { GraphicsApi, LayerFamily, FailingOutcome, WorkingOutcome } from './literals.ts'
 import { MAX_LIBRARY_GAMES } from './library.ts'
 import { maxLengths } from './max-lengths.ts'
-import { Diagnostic, Distribution, Machine, Game, Profile, Report, Solution, TextUpTo, OptionalTextUpTo, LayerVersion } from './tables.ts'
+import {
+  AdoptionGuide,
+  Dependency,
+  Diagnostic,
+  Distribution,
+  Machine,
+  Game,
+  Profile,
+  ProfileStep,
+  Report,
+  Solution,
+  TextUpTo,
+  OptionalTextUpTo,
+  LayerVersion,
+} from './tables.ts'
 
 export const LayerVersionRef = Schema.Union([
   Schema.TaggedStruct('existente', { id: LayerVersionId }),
@@ -93,6 +110,75 @@ export const NewGame = Schema.Struct({
   x86_level_min: Game.fields.x86_level_min,
 })
 export type NewGame = typeof NewGame.Type
+
+export const DependencyRef = Schema.Union([
+  Schema.TaggedStruct('existente', { id: DependencyId }),
+  Schema.TaggedStruct('nueva', { name: Dependency.fields.name, package_manager: Dependency.fields.package_manager, description: RequiredText }),
+])
+
+export type DependencyRef = typeof DependencyRef.Type
+
+const NewStep = Schema.Struct({ title: ProfileStep.fields.title, instruction: RequiredText })
+
+const NewProfileDependency = Schema.Struct({
+  dependency: DependencyRef,
+  required_version: OptionalTextUpTo(maxLengths.profile_dependency.required_version),
+  required: Checkbox,
+  install_instruction: RequiredText,
+})
+
+const profileColumns = {
+  title: Profile.fields.title,
+  target_game_version: OptionalTextUpTo(maxLengths.profile.target_game_version),
+  ram_min_mb: Profile.fields.ram_min_mb,
+  vram_min_mb: Profile.fields.vram_min_mb,
+  requires_vulkan: Profile.fields.requires_vulkan,
+  vulkan_version_min: Schema.NullOr(TextUpTo(maxLengths.profile.vulkan_version_min).check(Schema.isPattern(vulkanVersionPattern))),
+  cpu_requirement: OptionalText,
+  gpu_requirement: OptionalText,
+  launch_options: OptionalText,
+}
+
+/** The `profile` columns of `ProfileContent`, the one list the writer and the form's reads use. */
+export const profileContentColumns = Struct.keys(profileColumns)
+
+/**
+ * What the author of a profile can still change while it is pending and nobody used it. The
+ * environment it is for (edition, distribution, layer, architecture) is fixed at birth.
+ * Steps keep the order of the form's rows.
+ */
+export const ProfileContent = Schema.Struct({
+  ...profileColumns,
+  steps: Schema.Array(NewStep).pipe(
+    Schema.refine(Arr.isReadonlyArrayNonEmpty, { message: 'Un perfil necesita al menos un paso.' }),
+    Schema.withDecodingDefaultKey(Effect.succeed([])),
+  ),
+  dependencies: Schema.Array(NewProfileDependency).pipe(Schema.withDecodingDefaultKey(Effect.succeed([]))),
+})
+export type ProfileContent = typeof ProfileContent.Type
+
+const vulkanMinimumNeedsVulkan = Schema.makeFilter(
+  (p: { readonly requires_vulkan: boolean | null; readonly vulkan_version_min: string | null }) => p.vulkan_version_min === null || p.requires_vulkan === true,
+  { message: 'Una versión mínima de Vulkan solo cabe si el perfil exige Vulkan.' },
+)
+
+export const NewProfile = Schema.Struct({
+  edition_id: EditionId,
+  distribution_id: DistributionId,
+  layer_version: LayerVersionRef,
+  architecture: Profile.fields.architecture,
+  ...ProfileContent.fields,
+}).check(vulkanMinimumNeedsVulkan)
+export type NewProfile = typeof NewProfile.Type
+
+export const ProfileEdit = Schema.Struct({ profile_id: ProfileId, ...ProfileContent.fields }).check(vulkanMinimumNeedsVulkan)
+export type ProfileEdit = typeof ProfileEdit.Type
+
+export const NewGuide = AdoptionGuide.mapFields(Struct.pick(['type', 'distribution_id', 'title', 'content', 'status']))
+export type NewGuide = typeof NewGuide.Type
+
+export const GuideEdit = NewGuide.mapFields(Struct.assign({ guide_id: GuideId }))
+export type GuideEdit = typeof GuideEdit.Type
 
 const captureFields = {
   captured_at: Schema.DateFromString,

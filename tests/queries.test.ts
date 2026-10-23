@@ -351,10 +351,24 @@ layer(PgTest)('consultas', (it) => {
       inRollback(
         Effect.gen(function* () {
           const e = yield* scenario
-          expect((yield* guides).map((g) => g.id)).toEqual([e.publishedGuide])
-          expect((yield* guide(e.publishedGuide)).title).toBe('Instalar Linux Mint')
-          const exit = yield* Effect.exit(guide(e.draftGuide))
+          expect((yield* Effect.provideService(guides, Visitor, guest)).map((g) => g.id)).toEqual([e.publishedGuide])
+          expect((yield* Effect.provideService(guide(e.publishedGuide), Visitor, guest)).title).toBe('Instalar Linux Mint')
+          const exit = yield* Effect.exit(Effect.provideService(guide(e.draftGuide), Visitor, guest))
           expect(Exit.findErrorOption(exit).pipe(Option.map((x) => x._tag))).toEqual(Option.some('NoEncontrado'))
+        }),
+      ),
+    )
+
+    it.effect('un revisor ve también los borradores, para editarlos', () =>
+      inRollback(
+        Effect.gen(function* () {
+          const e = yield* scenario
+          const all = yield* Effect.provideService(guides, Visitor, reviewer)
+          expect(all.map((g) => [g.id, g.status])).toEqual([
+            [e.draftGuide, 'borrador'],
+            [e.publishedGuide, 'publicada'],
+          ])
+          expect((yield* Effect.provideService(guide(e.draftGuide), Visitor, reviewer)).status).toBe('borrador')
         }),
       ),
     )

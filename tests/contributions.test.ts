@@ -1,14 +1,27 @@
 import { describe, expect, layer } from '@effect/vitest'
 import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { NewSolution, NewGame, NewReport } from '../src/domain/contributions.ts'
-import { ApprovalBlocked, Unauthenticated, IncomparableProfile, RuleViolated, Forbidden, InvalidTransition } from '../src/domain/errors.ts'
-import { UserId } from '../src/domain/ids.ts'
+import { GuideEdit, NewGuide, NewSolution, NewGame, NewProfile, NewReport, ProfileEdit } from '../src/domain/contributions.ts'
+import { ApprovalBlocked, Unauthenticated, IncomparableProfile, NotFound, RuleViolated, Forbidden, InvalidTransition } from '../src/domain/errors.ts'
+import { GameId, ProfileId, UserId } from '../src/domain/ids.ts'
 import { ContributionRef, Decision, type Role } from '../src/domain/review.ts'
-import { createGame, submitReport, submitSolution } from '../src/server/commands/contributions.ts'
+import {
+  createGame,
+  createGuide,
+  deleteProfile,
+  editGuide,
+  editProfile,
+  proposeProfile,
+  submitReport,
+  submitSolution,
+} from '../src/server/commands/contributions.ts'
 import { approvalBlockers, decide } from '../src/server/commands/review.ts'
 import { type SignedInUser, Visitor } from '../src/server/auth.ts'
+import { myContributions } from '../src/server/queries/contributions.ts'
+import { profileOptions } from '../src/server/queries/form-options.ts'
 import { gamePage } from '../src/server/queries/game.ts'
+import { guide } from '../src/server/queries/guides.ts'
+import { profile as profilePage } from '../src/server/queries/profile.ts'
 import { inRollback, idOf, PgTest } from './support.ts'
 
 const Rows = Schema.Array(Schema.Record(Schema.String, Schema.Unknown))
@@ -34,6 +47,7 @@ const scenario = Effect.gen(function* () {
   const layerVersion = yield* idOf(sql`INSERT INTO layer_version (family, variant, version) VALUES ('Proton', 'Valve', '9.0-4') RETURNING id`)
   const layerVersion8 = yield* idOf(sql`INSERT INTO layer_version (family, variant, version) VALUES ('Proton', 'Valve', '8.0-5') RETURNING id`)
   const other = yield* idOf(sql`INSERT INTO failure_type (code, description) VALUES ('otro', 'Causa no identificada') RETURNING id`)
+  const vcrun = yield* idOf(sql`INSERT INTO dependency (name, package_manager, description) VALUES ('vcrun2019', 'winetricks', 'Visual C++ 2019') RETURNING id`)
   const launcherFailure = yield* idOf(sql`INSERT INTO failure_type (code, description) VALUES ('lanzador', 'El lanzador no abre') RETURNING id`)
 
   const insertMachine = (owner: SignedInUser) => idOf(sql`INSERT INTO machine (user_id, alias) VALUES (${owner.id}, 'equipo') RETURNING id`)
@@ -69,7 +83,7 @@ const scenario = Effect.gen(function* () {
     })} RETURNING id`)
   const mintProfile = yield* profile()
 
-  return { sql, ana, bruno, rita, launcher, launcher2, ed, edGog, mint, fedora, layerVersion, layerVersion8, other, launcherFailure, anaMachine, diagAna, diagAnaWindows, diagBruno, profile, mintProfile, diagnostic }
+  return { sql, ana, bruno, rita, launcher, launcher2, game, ed, edGog, mint, fedora, layerVersion, layerVersion8, other, launcherFailure, vcrun, anaMachine, diagAna, diagAnaWindows, diagBruno, profile, mintProfile, diagnostic }
 })
 type Scenario = Effect.Success<typeof scenario>
 
@@ -120,6 +134,40 @@ const newGame = (
   editions: ReadonlyArray<{ launcher_id: number; external_id: string }>,
   graphics: { apis: ReadonlyArray<string>; x86_level_min: string | null } = { apis: ['d3d11'], x86_level_min: null },
 ) => Schema.decodeUnknownSync(NewGame)({ title, description: 'Un juego de prueba', editions, ...graphics })
+
+const profileContent = {
+  title: 'Con DXVK',
+  target_game_version: null,
+  ram_min_mb: 8192,
+  vram_min_mb: null,
+  requires_vulkan: true,
+  vulkan_version_min: '1.3',
+  cpu_requirement: null,
+  gpu_requirement: null,
+  launch_options: 'DXVK_ASYNC=1 %command%',
+  steps: [
+    { title: 'Activa Steam Play', instruction: 'Steam > Configuración > Compatibilidad.' },
+    { title: 'Elige Proton 9.0-4', instruction: 'Propiedades > Compatibilidad.' },
+  ],
+  dependencies: [],
+}
+
+const proposal = (e: Scenario, overrides: Record<string, unknown> = {}) =>
+  Schema.decodeUnknownSync(NewProfile)({
+    edition_id: e.ed,
+    distribution_id: e.mint,
+    layer_version: { _tag: 'existente', id: e.layerVersion },
+    architecture: 'x86_64',
+    ...profileContent,
+    ...overrides,
+  })
+
+const profileEdit = (profile_id: number, overrides: Record<string, unknown> = {}) =>
+  Schema.decodeUnknownSync(ProfileEdit)({ profile_id, ...profileContent, ...overrides })
+
+const profileId = Schema.decodeSync(ProfileId)
+
+const newGuide = { type: 'instalacion', distribution_id: null, title: 'Instalar Fedora', content: 'Descarga la imagen.\n\nArranca desde la memoria.', status: 'publicada' }
 
 const withFailure = (e: Scenario) => ({ outcome: 'no_inicia', failures: [{ failure_type_id: e.launcherFailure, detail: 'El lanzador se cierra' }] })
 
@@ -287,6 +335,60 @@ layer(PgTest)('aportes', (it) => {
         expect(yield* Effect.flip(asUser(e.rita)(createGame(foreign)))).toEqual(rule('identificador_en_uso'))
         expect(yield* e.sql`SELECT title FROM game WHERE title LIKE 'Hades%' ORDER BY title`).toEqual([{ title: 'Hades' }])
       })))
+
+    it.effect('que un invitado proponga un perfil, o que alguien edite o borre el perfil de otra persona', inScenario((e) =>
+      Effect.gen(function* () {
+        expect(yield* Effect.flip(asUser(null)(proposeProfile(proposal(e))))).toEqual(new Unauthenticated())
+        expect(yield* Effect.flip(asUser(e.ana)(editProfile(profileEdit(e.mintProfile))))).toEqual(new NotFound())
+        expect(yield* Effect.flip(asUser(e.rita)(deleteProfile(profileId(e.mintProfile))))).toEqual(new NotFound())
+        expect(yield* e.sql`SELECT title FROM profile WHERE id = ${e.mintProfile}`).toEqual([{ title: 'perfil' }])
+      })))
+
+    it.effect('editar o borrar un perfil que alguien ya probó o que ya se revisó', inScenario((e) =>
+      Effect.gen(function* () {
+        const { id } = yield* fileReport(e, { profile_id: e.mintProfile })
+        expect(yield* Effect.flip(asUser(e.bruno)(editProfile(profileEdit(e.mintProfile))))).toEqual(rule('perfil_congelado'))
+        expect(yield* Effect.flip(asUser(e.bruno)(deleteProfile(profileId(e.mintProfile))))).toEqual(rule('perfil_congelado'))
+        const rejected = yield* e.profile({ distribution_id: e.fedora })
+        yield* asUser(e.rita)(decide(ref('perfil', rejected), reject))
+        expect(yield* Effect.flip(asUser(e.bruno)(editProfile(profileEdit(rejected))))).toEqual(rule('perfil_congelado'))
+        const recommended = yield* e.profile({ layer_version_id: e.layerVersion8 })
+        const { id: failing } = yield* fileReport(e, { tested_at: '2026-10-04T10:00:00.000Z', ...withFailure(e) })
+        yield* fileSolution(e, failing, { profile_id: recommended })
+        expect(yield* Effect.flip(asUser(e.bruno)(editProfile(profileEdit(recommended))))).toEqual(rule('perfil_congelado'))
+        expect(yield* Effect.flip(asUser(e.bruno)(deleteProfile(profileId(recommended))))).toEqual(rule('perfil_congelado'))
+        expect(yield* e.sql`SELECT count(*)::int AS n FROM report WHERE id = ${id} AND profile_id = ${e.mintProfile}`).toEqual([{ n: 1 }])
+      })))
+
+    it.effect('empezar una versión nueva desde un perfil rechazado ajeno, aunque su autor sí puede', inScenario((e) =>
+      Effect.gen(function* () {
+        const game = Schema.decodeSync(GameId)(e.game)
+        const rejected = yield* e.profile({ distribution_id: e.fedora })
+        yield* asUser(e.rita)(decide(ref('perfil', rejected), reject))
+        expect((yield* asUser(e.ana)(profileOptions(game, profileId(rejected)))).draft).toBeNull()
+        expect((yield* asUser(e.bruno)(profileOptions(game, profileId(rejected)))).draft).toMatchObject({ id: rejected, distribution_id: e.fedora, title: 'perfil' })
+        expect((yield* asUser(e.ana)(profileOptions(game, profileId(e.mintProfile)))).draft).toMatchObject({ id: e.mintProfile })
+      })))
+
+    it.effect('la misma dependencia dos veces en un perfil, sin dejar el perfil a medias', inScenario((e) =>
+      Effect.gen(function* () {
+        const twice = [
+          { dependency: { _tag: 'existente', id: e.vcrun }, required_version: null, required: true, install_instruction: 'winetricks vcrun2019' },
+          { dependency: { _tag: 'nueva', name: 'vcrun2019', package_manager: 'winetricks', description: 'otra' }, required_version: null, required: false, install_instruction: 'protontricks vcrun2019' },
+        ]
+        expect(yield* Effect.flip(asUser(e.ana)(proposeProfile(proposal(e, { dependencies: twice }))))).toEqual(rule('dependencia_repetida'))
+        expect(yield* e.sql`SELECT count(*)::int AS n FROM profile WHERE author_id = ${e.ana.id}`).toEqual([{ n: 0 }])
+      })))
+
+    it.effect('que un usuario o un invitado escriba o edite una guía', inScenario((e) =>
+      Effect.gen(function* () {
+        const guide = Schema.decodeUnknownSync(NewGuide)(newGuide)
+        expect(yield* Effect.flip(asUser(e.ana)(createGuide(guide)))).toEqual(new Forbidden())
+        expect(yield* Effect.flip(asUser(null)(createGuide(guide)))).toEqual(new Unauthenticated())
+        const { id } = yield* asUser(e.rita)(createGuide(guide))
+        expect(yield* Effect.flip(asUser(e.ana)(editGuide(Schema.decodeUnknownSync(GuideEdit)({ ...newGuide, guide_id: id, status: 'archivada' }))))).toEqual(new Forbidden())
+        expect(yield* e.sql`SELECT status FROM adoption_guide WHERE id = ${id}`).toEqual([{ status: 'publicada' }])
+      })))
   })
 
   describe('la aplicación permite', () => {
@@ -366,6 +468,51 @@ layer(PgTest)('aportes', (it) => {
         expect(yield* asUser(e.rita)(decide(ref('solucion', solution), approve))).toEqual({ changed: true })
         const statuses = yield* e.sql`SELECT review_status, reviewer_id, review_evidence FROM solution WHERE id = ${solution}`
         expect(statuses).toEqual([{ review_status: 'aprobado', reviewer_id: 'rita', review_evidence: 'Captura de MangoHud #7' }])
+      })))
+
+    it.effect('proponer un perfil: queda pendiente con sus pasos en orden, sus dependencias y la revisión siguiente de su entorno', inScenario((e) =>
+      Effect.gen(function* () {
+        const dependencies = [
+          { dependency: { _tag: 'nueva', name: 'vcrun2019', package_manager: 'winetricks', description: 'otra descripción' }, required_version: '14.0', required: true, install_instruction: 'winetricks vcrun2019' },
+          { dependency: { _tag: 'nueva', name: 'gamemode', package_manager: 'apt', description: 'Demonio de Feral' }, required_version: null, required: false, install_instruction: 'sudo apt install gamemode' },
+        ]
+        const { id } = yield* asUser(e.ana)(proposeProfile(proposal(e, { dependencies })))
+        expect(yield* e.sql`SELECT revision, review_status, author_id FROM profile WHERE id = ${id}`).toEqual([{ revision: 2, review_status: 'pendiente', author_id: 'ana' }])
+        const page = yield* Effect.provideService(profilePage(id), Visitor, Option.some(e.ana))
+        expect(page.steps.map((s) => [s.position, s.title])).toEqual([[1, 'Activa Steam Play'], [2, 'Elige Proton 9.0-4']])
+        expect(page.dependencies.map((d) => [d.name, d.description, d.required])).toEqual([
+          ['vcrun2019', 'Visual C++ 2019', true],
+          ['gamemode', 'Demonio de Feral', false],
+        ])
+        expect(page.profile).toMatchObject({ editable: true, vulkan_version_min: '1.3', launch_options: 'DXVK_ASYNC=1 %command%' })
+        expect((yield* Effect.provideService(profilePage(id), Visitor, Option.some(e.bruno))).profile.editable).toBe(false)
+        expect((yield* asUser(e.ana)(myContributions)).profiles).toMatchObject([{ id, editable: true }])
+        expect(yield* asUser(e.rita)(approvalBlockers(ref('perfil', id)))).toEqual(['perfil_sin_reporte_funcional_aprobado'])
+      })))
+
+    it.effect('que su autor lo edite mientras nadie lo usó, y lo borre con sus pasos', inScenario((e) =>
+      Effect.gen(function* () {
+        const steps = [{ title: 'Solo un paso', instruction: 'Instala el juego.' }]
+        const dependencies = [{ dependency: { _tag: 'existente', id: e.vcrun }, required_version: null, required: true, install_instruction: 'winetricks vcrun2019' }]
+        yield* asUser(e.bruno)(editProfile(profileEdit(e.mintProfile, { title: 'Perfil corregido', steps, dependencies })))
+        expect(yield* e.sql`SELECT title, revision FROM profile WHERE id = ${e.mintProfile}`).toEqual([{ title: 'Perfil corregido', revision: 1 }])
+        expect(yield* e.sql`SELECT position, title FROM profile_step WHERE profile_id = ${e.mintProfile}`).toEqual([{ position: 1, title: 'Solo un paso' }])
+        expect(yield* e.sql`SELECT dependency_id FROM profile_dependency WHERE profile_id = ${e.mintProfile}`).toEqual([{ dependency_id: e.vcrun }])
+        const game = yield* e.sql`SELECT game_id FROM game_edition WHERE id = ${e.ed}`
+        expect([yield* asUser(e.bruno)(deleteProfile(profileId(e.mintProfile)))]).toEqual(game)
+        expect(yield* e.sql`SELECT count(*)::int AS n FROM profile_step WHERE profile_id = ${e.mintProfile}`).toEqual([{ n: 0 }])
+      })))
+
+    it.effect('que un revisor escriba una guía y la edite: la revisión sube solo si cambia lo que se lee', inScenario((e) =>
+      Effect.gen(function* () {
+        const { id } = yield* asUser(e.rita)(createGuide(Schema.decodeUnknownSync(NewGuide)(newGuide)))
+        const edit = (changes: Record<string, unknown>) => asUser(e.rita)(editGuide(Schema.decodeUnknownSync(GuideEdit)({ ...newGuide, guide_id: id, ...changes })))
+        yield* edit({ content: 'Descarga la imagen de Fedora 40.' })
+        yield* edit({ content: 'Descarga la imagen de Fedora 40.', status: 'archivada' })
+        expect(yield* e.sql`SELECT author_id, revision, status, content FROM adoption_guide WHERE id = ${id}`).toEqual([
+          { author_id: 'rita', revision: 2, status: 'archivada', content: 'Descarga la imagen de Fedora 40.' },
+        ])
+        expect(yield* Effect.flip(Effect.provideService(guide(id), Visitor, Option.none()))).toEqual(new NotFound())
       })))
 
     it.effect('retirar lo aprobado conserva la evidencia', inScenario((e) =>

@@ -197,7 +197,7 @@ layer(PgTest)('myContributions', (it) => {
         [e.approved, { status: 'aprobado' }, true],
       ])
       expect(mine.solutions).toMatchObject([{ id: e.solution, game_id: e.game, review: { status: 'retirado', reason: 'Ya no hace falta con Proton 9.' } }])
-      expect(mine.profiles).toMatchObject([{ id: e.profile, review: { status: 'rechazado', reason: 'Faltan los pasos del lanzador.' } }])
+      expect(mine.profiles).toMatchObject([{ id: e.profile, review: { status: 'rechazado', reason: 'Faltan los pasos del lanzador.' }, editable: false }])
       expect(mine.machines.map((m) => m.diagnostics.length)).toEqual([1])
       const sent = JSON.stringify(mine)
       expect([sent.includes(e.reviewer.id), sent.includes('Coherente')]).toEqual([false, false])
