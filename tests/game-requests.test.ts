@@ -10,6 +10,9 @@ import { createGame } from '../src/server/commands/contributions.ts'
 import { rejectRequest, requestGame, withdrawRequest } from '../src/server/commands/game-requests.ts'
 import { myContributions } from '../src/server/queries/contributions.ts'
 import { gameRequests } from '../src/server/queries/game-requests.ts'
+import { en } from '../src/ui/i18n/en.ts'
+import { es } from '../src/ui/i18n/es.ts'
+import { ruleErrors } from '../src/ui/useAction.ts'
 import { constraintOf, idOf, inRollback, PgTest } from './support.ts'
 
 const scenario = Effect.gen(function* () {
@@ -107,6 +110,16 @@ layer(PgTest)('game requests', (it) => {
       expect(yield* Effect.flip(asUser(e.bruno)(join(999999)))).toEqual(new NotFound())
       // A rejected request no longer blocks a new one for the same game.
       expect(yield* asUser(e.bruno)(ask('Hades'))).toMatchObject({ _tag: 'pedido', requesters: 1 })
+    })))
+
+  it.effect('the writer sends a code, and each language words it under the field it names', inScenario((e) =>
+    Effect.gen(function* () {
+      const hades = yield* opened(e.ana, 'Hades')
+      yield* asUser(e.rita)(reject(hades))
+      const failure = yield* Effect.flip(asUser(e.bruno)(join(hades)))
+      if (!Schema.is(RuleViolated)(failure)) return expect.fail(`expected a rule violation, got ${failure._tag}`)
+      expect(ruleErrors(failure, es)).toEqual({ form: 'Ese pedido ya se cerró: un revisor lo cumplió o lo rechazó.' })
+      expect(ruleErrors(failure, en)).toEqual({ form: 'That request is already closed: a reviewer fulfilled or rejected it.' })
     })))
 
   it.effect('withdrawing leaves the request to the others; the last requester out deletes it', inScenario((e) =>

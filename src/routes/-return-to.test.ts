@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { ReturnTo } from './-return-to.ts'
+import { ReturnTo, returnHere } from './-return-to.ts'
 
 describe('ReturnTo (?volver= on /entrar and /registro)', () => {
   it.each([
@@ -48,5 +48,12 @@ describe('ReturnTo (?volver= on /entrar and /registro)', () => {
     undefined,
   ])('drops %o, even after router-core spreads it over the raw query', (input) => {
     expect({ volver: input, ...ReturnTo({ volver: input }) }.volver).toBeUndefined()
+  })
+})
+
+describe('returnHere', () => {
+  it('keeps the page without its language, so sign-in brings it back in its own', () => {
+    expect(returnHere({ href: '/en/juegos/4/reportar?perfil=2' })).toEqual({ volver: '/juegos/4/reportar?perfil=2' })
+    expect(returnHere({ href: '/es/seguidos' })).toEqual({ volver: '/seguidos' })
   })
 })

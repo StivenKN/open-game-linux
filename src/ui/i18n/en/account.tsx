@@ -1,0 +1,70 @@
+import { count } from '../../format.ts'
+import type { account as source } from '../es/account.tsx'
+
+export const account = {
+  email: 'Email',
+  password: 'Password',
+
+  signIn: {
+    lede: 'Sign in to save your diagnosis and publish reports.',
+    submit: 'Sign in',
+    submitting: 'Signing in…',
+    noAccount: (signUp) => <>Don't have an account? {signUp('Create one')}.</>,
+  },
+
+  signUp: {
+    lede: "Others only see your alias. Your email isn't shown on any contribution.",
+    alias: 'Alias',
+    submit: 'Create account',
+    submitting: 'Creating account…',
+    haveAccount: (signIn) => <>Already have an account? {signIn('Sign in')}.</>,
+  },
+
+  myContributions: {
+    lede: 'What you submitted and where its review stands. A contribution counts in the summaries only once a reviewer approves it; if they reject or withdraw it, you see the reason here.',
+    empty: "You don't have any contributions yet.",
+    diagnose: 'Diagnose your machine',
+    thenReport: 'and then report how a game worked for you from its page.',
+    reports: 'Reports',
+    solutions: 'Solutions',
+    profiles: 'Configuration profiles',
+    requests: 'Game requests',
+    version: (version) => `version ${version}`,
+    testedOn: (date) => `tested on ${date}`,
+    valve: 'Prepare the report for Valve',
+    forFailureIn: (failure, game) => <>For {failure} in {game}</>,
+    forGame: (game) => <>For {game}</>,
+    editProposal: 'Edit the proposal',
+    proposeChanges: 'Propose a version with changes',
+    requestedOn: (date) => `Requested on ${date}`,
+    requesters: (n) => count(n, 'person asks for it', 'people ask for it'),
+    viewOpen: 'See it among the open requests',
+    added: (date) => `A reviewer added it on ${date}.`,
+    viewGame: (game) => `See the page for ${game}`,
+    rejected: (date, reason) => `A reviewer rejected it on ${date}. Reason: ${reason}`,
+    diagnoses: 'Saved diagnoses',
+    diagnosesHelp: 'Only you see them. A report shows the technical context of its diagnosis, not your email.',
+    sentOn: (date) => `Submitted on ${date}`,
+    reviewReason: (reason) => `Reviewer's reason: ${reason}`,
+  },
+
+  users: {
+    lede: 'A reviewer approves contributions; an administrator also manages roles. Deactivating an account ends its sessions and keeps it from signing in until you reactivate it. Each change applies on the next page that account opens.',
+    searchLabel: 'Search by alias or email',
+    searchPlaceholder: 'Alias or email',
+    search: 'Search',
+    none: 'There are no accounts yet.',
+    noMatch: (q) => `No account has “${q}” in its alias or email.`,
+    more: (n) => `Showing the ${n} most recent accounts. Search by alias or email to find another one.`,
+    deactivated: 'Deactivated',
+    yours: 'Your account',
+    since: (date) => `since ${date}`,
+    self: "It's your account: another administrator must change your role or deactivate it.",
+    role: 'Role',
+    active: 'Active account',
+    save: 'Save',
+    saving: 'Saving…',
+    saved: 'Saved.',
+    unchanged: 'There was nothing to change.',
+  },
+} satisfies typeof source

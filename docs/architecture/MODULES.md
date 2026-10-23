@@ -51,9 +51,10 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `domain/library.ts` | `STEAM_LAUNCHER`, `MAX_LIBRARY_GAMES` (1000), `SteamAppId`, `SteamStoreRef` (a store link or a bare App ID, decoded to the App ID), `LibraryGame`, `SteamLibrary`, `EvaluatedLibrary`, `isSteamTool` | |
 | `domain/readiness.ts` | **`libraryReadiness`** (a Steam library's counts by computed state, the games that work, approved anti-cheat blocks, "Te frenan" with AreWeAntiCheatYet's Broken and Denied, and "Sin evidencia"), `outOfReach` (the machine certainly falls short: a `sin_ruta` path, or `no_cumple` on every approved profile) | The state of each game (`summarize`), the copy |
 | `domain/review.ts` | `ReviewStatus`, **`nextStatuses`** (the only transition table), `Decision` (approval requires evidence), `planTransition` (idempotence), `ContributionRef`, `Blocker`, `Role`, `canReview` | Who may decide, preconditions |
-| `domain/accounts.ts` | `AccessChange` (the `/admin/usuarios` form: account, role, active), `Access`, `isActiveAdmin` | Who may change it |
+| `domain/accounts.ts` | `AccessChange` (the `/admin/usuarios` form: account, role, active), `Access`, `isActiveAdmin`, `accountFailureField` (the better-auth codes the sign-in and sign-up forms explain, with their field) | Who may change it |
 | `domain/contributions.ts` | Every input schema (`NewReport` with the failing-result filter, `NewSolution`, `NewGame`, `Capture` with `gpu_pci_id` and `steam_library` and the Linux driver and Vulkan only on its Linux member, `ManualCapture` without the PCI id or library, `DiagnosticInput` with detector text capped at 300 000 characters (derived from `MAX_LIBRARY_GAMES` and `maxLengths.library.name`), `SaveDiagnostic` with `with_library`, `LayerVersionRef`, `TargetMachine`, `CatalogFilter`, `NewProfile` and `ProfileEdit` over `ProfileContent` with `DependencyRef`, `NewGuide`, `GuideEdit`, `RequestGame` (new or existing request), `RejectRequest`, `SteamLookup`), **`mismatches`** (8.7 comparability) | Persisting |
-| `domain/errors.ts` | `Rule` + `rules` (field + Spanish message per rule), failure classes, `DomainError`, `Reply`, control errors | |
+| `domain/errors.ts` | `Rule` + `ruleField` (the form field each rule's message goes under), `mismatchField`, failure classes, `DomainError`, `Reply`, control errors | The words: each language's dictionary (`rules`, `mismatches`) |
+| `domain/checks.ts` | `CheckMessage`, the codes a Schema check carries, and `says`, the annotation that names one (`Schema.isNonEmpty(says('required'))`) | The words: each dictionary's `checks` |
 | `domain/guides.ts` | `GuideType`, `GuideStatus` | |
 | `domain/game-requests.ts` | `GameRequestStatus` (`abierto`, `cumplido`, `rechazado`) | |
 | `domain/upstream.ts` | `SteamAppId`, `ProtonfixesPr`, `FixNote`, **`exportFix`** (profile → umu-protonfixes file, every untranslated token listed) and **`protonReport`** (report → Valve's compatibility-report). The tokenizer, the brand-gated Python renderer and the GitHub URL builders are private | Sending anything: users open the prefilled links themselves |
@@ -83,18 +84,25 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `ui/useAction.ts` | The one form hook: the form's props (`method="post"` included), decode FormData → call fn → narrow `Reply` → field errors | |
 | `routes/-follow.tsx` | `FollowButton` ("Seguir", "Dejar de seguir", and a sign-in link for guests) and `FollowNews` (what changed, with "Marcar como visto"), shared by the ficha and "Seguidos". Under `routes/` because its forms call a server fn | |
 | `routes/-search.ts` | `SearchText` and `lenient`, the search-param Schemas shared by `/` and `/pedidos` | |
-| `routes/-return-to.ts` | `Destination` and the only parser of `?volver=` on `/entrar` and `/registro`; `returnHere` for route guards | |
-| `ui/format.ts` | Display formatting. Every instant prints in Bogotá time with the year (`date` day, `dateTime` day and 24-hour time) | |
+| `routes/-return-to.ts` | `Destination` and the only parser of `?volver=` on `/entrar` and `/registro`, an unprefixed page path; `returnHere` for route guards, which drops the page's language | |
+| `routes/$lang/route.tsx` | The language segment of every page: `params.parse` admits `es` and `en` only. Its `head` gives every page its canonical URL, `hreflang` alternates, translated description and the site's link preview | |
+| `routes/-head.ts` | `titled`, a page's `head` title in its language | |
+| `start.ts` | The request middleware: an unprefixed page path redirects to the visitor's language (`unprefixedRedirect`); then CSRF for server fns | |
+| `ui/format.ts` | Display formatting. `formats(locale)` gives each dictionary its `date`, `dateTime`, `fps` and `approximateMemory`; every instant prints in Bogotá time with the year. `count` (one form for 1, another for the rest) and `memory` read the same in both languages | |
 | `ui/progress.ts` | The profile page's local step checklist (`localStorage`, SSR-safe) | |
-| `ui/vocabulary.ts` | Spanish label and tone for every domain literal, exhaustive via `satisfies Record` | |
+| `ui/vocabulary.ts` | The tone and icon of every domain literal, exhaustive via `satisfies Record`, and the names that read the same in both languages (`graphicsApi`, `x86Level`, `device`). **`vocabulary(words)`** joins them with one language's words into the labels a page reads (`t.compatibilityStatus[s]`, `t.failureType(code)`, `t.gamePathSentences(…)`) | The words: `i18n/es/vocabulary.ts` and `i18n/en/vocabulary.ts` |
+| `ui/i18n/lang.ts` | `Lang`, `preferredLang` (the `lang` cookie, then `Accept-Language`, then `es`), `unprefixedRedirect`, `localizedPath`, `withoutLang`, and `imageQuery`/`imageLang`, the `?lang=` of the image routes. Plain functions, safe on the server | |
+| `ui/i18n/es.ts`, `ui/i18n/en.ts` | The two dictionaries, one file per page area in `es/` and `en/`. Spanish is the source: `Messages = typeof es`, and `en` must `satisfies` it key for key and parameter for parameter | User content, which shows as written |
+| `ui/i18n/messages.ts` | `useT()` and `useLang()`, the page's language from its `/$lang` segment; `messages` for code outside components (a route's `head`, the image routes) | |
+| `ui/i18n/copy.test.ts` | Fails when a component under `routes/`, `ui/` or `images/` holds Spanish copy again | |
 | `ui/diagnostics/GraphicsCardOnLinux.tsx` | The "Tu tarjeta gráfica en Linux" card: family, Linux driver, Vulkan labelled "Detectado" or "Proyectado", the Direct3D path with its launch option, and the warnings | |
 | `ui/diagnostics/MachineGames.tsx` | The diagnosis matrix, split into "Tu biblioteca de Steam", "Juegos que todavía no conocemos" and "Resto del catálogo" when the capture has a library | |
 | `ui/diagnostics/ReadinessSummary.tsx` | The top of "Tu biblioteca de Steam": the headline sentence, the counts by state, "Te frenan" and "Sin evidencia", from `libraryReadiness` over the library rows of the matrix | |
 | `ui/compatibility/*` | `GameStatus` (variant 1 badge, the stale note and "Dejó de funcionar"), `EnvironmentMatrix`, `LayerTimeline` ("Historial por versión"), `VerdictForMe` (with the "En tu distribución" line), `ScopedStatus` (one slice of the evidence on a line: "En tu distribución", "En Steam Deck"), `GraphicsPath` (the hardware-only path, apart from the community state and the profile check), `Embed` (the ficha's "Compartir": the live badge and its Markdown and HTML codes, `embedCodes`), evaluation checklist, copy box | |
 | `ui/Brand.tsx` | The OpenGame Linux mark, shared by the header and the preview images | |
-| `images/render.tsx` | **`badgeSvg`** (the shields-style status badge) and **`gamePreviewPng`**, **`sitePreviewPng`** (1200×630 link previews). satori lays them out with the static `@fontsource` WOFF fonts and draws text as paths; resvg rasterizes. `palette` mirrors the `styles.css` colors, checked by `render.test.ts` | Reading data: route handlers pass it in |
-| `routes/-game-image.ts` | `gameImage`, the shared handler of `/juegos/$gameId/badge.svg` and `/juegos/$gameId/og.png`: the game's card through `runRead(gameCard)`, a 404 for an id that names no game, five minutes of `Cache-Control` | |
-| `routes/-meta.ts` | `previewMeta`, the Open Graph tags a page sets. The root sets the site's defaults, `og:url` and `twitter:card` from the context's `origin` (`sessionFn`); the ficha replaces title, description and image | |
+| `images/render.tsx` | **`badgeSvg`** (the shields-style status badge) and **`gamePreviewPng`**, **`sitePreviewPng`** (1200×630 link previews), in the language of the dictionary they are given. satori lays them out with the static `@fontsource` WOFF fonts and draws text as paths; resvg rasterizes. `palette` mirrors the `styles.css` colors, checked by `render.test.ts` | Reading data: route handlers pass it in |
+| `routes/-game-image.ts` | `gameImage`, the shared handler of `/juegos/$gameId/badge.svg` and `/juegos/$gameId/og.png`: the game's card through `runRead(gameCard)`, the dictionary of `?lang=`, a 404 for an id that names no game, five minutes of `Cache-Control` | |
+| `routes/-meta.ts` | `previewMeta`, the Open Graph tags a page sets. The root sets `og:url` and `twitter:card` from the context's `origin` (`sessionFn`), the `$lang` route the site's preview in the page's language, and the ficha replaces title, description and image | |
 | `ui/protondb/ProtonDb.tsx` | The ficha's "Otras fuentes: ProtonDB" section, the catalog card line, the ODbL attribution | |
 | `ui/anticheat/AntiCheat.tsx` | The ficha's "Otras fuentes: AreWeAntiCheatYet" section, the catalog card line for Broken and Denied, the MIT attribution (also under the library's "Te frenan") | |
 | `ui/diagnostics/SavedMachines.tsx` | The visitor's machines with links to their saved diagnostics, on `/diagnostico` and `/mis-aportes` | |
@@ -105,6 +113,8 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `tests/` | `support.ts` (rollback-per-test, constraint-name decoder), `setup.ts` (globalSetup: refuses any DB not named `*_test`, rebuilds the schema, migrates), `schema.test.ts`, `contributions.test.ts` | |
 
 ## Route map
+
+Every page path below sits under `/es` or `/en` (`/es/juegos/12`). The same path without a language redirects to the visitor's (`start.ts`). Server routes have no prefix.
 
 | Wireframe / RF | Path | Loader / action fns | Auth |
 |---|---|---|---|

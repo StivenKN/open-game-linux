@@ -6,9 +6,8 @@ import type { GameId } from '../domain/ids.ts'
 import { changeFollowFn } from '../fns/follow.ts'
 import { Badge } from '../ui/Badge.tsx'
 import { FieldError } from '../ui/FieldError.tsx'
-import { count, date } from '../ui/format.ts'
+import { useLang, useT } from '../ui/i18n/messages.ts'
 import { useAction } from '../ui/useAction.ts'
-import { compatibilityStatus } from '../ui/vocabulary.ts'
 
 // changeFollow has no domain failure; a guest gets the sign-in redirect and anything else the form error.
 const useFollowChange = () => {
@@ -16,13 +15,15 @@ const useFollowChange = () => {
   return useAction(FollowChange, changeFollowFn, { onFailure: () => ({}), onComplete: () => router.invalidate() })
 }
 
-/** "Seguir" and "Dejar de seguir" on the game page. A guest gets a link to sign in that comes back here. */
+/** Follow and unfollow on the game page. A guest gets a link to sign in that comes back here. */
 export function FollowButton({ gameId, signedIn, following }: { gameId: GameId; signedIn: boolean; following: boolean }) {
+  const t = useT()
+  const lang = useLang()
   const r = useFollowChange()
   if (!signedIn)
     return (
-      <Link to="/entrar" search={{ volver: `/juegos/${gameId}` }} className="button-secondary">
-        Entra para seguirlo
+      <Link to="/$lang/entrar" params={{ lang }} search={{ volver: `/juegos/${gameId}` }} className="button-secondary">
+        {t.follow.signIn}
       </Link>
     )
   return (
@@ -30,7 +31,7 @@ export function FollowButton({ gameId, signedIn, following }: { gameId: GameId; 
       <input type="hidden" name="_tag" value={following ? 'Dejar' : 'Seguir'} />
       <input type="hidden" name="game_id" value={gameId} />
       <button type="submit" className="button-secondary" disabled={r.submitting}>
-        {following ? 'Dejar de seguir' : 'Seguir'}
+        {following ? t.follow.unfollow : t.follow.follow}
       </button>
       <FieldError errors={r.errors} field="form" />
     </form>
@@ -38,8 +39,8 @@ export function FollowButton({ gameId, signedIn, following }: { gameId: GameId; 
 }
 
 /**
- * What changed since the follower last marked the game seen, and "Marcar como visto", on the game page and
- * on "Seguidos". `asOf` is the page's watermark: marking seen covers what the follower saw, not more.
+ * What changed since the follower last marked the game seen, and the button to mark it seen, on the game page
+ * and on the followed games page. `asOf` is the page's watermark: marking seen covers what the follower saw, not more.
  */
 export function FollowNews({
   gameId,
@@ -54,18 +55,18 @@ export function FollowNews({
   news: News
   asOf: Date
 }) {
+  const t = useT()
+  const m = t.follow.news
   const r = useFollowChange()
   return (
-    <section className="follow-news" aria-label="Novedades">
+    <section className="follow-news" aria-label={m.label}>
       <div className="stack">
         <p>
-          <b>Novedades desde el {date(seenAt)}</b>
+          <b>{m.since(t.date(seenAt))}</b>
         </p>
-        {news.approved > 0 && <p>{count(news.approved, 'reporte aprobado nuevo', 'reportes aprobados nuevos')}.</p>}
+        {news.approved > 0 && <p>{m.approved(news.approved)}</p>}
         {news.previous_status !== null && (
-          <p className="row">
-            El estado pasó de <Badge label={compatibilityStatus[news.previous_status]} /> a <Badge label={compatibilityStatus[status]} />
-          </p>
+          <p className="row">{m.status(<Badge label={t.compatibilityStatus[news.previous_status]} />, <Badge label={t.compatibilityStatus[status]} />)}</p>
         )}
       </div>
       <form className="row" {...r.form}>
@@ -73,7 +74,7 @@ export function FollowNews({
         <input type="hidden" name="game_id" value={gameId} />
         <input type="hidden" name="seen_at" value={asOf.toISOString()} />
         <button type="submit" className="button-secondary" disabled={r.submitting}>
-          Marcar como visto
+          {m.markSeen}
         </button>
         <FieldError errors={r.errors} field="form" />
       </form>

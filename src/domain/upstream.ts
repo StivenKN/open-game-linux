@@ -2,6 +2,7 @@
 // compatibility report. The artifacts are English; user free text is copied as-is. OpenGame never sends
 // them: it hands GitHub prefilled links and copy boxes (ARCHITECTURE Q3).
 import { Array as Arr, Option, Schema, SchemaTransformation } from 'effect'
+import { says } from './checks.ts'
 import { ProfileId } from './ids.ts'
 import type { LayerFamily, Outcome } from './literals.ts'
 import type { Dependency, Diagnostic, ProfileDependency, Report, LayerVersion } from './tables.ts'
@@ -28,7 +29,7 @@ const prPattern = /^https:\/\/github\.com\/Open-Wine-Components\/umu-protonfixes
 
 /** What a reviewer pastes: a umu-protonfixes PR URL on any of its tabs. Decodes to the PR number. */
 export const ProtonfixesPr = Schema.Trim.check(
-  Schema.isPattern(prPattern, { message: 'Pega el enlace de un PR de umu-protonfixes (github.com/Open-Wine-Components/umu-protonfixes/pull/…).' }),
+  Schema.isPattern(prPattern, says('protonfixesPr')),
 ).pipe(Schema.decodeTo(PrNumber, SchemaTransformation.transform({ decode: (url: string) => Number(prPattern.exec(url)?.[1]), encode: prUrl })))
 
 /** A link that hands content to GitHub, or why it is withheld: demo content never goes upstream. */

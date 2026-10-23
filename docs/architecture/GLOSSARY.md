@@ -1,6 +1,6 @@
 # Glossary
 
-The interface is in Spanish and the code is in English. Players read and type Spanish words: "Funciona con ajustes", "Perfil de configuración", `/juegos/12`. The code names the same things in English: `status`, `profile`, `$gameId`. The Terms table below maps each Spanish domain term to the English name the code uses for it, so you can go from a word on screen to its code.
+The interface is in Spanish and English, and the code is in English. Players read Spanish words such as "Funciona con ajustes" and "Perfil de configuración" under `/es`, their English words under `/en`, and both type the same Spanish paths: `/es/juegos/12`, `/en/juegos/12`. The code names the same things in English: `status`, `profile`, `$gameId`. The Terms table below maps each Spanish domain term to the English name the code uses for it, so you can go from a word on screen to its code, and the Interface terms table maps the Spanish interface's words to the English interface's.
 
 A Spanish word can have more than one English name, one for each sense. A semicolon separates the senses, and the note in parentheses says where each one applies. Every identifier in backticks in a note is a name the code uses today.
 
@@ -10,7 +10,8 @@ Some Spanish names are not code identifiers. They are contracts with players, wi
 
 | Contract | Examples | Why it stays |
 |---|---|---|
-| URL paths | `/juegos/12`, `/juegos/12/badge.svg`, `/perfiles/3`, `/diagnostico/importar`, `/reportes/10/solucion` | TanStack Router builds URLs from route file names, so the route files keep their Spanish names. Bookmarks, shared links, badges embedded on other sites and the detector link point at them. Route param names such as `$gameId` never reach the URL, so they are English. |
+| URL paths | `/juegos/12`, `/juegos/12/badge.svg`, `/perfiles/3`, `/diagnostico/importar`, `/reportes/10/solucion` | TanStack Router builds URLs from route file names, so the route files keep their Spanish names, under `/es` and `/en` alike. Bookmarks, shared links, badges embedded on other sites and the detector link point at them, and their unprefixed form still opens. Route param names such as `$gameId` never reach the URL, so they are English. |
+| Language in the URL | the `/es` and `/en` prefixes, the `lang` cookie, `?lang=en` on `badge.svg` and `og.png` | Shared links name their language, the switcher's choice outlives the visit, and badges embedded on other sites ask for their language. |
 | Search keys and values | `q`, `estado`, `lanzador`, `sin_anti_cheat`, `steam_deck`, `volver`, `tipo`, `pegar`, `perfil`, `tipoFallo`, `desde`, `titulo`, `pedido`, and report mode's `diagnostico`, `edicion` and `steam` | They are part of URLs that players share and bookmark. |
 | Detector payload keys and values | `capturado_en`, `distribucion`, `biblioteca_steam`, `soporte_vulkan`, `desconocido`, `dispositivo`, and report mode's `juego` block (`herramienta`, `version_herramienta`, `opciones_lanzamiento`, `build`, `nativo`, `cuenta_supuesta`) | Copies of the detector script that players already downloaded keep sending them. The `/diagnostico/importar#d=` link baked into the scripts and the `OPENGAME_*` environment variables stay for the same reason. |
 | Stored data values | CHECK values such as `pendiente`, `funciona` and `revisor`, `_tag` values, the `nombre` key of each game in the `steam_library` jsonb | They are rows in a deployed database, not names in code. Changing them needs a data migration. |
@@ -18,7 +19,7 @@ Some Spanish names are not code identifiers. They are contracts with players, wi
 | Auth fields | the session fields `rol` and `activo`, the `DOMINIO_RESERVADO` and `CUENTA_DESACTIVADA` error codes | better-auth sends them to the browser in its session and error JSON. Their database columns are `role` and `active`. |
 | Docker volume | `datos` | Renaming the volume orphans a deployed database. |
 
-UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` (historical records) also keep their Spanish text.
+Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` (historical records) also keep their Spanish text. Interface copy lives in the dictionaries, `src/ui/i18n/es/` and its English twin `src/ui/i18n/en/`.
 
 ## Terms
 
@@ -134,6 +135,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | huella | fingerprint |
 | icono | icon |
 | identificador | id (`external_id`) |
+| idioma | language (`Lang`, the `/$lang` segment of every page, the `lang` cookie; `localizedPath`, `withoutLang`) |
 | importar | import |
 | informe | report (upstream Proton report) |
 | inmutable | immutable |
@@ -153,7 +155,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | matriz | matrix |
 | medicion | measurement |
 | memoria | memory |
-| mensaje | message |
+| mensaje | message; `CheckMessage` (the code a Schema check carries, worded by each dictionary) |
 | metodo | method |
 | modesto | modest |
 | momento | date and time |
@@ -252,3 +254,39 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | vista previa | preview (`gamePreviewPng`, `sitePreviewPng` and `previewMeta`: the image and the tags a shared link unfurls with) |
 | visto | seen (`seen_at`; "Marcar como visto" posts the `Visto` change) |
 | volver | return to (the search key volver stays) |
+
+## Interface terms
+
+The English interface starts from the code's English names and keeps one word per concept. The words live in `src/ui/i18n/en/`; this table holds the ones a translator must keep consistent.
+
+| Spanish interface | English interface |
+|---|---|
+| Sin evidencia verificada | No verified evidence |
+| Funciona | Works |
+| Funciona con ajustes | Works with tweaks |
+| No inicia | Doesn't start |
+| Falla en ejecución | Crashes in-game |
+| Resultados variables | Mixed results |
+| Sin confirmación en el último año | No confirmation in the last year |
+| Pendiente de revisión, Aprobado, Rechazado, Retirado | Awaiting review, Approved, Rejected, Withdrawn |
+| Catálogo, Inicio | Catalog, Home |
+| ficha | game page |
+| reporte (aprobado) | (approved) report |
+| perfil de configuración | configuration profile |
+| solución | solution |
+| diagnóstico | diagnosis |
+| equipo | machine |
+| lanzador | launcher |
+| distribución | distribution |
+| aporte, Mis aportes | contribution, My contributions |
+| Seguidos, Seguir, Dejar de seguir, Marcar como visto | Followed games, Follow, Unfollow, Mark as seen |
+| novedades | news |
+| pedido, Pídelo, Sumarme | request, Request it, Join |
+| Revisión, revisor, administrador | Review, reviewer, administrator |
+| Aprobar, Rechazar, Retirar | Approve, Reject, Withdraw |
+| guía | guide |
+| Entrar, Crear cuenta, Salir | Sign in, Create account, Sign out |
+| Datos de ejemplo | Demo data |
+| Compartir, insignia | Share, badge |
+| Otras fuentes | Other sources |
+| arreglo upstream | upstream fix |

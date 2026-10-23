@@ -1,5 +1,6 @@
 import type { EvaluatedLibrary } from '../../domain/library.ts'
 import { libraryReadiness } from '../../domain/readiness.ts'
+import { useT } from '../i18n/messages.ts'
 import { type MatrixRow, DiagnosticMatrix } from './DiagnosticMatrix.tsx'
 import { ReadinessSummary } from './ReadinessSummary.tsx'
 
@@ -14,10 +15,11 @@ export function MachineGames({
   library: EvaluatedLibrary | null
   approximate: boolean
 }) {
+  const g = useT().diagnosis.games
   if (library === null)
     return (
       <>
-        <h2 className="section-title">Juegos</h2>
+        <h2 className="section-title">{g.heading}</h2>
         <DiagnosticMatrix rows={rows} approximate={approximate} />
       </>
     )
@@ -28,14 +30,14 @@ export function MachineGames({
     <>
       <section className="stack" aria-labelledby="steam-library">
         <h2 id="steam-library" className="section-title">
-          Tu biblioteca de Steam
+          {g.library}
         </h2>
         <ReadinessSummary readiness={libraryReadiness(owned, library.total)} />
         {owned.length > 0 && <DiagnosticMatrix rows={owned} approximate={approximate} />}
         {unknown.length > 0 && (
           <details className="card" open={unknown.length <= OPEN_UP_TO}>
-            <summary className="panel-title">Juegos que todavía no conocemos ({unknown.length})</summary>
-            <p className="small muted">Aún no están en el catálogo, así que no sabemos cómo funcionan en Linux. Cada nombre abre su página en Steam.</p>
+            <summary className="panel-title">{g.unknown(unknown.length)}</summary>
+            <p className="small muted">{g.unknownHelp}</p>
             <ul className="library-list">
               {unknown.map((j) => (
                 <li key={j.app_id}>
@@ -48,7 +50,7 @@ export function MachineGames({
           </details>
         )}
       </section>
-      <h2 className="section-title">Resto del catálogo</h2>
+      <h2 className="section-title">{g.rest}</h2>
       <DiagnosticMatrix rows={rest} approximate={approximate} />
     </>
   )

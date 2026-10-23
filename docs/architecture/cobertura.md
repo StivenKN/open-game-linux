@@ -62,9 +62,17 @@ Gaps by requirement:
 | An embeddable badge with a game's computed state, and the Markdown and HTML that embed it, linked to the game's page | `/juegos/$gameId/badge.svg` (404 for an unknown game); `/juegos/$gameId` "Compartir" | `routes/-game-image.ts` `gameImage` → `server/queries/share.ts` `gameCard`; `images/render.tsx` `badgeSvg`; `ui/compatibility/Embed.tsx` `embedCodes` | `tests/share.test.ts` "cuentan solo lo aprobado, como su tarjeta del catálogo: ni lo pendiente ni lo retirado", "un id que no nombra un juego no tiene tarjeta". `images/render.test.ts`, `ui/compatibility/Embed.test.ts` |
 | A shared link unfurls with a preview: a game's title over its cover art, its state and its approved reports; the site's preview on every other page | `/juegos/$gameId/og.png`, `/og.png`; Open Graph and Twitter card tags from `__root.tsx` and `/juegos/$gameId` | `gameCard`; `images/render.tsx` `gamePreviewPng`, `sitePreviewPng`; `routes/-meta.ts` `previewMeta` | `images/render.test.ts` "draws the preview at the size the meta tags announce", "uses the colors styles.css defines" |
 
-The badge, the previews and their tags are in Spanish, like the rest of the interface. A state that rests on a demo account's report carries the "Datos de ejemplo" stamp in all three.
+The badge, the previews and their tags follow the page's language: English pages ask for `?lang=en` (Spanish by default). A state that rests on a demo account's report carries the "Datos de ejemplo" ("Demo data") stamp in all three.
 
 - **Gap.** A title with Greek or CJK characters or emoji draws boxes for them in the preview image, because none of the app's fonts covers them. Latin, Cyrillic and Vietnamese titles draw.
+
+## Beyond section 7.1: interface languages
+
+| Feature | Route | Server program | Tests |
+|---|---|---|---|
+| Every page in Spanish and English, with the language in the URL; an unprefixed link (an old bookmark, the detector's handoff) opens in the visitor's language | `/es/…`, `/en/…`; the header's language switcher | `start.ts` request middleware with `ui/i18n/lang.ts` `unprefixedRedirect`; `routes/$lang/route.tsx` | `ui/i18n/lang.test.ts` (cookie, `Accept-Language`, redirect target, no fragment in the Location) |
+| Field errors and rule messages in the page's language, from codes the server and the Schemas send | every form | `useAction` with `ruleErrors`, `accountErrors` and the `checks` dictionary | `ui/useAction.test.ts`, `ui/form.test.ts`, `tests/game-requests.test.ts` "the writer sends a code, and each language words it under the field it names", `tests/signup.test.ts` |
+| The two dictionaries keep the same shape, and no component holds Spanish copy | | `ui/i18n/en.ts` `satisfies Messages` | `tsc`; `ui/i18n/copy.test.ts` |
 
 ## Wireframed screens
 

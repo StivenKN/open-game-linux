@@ -1,4 +1,5 @@
 import { Schema, SchemaTransformation } from 'effect'
+import { says } from './checks.ts'
 import { RequiredText } from './ids.ts'
 import { maxLengths } from './max-lengths.ts'
 
@@ -14,7 +15,7 @@ const storeRef = /^(?:(?:https?:\/\/)?store\.steampowered\.com\/app\/)?([1-9][0-
 
 /** What a person pastes to name a Steam game: its store link or its App ID. Decodes to the App ID. */
 export const SteamStoreRef = Schema.Trim.check(
-  Schema.isPattern(storeRef, { message: 'Pega el enlace de la tienda de Steam (store.steampowered.com/app/…) o su App ID.' }),
+  Schema.isPattern(storeRef, says('steamStoreRef')),
 ).pipe(Schema.decodeTo(SteamAppId, SchemaTransformation.transform({ decode: (ref: string) => Number(storeRef.exec(ref)?.[1]), encode: String })))
 
 export const LibraryGame = Schema.Struct({ app_id: SteamAppId, nombre: RequiredText.pipe(Schema.check(Schema.isMaxLength(maxLengths.library.name))) })

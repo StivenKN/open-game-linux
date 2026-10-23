@@ -2,7 +2,7 @@
 
 # open-game-linux
 
-OpenGame Linux tells a player whether a Windows game runs on Linux, based only on community test reports that a reviewer approved. A visitor searches the catalog, which forgives typos, and opens a game's page to see its computed state, the environments that were tested, and how each Wine or Proton version fared over time. They can run a detector script to compare their computer with a game's known conditions, and follow a step-by-step configuration profile for Wine or Proton. Signed-in users report results, propose solutions and configuration profiles, request games the catalog lacks, follow the review of each one under "Mis aportes", and can follow a game to see on "Seguidos" what changed since they last looked. A game's state can also leave the app, as a status badge to embed on another site and as the preview image of a shared link. Reviewers approve reports, solutions and profiles before they count, write the adoption guides, and add requested games, filling them from the Steam store. The interface is in Spanish.
+OpenGame Linux tells a player whether a Windows game runs on Linux, based only on community test reports that a reviewer approved. A visitor searches the catalog, which forgives typos, and opens a game's page to see its computed state, the environments that were tested, and how each Wine or Proton version fared over time. They can run a detector script to compare their computer with a game's known conditions, and follow a step-by-step configuration profile for Wine or Proton. Signed-in users report results, propose solutions and configuration profiles, request games the catalog lacks, follow the review of each one under "Mis aportes", and can follow a game to see on "Seguidos" what changed since they last looked. A game's state can also leave the app, as a status badge to embed on another site and as the preview image of a shared link. Reviewers approve reports, solutions and profiles before they count, write the adoption guides, and add requested games, filling them from the Steam store. The interface is in Spanish and English.
 
 Created in [T3 Code](https://t3.codes).
 
@@ -116,6 +116,20 @@ tar -xzOf reports_oct1_2026.tar.gz | docker compose -p opengame-prod --env-file 
 
 To turn the schedule off, set `SCHEDULED_IMPORTS=off` and deploy again. The `imports` container then logs that it is off and does nothing. The data already imported stays.
 
+## Interface languages
+
+Every page lives under a language: <http://localhost:3000/es> and <http://localhost:3000/en>, `/en/juegos/12` beside `/es/juegos/12`. The path after the language stays Spanish in both. A link without a language, such as `/juegos/12?x=1`, an old bookmark or the detector's `/diagnostico/importar#d=…`, redirects to the same path and query in the visitor's language: the one they last picked with the header's language link (a `lang` cookie), else the first of Spanish or English their browser asks for, else Spanish. The `#fragment` survives the redirect. `/api/auth/*`, the detector scripts and the images never take a language prefix.
+
+Content people write (game descriptions, reports, solutions, profile steps, guides) shows as written, in both interfaces.
+
+To add a string:
+
+1. Add it to the page area's Spanish dictionary in `src/ui/i18n/es/` (for example `catalog.tsx`), which is the source. A plural or an interpolation is a function: `games: (n: number) => count(n, 'juego', 'juegos')`.
+2. Run `pnpm exec tsc --noEmit`. It now fails on the same key in `src/ui/i18n/en/` until you add the English text there.
+3. Read it in the component with `const t = useT()`, as `t.catalog.games(n)`.
+
+A message the server or a Schema produces travels as a code (`Rule`, `CheckMessage` in `src/domain/checks.ts`), and each dictionary words it. `src/ui/i18n/copy.test.ts` fails when Spanish text lands in a component instead of a dictionary.
+
 ## Run the detector
 
 The detector reads the hardware and the installed Steam games, without root or admin rights. It opens the app's import page with the result in the URL fragment. Nothing is saved until you choose to save it, and the Steam game list is saved only if you check its box.
@@ -169,7 +183,7 @@ Each game has two images, computed from its approved reports on every request li
 
 When a demo account's report counts toward the state, both images and the link preview carry the "Datos de ejemplo" stamp, as the game page does.
 
-Both answer 404 for an id that names no game, and let caches keep them for five minutes, so a new approval shows within that time. Every page carries Open Graph and Twitter card tags, so a shared link unfurls with a preview: a game's page uses its own image, and every other page uses `/og.png`. The badge codes and the tags use absolute URLs built from `BETTER_AUTH_URL`.
+Both answer 404 for an id that names no game, and let caches keep them for five minutes, so a new approval shows within that time. Their text is Spanish unless the URL asks for English with `?lang=en`, as the English game page and its badge codes do. The codes link to the game's page without a language, so each reader opens it in their own. Every page carries Open Graph and Twitter card tags, so a shared link unfurls with a preview: a game's page uses its own image, and every other page uses `/og.png`. The badge codes and the tags use absolute URLs built from `BETTER_AUTH_URL`.
 
 ## Update the GPU table
 
@@ -299,4 +313,4 @@ Every later deploy rebuilds the image and keeps the database.
 
 ## Architecture
 
-`docs/architecture/` holds the design. Start with `ARCHITECTURE.md`. `MODULES.md` maps the directories, `PLAN.md` lists the build units and cuts, `RATIONALE.md` records the decisions, and `cobertura.md` maps each requirement to its route, server program, tests and screenshots. The interface is in Spanish and the code is in English. [`GLOSSARY.md`](docs/architecture/GLOSSARY.md) maps each Spanish term to its English code name and lists the Spanish names that stay because they are URLs, stored data or other contracts.
+`docs/architecture/` holds the design. Start with `ARCHITECTURE.md`. `MODULES.md` maps the directories, `PLAN.md` lists the build units and cuts, `RATIONALE.md` records the decisions, and `cobertura.md` maps each requirement to its route, server program, tests and screenshots. The interface is in Spanish and English, and the code is in English. [`GLOSSARY.md`](docs/architecture/GLOSSARY.md) maps each Spanish term to its English code name and to its word in the English interface, and lists the Spanish names that stay because they are URLs, stored data or other contracts.

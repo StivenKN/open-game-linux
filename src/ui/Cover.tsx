@@ -2,7 +2,7 @@ import { type ReactNode, useId } from 'react'
 import type { CompatibilityStatus } from '../domain/compatibility.ts'
 import { seededRandom, coverDesign, type Motif } from './cover-art.ts'
 import { DemoStamp } from './DemoStamp.tsx'
-import { compatibilityStatus } from './vocabulary.ts'
+import { useT } from './i18n/messages.ts'
 
 type Canvas = {
   readonly id: string
@@ -125,7 +125,7 @@ export function Cover({ title, status, sample = false }: { title: string; status
 }
 
 function StatusBand({ status }: { status: CompatibilityStatus }) {
-  const label = compatibilityStatus[status]
+  const label = useT().compatibilityStatus[status]
   return (
     <div className="band" data-tone={label.tone} data-shape="relleno" data-state={status}>
       <span className="band-icon" aria-hidden="true">

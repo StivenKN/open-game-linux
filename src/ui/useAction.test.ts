@@ -2,6 +2,8 @@ import { describe, expect, it } from '@effect/vitest'
 import { Result, Schema } from 'effect'
 import { NewReport } from '../domain/contributions.ts'
 import { User } from '../domain/tables.ts'
+import { en } from './i18n/en.ts'
+import { es } from './i18n/es.ts'
 import { readForm } from './useAction.ts'
 
 const report: Record<string, string> = {
@@ -26,14 +28,14 @@ const form = (changes: Record<string, string | null>) => {
   return data
 }
 
-const errorsFor = (changes: Record<string, string | null>) => Result.match(readForm(NewReport, form(changes)), {
+const errorsFor = (changes: Record<string, string | null>) => Result.match(readForm(NewReport, form(changes), es), {
   onSuccess: () => ({}),
   onFailure: (e) => e,
 })
 
 describe('readForm', () => {
   it('returns the encoded value the server validator expects', () => {
-    const parsed = readForm(NewReport, form({}))
+    const parsed = readForm(NewReport, form({}), es)
     expect(Result.isSuccess(parsed) && parsed.success).toEqual({
       edition_id: 1,
       diagnostic_id: 2,
@@ -72,11 +74,18 @@ describe('readForm', () => {
   it('a text longer than its column states the limit', () => {
     const data = new FormData()
     data.append('alias', 'a'.repeat(61))
-    const parsed = readForm(Schema.Struct({ alias: User.fields.alias }), data)
-    expect(Result.isFailure(parsed) && parsed.failure).toEqual({ alias: 'Usa como máximo 60 caracteres.' })
+    const read = (t: typeof es) => Result.match(readForm(Schema.Struct({ alias: User.fields.alias }), data, t), { onSuccess: () => ({}), onFailure: (e) => e })
+    expect(read(es)).toEqual({ alias: 'Usa como máximo 60 caracteres.' })
+    expect(read(en)).toEqual({ alias: 'Use 60 characters at most.' })
   })
 
-  it('an unknown union member lands on the union name, in Spanish', () => {
+  it('a domain check says its code in the page language', () => {
+    const data = new FormData()
+    for (const [k, v] of Object.entries({ ...report, 'failures[0][detail]': '' })) data.append(k, v)
+    expect(Result.match(readForm(NewReport, data, en), { onSuccess: () => ({}), onFailure: (e) => e })).toEqual({ 'failures[0][detail]': 'This field is required.' })
+  })
+
+  it('an unknown union member lands on the union name, in the page language', () => {
     expect(errorsFor({ 'layer_version[_tag]': 'inventada' })).toEqual({ layer_version: 'Revisa este valor.' })
   })
 
@@ -84,7 +93,7 @@ describe('readForm', () => {
     expect(errorsFor({ outcome: 'regular' })).toEqual({ form: 'Revisa este valor.' })
   })
 
-  it('a malformed value gets the generic Spanish notice', () => {
+  it('a malformed value gets the generic notice', () => {
     expect(errorsFor({ 'layer_version[id]': 'abc' })).toEqual({ 'layer_version[id]': 'Revisa este valor.' })
   })
 })

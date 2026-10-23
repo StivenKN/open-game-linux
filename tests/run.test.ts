@@ -45,7 +45,7 @@ describe('runRead', () => {
   it('without a session, requireReviewer redirects to /entrar', async () => {
     const d = await inRequest(null, () => runRead(requireReviewer))
     const e = thrownOf(d)
-    expect(isRedirect(e) && e.options.to).toBe('/entrar')
+    expect(isRedirect(e) && e.options.to).toBe('/$lang/entrar')
   })
 
   it('un usuario sin rol de revisor recibe notFound', async () => {

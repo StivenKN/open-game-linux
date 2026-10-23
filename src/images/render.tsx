@@ -12,8 +12,8 @@ import satori, { type Font, type FontWeight } from 'satori'
 import type { CompatibilityStatus } from '../domain/compatibility.ts'
 import { Brand } from '../ui/Brand.tsx'
 import { Artwork } from '../ui/Cover.tsx'
-import { count } from '../ui/format.ts'
-import { compatibilityStatus, type Tone } from '../ui/vocabulary.ts'
+import type { Messages } from '../ui/i18n/es.ts'
+import type { Tone } from '../ui/vocabulary.ts'
 
 /** What both images show of a game, as `server/queries/share.ts` reads it. */
 export type GameCard = {
@@ -50,10 +50,10 @@ const toneColor = {
 } as const satisfies Record<Tone, string>
 
 // A filled status, as `[data-shape='relleno']` paints it: the tone with ink text, and gray stripes for "Sin evidencia".
-const filled = (status: CompatibilityStatus) =>
+const filled = (t: Messages, status: CompatibilityStatus) =>
   status === 'sin_evidencia'
     ? { backgroundImage: 'repeating-linear-gradient(-45deg, #3c3245 0px, #3c3245 8px, #342a3d 8px, #342a3d 16px)', color: '#e4d8ea' }
-    : { backgroundColor: toneColor[compatibilityStatus[status].tone], color: palette.ink }
+    : { backgroundColor: toneColor[t.compatibilityStatus[status].tone], color: palette.ink }
 
 const require = createRequire(import.meta.url)
 
@@ -109,19 +109,22 @@ const artworkImage = (title: string, width: number, height: number) => {
 
 const segment = { display: 'flex', alignItems: 'center', padding: '0 8px' } as const
 
-/** "OpenGame Linux | Funciona", shields-style, in the state's own color, then "Datos de ejemplo" when it applies. */
-export const badgeSvg = async ({ status, demo }: Pick<GameCard, 'status' | 'demo'>) => {
-  const label = compatibilityStatus[status].text
+/**
+ * "OpenGame Linux | Funciona", shields-style, in the state's own color, then "Datos de ejemplo" when it applies.
+ * `t` is the dictionary of the language the embedding page asked for (`?lang=`).
+ */
+export const badgeSvg = async ({ status, demo }: Pick<GameCard, 'status' | 'demo'>, t: Messages) => {
+  const label = t.compatibilityStatus[status].text
   const svg = await draw(
     <div style={{ display: 'flex', height: 22, borderRadius: 6, overflow: 'hidden', fontFamily: 'Onest', fontSize: 12.5, fontWeight: 700 }}>
       <div style={{ ...segment, backgroundColor: palette['card-2'], color: palette.text }}>OpenGame Linux</div>
-      <div style={{ ...segment, ...filled(status) }}>{label}</div>
-      {demo && <div style={{ ...segment, backgroundColor: palette.background, color: palette.text, fontWeight: 500 }}>Datos de ejemplo</div>}
+      <div style={{ ...segment, ...filled(t, status) }}>{label}</div>
+      {demo && <div style={{ ...segment, backgroundColor: palette.background, color: palette.text, fontWeight: 500 }}>{t.demo.label}</div>}
     </div>,
     { height: 22 },
   )
   // satori draws the text as paths, so a <title> names the badge for screen readers and tooltips.
-  return svg.replace('>', `><title>OpenGame Linux: ${label}${demo ? ' (datos de ejemplo)' : ''}</title>`)
+  return svg.replace('>', `><title>OpenGame Linux: ${label}${demo ? ` (${t.share.image.demoNote})` : ''}</title>`)
 }
 
 // satori already drew every glyph, so resvg needs no fonts. Copied out of resvg's Buffer into a plain
@@ -133,9 +136,9 @@ const height = 630
 
 /**
  * The 1200×630 canvas of both previews: the masthead on top, with the "Datos de ejemplo" stamp (`.stamp`) when
- * `demo`, and the content at the bottom, over `background`.
+ * `demo` gives its words, and the content at the bottom, over `background`.
  */
-function Frame({ background, demo = false, children }: { background: string; demo?: boolean; children: ReactNode }) {
+function Frame({ background, demo = null, children }: { background: string; demo?: string | null; children: ReactNode }) {
   return (
     <div
       style={{
@@ -157,9 +160,9 @@ function Frame({ background, demo = false, children }: { background: string; dem
           <Brand size={56} />
           OpenGame Linux
         </div>
-        {demo && (
+        {demo !== null && (
           <div style={{ display: 'flex', padding: '6px 20px', borderRadius: 999, border: '2px solid #fff6', backgroundColor: '#0008', fontSize: 22, fontWeight: 700 }}>
-            Datos de ejemplo
+            {demo}
           </div>
         )}
       </div>
@@ -169,13 +172,13 @@ function Frame({ background, demo = false, children }: { background: string; dem
 }
 
 /** A game's preview: its title over its cover art, as on its page, then the state and how many approved reports it rests on. */
-export const gamePreviewPng = async (game: GameCard) => {
-  const label = compatibilityStatus[game.status]
+export const gamePreviewPng = async (game: GameCard, t: Messages) => {
+  const label = t.compatibilityStatus[game.status]
   const titleSize = game.title.length > 30 ? 92 : game.title.length > 16 ? 112 : 136
   // The game page banner's shade (`.game-page-banner::after`), so the text reads over any cover.
   const shade = 'linear-gradient(90deg, #1c1422e6 0%, #1c142280 45%, transparent 75%), linear-gradient(0deg, #1c1422 0%, transparent 45%)'
   const svg = await draw(
-    <Frame background={`${shade}, url(${artworkImage(game.title, width, height)})`} demo={game.demo}>
+    <Frame background={`${shade}, url(${artworkImage(game.title, width, height)})`} demo={game.demo ? t.demo.label : null}>
       <div
         style={{
           display: 'block',
@@ -191,12 +194,12 @@ export const gamePreviewPng = async (game: GameCard) => {
         {game.title}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-        <div style={{ display: 'flex', padding: '10px 26px', borderRadius: 999, fontFamily: 'Unbounded', fontWeight: 800, fontSize: 34, ...filled(game.status) }}>
+        <div style={{ display: 'flex', padding: '10px 26px', borderRadius: 999, fontFamily: 'Unbounded', fontWeight: 800, fontSize: 34, ...filled(t, game.status) }}>
           {label.text}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', fontSize: 26, fontWeight: 500, color: palette.muted }}>
-          <span>{game.reports === 0 ? 'Todavía no hay reportes aprobados' : `Según ${count(game.reports, 'reporte aprobado', 'reportes aprobados')}`}</span>
-          {game.no_recent_confirmation && <span style={{ color: palette.yellow }}>Sin confirmación en el último año</span>}
+          <span>{game.reports === 0 ? t.share.image.noReports : t.share.image.basedOn(game.reports)}</span>
+          {game.no_recent_confirmation && <span style={{ color: palette.yellow }}>{t.catalog.card.noRecent}</span>}
         </div>
       </div>
     </Frame>,
@@ -206,14 +209,14 @@ export const gamePreviewPng = async (game: GameCard) => {
 }
 
 /** The preview of every page that is not a game's. */
-export const sitePreviewPng = async () => {
+export const sitePreviewPng = async (t: Messages) => {
   const svg = await draw(
     <Frame background="radial-gradient(circle at 85% 0%, #3a2440 0%, transparent 60%)">
       <div style={{ display: 'flex', maxWidth: 900, fontFamily: 'Unbounded', fontWeight: 800, fontSize: 68, lineHeight: 1.04, letterSpacing: -2 }}>
-        Lleva tu biblioteca de Windows a Linux.
+        {t.share.site.heading}
       </div>
       <div style={{ display: 'flex', maxWidth: 900, fontWeight: 500, fontSize: 30, color: palette.muted }}>
-        Cómo les fue a jugadores que ya probaron cada juego, según los reportes que aprobó un revisor.
+        {t.share.site.lede}
       </div>
     </Frame>,
     { width, height },

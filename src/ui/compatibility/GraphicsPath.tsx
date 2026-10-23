@@ -1,23 +1,25 @@
 import type { X86Level } from '../../domain/platform.ts'
 import type { GamePath } from '../../domain/graphics-path.ts'
 import { Badge } from '../Badge.tsx'
-import { renderPath, gamePathLabel, gamePathSentences } from '../vocabulary.ts'
+import { useT } from '../i18n/messages.ts'
 
 /**
  * The hardware-only graphics path for one game. It stands apart from the community state and the
  * profile check: it needs no reports.
  */
 export function GraphicsPath({ path, minX86Level, approximate }: { path: GamePath; minX86Level: X86Level | null; approximate: boolean }) {
+  const t = useT()
+  const m = t.compatibility.graphicsPath
   // The warning and launch option follow the path wherever it shows, a certain floor included.
   const visible = path.status === 'con_ruta' ? path.path : path.status === 'sin_datos' ? path.at_least : null
-  const { note, option, tone } = visible === null ? { note: null, option: null, tone: null } : renderPath[visible]
+  const { note, option, tone } = visible === null ? { note: null, option: null, tone: null } : t.renderPath[visible]
   return (
     <div className="stack">
       <div className="row">
-        <span className="caption">Ruta gráfica</span>
-        <Badge label={gamePathLabel(path)} shape="punteado" />
+        <span className="caption">{m.caption}</span>
+        <Badge label={t.gamePathLabel(path)} shape="punteado" />
       </div>
-      {gamePathSentences(path, minX86Level).map((sentence) => (
+      {t.gamePathSentences(path, minX86Level).map((sentence) => (
         <p key={sentence} className="small">
           {sentence}
         </p>
@@ -29,10 +31,10 @@ export function GraphicsPath({ path, minX86Level, approximate }: { path: GamePat
       )}
       {option && (
         <p className="small muted">
-          Opción de lanzamiento en Steam: <code>{option}</code>
+          {m.launchOption} <code>{option}</code>
         </p>
       )}
-      {approximate && <p className="small muted">Calculada desde un diagnóstico de Windows: sirve de orientación.</p>}
+      {approximate && <p className="small muted">{m.approximate}</p>}
     </div>
   )
 }
