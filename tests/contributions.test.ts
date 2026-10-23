@@ -17,6 +17,7 @@ import {
 } from '../src/server/commands/contributions.ts'
 import { approvalBlockers, decide } from '../src/server/commands/review.ts'
 import { type SignedInUser, Visitor } from '../src/server/auth.ts'
+import { myContributions } from '../src/server/queries/contributions.ts'
 import { profileOptions } from '../src/server/queries/form-options.ts'
 import { gamePage } from '../src/server/queries/game.ts'
 import { guide } from '../src/server/queries/guides.ts'
@@ -485,6 +486,7 @@ layer(PgTest)('aportes', (it) => {
         ])
         expect(page.profile).toMatchObject({ editable: true, vulkan_version_min: '1.3', launch_options: 'DXVK_ASYNC=1 %command%' })
         expect((yield* Effect.provideService(profilePage(id), Visitor, Option.some(e.bruno))).profile.editable).toBe(false)
+        expect((yield* asUser(e.ana)(myContributions)).profiles).toMatchObject([{ id, editable: true }])
         expect(yield* asUser(e.rita)(approvalBlockers(ref('perfil', id)))).toEqual(['perfil_sin_reporte_funcional_aprobado'])
       })))
 

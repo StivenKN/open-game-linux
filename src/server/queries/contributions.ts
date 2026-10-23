@@ -5,6 +5,7 @@ import { activeStatuses, ReviewStatus } from '../../domain/review.ts'
 import { FailureType, Game, LayerVersion, Launcher, Profile, Report, Solution } from '../../domain/tables.ts'
 import { protonReportPossible } from '../../domain/upstream.ts'
 import { requireUser } from '../auth.ts'
+import { profileEditable } from '../commands/contributions.ts'
 import { rows } from '../rows.ts'
 import { myMachines } from './diagnostic.ts'
 import { distributionLabel, isDemo, layerLabel } from './labels.ts'
@@ -40,6 +41,8 @@ const MySolution = Schema.Struct({
 const MyProfile = Schema.Struct({
   ...Profile.mapFields(Struct.pick(['id', 'created_at', 'title', 'revision'])).fields,
   ...Common,
+  // Pending and unused: its author may still edit or delete it.
+  editable: Schema.Boolean,
 })
 
 const reports = (user: UserId) =>
@@ -87,7 +90,8 @@ const profiles = (user: UserId) =>
   Effect.flatMap(SqlClient.SqlClient, (sql) =>
     rows(
       MyProfile,
-      sql`SELECT p.id, p.created_at, p.title, p.revision, ${sql.literal(reviewOf('p'))} AS review, j.id AS game_id, j.title AS game
+      sql`SELECT p.id, p.created_at, p.title, p.revision, ${sql.literal(reviewOf('p'))} AS review, j.id AS game_id, j.title AS game,
+                 ${sql.literal(profileEditable('p'))} AS editable
           FROM profile p
           JOIN game_edition e ON e.id = p.edition_id
           JOIN game j ON j.id = e.game_id

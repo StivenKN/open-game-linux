@@ -101,6 +101,21 @@ function MyContributionsPage() {
                   {p.game}
                 </Link>
               </p>
+              {p.editable ? (
+                <p className="small">
+                  <Link to="/perfiles/$profileId/editar" params={{ profileId: p.id }}>
+                    Editar la propuesta
+                  </Link>
+                </p>
+              ) : (
+                'reason' in p.review && (
+                  <p className="small">
+                    <Link to="/juegos/$gameId/perfiles/nuevo" params={{ gameId: p.game_id }} search={{ desde: p.id }}>
+                      Proponer una versión con cambios
+                    </Link>
+                  </p>
+                )
+              )}
             </Item>
           ))}
         </Section>
