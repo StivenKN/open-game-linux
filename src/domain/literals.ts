@@ -26,3 +26,11 @@ export type GraphicsApi = typeof GraphicsApi.Type
 // ProtonDB's `variant`. 'notListed' is left out: as a layer it says nothing, so it reads as no layer.
 export const ProtonVariant = Schema.Literals(['official', 'experimental', 'ge', 'native', 'older'])
 export type ProtonVariant = typeof ProtonVariant.Type
+
+// AreWeAntiCheatYet's `status`, in its own words.
+export const AntiCheatStatus = Schema.Literals(['Supported', 'Running', 'Planned', 'Broken', 'Denied'])
+export type AntiCheatStatus = typeof AntiCheatStatus.Type
+
+/** The datasets the external imports read: ProtonDB's monthly export and AreWeAntiCheatYet's games.json. */
+export const ExternalSource = Schema.Literals(['protondb', 'anticheat'])
+export type ExternalSource = typeof ExternalSource.Type

@@ -1,0 +1,20 @@
+import { Effect, Schema } from 'effect'
+import { SqlClient } from 'effect/sql'
+import { GameId } from '../../domain/ids.ts'
+import { AntiCheatEntry } from '../../domain/tables.ts'
+import { rows } from '../rows.ts'
+
+const AntiCheatRow = Schema.Struct({ ...AntiCheatEntry.fields, game_id: GameId })
+export type AntiCheatRow = typeof AntiCheatRow.Type
+
+/** AreWeAntiCheatYet's entry per game, from its Steam edition: one game, or every game with `null`. */
+export const antiCheatEntries = (game: GameId | null) =>
+  Effect.flatMap(SqlClient.SqlClient, (sql) =>
+    rows(
+      AntiCheatRow,
+      sql`
+        SELECT a.*, e.game_id
+        FROM anticheat_entry a JOIN game_edition e ON e.id = a.edition_id
+        WHERE ${sql.and(game === null ? [] : [sql`e.game_id = ${game}`])}`,
+    ),
+  )

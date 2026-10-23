@@ -8,6 +8,7 @@ import { FailureChips } from '../ui/compatibility/FailureChips.tsx'
 import { count, date } from '../ui/format.ts'
 import { Cover } from '../ui/Cover.tsx'
 import { ProtonDbAttribution, ProtonDbLine } from '../ui/protondb/ProtonDb.tsx'
+import { AntiCheatAttribution, AntiCheatLine } from '../ui/anticheat/AntiCheat.tsx'
 import { compatibilityStatus, statusMeaning } from '../ui/vocabulary.ts'
 import { lenient, SearchText } from './-search.ts'
 
@@ -169,7 +170,7 @@ function CatalogPage() {
             <span className="track" />
             <span>
               <b>Sin bloqueo anti-cheat</b>
-              <small>Oculta los juegos con reportes bloqueados por un anti-cheat.</small>
+              <small>Oculta los juegos con reportes bloqueados por un anti-cheat y los que AreWeAntiCheatYet marca como rotos o denegados.</small>
             </span>
           </Link>
           <Link
@@ -238,6 +239,7 @@ function CatalogPage() {
                     )}
                   </p>
                   {j.protondb && <ProtonDbLine summary={j.protondb} />}
+                  {j.anticheat && <AntiCheatLine status={j.anticheat} />}
                   {j.summary.failures.length > 0 && <FailureChips failures={j.summary.failures} />}
                 </li>
               ))}
@@ -252,6 +254,7 @@ function CatalogPage() {
             </p>
           )}
           {games.some((j) => j.protondb) && <ProtonDbAttribution />}
+          {games.some((j) => j.anticheat) && <AntiCheatAttribution />}
         </section>
       </div>
     </main>

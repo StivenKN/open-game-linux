@@ -1,9 +1,11 @@
 import { Clock, Effect, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
+import { blocksOnlinePlay } from '../../domain/anticheat.ts'
 import type { CatalogFilter } from '../../domain/contributions.ts'
 import { type CompatibilityStatus, summarize, workedOnSteamDeck } from '../../domain/compatibility.ts'
 import { Game, Launcher } from '../../domain/tables.ts'
 import { oneRow } from '../rows.ts'
+import { antiCheatEntries } from './anticheat.ts'
 import { approvedTests } from './game.ts'
 import { protonDbSummaries } from './protondb.ts'
 
@@ -53,6 +55,7 @@ export const catalog = (filter: CatalogFilter) =>
     const now = new Date(yield* Clock.currentTimeMillis)
     const allTests = yield* approvedTests(null)
     const protondb = new Map((yield* protonDbSummaries(null)).map((r) => [r.game_id, r]))
+    const blocked = new Map((yield* antiCheatEntries(null)).filter((r) => blocksOnlinePlay(r.status)).map((r) => [r.game_id, r.status]))
     const candidates = rows
       .map((j) => {
         const tests = allTests.filter((p) => p.game_id === j.id)
@@ -64,9 +67,11 @@ export const catalog = (filter: CatalogFilter) =>
           steam_deck: workedOnSteamDeck(tests),
           demo: tests.some((p) => p.demo),
           protondb: external ? Struct.pick(external, ['recent', 'recent_working', 'total_reports']) : null,
+          anticheat: blocked.get(j.id) ?? null,
         }
       })
-      .filter((j) => filter.sin_anti_cheat !== true || !j.summary.failures.some((f) => f.code === 'anti_cheat'))
+      // "Sin bloqueo anti-cheat" also trusts AreWeAntiCheatYet's Broken and Denied; the computed state never does.
+      .filter((j) => filter.sin_anti_cheat !== true || (j.anticheat === null && !j.summary.failures.some((f) => f.code === 'anti_cheat')))
       .filter((j) => filter.steam_deck !== true || j.steam_deck)
     const games = filter.estado === undefined ? candidates : candidates.filter((j) => j.summary.status === filter.estado)
 

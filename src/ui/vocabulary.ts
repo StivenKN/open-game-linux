@@ -1,5 +1,5 @@
 import type { CompatibilityStatus } from '../domain/compatibility.ts'
-import type { GraphicsApi, Outcome, ProtonVariant } from '../domain/literals.ts'
+import type { AntiCheatStatus, GraphicsApi, Outcome, ProtonVariant } from '../domain/literals.ts'
 import type { RequirementCheck, DataOrigin, OperatingSystem, VulkanSupport, RequirementsVerdict } from '../domain/evaluation.ts'
 import type { GpuWarning, LinuxDriver, GpuFamily, D3dPath } from '../domain/gpu.ts'
 import type { InvalidPayload, SteamUnavailable } from '../domain/errors.ts'
@@ -282,6 +282,35 @@ export const protonVariant = {
   native: 'Versión nativa de Linux',
   older: 'Proton (versión antigua)',
 } as const satisfies Record<ProtonVariant, string>
+
+/** AreWeAntiCheatYet's statuses, with what the list means by each one. */
+export const antiCheatStatus = {
+  Supported: {
+    text: 'Anti-cheat soportado',
+    tone: 'verde',
+    icon: '✓',
+    meaning: 'El estudio habilitó el anti-cheat en Linux, o el anti-cheat funciona con Wine o Proton sin cambios.',
+  },
+  Running: {
+    text: 'Anti-cheat funciona',
+    tone: 'amarillo',
+    icon: '⚙',
+    meaning: 'Se puede jugar en línea en Linux, aunque a veces hacen falta ajustes. Nada de esto evade el anti-cheat.',
+  },
+  Planned: {
+    text: 'Soporte anunciado',
+    tone: 'gris',
+    icon: '…',
+    meaning: 'El estudio anunció que habilitará el anti-cheat en Linux o que sacará una versión nativa.',
+  },
+  Broken: { text: 'Anti-cheat roto', tone: 'rojo', icon: '✕', meaning: 'El anti-cheat no deja jugar en línea en Linux.' },
+  Denied: {
+    text: 'Anti-cheat denegado',
+    tone: 'rojo',
+    icon: '✕',
+    meaning: 'El estudio dijo que no habilitará el anti-cheat en Linux, o descartó dar soporte a Linux.',
+  },
+} as const satisfies Record<AntiCheatStatus, Label & { readonly meaning: string }>
 
 export const skipReason = {
   programa_envoltorio: 'es un programa que envuelve el juego, no un arreglo',

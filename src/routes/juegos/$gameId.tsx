@@ -13,6 +13,7 @@ import { count, date } from '../../ui/format.ts'
 import { Chip, Badge } from '../../ui/Badge.tsx'
 import { Artwork } from '../../ui/Cover.tsx'
 import { ProtonDbSection } from '../../ui/protondb/ProtonDb.tsx'
+import { AntiCheatSection } from '../../ui/anticheat/AntiCheat.tsx'
 import { DemoStamp } from '../../ui/DemoStamp.tsx'
 import { graphicsApi, x86Level, failureType, requirementsVerdict } from '../../ui/vocabulary.ts'
 import { FollowButton, FollowNews } from '../-follow.tsx'
@@ -31,7 +32,7 @@ export const Route = createFileRoute('/juegos/$gameId')({
 })
 
 function GamePage() {
-  const { game, editions, steam_app_id: steamAppId, summary, steam_deck, timeline, as_of, follow, protondb, demo, pending, profiles, causes, diagnostic, personal, siteOrigin } =
+  const { game, editions, steam_app_id: steamAppId, summary, steam_deck, timeline, as_of, follow, protondb, anticheat, demo, pending, profiles, causes, diagnostic, personal, siteOrigin } =
     Route.useLoaderData()
   const { visitor } = Route.useRouteContext()
   const reportLink = (
@@ -106,6 +107,11 @@ function GamePage() {
       <section className="section" aria-labelledby="protondb">
         <h2 id="protondb">Otras fuentes: ProtonDB</h2>
         <ProtonDbSection protondb={protondb} />
+      </section>
+
+      <section className="section" aria-labelledby="anticheat">
+        <h2 id="anticheat">Otras fuentes: AreWeAntiCheatYet</h2>
+        <AntiCheatSection anticheat={anticheat} />
       </section>
 
       <div className="section columns-2">

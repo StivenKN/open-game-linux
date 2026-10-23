@@ -13,6 +13,7 @@ import { Diagnostic, GameEdition, Machine, Game, GameApi, GameFollow, Launcher, 
 import { Visitor } from '../auth.ts'
 import { rows, oneRow } from '../rows.ts'
 import { machineOnLinux } from '../gpu/capability.ts'
+import { antiCheatEntries } from './anticheat.ts'
 import { isDemo, layerLabel, distributionLabel, profileLabel } from './labels.ts'
 import { protonDbSummaries } from './protondb.ts'
 
@@ -234,6 +235,7 @@ export const gamePage = (gameId: GameId) =>
     })
 
     const [protondb = null] = yield* protonDbSummaries(gameId)
+    const [anticheat = null] = yield* antiCheatEntries(gameId)
     const diagnostic = yield* visitorDiagnostic
     const machine = Option.map(diagnostic, machineOnLinux)
 
@@ -277,6 +279,7 @@ export const gamePage = (gameId: GameId) =>
       as_of: asOf,
       follow: Option.match(follow, { onNone: () => null, onSome: ({ seen_at }) => ({ seen_at, news: newsSince(tests, seen_at, now) }) }),
       protondb,
+      anticheat,
       demo: tests.some((p) => p.demo),
       pending: pending.n,
       profiles,

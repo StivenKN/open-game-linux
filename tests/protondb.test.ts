@@ -7,6 +7,7 @@ import { Visitor } from '../src/server/auth.ts'
 import { catalog } from '../src/server/queries/catalog.ts'
 import { gamePage } from '../src/server/queries/game.ts'
 import { importProtonDb } from '../src/server/external/protondb.ts'
+import { alreadyImported } from '../src/server/external/sources.ts'
 import { rows } from '../src/server/rows.ts'
 import { onDay, inRollback, idOf, PgTest } from './support.ts'
 
@@ -58,7 +59,7 @@ const scenario = Effect.gen(function* () {
 
 const saved = Effect.flatMap(SqlClient.SqlClient, (sql) => rows(ProtonDbSummary, sql`SELECT * FROM protondb_summary ORDER BY edition_id`))
 
-const importText = (text: string) => importProtonDb(chunks(text))
+const importText = (text: string) => importProtonDb(chunks(text), null)
 const reasonOf = (text: string) => Effect.map(Effect.flip(importText(text)), (e) => ('reason' in e ? e.reason : e._tag))
 
 const today = new Date('2026-10-15T00:00:00Z')
@@ -139,6 +140,19 @@ layer(PgTest)('importProtonDb', (it) => {
           expect(yield* reasonOf(october.slice(0, october.length - 40))).toBe('el archivo está truncado')
           expect(yield* reasonOf('[{"app":{}}]')).toBe('ningún reporte válido')
           expect(yield* saved).toEqual(before)
+        }),
+      ).pipe(onDay(today)),
+    )
+
+    it.effect('--latest recuerda el export que descargó, y lo olvida si después se importa un archivo local', () =>
+      inRollback(
+        Effect.gen(function* () {
+          yield* scenario
+          const file = 'a'.repeat(40)
+          yield* importProtonDb(chunks(october), file)
+          expect(yield* alreadyImported('protondb', file)).toBe(true)
+          yield* importText(october)
+          expect(yield* alreadyImported('protondb', file)).toBe(false)
         }),
       ).pipe(onDay(today)),
     )

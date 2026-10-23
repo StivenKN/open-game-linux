@@ -31,5 +31,18 @@ services:
     expose: ["3000"]
     restart: unless-stopped
 
+  # Imports ProtonDB and AreWeAntiCheatYet once a day (scripts/scheduled-imports.sh), in its own container so
+  # a slow or failed import never reaches `app`. SCHEDULED_IMPORTS=off turns it off.
+  imports:
+    build: .
+    depends_on:
+      app: { condition: service_started }
+    environment:
+      DATABASE_URL: postgres://opengame:${POSTGRES_PASSWORD:?}@db:5432/opengame
+      SCHEDULED_IMPORTS: ${SCHEDULED_IMPORTS:-on}
+    command: ["sh", "scripts/scheduled-imports.sh"]
+    init: true
+    restart: unless-stopped
+
 volumes:
   datos:
