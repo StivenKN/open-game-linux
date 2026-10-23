@@ -120,6 +120,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | formato | format |
 | formulario | form |
 | frase | sentence |
+| frenar | hold back (`holding_back`, the «Te frenan» list in `domain/readiness.ts`) |
 | fuente | source (`ExternalSource`, the imported datasets; `UnreachableSource`, a GitHub request that failed, whose `_tag` stays `FuenteInalcanzable`) |
 | funcionales | working (`working_reports`) |
 | gestor | package manager |

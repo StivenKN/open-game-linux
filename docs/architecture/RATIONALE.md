@@ -464,6 +464,24 @@ The service waits for `app` instead of running `pnpm db:migrate` itself. The mig
 2. A list that shrinks by mistake upstream would replace the stored entries. Only an empty or unreadable list is refused.
 3. AWACY lists only games with anti-cheat, but it gives no Steam id for about 40% of its entries, and a game without a Steam edition cannot match at all. A game without an entry reads "Sin datos de AreWeAntiCheatYet" and says the match is by Steam edition, never "no anti-cheat".
 
+## Library readiness
+
+**Problem.** The diagnosis rated each game of the player's Steam library, but the player had to read every card to answer the question they came with: can I switch to Linux?
+
+**Shape.**
+
+- `libraryReadiness` in `domain/readiness.ts` is a pure function over the library rows the diagnosis matrix already computes. It counts the catalog games by computed state, the games whose evidence says they work, and the anti-cheat blocks, and it splits out "Te frenan" (a failing state, an anti-cheat block, or a machine that falls short) and "Sin evidencia" (no approved test, and the machine does not rule the game out). `MachineGames` calls it on each render, for the guest preview and the saved diagnosis alike, so nothing is stored and the summary cannot disagree with the cards under it.
+- The headline counts evidence only: "N de tus M juegos tienen evidencia de que funcionan en Linux", where M counts every installed game, in the catalog or not. It has no score and no percentage. A game in no state is never guessed into one.
+- **The machine can take a game out of "works", never put one in, and only when it is certain.** `outOfReach` is a `sin_ruta` graphics path (no path for the game's APIs, or too low an x86-64 level) or a `no_cumple` verdict on the suggested profile, the same verdict its card shows. An unknown changes nothing. A game that works but is out of reach stays in the headline count, because the evidence is real, and a sentence after it says how many of them ask for more than the machine has; the game moves to "Te frenan" with a dashed "Tu equipo no cumple" chip. A game nobody tested that the machine rules out goes to "Te frenan" too, not to "Sin evidencia", so the page never invites a report the player cannot make.
+- **"Blocked by anti-cheat" is a failing approved test that names `anti_cheat`**, among the tests the state counts (`blockedByAntiCheat`). A working test can note an anti-cheat too, for instance a game whose campaign runs while its online mode refuses Linux, and that game is not blocked. The catalog's "Sin bloqueo anti-cheat" filter still reads any `anti_cheat` cause in `summary.failures`; the imports lane is rewriting that filter, so it is left as it is.
+- The matrix now computes each game's state with `summarize`, so the diagnosis follows the same one-year window as the ficha and the catalog. Before, it ran `statusOf` over every approved outcome, and a game that failed two years ago and works today read "Resultados variables" on the diagnosis and "Funciona" on its ficha.
+
+**Alternatives considered.**
+
+- **Computing the summary on the server.** The page already holds every row the summary reads, so a server field would ship the same facts twice.
+- **Leaving out-of-reach games out of the headline number.** The sentence would then claim less evidence than exists, or it would need "en un equipo como el tuyo", which no approved test supports.
+- **A stacked bar of the library by state.** It reads as a percentage of readiness, which claims more certainty than the evidence gives.
+
 ## Open questions and risks
 
 1. Does `Schema.fromFormData(Schema.toCodecStringTree(S))` decode the report form's nested shape (`failures[0][failure_type_id]`, the `layer_version[_tag]` union, a null `profile_id`) at runtime? It typechecks. If not, U0 falls back to a controlled form object decoded with plain `Schema.decodeUnknownResult(S)`, and the hook signature stays the same.

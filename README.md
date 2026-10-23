@@ -60,6 +60,8 @@ The seed creates four accounts. They all use the password `opengame-demo`.
 
 Content written by these accounts shows the "Datos de ejemplo" stamp. You can also create your own account at `/registro`.
 
+`demo_ana`'s diagnosis "PC familiar de Ana" is saved with a Steam library, so its page opens with the library summary: how many of her games have evidence that they work on Linux, and which ones hold her back.
+
 An administrador changes roles at `/admin/usuarios`, and can deactivate an account there. Deactivating signs the account out everywhere, and it cannot sign in again until it is reactivated. Because the demo password is public, `demo_admin` sees and changes only the demo accounts. To make the first administrador, or to change a role from a terminal, run `pnpm set-role <email> <usuario|revisor|administrador>`, which also reactivates the account. Neither demotes or deactivates the last active administrador, and an administrador cannot remove their own access. A change applies on the account's next request.
 
 ```sh
