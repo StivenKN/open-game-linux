@@ -168,7 +168,7 @@ Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names 
 | `seen_at` only moves forward, never past now | app: server/commands/follow.ts changeFollow |
 | AreWeAntiCheatYet never feeds the computed state; its Broken and Denied only feed the `sin_anti_cheat` filter and the card | app: no path from domain/anticheat.ts to summarize; server/queries/catalog.ts filters with `blocksOnlinePlay` |
 
-Single writers. `src/boundaries.test.ts` checks the SQL in `src/` and `scripts/` for the first two, the profile and guide tables, and the last six.
+Single writers. `src/boundaries.test.ts` checks the SQL in `src/` and `scripts/` for the first two, the profile and guide tables, and the last seven.
 
 | Tables | Writer |
 |---|---|
