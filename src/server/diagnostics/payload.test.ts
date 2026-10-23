@@ -119,6 +119,7 @@ describe('parsePayload', () => {
       version_herramienta: ' proton-9.0-2 ',
       opciones_lanzamiento: '',
       build: '15563723',
+      nativo: false,
       cuenta_supuesta: true,
     }
     expect(capture(JSON.stringify({ ...prototype, juego }))).toMatchObject({ steam_game: {
@@ -127,13 +128,14 @@ describe('parsePayload', () => {
       tool_version: 'proton-9.0-2',
       launch_options: null,
       build_id: '15563723',
+      native: false,
       guessed_account: true,
     } })
   })
 
   it('reads a Steam Deck, and ignores report mode in a Windows payload', () => {
     expect(capture(JSON.stringify({ ...prototype, dispositivo: 'steam_deck_lcd' })).device).toBe('steam_deck_lcd')
-    const juego = { app_id: 1, herramienta: null, version_herramienta: null, opciones_lanzamiento: null, build: null, cuenta_supuesta: false }
+    const juego = { app_id: 1, herramienta: null, version_herramienta: null, opciones_lanzamiento: null, build: null, nativo: true, cuenta_supuesta: false }
     expect(capture(JSON.stringify({ ...JSON.parse(windowsJson), juego }))).toEqual(capture(windowsJson))
   })
 
@@ -149,6 +151,12 @@ describe('parsePayload', () => {
     expect(capture(JSON.stringify(arch))).toMatchObject({ distribution: { name: 'Arch Linux', version: 'rolling' } })
     const withoutVersion = { ...prototype, distribucion: { nombre: 'Arch Linux', version: null } }
     expect(capture(JSON.stringify(withoutVersion))).toMatchObject({ distribution: { version: 'rolling' } })
+  })
+
+  it('keeps SteamOS at its minor release, so each point release is not a new distribution', () => {
+    const steamOs = (version: string) => capture(JSON.stringify({ ...prototype, distribucion: { nombre: 'SteamOS', version } }))
+    expect([steamOs('3.7.13'), steamOs('3.7')]).toMatchObject([{ distribution: { version: '3.7' } }, { distribution: { version: '3.7' } }])
+    expect(capture(JSON.stringify({ ...prototype, distribucion: { nombre: 'Debian GNU/Linux', version: '12.7' } }))).toMatchObject({ distribution: { version: '12.7' } })
   })
 
   it.each([
@@ -197,7 +205,7 @@ describe('parsePayload', () => {
     [{ zram_mb: -1 }, 'zram_mb'],
     [{ swap_mb: 1.5 }, 'swap_mb'],
     [{ dispositivo: 'rog_ally' }, 'dispositivo'],
-    [{ juego: { app_id: 0, herramienta: null, version_herramienta: null, opciones_lanzamiento: null, build: null, cuenta_supuesta: false } }, 'juego.app_id'],
+    [{ juego: { app_id: 0, herramienta: null, version_herramienta: null, opciones_lanzamiento: null, build: null, nativo: true, cuenta_supuesta: false } }, 'juego.app_id'],
   ])('a bad field %o is campo_invalido at %s', (override, field) => {
     expect(parsePayload(JSON.stringify({ ...prototype, ...override }))).toEqual(
       Result.fail(new InvalidPayload({ reason: 'campo_invalido', field })),

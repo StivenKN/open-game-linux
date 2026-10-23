@@ -8,6 +8,7 @@ import { GameId, UserId } from '../../domain/ids.ts'
 import { GraphicsApi } from '../../domain/literals.ts'
 import { ReviewStatus, activeStatuses } from '../../domain/review.ts'
 import { gamePath } from '../../domain/graphics-path.ts'
+import { appIdOf } from '../../domain/upstream.ts'
 import { Diagnostic, GameEdition, Machine, Game, GameApi, GameFollow, Launcher, Profile, Solution, FailureType } from '../../domain/tables.ts'
 import { Visitor } from '../auth.ts'
 import { rows, oneRow } from '../rows.ts'
@@ -261,9 +262,15 @@ export const gamePage = (gameId: GameId) =>
       }),
     })
 
+    const [steamAppId = null] = editions.flatMap((e) => {
+      const id = appIdOf(e)
+      return id._tag === 'steam' ? [id.appid] : []
+    })
+
     return {
       game: { ...game.value, apis },
       editions,
+      steam_app_id: steamAppId,
       summary,
       steam_deck: onSteamDeck(tests, now),
       timeline: timeline(tests),

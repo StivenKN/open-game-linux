@@ -19,6 +19,7 @@ const SentSteamGame = Schema.Struct({
   version_herramienta: Schema.NullOr(Schema.String),
   opciones_lanzamiento: Schema.NullOr(Schema.String),
   build: Schema.NullOr(Schema.String),
+  nativo: Schema.Boolean,
   cuenta_supuesta: Schema.Boolean,
 })
 
@@ -85,7 +86,7 @@ export const parsePayload = (text: string): Result.Result<Capture, InvalidPayloa
         ? {
             ...common,
             operating_system: 'Linux',
-            distribution: { name: p.distribucion.nombre, version: distributionVersion(p.distribucion.version) },
+            distribution: { name: p.distribucion.nombre, version: distributionVersion(p.distribucion.nombre, p.distribucion.version) },
             driver: p.controlador,
             driver_version: p.version_controlador,
             vulkan_support: p.soporte_vulkan,
@@ -126,6 +127,7 @@ const steamGameOf = (g: typeof SentSteamGame.Type): typeof SteamGame.Encoded => 
   tool_version: textOrNull(g.version_herramienta),
   launch_options: textOrNull(g.opciones_lanzamiento),
   build_id: textOrNull(g.build),
+  native: g.nativo,
   guessed_account: g.cuenta_supuesta,
 })
 
@@ -230,8 +232,12 @@ const invalidField = (error: Schema.SchemaError, name = (key: string) => key): I
 
 const invalidCaptureField = (error: Schema.SchemaError) => invalidField(error, (key) => payloadNameOf[key] ?? key)
 
-/** Rolling distros report no version or a build date (Arch VERSION_ID "20261004.0.606936"). */
-const distributionVersion = (version: string | null): string => {
+/**
+ * Rolling distros report no version or a build date (Arch VERSION_ID "20261004.0.606936"). SteamOS reports its
+ * point release ("3.7.13"), out every few weeks, so it keeps the minor release like other distros do.
+ */
+const distributionVersion = (name: string, version: string | null): string => {
   const v = version?.trim() ?? ''
-  return v === '' || /^\d{8}/.test(v) ? 'rolling' : v
+  if (v === '' || /^\d{8}/.test(v)) return 'rolling'
+  return name === 'SteamOS' ? v.replace(/^(\d+\.\d+)\..*$/, '$1') : v
 }

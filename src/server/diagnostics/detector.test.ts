@@ -196,6 +196,6 @@ describe.skipIf(process.platform !== 'linux')('opengame-detect.sh Steam Deck', (
     ['Valve', 'Galileo', 'steam_deck_oled'],
     ['LENOVO', 'Jupiter', null],
   ])('%s %s is %o, and SteamOS is named by its ID', (vendor, product, device) => {
-    expect(handheld(vendor, product)).toEqual([device, 'SteamOS', '3.7.13'])
+    expect(handheld(vendor, product)).toEqual([device, 'SteamOS', '3.7'])
   })
 })

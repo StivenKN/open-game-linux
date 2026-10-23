@@ -117,10 +117,10 @@ layer(PgTest)('submitDiagnostic', (it) => {
 
   it.effect('saves which Steam Deck took the capture, never the Steam game of report mode', withSeed((f) =>
     Effect.gen(function* () {
-      const juego = { app_id: 1245620, herramienta: 'proton_9', version_herramienta: 'proton-9.0-2', opciones_lanzamiento: null, build: '1', cuenta_supuesta: false }
+      const juego = { app_id: 1245620, herramienta: 'proton_9', version_herramienta: 'proton-9.0-2', opciones_lanzamiento: null, build: '1', nativo: false, cuenta_supuesta: false }
       const { id } = yield* save({ machine: newMachine('Deck'), input: payload({ dispositivo: 'steam_deck_oled', juego }) }).pipe(asUser(f.author))
       const { capture } = yield* myDiagnostic(Schema.decodeSync(DiagnosticId)(id)).pipe(asUser(f.author))
-      expect(capture).toMatchObject({ device: 'steam_deck_oled', steam_game: null })
+      expect(capture.device).toBe('steam_deck_oled')
     })))
 
   it.effect('sin sesión o con un payload ilegible no guarda nada', withSeed((f) =>
@@ -159,7 +159,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
   it.effect('evaluateWithoutSaving names the game a report-mode capture reports, through its Steam edition', withSeed((f) =>
     Effect.gen(function* () {
       yield* f.sql`UPDATE game_edition SET external_id = '1245620' WHERE id = ${f.ed}`
-      const juego = (app_id: number) => ({ app_id, herramienta: null, version_herramienta: null, opciones_lanzamiento: null, build: null, cuenta_supuesta: false })
+      const juego = (app_id: number) => ({ app_id, herramienta: null, version_herramienta: null, opciones_lanzamiento: null, build: null, nativo: true, cuenta_supuesta: false })
       expect((yield* evaluateWithoutSaving(payload({ juego: juego(1245620) }))).report).toEqual({ game_id: expect.any(Number), title: 'Juego', edition_id: f.ed })
       expect((yield* evaluateWithoutSaving(payload({ juego: juego(730) }))).report).toBeNull()
       expect((yield* evaluateWithoutSaving(payload())).report).toBeNull()

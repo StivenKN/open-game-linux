@@ -252,7 +252,8 @@ const manualFields = {
   gpu_modelo: Diagnostic.fields.gpu_model,
   ram_mb: Diagnostic.fields.ram_mb,
   vram_mb: Diagnostic.fields.vram_mb,
-  dispositivo: Diagnostic.fields.device,
+  // Optional so a manual entry kept in sessionStorage before this field existed still decodes.
+  dispositivo: Diagnostic.fields.device.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
 }
 
 const manualVulkanNeedsSupport = Schema.makeFilter((c: { readonly soporte_vulkan: VulkanSupport; readonly version_vulkan: string | null }) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {

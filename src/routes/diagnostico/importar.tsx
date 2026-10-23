@@ -108,7 +108,8 @@ function ReportIntro({ steam, title }: { steam: SteamGame; title: string | null 
         Reportar {title}
       </h2>
       <p>
-        El detector leyó cómo ejecuta Steam este juego: {steam.tool === null ? 'sin herramienta de compatibilidad (nativo)' : `«${steam.tool_version ?? steam.tool}»`}
+        El detector leyó cómo ejecuta Steam este juego:{' '}
+        {steam.tool !== null ? `«${steam.tool_version ?? steam.tool}»` : steam.native ? 'sin herramienta de compatibilidad (nativo)' : 'sin saber con qué herramienta'}
         {steam.launch_options !== null && <>, con las opciones de lanzamiento «{steam.launch_options}»</>}
         {steam.build_id !== null && <>, build {steam.build_id}</>}. Guarda este diagnóstico y te llevamos al formulario del reporte ya
         lleno. Nada se envía hasta que lo revises.

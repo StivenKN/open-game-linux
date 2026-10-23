@@ -133,7 +133,7 @@ To report a game you played through Steam on Linux, run the Linux script with `-
 curl -fsSL http://localhost:3000/opengame-detect.sh | bash -s -- --game 1245620
 ```
 
-Besides the hardware, the script reads which compatibility tool Steam runs that game with and that tool's exact release (for example Proton 9.0-2), the game's launch options and its build id. The import page then asks you to save the diagnosis, signing you in first if needed, and opens the game's report form already filled in. You review every field and send it yourself. Launch options go into the observations, because a report has no field for them. The Windows script has no report mode, because a report needs a diagnosis made on Linux.
+Besides the hardware, the script reads which compatibility tool last ran that game and its exact release (for example Proton 9.0-2), the game's launch options and its build id. The import page then asks you to save the diagnosis, signing you in first if needed, and opens the game's report form already filled in. You review every field and send it yourself. Launch options go into the observations, because a report has no field for them. The Windows script has no report mode, because a report needs a diagnosis made on Linux.
 
 ## Update the GPU table
 

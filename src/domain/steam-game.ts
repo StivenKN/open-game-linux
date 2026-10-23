@@ -10,10 +10,15 @@ import type { LayerVersion } from './tables.ts'
  */
 export const SteamGame = Schema.Struct({
   app_id: SteamAppId,
-  /** The CompatToolMapping entry in force ("proton_9", "GE-Proton10-4"); null when none applies: the game runs natively. */
+  /**
+   * The build that last ran the game, by its folder ("Proton - Experimental", "GE-Proton10-4"), else the
+   * CompatToolMapping entry in force ("proton_9"); null when the detector could not tell.
+   */
   tool: Schema.NullOr(Schema.String),
-  /** The tool's own version file without its build time: "proton-9.0-2", "GE-Proton10-4". */
+  /** That tool's own version file without its build time: "proton-9.0-2", "GE-Proton10-4". */
   tool_version: Schema.NullOr(Schema.String),
+  /** No tool applies and Proton never ran the installed game: it runs natively. */
+  native: Schema.Boolean,
   launch_options: Schema.NullOr(Schema.String),
   build_id: Schema.NullOr(Schema.String),
   /** Several Steam accounts and none marked as the last one used, so the launch options are the first account's. */
@@ -27,10 +32,11 @@ export type LayerPrefill =
   | { readonly _tag: 'nueva'; readonly family: LayerFamily; readonly variant: string; readonly version: string }
 
 // A version file or a tool name that names one release: "proton-9.0-2", "experimental-9.0-20241017", "GE-Proton9-4".
+// The release starts with a digit, so another build's name ("proton-cachyos") is not read as one.
 const releases: ReadonlyArray<readonly [RegExp, string]> = [
-  [/^proton-(.+)$/, 'Valve'],
-  [/^experimental-(.+)$/, 'Experimental'],
-  [/^GE-Proton(.+)$/i, 'GE'],
+  [/^proton-(\d.*)$/, 'Valve'],
+  [/^experimental-(\d.*)$/, 'Experimental'],
+  [/^GE-Proton(\d.*)$/i, 'GE'],
 ]
 
 // Valve's tool names say only which build Steam keeps up to date.
@@ -42,8 +48,8 @@ const builds: ReadonlyArray<readonly [RegExp, string]> = [
 
 type LayerHint = { readonly family: LayerFamily; readonly variant: string | null; readonly version: string | null }
 
-const hintOf = ({ tool, tool_version }: Pick<SteamGame, 'tool' | 'tool_version'>): LayerHint | null => {
-  if (tool === null) return { family: 'Nativo', variant: null, version: null }
+const hintOf = ({ tool, tool_version, native }: Pick<SteamGame, 'tool' | 'tool_version' | 'native'>): LayerHint | null => {
+  if (tool === null) return native ? { family: 'Nativo', variant: null, version: null } : null
   for (const text of [tool_version, tool]) {
     for (const [pattern, variant] of releases) {
       const version = text === null ? undefined : pattern.exec(text)?.[1]
@@ -56,9 +62,10 @@ const hintOf = ({ tool, tool_version }: Pick<SteamGame, 'tool' | 'tool_version'>
 
 /**
  * The layer a detected Steam tool names, matched to the catalog only when Steam names the exact release; null
- * for a tool it does not know (the form then starts as usual). It never guesses a release from a series.
+ * for a tool it does not know or when the detector could not tell (the form then starts as usual). It never
+ * guesses a release from a series.
  */
-export const prefillLayer = (game: Pick<SteamGame, 'tool' | 'tool_version'>, layers: ReadonlyArray<LayerVersion>): LayerPrefill | null => {
+export const prefillLayer = (game: Pick<SteamGame, 'tool' | 'tool_version' | 'native'>, layers: ReadonlyArray<LayerVersion>): LayerPrefill | null => {
   const hint = hintOf(game)
   if (hint === null) return null
   const { family, variant, version } = hint

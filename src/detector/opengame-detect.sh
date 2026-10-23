@@ -190,28 +190,36 @@ if [ "${#libraries[@]}" -gt 0 ]; then
   fi
 fi
 
-# Report mode (--game): what Steam runs that game with. config/config.vdf maps each app, and under "0" every
-# Windows title, to a compatibility tool; the default skips native titles, and a game Proton never ran has no
-# compatdata prefix. The tool's own version file names the exact release ("1718385733 proton-9.0-2"). Launch
-# options live per account in userdata/<account>/config/localconfig.vdf, the build in the appmanifest.
+# Report mode (--game): what Steam runs that game with. Proton writes the build that last ran the game into its
+# prefix, compatdata/<appid>/config_info (line 2 is that build's fonts folder), and every build carries a version
+# file that names its exact release ("1718385733 proton-9.0-2"). Without one, config/config.vdf says which tool
+# applies: the game's own entry, else the default under "0", which Steam gives only to Windows titles, so an
+# installed game Proton never ran is native. Launch options live per account in
+# userdata/<account>/config/localconfig.vdf, the build in the appmanifest.
 game_block="null"
 if [ -n "$game" ]; then
   manifest=""; for m in "${manifests[@]}"; do case "$m" in */appmanifest_"$game".acf) manifest=$m ;; esac; done
   [ -n "$manifest" ] || echo "No encontramos el juego $game instalado en Steam; enviamos solo lo que guarda su configuración." >&2
-  build=""; [ -n "$manifest" ] && build=$(vdf_pairs "$manifest" | awk -F'\t' '$2 == "appstate/buildid" { print $3; exit }')
+  build=""; prefix=""
+  if [ -n "$manifest" ]; then
+    build=$(vdf_pairs "$manifest" | awk -F'\t' '$2 == "appstate/buildid" { print $3; exit }')
+    prefix="${manifest%/*}/compatdata/$game"
+  fi
   root=""; for r in "${roots[@]}"; do [ -r "$r/config/config.vdf" ] && { root=$r; break; }; done
-  tool=""; tool_version=""; launch_options=""; guessed=false
-  if [ -n "$root" ]; then
+  tool=""; version_file=""; native=false; launch_options=""; guessed=false
+  if [ -n "$prefix" ] && [ -r "$prefix/config_info" ]; then
+    ran=$(sed -n 2p "$prefix/config_info" | sed -E 's#/(files|dist)/share/fonts/?$##')
+    [ -r "$ran/version" ] && { tool=${ran##*/}; version_file="$ran/version"; }
+  fi
+  if [ -z "$tool" ] && [ -n "$root" ]; then
     mapping=$(vdf_pairs "$root/config/config.vdf" | awk -F'\t' '$2 ~ /\/compattoolmapping\/[0-9]+\/name$/ { n = split($2, p, "/"); print p[n - 1] "\t" $3 }')
     tool=$(printf '%s\n' "$mapping" | awk -F'\t' -v id="$game" '$1 == id { print $2; exit }')
-    if [ -z "$tool" ] && [ -n "$manifest" ] && [ -d "${manifest%/*}/compatdata/$game" ]; then
-      tool=$(printf '%s\n' "$mapping" | awk -F'\t' '$1 == "0" { print $2; exit }')
-    fi
+    [ -z "$tool" ] && [ -d "$prefix" ] && tool=$(printf '%s\n' "$mapping" | awk -F'\t' '$1 == "0" { print $2; exit }')
   fi
-  if [ -n "$tool" ]; then
+  [ -z "$tool" ] && [ -n "$manifest" ] && [ ! -d "$prefix" ] && native=true
+  if [ -n "$tool" ] && [ -z "$version_file" ]; then
     # A custom tool sits in compatibilitytools.d under its name. Valve's are Steam apps: "Proton 9.0" is
     # proton_9, "Proton 5.13" proton_513, "Proton - Experimental" proton_experimental.
-    version_file=""
     for r in "${roots[@]}"; do [ -r "$r/compatibilitytools.d/$tool/version" ] && { version_file="$r/compatibilitytools.d/$tool/version"; break; }; done
     if [ -z "$version_file" ] && [ "${#manifests[@]}" -gt 0 ]; then
       version_file=$(vdf_pairs "${manifests[@]}" | awk -F'\t' -v want="$tool" '
@@ -224,8 +232,8 @@ if [ -n "$game" ]; then
         $2 == "appstate/installdir" { dir[$1] = $3 }
         END { for (f in name) if (name[f] == want && dir[f] != "") { d = dir[f]; sub(/\/[^\/]*$/, "", f); print f "/common/" d "/version"; exit } }')
     fi
-    [ -r "$version_file" ] && tool_version=$(head -n 1 "$version_file" | sed 's/^[0-9]* //; s/[[:space:]]*$//')
   fi
+  tool_version=""; [ -r "$version_file" ] && tool_version=$(head -n 1 "$version_file" | sed 's/^[0-9]* //; s/[[:space:]]*$//')
   if [ -n "$root" ]; then
     # The account that signed in last (MostRecent in loginusers.vdf), else the only one. With several and none
     # marked, the first, and the payload says so.
@@ -239,7 +247,7 @@ if [ -n "$game" ]; then
     fi
     [ -f "$config" ] && launch_options=$(vdf_pairs "$config" | awk -F'\t' -v id="$game" '$2 ~ ("/apps/" id "/launchoptions$") { print $3; exit }')
   fi
-  game_block="{\"app_id\":$game,\"herramienta\":$(json_str "$tool"),\"version_herramienta\":$(json_str "$tool_version"),\"opciones_lanzamiento\":$(json_str "$launch_options"),\"build\":$(json_str "$build"),\"cuenta_supuesta\":$guessed}"
+  game_block="{\"app_id\":$game,\"herramienta\":$(json_str "$tool"),\"version_herramienta\":$(json_str "$tool_version"),\"opciones_lanzamiento\":$(json_str "$launch_options"),\"build\":$(json_str "$build"),\"nativo\":$native,\"cuenta_supuesta\":$guessed}"
 fi
 
 # Machine facts. Empty means unknown and goes out as null; none of these needs root.

@@ -40,9 +40,11 @@ const handoffLog = () => join(tmp, 'handoff.log')
 beforeAll(() => {
   tmp = mkdtempSync(join(tmpdir(), 'opengame-detector-'))
   cpSync(join(root, 'tests/fixtures/steam'), join(tmp, 'steam'), { recursive: true })
-  for (const vdf of [steam('nuevo'), steam('antiguo')].map((r) => join(r, 'steamapps/libraryfolders.vdf'))) {
-    writeFileSync(vdf, readFileSync(vdf, 'utf8').replaceAll('__RAIZ__', join(tmp, 'steam')))
-  }
+  const withRoot = [
+    ...[steam('nuevo'), steam('antiguo')].map((r) => join(r, 'steamapps/libraryfolders.vdf')),
+    join(steam('biblioteca2'), 'steamapps/compatdata/292030/config_info'),
+  ]
+  for (const file of withRoot) writeFileSync(file, readFileSync(file, 'utf8').replaceAll('__RAIZ__', join(tmp, 'steam')))
   library('mediana', 30)
   library('grande', 2000)
 })
@@ -212,16 +214,25 @@ describe.skipIf(process.platform !== 'linux')('opengame-detect.sh --game: what S
       tool_version: 'proton-9.0-2',
       launch_options: 'PROTON_ENABLE_NVAPI=1 %command% -nobattleye "modo seguro"',
       build_id: '15563723',
+      native: false,
       guessed_account: false,
     })
   })
 
-  it('takes the default tool for a game Proton already ran, with a custom tool’s version', () => {
-    expect(report('292030')).toMatchObject({ tool: 'GE-Proton9-4', tool_version: 'GE-Proton9-4', launch_options: null, build_id: null })
+  it('names the build that last ran the game from its prefix, over the default tool', () => {
+    expect(report('292030')).toMatchObject({ tool: 'Proton - Experimental', tool_version: 'experimental-9.0-20241017', native: false })
   })
 
-  it('reads a game Proton never ran as native, although a default tool is set', () => {
-    expect(report('227300')).toMatchObject({ tool: null, tool_version: null })
+  it('takes the default tool for a game Proton already ran when the prefix names no build', () => {
+    expect(report('730')).toMatchObject({ tool: 'GE-Proton9-4', tool_version: 'GE-Proton9-4', native: false })
+  })
+
+  it('reads an installed game Proton never ran as native, although a default tool is set', () => {
+    expect(report('227300')).toMatchObject({ tool: null, tool_version: null, native: true })
+  })
+
+  it('does not call a game it cannot find native', () => {
+    expect(report('1245620')).toMatchObject({ tool: null, native: false, build_id: null })
   })
 
   it('with several accounts and none marked as the last one, takes the first and says so', () => {

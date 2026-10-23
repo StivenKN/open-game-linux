@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { hasNews } from '../../domain/follow.ts'
 import { GameId } from '../../domain/ids.ts'
-import { STEAM_LAUNCHER } from '../../domain/library.ts'
 import { gamePageFn } from '../../fns/catalog.ts'
 import { originFn } from '../../fns/diagnostic.ts'
 import { CopyBox } from '../../ui/compatibility/CopyBox.tsx'
@@ -32,10 +31,9 @@ export const Route = createFileRoute('/juegos/$gameId')({
 })
 
 function GamePage() {
-  const { game, editions, summary, steam_deck, timeline, as_of, follow, protondb, demo, pending, profiles, causes, diagnostic, personal, siteOrigin } =
+  const { game, editions, steam_app_id: steamAppId, summary, steam_deck, timeline, as_of, follow, protondb, demo, pending, profiles, causes, diagnostic, personal, siteOrigin } =
     Route.useLoaderData()
   const { visitor } = Route.useRouteContext()
-  const steamAppId = editions.find((e) => e.launcher === STEAM_LAUNCHER)?.external_id ?? null
   const reportLink = (
     <Link to="/juegos/$gameId/reportar" params={{ gameId: game.id }} className="button">
       Reportar un resultado
