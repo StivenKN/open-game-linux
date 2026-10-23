@@ -385,6 +385,34 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 3. The profile page keeps a player's step checklist under the profile id and revision. Editing a pending profile keeps both, so a checklist can point at steps that moved.
 4. A new dependency typed by any user becomes a catalog row others can pick, like a new layer version from a report.
 
+## Catalog search, game requests and Steam autofill
+
+**Problem.** A search for «cyberpnk» found nothing, and a game missing from the catalog had no way in except a reviewer who happened to think of it. Reviewers also typed every new game's title and description by hand.
+
+**Shape.**
+
+- Migration `8_catalog` creates `pg_trgm` and a GIN trigram index on `game.title`. `catalog` keeps the substring match and adds `q <% title`, then orders by `word_similarity(q, title)`. The threshold is the extension's default, 0.6: on the seeded titles every typo the tests try scores 0.62 or more, and the closest miss («theft» against «The Witcher 3: Wild Hunt») scores 0.5. `pg_trgm` is a trusted extension, so the database owner creates it without superuser; that was checked with a non-superuser owner.
+- `game_request` holds one row per requested game and `game_request_user` one row per requester. A request is `abierto` until a reviewer fulfils it by creating its game (`cumplido`, linked to the game) or rejects it with a reason (`rechazado`). The CHECK `game_request_resolution` shapes each state, like the review block. `/pedidos` lists the open requests by requester count and each user's own requests in every state; the catalog's empty search links to it with the search as the title.
+- `server/commands/game-requests.ts` is the single writer. A new request joins the open one with the same Steam App ID, or the same title (letters and digits, case-folded) when either side has no App ID; a game already in the catalog, matched the same way against its Steam edition, is pointed to instead. Every writer locks `game_request` first, so two first requests for one game cannot both create it. The last requester to withdraw deletes the request. `createGame` takes the request id and fulfils it in its own transaction, so a request is never `cumplido` without its game.
+- `server/external/steam.ts` calls the store's `appdetails` endpoint, with a 5-second timeout, for reviewers only, and fills the title, the plain-text short description and the Steam edition. Nothing is stored until the reviewer submits the form.
+
+**Requests are not reviewable contributions.** A request is not evidence about a game, so the review block, `decide` and its author ≠ reviewer rule do not apply. It gets its own small table and writer instead of a fourth reviewable type.
+
+**Identity is exact, search is fuzzy.** Requests deduplicate by App ID or normalized title, never by similarity: two DOOMs with different App IDs are two games, and a similarity merge would join requests for different games silently. The cost is that «cyberpnk» typed into the request form opens a second request, which a reviewer rejects as a duplicate.
+
+**The first outbound HTTP call.** U10 kept the server off the network. The store's public endpoint needs no key and runs only when a reviewer asks for it, so a failure costs one message and a hand-filled form. Graphics APIs stay manual: PCGamingWiki's Cargo API answers server requests with a Cloudflare challenge, so it cannot fill them reliably. Covers stay the generated art; the app shows no third-party images.
+
+**Alternatives considered.**
+
+- **Similarity in SQL with an explicit threshold** (`word_similarity(q, title) >= 0.6`). It reads clearer but cannot use the GIN index; the operator uses it, and the test pins the default.
+- **Joining requests by similarity.** Rejected for the reason above.
+- **Requests in the review queue.** `/revision` decides reviewable contributions; a request has no evidence to approve.
+
+**Open questions and risks.**
+
+1. A typo in a requested title without an App ID opens a second request. Listing similar open requests next to the form would catch most of them.
+2. The store API is commonly reported to allow about 200 calls per 5 minutes per address; Valve documents no limit. One reviewer pressing the button stays far below it.
+
 ## Open questions and risks
 
 1. Does `Schema.fromFormData(Schema.toCodecStringTree(S))` decode the report form's nested shape (`failures[0][failure_type_id]`, the `layer_version[_tag]` union, a null `profile_id`) at runtime? It typechecks. If not, U0 falls back to a controlled form object decoded with plain `Schema.decodeUnknownResult(S)`, and the hook signature stays the same.

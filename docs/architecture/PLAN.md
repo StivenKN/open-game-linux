@@ -42,3 +42,5 @@ U10 (2026-10-15) reversed two round 1 cuts in a narrow form, because interviewed
 The accounts lane (2026-10-23) reversed the "admin UI" cut in a narrow form, because roles could change only from a shell on the server (RATIONALE, Accounts). `/admin/usuarios` changes an account's role and active flag through the same writer as `pnpm set-role`. There is still no account deletion, no content editing and no moderation UI beyond `/revision`.
 
 Profile and guide authoring, after the first delivery, reversed the round 1 cut "profile and guide authoring" (RATIONALE, Profile and guide authoring). Signed-in users propose profiles, which go through the review queue, and edit or delete them while no report or solution uses them. Only reviewers create and edit guides.
+
+The catalog lane (2026-10-23) reversed the "trigram search" cut in a narrow form (RATIONALE, Catalog search, game requests and Steam autofill). Only the catalog's title search uses `pg_trgm`: a substring or a word similarity at the extension's default threshold, ranked by similarity. Game requests show how many people ask for each game, which is the only count of its kind; reports still have no votes.

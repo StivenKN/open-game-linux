@@ -2,7 +2,7 @@
 
 # open-game-linux
 
-OpenGame Linux tells a player whether a Windows game runs on Linux, based only on community test reports that a reviewer approved. A visitor searches the catalog and opens a game's page to see its computed state, the environments that were tested, and how each Wine or Proton version fared over time. They can run a detector script to compare their computer with a game's known conditions, and follow a step-by-step configuration profile for Wine or Proton. Signed-in users report results, propose solutions and propose configuration profiles, follow the review of each one under "Mis aportes", and can follow a game to see on "Seguidos" what changed since they last looked. Reviewers approve reports, solutions and profiles before they count, and write the adoption guides. The interface is in Spanish.
+OpenGame Linux tells a player whether a Windows game runs on Linux, based only on community test reports that a reviewer approved. A visitor searches the catalog, which forgives typos, and opens a game's page to see its computed state, the environments that were tested, and how each Wine or Proton version fared over time. They can run a detector script to compare their computer with a game's known conditions, and follow a step-by-step configuration profile for Wine or Proton. Signed-in users report results, propose solutions and configuration profiles, request games the catalog lacks, follow the review of each one under "Mis aportes", and can follow a game to see on "Seguidos" what changed since they last looked. Reviewers approve reports, solutions and profiles before they count, write the adoption guides, and add requested games, filling them from the Steam store. The interface is in Spanish.
 
 Created in [T3 Code](https://t3.codes).
 
@@ -27,7 +27,7 @@ Created in [T3 Code](https://t3.codes).
    pnpm db:up
    ```
 
-4. Apply the migrations. A second run applies nothing.
+4. Apply the migrations. A second run applies nothing. The search needs PostgreSQL's `pg_trgm` extension, which the migration creates; it ships with the `postgres` image and needs no superuser.
 
    ```sh
    pnpm db:migrate
@@ -203,6 +203,8 @@ pnpm start
 ```
 
 `pnpm build` produces a Node server in `.output/`, built by Nitro. `pnpm start` runs it on port 3000 and reads `.env`; variables already set in the environment win. Set `PORT` to use another port, and set `BETTER_AUTH_URL` to the public address, because sign-in accepts only requests from that origin and the detector command is built from it. Extra origins go in `BETTER_AUTH_TRUSTED_ORIGINS`, comma-separated.
+
+The server makes one outbound request: when a reviewer presses "Rellenar desde Steam" on `/catalogo/nuevo`, it asks `https://store.steampowered.com/api/appdetails` for that game, with a 5-second timeout. If the host cannot reach the Steam store, the form says so and the reviewer fills it by hand.
 
 ## Deploy on a VPS
 
