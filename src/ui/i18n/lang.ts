@@ -1,5 +1,5 @@
 // The interface languages, and how a request picks one. Every page lives under /es or /en (`routes/$lang`);
-// a request for an unprefixed page path (an old link, the detector's /diagnostico/importar) gets a redirect
+// a request for an unprefixed page path (an old link, an old copy of the detector's /diagnostico/importar) gets a redirect
 // from the start middleware to the same path and query in the visitor's language.
 import { Schema } from 'effect'
 

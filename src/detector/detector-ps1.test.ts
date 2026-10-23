@@ -185,6 +185,11 @@ describe.skipIf(engine === null)(`opengame-detect.ps1 under ${engine ?? `pwsh (s
     expect(readHandoffLog()[1]).toBe('Start-Process http://ejemplo.test/en/diagnostico?pegar=1')
   })
 
+  it('takes any other OPENGAME_LANG, `EN` included, as Spanish, so only es or en reaches the URL', () => {
+    expect(powershell({ OPENGAME_LANG: 'EN' })).toBe('Abriendo OpenGame Linux en tu navegador. Nada se guarda hasta que pulses Guardar.')
+    expect(readHandoffLog()).toEqual([expect.stringMatching(/^Start-Process http:\/\/ejemplo\.test\/es\/diagnostico\/importar#d=/)])
+  })
+
   it('sends at most MAX_LIBRARY_GAMES games, the most recently played', () => {
     const output = powershell({ OPENGAME_STEAM_DIR: join(tmp, 'grande'), OPENGAME_IMPRIMIR: '1' })
     expect(parse(output)).toMatchObject({ biblioteca_steam: expected(2000).slice(0, MAX_LIBRARY_GAMES) })

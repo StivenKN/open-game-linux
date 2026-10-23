@@ -23,7 +23,7 @@
   if (-not [int]::TryParse($cap, [ref]$MaxGames) -or $MaxGames -le 0) { $MaxGames = [int]::MaxValue }
   $Lang = '__OPENGAME_LANG__'
   if ($env:OPENGAME_LANG) { $Lang = $env:OPENGAME_LANG }
-  if ($Lang -ne 'en') { $Lang = 'es' }
+  if ($Lang -cne 'en') { $Lang = 'es' }
   # A line for the person running it, in their language.
   function Say($es, $en) { if ($Lang -eq 'en') { Write-Host $en } else { Write-Host $es } }
   # Start-Process opens the URL through ShellExecute, which cuts URLs at about 2048 chars.

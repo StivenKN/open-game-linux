@@ -158,7 +158,7 @@ To read the script before you run it, download <http://localhost:3000/opengame-d
 powershell -ExecutionPolicy Bypass -File .\opengame-detect.ps1
 ```
 
-If the result is too long for a URL, the Windows script copies it to the clipboard and opens `/diagnostico?pegar=1`, where you paste it. The Linux script prints it for you to paste instead. Both scripts accept `OPENGAME_DRY=1`.
+If the result is too long for a URL, the Windows script copies it to the clipboard and opens `/es/diagnostico?pegar=1` (or `/en/…`), where you paste it. The Linux script prints it for you to paste instead. Both scripts accept `OPENGAME_DRY=1`.
 
 The `/diagnostico` page shows both commands, and it also accepts the pasted output or a manual form. The scripts print their instructions in Spanish and open the Spanish pages, unless their address asks for English with `?lang=en`, as the English page's commands, download links and the game page's `--game` command do. The commands quote that address, because zsh reads `?` as a wildcard. `OPENGAME_LANG=en` does the same for a script already downloaded.
 
