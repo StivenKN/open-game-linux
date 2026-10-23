@@ -19,6 +19,8 @@ export const Rule = Schema.Literals([
   'arreglo_no_exportable',
   'arreglo_datos_de_ejemplo',
   'arreglo_pr_de_otro_perfil',
+  'acceso_propio',
+  'ultimo_administrador',
 ])
 export type Rule = typeof Rule.Type
 
@@ -51,6 +53,8 @@ export const rules: Record<Rule, { readonly field: Field; readonly message: stri
   arreglo_no_exportable: { field: 'pr', message: 'Solo un perfil aprobado de un juego de Steam con AppID y Proton cuenta como arreglo upstream.' },
   arreglo_datos_de_ejemplo: { field: 'pr', message: 'Los datos de ejemplo no se registran como aportes upstream.' },
   arreglo_pr_de_otro_perfil: { field: 'pr', message: 'Ese PR ya está registrado para otro perfil.' },
+  acceso_propio: { field: 'form', message: 'No puedes quitarte el rol de administrador ni desactivar tu propia cuenta; pídeselo a otro administrador.' },
+  ultimo_administrador: { field: 'form', message: 'Es la última cuenta de administrador activa. Da ese rol a otra cuenta antes de cambiar esta.' },
 }
 
 export const Mismatch = Schema.Union([

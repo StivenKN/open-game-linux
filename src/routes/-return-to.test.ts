@@ -10,6 +10,8 @@ describe('ReturnTo (?volver= on /entrar and /registro)', () => {
     ['/reportes/10/solucion?tipoFallo=5', '/reportes/10/solucion?tipoFallo=5'],
     ['/revision?tipo=perfil', '/revision?tipo=perfil'],
     ['/catalogo/nuevo', '/catalogo/nuevo'],
+    ['/mis-aportes', '/mis-aportes'],
+    ['/admin/usuarios', '/admin/usuarios'],
   ])('keeps %s', (input, expected) => {
     expect(ReturnTo({ volver: input })).toEqual({ volver: expected })
   })
@@ -19,6 +21,7 @@ describe('ReturnTo (?volver= on /entrar and /registro)', () => {
     ['/juegos/4/reportar?perfil=abc', '/juegos/4/reportar'],
     ['/revision?tipo=todo', '/revision'],
     ['/diagnostico/importar#d=abc', '/diagnostico/importar'],
+    ['/admin/usuarios?q=ana', '/admin/usuarios'],
   ])('rebuilds %s from its ids as %s', (input, expected) => {
     expect(ReturnTo({ volver: input })).toEqual({ volver: expected })
   })

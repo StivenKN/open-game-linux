@@ -331,7 +331,9 @@ td {
   align-items: center;
   gap: 12px 36px;
 }
+/* Fixed: when the header runs out of room, the nav wraps, not the name. */
 .brand {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -348,7 +350,7 @@ td {
   gap: 6px;
 }
 .nav a {
-  padding: 8px 14px;
+  padding: 8px 12px;
   border-radius: 999px;
   color: var(--muted);
   font-weight: 500;
@@ -1529,7 +1531,6 @@ label.checkbox {
   }
   .nav a {
     flex: none;
-    padding: 8px 12px;
   }
   .card {
     padding: 18px 16px;

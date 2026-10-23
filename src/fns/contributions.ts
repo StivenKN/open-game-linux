@@ -4,6 +4,7 @@ import { NewSolution, NewGame, NewReport } from '../domain/contributions.ts'
 import { IncomparableProfile, RuleViolated } from '../domain/errors.ts'
 import { GameId, ProfileId, ReportId } from '../domain/ids.ts'
 import { createGame, submitReport, submitSolution } from '../server/commands/contributions.ts'
+import { myContributions } from '../server/queries/contributions.ts'
 import { gameOptions, reportOptions, solutionOptions } from '../server/queries/form-options.ts'
 import { runAction, runRead } from '../server/run.ts'
 
@@ -28,3 +29,5 @@ export const gameOptionsFn = createServerFn({ method: 'GET' }).handler(() => run
 export const createGameFn = createServerFn({ method: 'POST' })
   .validator(Schema.toStandardSchemaV1(NewGame))
   .handler(({ data }) => runAction(RuleViolated, createGame(data)))
+
+export const myContributionsFn = createServerFn({ method: 'GET' }).handler(() => runRead(myContributions))

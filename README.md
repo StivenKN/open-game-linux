@@ -2,7 +2,7 @@
 
 # open-game-linux
 
-OpenGame Linux tells a player whether a Windows game runs on Linux, based only on community test reports that a reviewer approved. A visitor searches the catalog and opens a game's page to see its computed state and the environments that were tested. They can run a detector script to compare their computer with a game's known conditions, and follow a step-by-step configuration profile for Wine or Proton. Signed-in users report results and propose solutions. Reviewers approve reports, solutions and profiles before they count. The interface is in Spanish.
+OpenGame Linux tells a player whether a Windows game runs on Linux, based only on community test reports that a reviewer approved. A visitor searches the catalog and opens a game's page to see its computed state and the environments that were tested. They can run a detector script to compare their computer with a game's known conditions, and follow a step-by-step configuration profile for Wine or Proton. Signed-in users report results and propose solutions, and follow the review of each one under "Mis aportes". Reviewers approve reports, solutions and profiles before they count. The interface is in Spanish.
 
 Created in [T3 Code](https://t3.codes).
 
@@ -60,7 +60,7 @@ The seed creates four accounts. They all use the password `opengame-demo`.
 
 Content written by these accounts shows the "Datos de ejemplo" stamp. You can also create your own account at `/registro`.
 
-To change an account's role, run `pnpm set-role <email> <usuario|revisor|administrador>`. The new role applies on the account's next request.
+An administrador changes roles at `/admin/usuarios`, and can deactivate an account there. Deactivating signs the account out everywhere, and it cannot sign in again until it is reactivated. Because the demo password is public, `demo_admin` sees and changes only the demo accounts. To make the first administrador, or to change a role from a terminal, run `pnpm set-role <email> <usuario|revisor|administrador>`, which also reactivates the account. Neither demotes or deactivates the last active administrador, and an administrador cannot remove their own access. A change applies on the account's next request.
 
 ```sh
 pnpm set-role demo_ana@demo.opengame.test revisor
@@ -222,7 +222,7 @@ The stack reads four variables, listed in `.env.prod.example`:
 3. In Environment Variables, fill in the variables above. Coolify blocks the deploy until the required ones have a value.
 4. Set the domain of the `app` service to `https://<domain>:3000`. The `:3000` tells Coolify which container port receives the requests. You can also let Coolify generate an sslip.io domain. Set `BETTER_AUTH_URL` to the same https address, without the port.
 5. Deploy.
-6. Load the demo data once. Open the `app` container's Terminal tab in Coolify and run `pnpm db:seed`. Promote an account from the same terminal with `pnpm set-role <email> revisor`.
+6. Load the demo data once. Open the `app` container's Terminal tab in Coolify and run `pnpm db:seed`. Make your own account administrador from the same terminal with `pnpm set-role <email> administrador`, then manage the other roles at `/admin/usuarios`.
 
 Every later deploy rebuilds the image and keeps the database.
 

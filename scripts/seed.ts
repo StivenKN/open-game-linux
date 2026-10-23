@@ -11,7 +11,8 @@ import { submitReport, submitSolution } from '../src/server/commands/contributio
 import { submitDiagnostic } from '../src/server/commands/diagnostic.ts'
 import { SCHEMA_VERSION } from '../src/server/diagnostics/payload.ts'
 import { decide } from '../src/server/commands/review.ts'
-import { assignRole, auth, demoDomain, Visitor } from '../src/server/auth.ts'
+import { auth, demoDomain, Visitor } from '../src/server/auth.ts'
+import { changeAccess } from '../src/server/commands/accounts.ts'
 import { rows, oneRow } from '../src/server/rows.ts'
 import { PgLive } from '../src/server/runtime.ts'
 
@@ -409,6 +410,8 @@ type DemoReport = {
   failures: ReadonlyArray<readonly [keyof typeof failureTypes, string]>
   observations: string
   approve: boolean
+  /** The reviewer's reason, for a report that is not approved: "Mis aportes" shows it to its author. */
+  rejection?: string
 }
 
 const reports: ReadonlyArray<DemoReport> = [
@@ -467,6 +470,12 @@ const reports: ReadonlyArray<DemoReport> = [
     tested_at: '2026-10-06T19:00:00Z', outcome: 'funciona', measurement: null,
     failures: [], observations: 'Con el perfil el juego abre directo, sin el lanzador de CD Projekt, y se mantiene a 60 FPS en Novigrado.', approve: true,
   },
+  {
+    machine: 'brunoPc', edition: ['witcher3', 'steam'], layer: 'proton9', withProfile: false, game_version: '4.04',
+    tested_at: '2026-10-08T21:00:00Z', outcome: 'funciona', measurement: null,
+    failures: [], observations: 'Abre y llega al menú principal.', approve: false,
+    rejection: 'Llegar al menú no prueba que el juego funcione: cuenta una partida de al menos unos minutos y envíalo de nuevo.',
+  },
 ]
 
 const demoSolution = {
@@ -521,7 +530,7 @@ const program = Effect.gen(function* () {
     if (existing === undefined) count('app_user')
     const id =
       existing?.id ?? (yield* Effect.promise(() => auth.api.signUpEmail({ body: { name: alias, email, password: demoPassword } }))).user.id
-    if ((yield* assignRole(email, role)).changed) count('app_user.role')
+    if ((yield* changeAccess(Schema.decodeSync(UserId)(id), { role }, null)).changed) count('app_user.role')
     user.set(alias, id)
   }
 
@@ -694,6 +703,12 @@ const program = Effect.gen(function* () {
           tested.add(yield* lookup(profileOf, profileKey({ edition: r.edition, distribution: machines[r.machine].distribution, layer: r.layer })))
       for (const id of tested) yield* approve({ _tag: 'perfil', id }, 'Perfil con un reporte funcional aprobado,')
       yield* approve({ _tag: 'solucion', id: solution_id }, 'Solución')
+      for (const [i, r] of reports.entries()) {
+        if (r.rejection === undefined) continue
+        const ref = yield* Schema.decodeUnknownEffect(ContributionRef)({ _tag: 'reporte', id: yield* lookup(reportOf, i) })
+        const rejection = yield* Schema.decodeUnknownEffect(Decision)({ _tag: 'Rechazar', reason: r.rejection })
+        if ((yield* asUser('demo_revisor', decide(ref, rejection))).changed) count('rechazo de reporte')
+      }
     }),
   )
 

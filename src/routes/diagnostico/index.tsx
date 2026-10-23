@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useEffect, useRef, useState } from 'react'
 import { OperatingSystem, VulkanSupport } from '../../domain/evaluation.ts'
@@ -6,7 +6,8 @@ import type { InvalidPayload } from '../../domain/errors.ts'
 import { evaluateDiagnosticFn, myMachinesFn, originFn } from '../../fns/diagnostic.ts'
 import { CopyBox } from '../../ui/compatibility/CopyBox.tsx'
 import { FieldError } from '../../ui/FieldError.tsx'
-import { memory, dateTime } from '../../ui/format.ts'
+import { SavedMachines } from '../../ui/diagnostics/SavedMachines.tsx'
+import { memory } from '../../ui/format.ts'
 import { fieldProps } from '../../ui/form.tsx'
 import { type FieldErrors, useAction } from '../../ui/useAction.ts'
 import { payloadReason, operatingSystem as operatingSystemLabel, vulkanSupport } from '../../ui/vocabulary.ts'
@@ -40,27 +41,7 @@ function DiagnosticPage() {
           <h2 id="my-machines" className="section-title">
             Tus equipos
           </h2>
-          {machines.map((e) => (
-            <div key={e.id} className="card stack">
-              <h3 className="no-margin">{e.alias}</h3>
-              {e.diagnostics.length === 0 ? (
-                <p className="small muted">Sin diagnósticos todavía.</p>
-              ) : (
-                <ul className="stack">
-                  {e.diagnostics.map((d) => (
-                    <li key={d.id}>
-                      <Link to="/diagnosticos/$diagnosticId" params={{ diagnosticId: d.id }}>
-                        {dateTime(d.captured_at)}
-                      </Link>{' '}
-                      <span className="small muted datum">
-                        {d.distribution ?? operatingSystemLabel[d.operating_system]} · {d.gpu_model} · {memory(d.ram_mb)} RAM
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
+          <SavedMachines machines={machines} />
         </section>
       )}
     </main>

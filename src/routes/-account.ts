@@ -36,6 +36,7 @@ const messages: Readonly<Partial<Record<string, FieldErrors>>> = {
   PASSWORD_TOO_SHORT: { password: 'Usa al menos 8 caracteres.' },
   PASSWORD_TOO_LONG: { password: 'Usa como máximo 128 caracteres.' },
   INVALID_EMAIL_OR_PASSWORD: { form: 'El correo o la contraseña no coinciden.' },
+  CUENTA_DESACTIVADA: { form: 'Esta cuenta está desactivada. Un administrador puede reactivarla.' },
   TOO_MANY_ATTEMPTS: { form: 'Demasiados intentos seguidos. Espera unos segundos y vuelve a intentarlo.' },
 }
 

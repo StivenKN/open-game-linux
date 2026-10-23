@@ -38,3 +38,26 @@ describe('registro público', () => {
     expect(await accountsWith(email)).toEqual([{ n: 1 }])
   })
 })
+
+const signInOverHttp = (email: string, password: string) =>
+  auth.handler(
+    new Request('http://localhost:3000/api/auth/sign-in/email', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({ email, password }),
+    }),
+  )
+
+describe('entrar con una cuenta desactivada', () => {
+  it('con la contraseña correcta dice por qué y no abre sesión; con otra, no revela nada', async () => {
+    const email = `desactivada-${crypto.randomUUID()}@opengame.test`
+    await auth.api.signUpEmail({ body: { name: 'desactivada', email, password: 'contrasena-de-prueba' } })
+    await runtime.runPromise(Effect.flatMap(SqlClient.SqlClient, (s) => s`UPDATE app_user SET active = false WHERE email = ${email}`))
+    const codeOf = async (r: Response) => Schema.decodeUnknownSync(ErrorResponse)(await r.json()).code
+
+    const right = await signInOverHttp(email, 'contrasena-de-prueba')
+    expect([right.status, right.headers.getSetCookie()]).toEqual([403, []])
+    expect(accountErrors({ code: await codeOf(right) })).toEqual({ form: 'Esta cuenta está desactivada. Un administrador puede reactivarla.' })
+    expect(await codeOf(await signInOverHttp(email, 'otra-contrasena'))).toBe('INVALID_EMAIL_OR_PASSWORD')
+  })
+})

@@ -1,18 +1,27 @@
-// `pnpm set-role <email> <usuario|revisor|administrador>`: the only way to promote an account (no admin UI).
+// `pnpm set-role <email> <usuario|revisor|administrador>`: bootstraps the first administrador, who then
+// manages roles at /admin/usuarios, and recovers a deactivated account, which it reactivates. Both go
+// through `changeAccess`, so the last active administrador cannot be demoted from here either.
 import { Effect, Schema } from 'effect'
+import { SqlClient } from 'effect/sql'
+import { rules } from '../src/domain/errors.ts'
+import { UserId } from '../src/domain/ids.ts'
 import { Role } from '../src/domain/review.ts'
-import { assignRole } from '../src/server/auth.ts'
+import { changeAccess } from '../src/server/commands/accounts.ts'
+import { rows } from '../src/server/rows.ts'
 import { PgLive } from '../src/server/runtime.ts'
 
 const [email = '', role] = process.argv.slice(2)
 
-const program = Schema.decodeUnknownEffect(Role)(role).pipe(
-  Effect.catchTag('SchemaError', () => Effect.die(`Usage: pnpm set-role <email> <${Role.literals.join('|')}>`)),
-  Effect.flatMap((r) => assignRole(email, r)),
-  Effect.catchTag('NoEncontrado', () => Effect.die(`No account has the email ${email}`)),
-  Effect.flatMap((r) => Effect.log(r.changed ? `${r.alias} is now ${r.role}` : `${r.alias} was already ${r.role}; nothing to change`)),
-  Effect.provide(PgLive),
-)
+const program = Effect.gen(function* () {
+  const r = yield* Schema.decodeUnknownEffect(Role)(role).pipe(
+    Effect.catchTag('SchemaError', () => Effect.die(`Usage: pnpm set-role <email> <${Role.literals.join('|')}>`)),
+  )
+  const sql = yield* SqlClient.SqlClient
+  const [user] = yield* rows(Schema.Struct({ id: UserId }), sql`SELECT id FROM app_user WHERE email = lower(btrim(${email}))`)
+  if (user === undefined) return yield* Effect.die(`No account has the email ${email}`)
+  const c = yield* changeAccess(user.id, { role: r, active: true }, null).pipe(Effect.catchTag('ReglaIncumplida', (e) => Effect.die(rules[e.rule].message)))
+  yield* Effect.log(c.changed ? `${c.alias} is now an active ${c.role}` : `${c.alias} was already an active ${c.role}; nothing to change`)
+}).pipe(Effect.provide(PgLive))
 
 Effect.runPromise(program).then(
   () => process.exit(0),

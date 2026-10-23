@@ -78,6 +78,14 @@ describe('boundaries', () => {
     expect(violations).toEqual([])
   })
 
+  it("only server/commands/accounts.ts writes an account's role and active flag (single writer)", () => {
+    const write = /`[^`]*\bUPDATE\s+app_user\b[^`]*\b(role|active)\s*=[^`]*`/s
+    const violations = [...files('src'), ...files('scripts')]
+      .filter((f) => f !== 'src/server/commands/accounts.ts' && !f.startsWith('src/server/schema/') && write.test(read(f)))
+      .map((f) => `${f} writes app_user.role or app_user.active; call changeAccess() from server/commands/accounts.ts instead`)
+    expect(violations).toEqual([])
+  })
+
   it('only server/commands/upstream.ts writes upstream_fix (single writer)', () => {
     const write = /\b(INSERT INTO|UPDATE|DELETE FROM)\s+upstream_fix\b/
     const violations = [...files('src'), ...files('scripts')]
