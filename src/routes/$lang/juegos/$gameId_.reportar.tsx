@@ -317,7 +317,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
             <Field errors={r.errors} name={`failures[${i}][failure_type_id]`} label={f.failures.type}>
               <select {...fieldProps(r.errors, `failures[${i}][failure_type_id]`)}>
                 {failureTypes.map((type) => (
-                  <option key={type.id} value={type.id} title={type.description}>
+                  <option key={type.id} value={type.id} title={t.failureTypeDescription(type.code, type.description)}>
                     {t.failureType(type.code).text}
                   </option>
                 ))}

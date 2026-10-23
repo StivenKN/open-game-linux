@@ -10,6 +10,16 @@ const failureType: Readonly<Record<string, string>> = {
   otro: 'Other',
 }
 
+const failureTypeDescription: Readonly<Record<string, string>> = {
+  anti_cheat: "The game's anti-cheat blocks Linux or the compatibility layer.",
+  drm: 'Copy protection keeps the game from starting.',
+  lanzador: "The publisher's launcher doesn't open, doesn't sign in or doesn't finish updating.",
+  controlador: 'A graphics driver is missing or its version is not supported.',
+  dependencia: 'A library or component the game needs is missing.',
+  rendimiento: 'The game runs, but FPS drops or stutters make it unplayable.',
+  otro: 'Cause not identified.',
+}
+
 const d3dPath = {
   dxvk: { text: 'DXVK with Proton', detail: null },
   dxvk_2: { text: 'DXVK 2.x', detail: "If a recent Proton doesn't open the game, try one with DXVK 2.x." },
@@ -70,6 +80,7 @@ export const vocabulary = {
   },
 
   failureType,
+  failureTypeDescription,
 
   vulkanSupport: { si: 'Supported', no: 'Not supported', desconocido: 'Unknown' },
 

@@ -150,6 +150,8 @@ export const vocabulary = (text: typeof source) => {
     gameRequestStatus: labels(requestStyles, text.gameRequestStatus),
     antiCheatStatus: Record.map(antiCheatStyles, (style, status) => ({ ...style, ...text.antiCheatStatus[status] })),
     failureType: (code: string): Omit<Label, 'icon'> => ({ text: text.failureType[code] ?? code.replaceAll('_', ' '), tone: failureTones[code] ?? 'amarillo' }),
+    /** A failure type's description in this language, or the one stored with a type the dictionary lacks. */
+    failureTypeDescription: <D extends string | null>(code: string, stored: D) => text.failureTypeDescription[code] ?? stored,
     vulkanSupport: text.vulkanSupport,
     secureBoot: text.secureBoot,
     tpm: text.tpm,

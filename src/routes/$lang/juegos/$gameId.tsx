@@ -189,7 +189,7 @@ function GamePage() {
                       <Chip tone={label.tone}>{label.text}</Chip>
                       <span className="small muted">{t.approvedReports(c.reports)}</span>
                     </div>
-                    {c.description && <p>{c.description}</p>}
+                    {c.description && <p>{t.failureTypeDescription(c.code, c.description)}</p>}
                     {c.solutions.length === 0 ? (
                       <p className="small muted">{g.causes.noSolutions}</p>
                     ) : (

@@ -26,6 +26,17 @@ const failureType: Readonly<Record<string, string>> = {
   otro: 'Otro',
 }
 
+// The seed's failure types, described; a type the dictionary lacks shows the description stored with it.
+const failureTypeDescription: Readonly<Record<string, string>> = {
+  anti_cheat: 'El sistema anti-trampas del juego bloquea Linux o la capa de compatibilidad.',
+  drm: 'La protección anticopia impide iniciar el juego.',
+  lanzador: 'El lanzador del editor no abre, no inicia sesión o no termina de actualizar.',
+  controlador: 'Falta un controlador de video o su versión no es compatible.',
+  dependencia: 'Falta una biblioteca o componente que el juego necesita.',
+  rendimiento: 'El juego corre, pero con caídas de FPS o tirones que lo hacen injugable.',
+  otro: 'Causa no identificada.',
+}
+
 const d3dPath = {
   dxvk: { text: 'DXVK con Proton', detail: null },
   dxvk_2: { text: 'DXVK 2.x', detail: 'Si un Proton reciente no abre el juego, prueba uno con DXVK 2.x.' },
@@ -107,6 +118,7 @@ export const vocabulary = {
   } satisfies Record<AntiCheatStatus, { readonly text: string; readonly meaning: string }>,
 
   failureType,
+  failureTypeDescription,
 
   vulkanSupport: { si: 'Compatible', no: 'Sin soporte', desconocido: 'Desconocido' } satisfies Record<VulkanSupport, string>,
 
