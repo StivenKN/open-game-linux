@@ -12,7 +12,7 @@ const STEAM = 'Steam'
 /** Past this GitHub refuses the URL, so the issue link carries only the title and the body goes through the copy box. */
 const URL_LIMIT = 8000
 
-/** `game_edition.external_id` is free text; this is the only place it becomes an AppID. */
+/** `game_edition.external_id` is free text; `appIdOf` is the only place it becomes an AppID. */
 export const SteamAppId = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,9}$/)).pipe(Schema.brand('SteamAppId'))
 export type SteamAppId = typeof SteamAppId.Type
 
@@ -41,7 +41,8 @@ const query = (params: Readonly<Record<string, string>>) =>
 
 type Edition = { readonly launcher: string; readonly external_id: string | null }
 
-const appIdOf = (e: Edition): { readonly _tag: 'steam'; readonly appid: SteamAppId } | { readonly _tag: 'no'; readonly reason: 'no_es_steam' | 'sin_appid' } =>
+/** A Steam edition's AppID, checked: the game page also puts it in a shell command. */
+export const appIdOf = (e: Edition): { readonly _tag: 'steam'; readonly appid: SteamAppId } | { readonly _tag: 'no'; readonly reason: 'no_es_steam' | 'sin_appid' } =>
   e.launcher !== STEAM
     ? { _tag: 'no', reason: 'no_es_steam' }
     : Option.match(Schema.decodeOption(SteamAppId)(e.external_id ?? ''), {

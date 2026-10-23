@@ -10,3 +10,7 @@ export type SecureBoot = typeof SecureBoot.Type
 
 export const Tpm = Schema.Literals(['2.0', '1.2', 'no_detectado'])
 export type Tpm = typeof Tpm.Type
+
+/** A handheld the detector recognizes from DMI. NULL on a diagnostic: any other computer, or not captured. */
+export const Device = Schema.Literals(['steam_deck_lcd', 'steam_deck_oled'])
+export type Device = typeof Device.Type

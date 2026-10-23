@@ -1,6 +1,6 @@
 import { Clock, Effect, Option, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
-import { onDistribution, ApprovedTest, summarize, timeline } from '../../domain/compatibility.ts'
+import { onDistribution, onSteamDeck, ApprovedTest, summarize, timeline } from '../../domain/compatibility.ts'
 import { requirements, evaluate, suggestProfile } from '../../domain/evaluation.ts'
 import { NotFound } from '../../domain/errors.ts'
 import { newsSince } from '../../domain/follow.ts'
@@ -8,6 +8,7 @@ import { GameId, UserId } from '../../domain/ids.ts'
 import { GraphicsApi } from '../../domain/literals.ts'
 import { ReviewStatus, activeStatuses } from '../../domain/review.ts'
 import { gamePath } from '../../domain/graphics-path.ts'
+import { appIdOf } from '../../domain/upstream.ts'
 import { Diagnostic, GameEdition, Machine, Game, GameApi, GameFollow, Launcher, Profile, Solution, FailureType } from '../../domain/tables.ts'
 import { Visitor } from '../auth.ts'
 import { rows, oneRow } from '../rows.ts'
@@ -48,7 +49,7 @@ export const approvedTests = (scope: { readonly game: GameId } | { readonly foll
              r.profile_id, ${sql.literal(profileLabel('p'))} AS profile,
              r.outcome, r.tested_at, r.reviewed_at, r.avg_fps, r.resolution, r.graphics_quality, r.measurement_method,
              COALESCE(array_agg(tf.code ORDER BY tf.code) FILTER (WHERE tf.id IS NOT NULL), '{}') AS failures,
-             ${sql.literal(isDemo('u'))} AS demo
+             d.device, ${sql.literal(isDemo('u'))} AS demo
       FROM report r
       JOIN game_edition e ON e.id = r.edition_id
       JOIN launcher l ON l.id = e.launcher_id
@@ -261,10 +262,17 @@ export const gamePage = (gameId: GameId) =>
       }),
     })
 
+    const [steamAppId = null] = editions.flatMap((e) => {
+      const id = appIdOf(e)
+      return id._tag === 'steam' ? [id.appid] : []
+    })
+
     return {
       game: { ...game.value, apis },
       editions,
+      steam_app_id: steamAppId,
       summary,
+      steam_deck: onSteamDeck(tests, now),
       timeline: timeline(tests),
       as_of: asOf,
       follow: Option.match(follow, { onNone: () => null, onSome: ({ seen_at }) => ({ seen_at, news: newsSince(tests, seen_at, now) }) }),

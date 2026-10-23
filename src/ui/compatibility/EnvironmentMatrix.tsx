@@ -3,7 +3,7 @@ import type { DistributionId } from '../../domain/ids.ts'
 import { Outcome } from '../../domain/literals.ts'
 import { count, date, fps } from '../format.ts'
 import { Chip, Badge } from '../Badge.tsx'
-import { compatibilityStatus, outcome } from '../vocabulary.ts'
+import { compatibilityStatus, device, outcome } from '../vocabulary.ts'
 import { FailureChips } from './FailureChips.tsx'
 
 // The first word that names the distro itself: "Linux Mint 21.3" gives M, "Arch Linux rolling" gives A.
@@ -26,6 +26,7 @@ export function EnvironmentMatrix({ setups, myDistribution }: { setups: Readonly
             <div className="setup-what">
               <h3>
                 {e.distribution}
+                {e.device !== null && <Chip>{device[e.device]}</Chip>}
                 {mine && (
                   <Chip tone="azul" shape="punteado">
                     tu distro

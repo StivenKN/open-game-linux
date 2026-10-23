@@ -173,3 +173,29 @@ describe.skipIf(process.platform !== 'linux')('opengame-detect.sh GPU', () => {
     })
   })
 })
+
+describe.skipIf(process.platform !== 'linux')('opengame-detect.sh Steam Deck', () => {
+  // Runs the script with a fake DMI and os-release, then reads the device and the distribution.
+  const handheld = (vendor: string, product: string) => {
+    const root = mkdtempSync(join(tmp, 'deck-'))
+    mkdirSync(join(root, 'dmi'))
+    writeFileSync(join(root, 'dmi', 'sys_vendor'), `${vendor}\n`)
+    writeFileSync(join(root, 'dmi', 'product_name'), `${product}\n`)
+    writeFileSync(join(root, 'os-release'), 'NAME="SteamOS Holo"\nID=steamos\nID_LIKE=arch\nVERSION_ID=3.7.13\nVARIANT_ID=steamdeck\n')
+    const output = execFileSync('bash', [script], {
+      encoding: 'utf8',
+      env: { PATH: tools, HOME: root, OPENGAME_DRM: join(root, 'drm'), OPENGAME_DMI: join(root, 'dmi'), OPENGAME_OS_RELEASE: join(root, 'os-release') },
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    const c = Result.getOrThrow(parsePayload(output))
+    return c.operating_system === 'Linux' ? [c.device, c.distribution.name, c.distribution.version] : null
+  }
+
+  it.each([
+    ['Valve', 'Jupiter', 'steam_deck_lcd'],
+    ['Valve', 'Galileo', 'steam_deck_oled'],
+    ['LENOVO', 'Jupiter', null],
+  ])('%s %s is %o, and SteamOS is named by its ID', (vendor, product, device) => {
+    expect(handheld(vendor, product)).toEqual([device, 'SteamOS', '3.7'])
+  })
+})

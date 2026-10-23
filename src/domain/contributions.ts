@@ -23,6 +23,7 @@ import {
 import { GraphicsApi, LayerFamily, FailingOutcome, WorkingOutcome } from './literals.ts'
 import { MAX_LIBRARY_GAMES, SteamStoreRef } from './library.ts'
 import { maxLengths } from './max-lengths.ts'
+import { SteamGame } from './steam-game.ts'
 import {
   AdoptionGuide,
   Dependency,
@@ -214,6 +215,8 @@ const linuxFields = {
   driver_version: OptionalTextUpTo(maxLengths.diagnostic.driver_version),
   vulkan_support: VulkanSupport,
   vulkan_version: OptionalTextUpTo(maxLengths.diagnostic.vulkan_version),
+  // Only the detector's report mode (`--game`) sends it. Never stored: the report form starts from it.
+  steam_game: Schema.NullOr(SteamGame).pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
 }
 
 const detectedFields = {
@@ -225,6 +228,8 @@ const detectedFields = {
   tpm: Diagnostic.fields.tpm.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
   zram_mb: Diagnostic.fields.zram_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
   swap_mb: Diagnostic.fields.swap_mb.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
+  // The Linux detector and the manual form send it; the Windows detector and older payloads omit it.
+  device: Diagnostic.fields.device.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
 }
 
 const vulkanMessage = 'Solo hay versión de Vulkan si hay soporte.'
@@ -247,6 +252,8 @@ const manualFields = {
   gpu_modelo: Diagnostic.fields.gpu_model,
   ram_mb: Diagnostic.fields.ram_mb,
   vram_mb: Diagnostic.fields.vram_mb,
+  // Optional so a manual entry kept in sessionStorage before this field existed still decodes.
+  dispositivo: Diagnostic.fields.device.pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
 }
 
 const manualVulkanNeedsSupport = Schema.makeFilter((c: { readonly soporte_vulkan: VulkanSupport; readonly version_vulkan: string | null }) => c.soporte_vulkan === 'si' || c.version_vulkan === null, {
@@ -284,6 +291,7 @@ export const CatalogFilter = Schema.Struct({
   estado: Schema.optionalKey(CompatibilityStatus),
   lanzador: Schema.optionalKey(LauncherId),
   sin_anti_cheat: Schema.optionalKey(Schema.Boolean),
+  steam_deck: Schema.optionalKey(Schema.Boolean),
 })
 export type CatalogFilter = typeof CatalogFilter.Type
 

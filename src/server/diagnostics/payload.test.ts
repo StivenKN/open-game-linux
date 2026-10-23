@@ -1,8 +1,8 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Result, Schema } from 'effect'
+import { Effect, Result, Schema } from 'effect'
 import { readFileSync } from 'node:fs'
 import { InvalidPayload } from '../../domain/errors.ts'
-import { parsePayload } from './payload.ts'
+import { captureOf, parsePayload } from './payload.ts'
 
 const outJson = readFileSync(new URL('../../../prototypes/detector/out.json', import.meta.url), 'utf8')
 const windowsJson = readFileSync(new URL('../../../prototypes/detector/windows-out.json', import.meta.url), 'utf8')
@@ -38,6 +38,8 @@ describe('parsePayload', () => {
       swap_mb: null,
       gpu_pci_id: null,
       steam_library: null,
+      device: null,
+      steam_game: null,
     })
   })
 
@@ -62,6 +64,7 @@ describe('parsePayload', () => {
       tpm: null,
       zram_mb: null,
       swap_mb: null,
+      device: null,
       steam_library: [
         { app_id: 9999990, nombre: 'Café "Noir": Édition™' },
         { app_id: 271590, nombre: 'Grand Theft Auto V' },
@@ -109,6 +112,33 @@ describe('parsePayload', () => {
     expect(capture(JSON.stringify({ ...prototype, biblioteca_steam: [] })).steam_library).toEqual([])
   })
 
+  it('reads report mode: what Steam runs the game with, blanks as null', () => {
+    const juego = {
+      app_id: 1245620,
+      herramienta: 'proton_9',
+      version_herramienta: ' proton-9.0-2 ',
+      opciones_lanzamiento: '',
+      build: '15563723',
+      nativo: false,
+      cuenta_supuesta: true,
+    }
+    expect(capture(JSON.stringify({ ...prototype, juego }))).toMatchObject({ steam_game: {
+      app_id: 1245620,
+      tool: 'proton_9',
+      tool_version: 'proton-9.0-2',
+      launch_options: null,
+      build_id: '15563723',
+      native: false,
+      guessed_account: true,
+    } })
+  })
+
+  it('reads a Steam Deck, and ignores report mode in a Windows payload', () => {
+    expect(capture(JSON.stringify({ ...prototype, dispositivo: 'steam_deck_lcd' })).device).toBe('steam_deck_lcd')
+    const juego = { app_id: 1, herramienta: null, version_herramienta: null, opciones_lanzamiento: null, build: null, nativo: true, cuenta_supuesta: false }
+    expect(capture(JSON.stringify({ ...JSON.parse(windowsJson), juego }))).toEqual(capture(windowsJson))
+  })
+
   it('keeps the Vulkan version when support is si', () => {
     expect(capture(JSON.stringify({ ...prototype, soporte_vulkan: 'si', version_vulkan: '1.3.275' }))).toMatchObject({
       vulkan_support: 'si',
@@ -121,6 +151,21 @@ describe('parsePayload', () => {
     expect(capture(JSON.stringify(arch))).toMatchObject({ distribution: { name: 'Arch Linux', version: 'rolling' } })
     const withoutVersion = { ...prototype, distribucion: { nombre: 'Arch Linux', version: null } }
     expect(capture(JSON.stringify(withoutVersion))).toMatchObject({ distribution: { version: 'rolling' } })
+  })
+
+  it('keeps SteamOS at its minor release, so each point release is not a new distribution', () => {
+    const steamOs = (version: string) => capture(JSON.stringify({ ...prototype, distribucion: { nombre: 'SteamOS', version } }))
+    expect([steamOs('3.7.13'), steamOs('3.7')]).toMatchObject([{ distribution: { version: '3.7' } }, { distribution: { version: '3.7' } }])
+    expect(capture(JSON.stringify({ ...prototype, distribucion: { nombre: 'Debian GNU/Linux', version: '12.7' } }))).toMatchObject({ distribution: { version: '12.7' } })
+    const manual = captureOf({
+      _tag: 'manual',
+      captura: {
+        sistema: 'Linux', capturado_en: new Date('2026-10-20T12:00:00Z'), version_sistema: '6.5.0-valve22', arquitectura: 'x86_64',
+        cpu_modelo: 'AMD Custom APU 0405', gpu_modelo: 'AMD Custom GPU 0405', ram_mb: 16384, vram_mb: null, dispositivo: 'steam_deck_lcd',
+        distribucion: { nombre: 'SteamOS', version: '3.7.13' }, controlador: null, version_controlador: null, soporte_vulkan: 'desconocido', version_vulkan: null,
+      },
+    })
+    expect(Effect.runSync(manual)).toMatchObject({ distribution: { name: 'SteamOS', version: '3.7' }, device: 'steam_deck_lcd' })
   })
 
   it.each([
@@ -168,6 +213,8 @@ describe('parsePayload', () => {
     [{ tpm: '2' }, 'tpm'],
     [{ zram_mb: -1 }, 'zram_mb'],
     [{ swap_mb: 1.5 }, 'swap_mb'],
+    [{ dispositivo: 'rog_ally' }, 'dispositivo'],
+    [{ juego: { app_id: 0, herramienta: null, version_herramienta: null, opciones_lanzamiento: null, build: null, nativo: true, cuenta_supuesta: false } }, 'juego.app_id'],
   ])('a bad field %o is campo_invalido at %s', (override, field) => {
     expect(parsePayload(JSON.stringify({ ...prototype, ...override }))).toEqual(
       Result.fail(new InvalidPayload({ reason: 'campo_invalido', field })),

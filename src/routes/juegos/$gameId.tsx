@@ -2,9 +2,12 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { hasNews } from '../../domain/follow.ts'
 import { GameId } from '../../domain/ids.ts'
 import { gamePageFn } from '../../fns/catalog.ts'
+import { originFn } from '../../fns/diagnostic.ts'
+import { CopyBox } from '../../ui/compatibility/CopyBox.tsx'
 import { GameStatus } from '../../ui/compatibility/GameStatus.tsx'
 import { EnvironmentMatrix } from '../../ui/compatibility/EnvironmentMatrix.tsx'
 import { LayerTimeline } from '../../ui/compatibility/LayerTimeline.tsx'
+import { ScopedStatus } from '../../ui/compatibility/ScopedStatus.tsx'
 import { VerdictForMe } from '../../ui/compatibility/VerdictForMe.tsx'
 import { count, date } from '../../ui/format.ts'
 import { Chip, Badge } from '../../ui/Badge.tsx'
@@ -19,13 +22,17 @@ const gameId = routeIdParser(GameId)
 
 export const Route = createFileRoute('/juegos/$gameId')({
   params: { parse: (p) => ({ gameId: gameId(p.gameId) }), stringify: (p) => ({ gameId: String(p.gameId) }) },
-  loader: ({ params }) => gamePageFn({ data: params }),
+  loader: async ({ params }) => {
+    const [page, siteOrigin] = await Promise.all([gamePageFn({ data: params }), originFn()])
+    return { ...page, siteOrigin }
+  },
   head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.game.title} · OpenGame Linux` : 'OpenGame Linux' }] }),
   component: GamePage,
 })
 
 function GamePage() {
-  const { game, editions, summary, timeline, as_of, follow, protondb, demo, pending, profiles, causes, diagnostic, personal } = Route.useLoaderData()
+  const { game, editions, steam_app_id: steamAppId, summary, steam_deck, timeline, as_of, follow, protondb, demo, pending, profiles, causes, diagnostic, personal, siteOrigin } =
+    Route.useLoaderData()
   const { visitor } = Route.useRouteContext()
   const reportLink = (
     <Link to="/juegos/$gameId/reportar" params={{ gameId: game.id }} className="button">
@@ -67,7 +74,9 @@ function GamePage() {
       )}
 
       <div className="game-page-body">
-        <GameStatus summary={summary} pending={pending} />
+        <GameStatus summary={summary} pending={pending}>
+          {summary.test_count > 0 && <ScopedStatus label="En Steam Deck:" summary={steam_deck} none="nadie ha aprobado una prueba en una Steam Deck" />}
+        </GameStatus>
         <VerdictForMe personal={personal}>
           {diagnostic && (
             <p className="small muted">
@@ -194,9 +203,19 @@ function GamePage() {
       </div>
 
       <section className="report" aria-labelledby="report">
-        <div>
+        <div className="report-text">
           <h2 id="report">¿Lo jugaste en Linux?</h2>
           <p className="muted">Cuenta en qué distribución y con qué configuración. Un revisor lo aprueba y pasa a contar.</p>
+          {steamAppId !== null && (
+            <div className="stack report-detector">
+              <p className="small">
+                ¿No sabes tu versión de Proton? Ejecuta esto en el equipo donde jugaste: lee la herramienta de compatibilidad que
+                Steam usa para este juego, sus opciones de lanzamiento y su build, y abre el formulario lleno para que lo revises.
+              </p>
+              <CopyBox label="Reportar con el detector, en Linux" text={`curl -fsSL ${siteOrigin}/opengame-detect.sh | bash -s -- --game ${steamAppId}`} />
+              <p className="small muted">En Windows no hay modo de reporte: un reporte necesita un diagnóstico hecho en Linux.</p>
+            </div>
+          )}
         </div>
         {reportLink}
       </section>

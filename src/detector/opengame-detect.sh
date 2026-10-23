@@ -2,15 +2,30 @@
 # OpenGame Linux detector. Reads the hardware without root and prints a JSON payload (version 1)
 # shaped like the `diagnostic` table. Nothing leaves this computer unless you choose to:
 #
-#   bash opengame-detect.sh          prints the JSON to paste in the web app
-#   bash opengame-detect.sh --open   opens the web app with the payload in the URL fragment (#d=),
-#                                    which the browser never sends to the server
+#   bash opengame-detect.sh                  prints the JSON to paste in the web app
+#   bash opengame-detect.sh --open           opens the web app with the payload in the URL fragment (#d=),
+#                                            which the browser never sends to the server
+#   bash opengame-detect.sh --game <appid>   like --open, plus what Steam runs that game with (compatibility
+#                                            tool and its exact version, launch options, build), so the
+#                                            app can prefill a report of it
 #
-# OPENGAME_DRY=1 with --open prints the URL instead of opening a browser. OPENGAME_URL overrides the app address.
-# OPENGAME_STEAM_DIR adds a Steam folder to the ones searched for installed games. OPENGAME_MAX_JUEGOS
-# overrides how many games are sent, which the server fills in like the URL. OPENGAME_DRM replaces
-# /sys/class/drm, so tests can describe a machine's GPUs.
+# OPENGAME_DRY=1 with --open or --game prints the URL instead of opening a browser. OPENGAME_URL overrides the
+# app address. OPENGAME_STEAM_DIR adds a Steam folder to the ones searched for installed games. OPENGAME_MAX_JUEGOS
+# overrides how many games are sent, which the server fills in like the URL. OPENGAME_DRM, OPENGAME_DMI and
+# OPENGAME_OS_RELEASE replace /sys/class/drm, /sys/class/dmi/id and /etc/os-release, so tests can describe a machine.
 set -u
+
+open=""; game=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --open) open=1 ;;
+    --game)
+      case "${2:-}" in ''|*[!0-9]*|???????????*) game=0 ;; *) game=$((10#$2)) ;; esac
+      if [ "$game" -eq 0 ]; then echo "Uso: --game <appid>, el número del juego en Steam (por ejemplo --game 1245620)" >&2; exit 2; fi
+      open=1; shift ;;
+  esac
+  shift
+done
 
 APP_URL="${OPENGAME_URL:-__OPENGAME_URL__}"
 MAX_GAMES="${OPENGAME_MAX_JUEGOS:-__OPENGAME_MAX_JUEGOS__}"
@@ -26,8 +41,17 @@ json_num() { # a JSON integer, or null for anything else (nvidia-smi prints "[N/
 
 architecture=$(uname -m)
 os_version=$(uname -r)
-distro_name=$(. /etc/os-release 2>/dev/null; printf '%s' "${NAME:-}")
-distro_version=$(. /etc/os-release 2>/dev/null; printf '%s' "${VERSION_ID:-}")
+os_release="${OPENGAME_OS_RELEASE:-/etc/os-release}"
+distro_name=$(. "$os_release" 2>/dev/null; printf '%s' "${NAME:-}")
+distro_version=$(. "$os_release" 2>/dev/null; printf '%s' "${VERSION_ID:-}")
+# SteamOS is told by its ID; NAME is free text.
+[ "$(. "$os_release" 2>/dev/null; printf '%s' "${ID:-}")" = steamos ] && distro_name=SteamOS
+# A Steam Deck names its model in DMI: Jupiter is the LCD one, Galileo the OLED one.
+device=""
+dmi="${OPENGAME_DMI:-/sys/class/dmi/id}"
+case "$(cat "$dmi/sys_vendor" 2>/dev/null)" in
+  Valve*) case "$(cat "$dmi/product_name" 2>/dev/null)" in Jupiter) device=steam_deck_lcd ;; Galileo) device=steam_deck_oled ;; esac ;;
+esac
 # x86 names the CPU in /proc/cpuinfo; ARM kernels often do not, while lscpu still does.
 cpu_model=$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2- | sed 's/^ *//')
 [ -z "$cpu_model" ] && command -v lscpu >/dev/null && cpu_model=$(lscpu 2>/dev/null | sed -n 's/^Model name: *//p' | head -1)
@@ -104,8 +128,9 @@ if vulkan=$(vulkaninfo --summary 2>/dev/null); then
   if [ -n "$vulkan_version" ]; then vulkan_support="si"; else vulkan_support="no"; fi
 fi
 
-# VDF files nest blocks (an appmanifest's UserConfig has its own "name"), so a flat grep reads the
-# wrong key. Keys are lowercased because old manifests write appID.
+# Prints each "key" "value" pair of VDF files as file<TAB>path<TAB>value, where the path joins the keys of the
+# enclosing blocks with "/" (appstate/name, libraryfolders/0/path). Blocks nest (an appmanifest's UserConfig
+# has its own "name"), so a flat grep reads the wrong key. Keys are lowercased because old manifests write appID.
 vdf_pairs() {
   awk '
     function unquote(s,   out, i, c) {
@@ -118,33 +143,34 @@ vdf_pairs() {
       }
       rest = ""; return out
     }
-    FNR == 1 { file++; d = 0 }
+    FNR == 1 { d = 0 }
     {
       sub(/^[ \t]+/, ""); sub(/[ \t\r]+$/, "")
-      if ($0 == "{") { d++; next }
+      if ($0 == "{") { path[++d] = block; next }
       if ($0 == "}") { d--; next }
       if (substr($0, 1, 1) != "\"") next
-      k = unquote(substr($0, 2)); r = rest; sub(/^[ \t]+/, "", r)
-      if (substr(r, 1, 1) != "\"") next
+      k = tolower(unquote(substr($0, 2))); r = rest; sub(/^[ \t]+/, "", r)
+      if (substr(r, 1, 1) != "\"") { block = k; next }
       v = unquote(substr(r, 2)); gsub(/\t/, " ", v)
-      print file "\t" d "\t" tolower(k) "\t" v
+      p = ""; for (i = 1; i <= d; i++) p = p path[i] "/"
+      print FILENAME "\t" p k "\t" v
     }' "$@"
 }
 
 # Every Steam root (native, Flatpak, Snap) lists its libraries in steamapps/libraryfolders.vdf: "path"
 # two levels deep, or a numbered key one level deep in the pre-2021 format.
-steam_library="null"; libraries=()
+steam_library="null"; roots=(); libraries=(); manifests=()
 for root in "${OPENGAME_STEAM_DIR:-}" "${HOME:-}/.steam/steam" "${HOME:-}/.local/share/Steam" \
   "${HOME:-}/.var/app/com.valvesoftware.Steam/.local/share/Steam" "${HOME:-}/snap/steam/common/.local/share/Steam"; do
   [ -n "$root" ] && [ -d "$root/steamapps" ] || continue
+  roots+=("$root")
   libraries+=("$root")
   if [ -r "$root/steamapps/libraryfolders.vdf" ]; then
     while IFS= read -r library; do libraries+=("$library"); done < <(vdf_pairs "$root/steamapps/libraryfolders.vdf" |
-      awk -F'\t' '($2 == 2 && $3 == "path") || ($2 == 1 && $3 ~ /^[0-9]+$/) { print $4 }')
+      awk -F'\t' '$2 ~ /^[^\/]+\/[^\/]+\/path$/ || $2 ~ /^[^\/]+\/[0-9]+$/ { print $3 }')
   fi
 done
 if [ "${#libraries[@]}" -gt 0 ]; then
-  manifests=()
   while IFS= read -r library; do
     for m in "$library"/steamapps/appmanifest_*.acf; do [ -f "$m" ] && manifests+=("$m"); done
   done < <(for b in "${libraries[@]}"; do realpath -e "$b" 2>/dev/null; done | sort -u)
@@ -152,9 +178,9 @@ if [ "${#libraries[@]}" -gt 0 ]; then
   if [ "${#manifests[@]}" -gt 0 ]; then
     # StateFlags 4 is fully installed; 1024 marks an update in progress, which clears bit 4 meanwhile.
     steam_library=$(vdf_pairs "${manifests[@]}" | awk -F'\t' '
-        $2 == 1 { v[$1, $3] = $4; n = $1 }
+        split($2, p, "/") == 2 { v[$1, p[2]] = $3; files[$1] = 1 }
         END {
-          for (a = 1; a <= n; a++) {
+          for (a in files) {
             e = v[a, "stateflags"] + 0
             if (v[a, "appid"] ~ /^[0-9]+$/ && v[a, "name"] != "" && (int(e / 4) % 2 || int(e / 1024) % 2))
               print (v[a, "lastplayed"] + 0) "\t" v[a, "appid"] "\t" v[a, "name"]
@@ -162,6 +188,66 @@ if [ "${#libraries[@]}" -gt 0 ]; then
         }' | sort -t "$(printf '\t')" -k1,1nr -k2,2n | tr -d '\000-\010\013-\037\177' | sed 's/\\/\\\\/g; s/"/\\"/g' |
       awk -F'\t' -v max="$MAX_GAMES" 'BEGIN { printf "[" } max == 0 || NR <= max { printf "%s{\"app_id\":%s,\"nombre\":\"%s\"}", (NR > 1 ? "," : ""), $2 + 0, $3 } END { printf "]" }')
   fi
+fi
+
+# Report mode (--game): what Steam runs that game with. Proton writes the build that last ran the game into its
+# prefix, compatdata/<appid>/config_info (line 2 is that build's fonts folder), and every build carries a version
+# file that names its exact release ("1718385733 proton-9.0-2"). Without one, config/config.vdf says which tool
+# applies: the game's own entry, else the default under "0", which Steam gives only to Windows titles, so an
+# installed game Proton never ran is native. Launch options live per account in
+# userdata/<account>/config/localconfig.vdf, the build in the appmanifest.
+game_block="null"
+if [ -n "$game" ]; then
+  manifest=""; for m in "${manifests[@]}"; do case "$m" in */appmanifest_"$game".acf) manifest=$m ;; esac; done
+  [ -n "$manifest" ] || echo "No encontramos el juego $game instalado en Steam; enviamos solo lo que guarda su configuración." >&2
+  build=""; prefix=""
+  if [ -n "$manifest" ]; then
+    build=$(vdf_pairs "$manifest" | awk -F'\t' '$2 == "appstate/buildid" { print $3; exit }')
+    prefix="${manifest%/*}/compatdata/$game"
+  fi
+  root=""; for r in "${roots[@]}"; do [ -r "$r/config/config.vdf" ] && { root=$r; break; }; done
+  tool=""; version_file=""; native=false; launch_options=""; guessed=false
+  if [ -n "$prefix" ] && [ -r "$prefix/config_info" ]; then
+    ran=$(sed -n 2p "$prefix/config_info" | sed -E 's#/(files|dist)/share/fonts/?$##')
+    [ -r "$ran/version" ] && { tool=${ran##*/}; version_file="$ran/version"; }
+  fi
+  if [ -z "$tool" ] && [ -n "$root" ]; then
+    mapping=$(vdf_pairs "$root/config/config.vdf" | awk -F'\t' '$2 ~ /\/compattoolmapping\/[0-9]+\/name$/ { n = split($2, p, "/"); print p[n - 1] "\t" $3 }')
+    tool=$(printf '%s\n' "$mapping" | awk -F'\t' -v id="$game" '$1 == id { print $2; exit }')
+    [ -z "$tool" ] && [ -d "$prefix" ] && tool=$(printf '%s\n' "$mapping" | awk -F'\t' '$1 == "0" { print $2; exit }')
+  fi
+  [ -z "$tool" ] && [ -n "$manifest" ] && [ ! -d "$prefix" ] && native=true
+  if [ -n "$tool" ] && [ -z "$version_file" ]; then
+    # A custom tool sits in compatibilitytools.d under its name. Valve's are Steam apps: "Proton 9.0" is
+    # proton_9, "Proton 5.13" proton_513, "Proton - Experimental" proton_experimental.
+    for r in "${roots[@]}"; do [ -r "$r/compatibilitytools.d/$tool/version" ] && { version_file="$r/compatibilitytools.d/$tool/version"; break; }; done
+    if [ -z "$version_file" ] && [ "${#manifests[@]}" -gt 0 ]; then
+      version_file=$(vdf_pairs "${manifests[@]}" | awk -F'\t' -v want="$tool" '
+        function tool(s,   n, p) {
+          n = tolower(s); sub(/^proton[ -]+/, "", n)
+          if (n ~ /^[0-9]+\.[0-9]+$/) { split(n, p, "."); return "proton_" p[1] (p[2] == "0" ? "" : p[2]) }
+          gsub(/[^a-z0-9]+/, "_", n); return "proton_" n
+        }
+        $2 == "appstate/name" && tolower($3) ~ /^proton[ -]/ { name[$1] = tool($3) }
+        $2 == "appstate/installdir" { dir[$1] = $3 }
+        END { for (f in name) if (name[f] == want && dir[f] != "") { d = dir[f]; sub(/\/[^\/]*$/, "", f); print f "/common/" d "/version"; exit } }')
+    fi
+  fi
+  tool_version=""; [ -r "$version_file" ] && tool_version=$(head -n 1 "$version_file" | sed 's/^[0-9]* //; s/[[:space:]]*$//')
+  if [ -n "$root" ]; then
+    # The account that signed in last (MostRecent in loginusers.vdf), else the only one. With several and none
+    # marked, the first, and the payload says so.
+    config=""; accounts=()
+    for c in "$root"/userdata/*/config/localconfig.vdf; do [ -f "$c" ] && accounts+=("$c"); done
+    recent=$(vdf_pairs "$root/config/loginusers.vdf" 2>/dev/null | awk -F'\t' '$2 ~ /^users\/[0-9]+\/mostrecent$/ && $3 == "1" { split($2, p, "/"); print p[2] }')
+    case "$recent" in ''|*[!0-9]*) ;; *) config="$root/userdata/$((recent - 76561197960265728))/config/localconfig.vdf" ;; esac
+    if [ ! -f "$config" ] && [ "${#accounts[@]}" -gt 0 ]; then
+      config=${accounts[0]}
+      [ "${#accounts[@]}" -gt 1 ] && guessed=true
+    fi
+    [ -f "$config" ] && launch_options=$(vdf_pairs "$config" | awk -F'\t' -v id="$game" '$2 ~ ("/apps/" id "/launchoptions$") { print $3; exit }')
+  fi
+  game_block="{\"app_id\":$game,\"herramienta\":$(json_str "$tool"),\"version_herramienta\":$(json_str "$tool_version"),\"opciones_lanzamiento\":$(json_str "$launch_options"),\"build\":$(json_str "$build"),\"nativo\":$native,\"cuenta_supuesta\":$guessed}"
 fi
 
 # Machine facts. Empty means unknown and goes out as null; none of these needs root.
@@ -195,9 +281,9 @@ if [ -r /proc/swaps ]; then
   read -r zram_mb swap_mb < <(awk 'NR > 1 { if ($1 ~ /^\/dev\/zram/) z += $3; else s += $3 } END { printf "%d %d\n", z / 1024, s / 1024 }' /proc/swaps)
 fi
 
-payload="{\"version_esquema\":1,\"capturado_en\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"sistema\":\"Linux\",\"version_sistema\":$(json_str "$os_version"),\"distribucion\":{\"nombre\":$(json_str "$distro_name"),\"version\":$(json_str "$distro_version")},\"arquitectura\":$(json_str "$architecture"),\"cpu_modelo\":$(json_str "$cpu_model"),\"gpu_modelo\":$(json_str "$gpu_model"),\"gpu_pci_id\":$(json_str "$gpu_pci_id"),\"ram_mb\":$(json_num "$ram_mb"),\"vram_mb\":$(json_num "$vram_mb"),\"controlador\":$(json_str "$gpu_driver"),\"version_controlador\":$(json_str "$driver_version"),\"soporte_vulkan\":\"$vulkan_support\",\"version_vulkan\":$(json_str "$vulkan_version"),\"biblioteca_steam\":$steam_library,\"nivel_x86\":$(json_str "$x86_level"),\"arranque_seguro\":$(json_str "$secure_boot"),\"tpm\":$(json_str "$tpm"),\"zram_mb\":$(json_num "$zram_mb"),\"swap_mb\":$(json_num "$swap_mb")}"
+payload="{\"version_esquema\":1,\"capturado_en\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"sistema\":\"Linux\",\"version_sistema\":$(json_str "$os_version"),\"distribucion\":{\"nombre\":$(json_str "$distro_name"),\"version\":$(json_str "$distro_version")},\"arquitectura\":$(json_str "$architecture"),\"cpu_modelo\":$(json_str "$cpu_model"),\"gpu_modelo\":$(json_str "$gpu_model"),\"gpu_pci_id\":$(json_str "$gpu_pci_id"),\"ram_mb\":$(json_num "$ram_mb"),\"vram_mb\":$(json_num "$vram_mb"),\"controlador\":$(json_str "$gpu_driver"),\"version_controlador\":$(json_str "$driver_version"),\"soporte_vulkan\":\"$vulkan_support\",\"version_vulkan\":$(json_str "$vulkan_version"),\"biblioteca_steam\":$steam_library,\"nivel_x86\":$(json_str "$x86_level"),\"arranque_seguro\":$(json_str "$secure_boot"),\"tpm\":$(json_str "$tpm"),\"zram_mb\":$(json_num "$zram_mb"),\"swap_mb\":$(json_num "$swap_mb"),\"dispositivo\":$(json_str "$device"),\"juego\":$game_block}"
 
-if [ "${1:-}" != "--open" ]; then
+if [ -z "$open" ]; then
   printf '%s\n' "$payload"
   echo "Copia el JSON de arriba y pégalo en $APP_URL/diagnostico" >&2
   exit 0

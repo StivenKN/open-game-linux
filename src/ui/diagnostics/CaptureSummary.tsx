@@ -1,12 +1,13 @@
 import { Link } from '@tanstack/react-router'
 import type { Capture } from '../../domain/contributions.ts'
 import { memory, approximateMemory, dateTime } from '../format.ts'
-import { secureBoot, operatingSystem, vulkanSupport, tpm } from '../vocabulary.ts'
+import { device, secureBoot, operatingSystem, vulkanSupport, tpm } from '../vocabulary.ts'
 
 const swapLine = (name: string, mb: number | null) => (mb === null ? [] : [mb === 0 ? `sin ${name}` : `${name} ${approximateMemory(mb)}`])
 
 export function CaptureSummary({ capture }: { capture: Capture }) {
   const rows = [
+    ...(capture.device === null ? [] : ([['Equipo', device[capture.device], null]] as const)),
     ['Sistema', capture.operating_system === 'Linux' ? `${capture.distribution.name} ${capture.distribution.version}` : operatingSystem.Windows, `${capture.os_version} · ${capture.architecture}`],
     ['Procesador', capture.cpu_model, capture.x86_level === null ? 'Nivel x86-64 no capturado' : `x86-64-${capture.x86_level}`],
     ['Tarjeta gráfica', capture.gpu_model, capture.vram_mb === null ? 'VRAM desconocida' : `${memory(capture.vram_mb)} de VRAM`],

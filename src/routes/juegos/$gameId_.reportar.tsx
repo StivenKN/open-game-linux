@@ -1,11 +1,12 @@
 // `$gameId_` keeps this page out of the game page's layout (it renders on its own).
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Schema } from 'effect'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { mismatches, NewReport } from '../../domain/contributions.ts'
 import { type Encoded, profileMismatches, type IncomparableProfile, type RuleViolated } from '../../domain/errors.ts'
 import { LayerFamily, requiresFailure, Outcome } from '../../domain/literals.ts'
-import { GameId, ProfileId, type ReportId } from '../../domain/ids.ts'
+import { DiagnosticId, EditionId, GameId, ProfileId, type ReportId } from '../../domain/ids.ts'
+import { type LayerPrefill, prefillLayer, SteamGame } from '../../domain/steam-game.ts'
 import { protonReportPossible } from '../../domain/upstream.ts'
 import { reportOptionsFn, submitReportFn } from '../../fns/contributions.ts'
 import { FieldError } from '../../ui/FieldError.tsx'
@@ -20,8 +21,16 @@ const gameId = routeIdParser(GameId)
 
 export const Route = createFileRoute('/juegos/$gameId_/reportar')({
   params: { parse: (p) => ({ gameId: gameId(p.gameId) }), stringify: (p) => ({ gameId: String(p.gameId) }) },
-  // The router already parses `?perfil=7` into a number.
-  validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ perfil: Schema.optionalKey(ProfileId) })),
+  // The router already parses `?perfil=7` into a number. The detector's report mode (`--game`) lands here from
+  // /diagnostico/importar with the diagnosis it just saved, the Steam edition and what it read from Steam.
+  validateSearch: Schema.toStandardSchemaV1(
+    Schema.Struct({
+      perfil: Schema.optionalKey(ProfileId),
+      diagnostico: Schema.optionalKey(DiagnosticId),
+      edicion: Schema.optionalKey(EditionId),
+      steam: Schema.optionalKey(SteamGame),
+    }),
+  ),
   beforeLoad: ({ context, location }) => {
     if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
   },
@@ -108,16 +117,29 @@ const mismatchNames = (o: Options) => {
   }
 }
 
+// A datetime-local value in the browser's zone, rounded up to the minute so it is never before `date`.
+const minuteInput = (date: Date) => {
+  const minute = Math.ceil(date.getTime() / 60_000) * 60_000
+  return new Date(minute - new Date(minute).getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+}
+
 function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (submitted: Submitted) => void }) {
   const { diagnostics, editions, layers, profiles, failureTypes, selectedProfile } = options
   const selected = profiles.find((p) => p.id === selectedProfile)
+  const search = Route.useSearch()
+  const steam = search.steam ?? null
+  const detected = steam === null ? null : prefillLayer(steam, layers)
+  const startLayer: LayerPrefill | null = selected === undefined ? detected : { _tag: 'existente', id: selected.layer_version_id }
+  const reportedDiagnostic = diagnostics.find((d) => d.id === search.diagnostico)
 
-  const [diagnosticId, setDiagnosticId] = useState(diagnostics.at(0)?.id)
-  const [editionId, setEditionId] = useState(selected?.edition_id ?? editions.at(0)?.id)
-  const [layerType, setLayerType] = useState<'existente' | 'nueva'>('existente')
-  const [layerId, setLayerId] = useState(selected?.layer_version_id ?? layers.at(0)?.id)
-  const [newLayer, setNewLayer] = useState<{ readonly family: LayerFamily; readonly variant: string }>({ family: 'Wine', variant: '' })
-  const [gameVersion, setGameVersion] = useState(selected?.target_game_version ?? '')
+  const [diagnosticId, setDiagnosticId] = useState((reportedDiagnostic ?? diagnostics.at(0))?.id)
+  const [editionId, setEditionId] = useState(selected?.edition_id ?? editions.find((e) => e.id === search.edicion)?.id ?? editions.at(0)?.id)
+  const [layerType, setLayerType] = useState<'existente' | 'nueva'>(startLayer?._tag ?? 'existente')
+  const [layerId, setLayerId] = useState(startLayer?._tag === 'existente' ? startLayer.id : layers.at(0)?.id)
+  const [newLayer, setNewLayer] = useState<{ readonly family: LayerFamily; readonly variant: string }>(
+    startLayer?._tag === 'nueva' ? { family: startLayer.family, variant: startLayer.variant } : { family: 'Wine', variant: '' },
+  )
+  const [gameVersion, setGameVersion] = useState(selected?.target_game_version ?? steam?.build_id ?? '')
   const [profileId, setProfileId] = useState(selected === undefined ? nullText : String(selected.id))
   const [outcome, setOutcome] = useState<Outcome>('funciona')
   const [failures, setFailures] = useState<ReadonlyArray<number>>([])
@@ -160,9 +182,18 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
     setNextFailure(nextFailure + 1)
   }
 
+  // The detector ran after the game was played, and a report cannot predate its diagnosis, so report mode starts
+  // the test time at the capture. Set after hydration: the value depends on the browser's zone.
+  const testedAt = useRef<HTMLInputElement>(null)
+  const capturedAt = reportedDiagnostic?.captured_at
+  useEffect(() => {
+    if (capturedAt !== undefined && testedAt.current !== null && testedAt.current.value === '') testedAt.current.value = minuteInput(capturedAt)
+  }, [capturedAt])
+
   return (
     <form className="card form form-wide" {...r.form}>
       <FieldError errors={r.errors} field="form" />
+      {steam !== null && <DetectedNote steam={steam} layer={detected} testedAt={reportedDiagnostic !== undefined} />}
 
       <h2 className="section-title">Dónde probaste</h2>
       <Field errors={r.errors} name="diagnostic_id" label="Diagnóstico del equipo" help="Solo aparecen tus diagnósticos hechos en Linux.">
@@ -228,7 +259,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
               />
             </Field>
             <Field errors={r.errors} name="layer_version[version]" label="Versión exacta">
-              <input {...fieldProps(r.errors, 'layer_version[version]')} placeholder="9-20" />
+              <input {...fieldProps(r.errors, 'layer_version[version]')} defaultValue={startLayer?._tag === 'nueva' ? startLayer.version : undefined} placeholder="9-20" />
             </Field>
           </div>
         )}
@@ -262,7 +293,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
 
       <h2 className="section-title">Qué pasó</h2>
       <Field errors={r.errors} name="tested_at" label="Fecha y hora de la prueba">
-        <input {...fieldProps(r.errors, 'tested_at')} type="datetime-local" />
+        <input {...fieldProps(r.errors, 'tested_at')} ref={testedAt} type="datetime-local" />
       </Field>
       <fieldset className="group">
         <legend>Resultado</legend>
@@ -329,12 +360,50 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
       </OptionalGroup>
 
       <Field errors={r.errors} name="observations" label="Observaciones" help="Resultado, limitaciones y cualquier ajuste extra que hiciste fuera del perfil.">
-        <textarea {...fieldProps(r.errors, 'observations')} rows={4} />
+        <textarea
+          {...fieldProps(r.errors, 'observations')}
+          rows={4}
+          defaultValue={steam?.launch_options ? `Opciones de lanzamiento: ${steam.launch_options}\n` : undefined}
+        />
       </Field>
 
       <button type="submit" disabled={r.submitting}>
         {r.submitting ? 'Enviando…' : 'Enviar reporte'}
       </button>
     </form>
+  )
+}
+
+const layerNote = (steam: SteamGame, layer: LayerPrefill | null) => {
+  const tool = steam.tool_version === null || steam.tool_version === steam.tool ? `«${steam.tool}»` : `«${steam.tool}» (${steam.tool_version})`
+  if (steam.tool === null)
+    return steam.native
+      ? 'Steam lo ejecuta sin herramienta de compatibilidad, como juego nativo. Elige la versión nativa de la lista o escríbela.'
+      : 'El detector no pudo saber con qué la ejecuta Steam. Elígela tú.'
+  if (layer === null) return `Steam usa ${tool}, que no sabemos traducir a una capa. Elígela tú.`
+  if (layer._tag === 'existente') return `Steam usa ${tool}; la elegimos en la lista.`
+  if (layer.version === '') return `Steam usa ${tool} sin decir la versión exacta. Escríbela como aparece en Steam, en Propiedades > Compatibilidad.`
+  return `Steam usa ${tool}, que todavía no está en la lista; la dejamos escrita como otra versión.`
+}
+
+/** What report mode filled in from the detector, so the user knows what to check before sending. */
+function DetectedNote({ steam, layer, testedAt }: { steam: SteamGame; layer: LayerPrefill | null; testedAt: boolean }) {
+  return (
+    <section className="note stack" data-tone="azul" aria-label="Lo que leyó el detector">
+      <p>
+        <b>Lo llenamos con lo que leyó el detector en tu equipo.</b> Revisa cada campo antes de enviar.
+      </p>
+      <ul className="small">
+        <li>Capa: {layerNote(steam, layer)}</li>
+        {steam.build_id !== null && <li>Build {steam.build_id}, en «Versión o build del juego».</li>}
+        {steam.launch_options !== null && (
+          <li>
+            Opciones de lanzamiento: en «Observaciones», porque el reporte no tiene un campo para ellas.
+            {steam.guessed_account && ' Hay varias cuentas de Steam en ese equipo y ninguna figura como la última usada: son las de la primera.'}
+          </li>
+        )}
+        {testedAt && <li>Fecha y hora: la del diagnóstico, porque un reporte no puede ser anterior a él.</li>}
+      </ul>
+    </section>
   )
 }

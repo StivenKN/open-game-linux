@@ -7,7 +7,7 @@ import { OperatingSystem, VulkanSupport } from '../../domain/evaluation.ts'
 import type { GameRequestStatus } from '../../domain/game-requests.ts'
 import { GuideStatus, GuideType } from '../../domain/guides.ts'
 import { GraphicsApi, LayerFamily, Outcome, ProtonVariant } from '../../domain/literals.ts'
-import { SecureBoot, X86Level, Tpm } from '../../domain/platform.ts'
+import { Device, SecureBoot, X86Level, Tpm } from '../../domain/platform.ts'
 import { type ReviewStatus, Role } from '../../domain/review.ts'
 import { maxLengths as L } from '../../domain/max-lengths.ts'
 import { oneRow } from '../rows.ts'
@@ -867,6 +867,12 @@ const catalogSearchAndRequests = [
   `COMMENT ON TABLE game_request IS 'Games users want in the catalog; game_request_user holds one row per requester. Single writer: server/commands/game-requests.ts'`,
 ]
 
+// Adding a column fires no UPDATE trigger, so older diagnostics keep NULL: not a Steam Deck, or not captured.
+const steamDeck = [
+  `ALTER TABLE diagnostic ADD COLUMN device varchar(${L.diagnostic.device})`,
+  check('diagnostic', 'device_domain', `device IN (${Device.literals.map((v) => `'${v}'`).join(', ')})`),
+]
+
 export const migrations = {
   '1_auth': runStatements(auth),
   '2_opengame': runStatements([...functions, ...userTable, ...catalog, ...diagnostics, ...profiles, ...results, ...guides]),
@@ -877,6 +883,7 @@ export const migrations = {
   '7_english_names': runStatements(englishNames),
   '8_gamepage': runStatements(follows),
   '9_catalog': runStatements(catalogSearchAndRequests),
+  '10_detector': runStatements(steamDeck),
 }
 
 export const migrate = PgMigrator.run({ loader: Migrator.fromRecord(migrations) })

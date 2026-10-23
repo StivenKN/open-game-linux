@@ -123,9 +123,21 @@ If the result is too long for a URL, the Windows script copies it to the clipboa
 
 The `/diagnostico` page shows both commands, and it also accepts the pasted output or a manual form.
 
+On a Steam Deck, the Linux script reads the model (LCD or OLED) from the firmware, and the diagnosis says so. The manual form has the same choice.
+
+### Report a result with the detector
+
+To report a game you played through Steam on Linux, run the Linux script with `--game` and the game's Steam app id. A game's page shows this command with its id filled in.
+
+```sh
+curl -fsSL http://localhost:3000/opengame-detect.sh | bash -s -- --game 1245620
+```
+
+Besides the hardware, the script reads which compatibility tool last ran that game and its exact release (for example Proton 9.0-2), the game's launch options and its build id. The import page then asks you to save the diagnosis, signing you in first if needed, and opens the game's report form already filled in. You review every field and send it yourself. Launch options go into the observations, because a report has no field for them. The Windows script has no report mode, because a report needs a diagnosis made on Linux.
+
 ## Update the GPU table
 
-The diagnosis projects what a GPU can do on Linux from its PCI id. The id table, `src/server/gpu/families.generated.ts`, is generated from pinned Mesa, Linux and pci.ids sources. Do not edit it by hand.
+The diagnosis projects what a GPU can do on Linux from its PCI id. The id table, `src/server/gpu/families.generated.ts`, is generated from pinned Mesa, Linux and pci.ids sources. Do not edit it by hand. The Steam Deck's APUs come from pci.ids by codename, because the Linux driver matches them by PCI class and lists no id for them.
 
 To recognize newer GPUs, bump the pins in `scripts/generate-gpus.ts`, then regenerate the table. Review the printed counts and the diff before you commit.
 

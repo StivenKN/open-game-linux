@@ -25,7 +25,7 @@ import {
 } from './ids.ts'
 import { maxLengths } from './max-lengths.ts'
 import { GraphicsApi, LayerFamily, Outcome, ProtonVariant } from './literals.ts'
-import { SecureBoot, X86Level, Tpm } from './platform.ts'
+import { Device, SecureBoot, X86Level, Tpm } from './platform.ts'
 import { ReviewStatus, Role } from './review.ts'
 
 export const TextUpTo = (n: number) => RequiredText.pipe(Schema.check(Schema.isMaxLength(n)))
@@ -81,6 +81,7 @@ export const Diagnostic = Schema.Struct({
   tpm: Schema.NullOr(Tpm),
   zram_mb: Schema.NullOr(NonNegative),
   swap_mb: Schema.NullOr(NonNegative),
+  device: Schema.NullOr(Device),
 })
 export type Diagnostic = typeof Diagnostic.Type
 

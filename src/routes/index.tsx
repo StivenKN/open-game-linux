@@ -16,6 +16,7 @@ const CatalogSearch = CatalogFilter.mapFields((f) => ({
   estado: lenient(f.estado),
   lanzador: lenient(f.lanzador),
   sin_anti_cheat: lenient(f.sin_anti_cheat),
+  steam_deck: lenient(f.steam_deck),
 }))
 
 const cleanSearch = Schema.decodeUnknownSync(CatalogSearch)
@@ -30,7 +31,7 @@ export const Route = createFileRoute('/')({
   component: CatalogPage,
 })
 
-const toggle = <K extends 'estado' | 'lanzador' | 'sin_anti_cheat'>(
+const toggle = <K extends 'estado' | 'lanzador' | 'sin_anti_cheat' | 'steam_deck'>(
   filter: CatalogFilter,
   key: K,
   value: NonNullable<CatalogFilter[K]>,
@@ -54,6 +55,7 @@ function CatalogPage() {
     filter.estado === undefined ? undefined : compatibilityStatus[filter.estado].text,
     launchers.find((l) => l.id === filter.lanzador)?.name,
     filter.sin_anti_cheat === true ? 'sin bloqueo anti-cheat' : undefined,
+    filter.steam_deck === true ? 'probado en Steam Deck' : undefined,
   ].filter((a) => a !== undefined)
 
   const onSearch = (e: FormEvent<HTMLFormElement>) => {
@@ -85,6 +87,7 @@ function CatalogPage() {
             {filter.estado !== undefined && <input type="hidden" name="estado" value={filter.estado} />}
             {filter.lanzador !== undefined && <input type="hidden" name="lanzador" value={filter.lanzador} />}
             {filter.sin_anti_cheat === true && <input type="hidden" name="sin_anti_cheat" value="true" />}
+            {filter.steam_deck === true && <input type="hidden" name="steam_deck" value="true" />}
             <button type="submit">Buscar</button>
           </form>
           {featured.length > 0 && (
@@ -167,6 +170,19 @@ function CatalogPage() {
             <span>
               <b>Sin bloqueo anti-cheat</b>
               <small>Oculta los juegos con reportes bloqueados por un anti-cheat.</small>
+            </span>
+          </Link>
+          <Link
+            to="/"
+            search={toggle(filter, 'steam_deck', true)}
+            activeOptions={exactOnly}
+            className="switch"
+            aria-current={filter.steam_deck === true || undefined}
+          >
+            <span className="track" />
+            <span>
+              <b>Probado en Steam Deck</b>
+              <small>Solo los juegos con un reporte aprobado que funciona en una Steam Deck.</small>
             </span>
           </Link>
         </aside>

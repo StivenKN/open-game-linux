@@ -37,6 +37,8 @@ describe('machineOnLinux: golden GPUs (Windows capture, nothing measured)', () =
     ['HD 7970 (GCN 1)', '1002:6798', 'amd_gcn1', 'amdgpu', projected('1.3', '1.4'), { d3d9_11: 'dxvk_2', d3d12: true }, ['gcn_usar_amdgpu']],
     ['R7 260X (Bonaire, GCN 2)', '1002:6658', 'amd_gcn2', 'amdgpu', projected('1.3', '1.4'), { d3d9_11: 'dxvk_2', d3d12: true }, ['gcn_usar_amdgpu']],
     ['RX 580', '1002:67df', 'amd_gcn3_o_posterior', 'amdgpu', projected('1.3', '1.4'), { d3d9_11: 'dxvk_2', d3d12: true }, []],
+    ['Steam Deck LCD (Van Gogh)', '1002:163f', 'amd_gcn3_o_posterior', 'amdgpu', projected('1.3', '1.4'), { d3d9_11: 'dxvk_2', d3d12: true }, []],
+    ['Steam Deck OLED (Sephiroth)', '1002:1435', 'amd_gcn3_o_posterior', 'amdgpu', projected('1.3', '1.4'), { d3d9_11: 'dxvk_2', d3d12: true }, []],
     ['HD 5450 (TeraScale)', '1002:68f9', 'amd_terascale_o_anterior', 'radeon', { support: 'no', origin: 'proyectado' }, { d3d9_11: 'wined3d', d3d12: false }, []],
   ])('%s %s -> %s', (_, pci, family, driver, vulkan, paths, warnings) => {
     expect(machineOnLinux(windows(pci))).toEqual({

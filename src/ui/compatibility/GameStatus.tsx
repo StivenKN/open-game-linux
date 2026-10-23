@@ -1,10 +1,12 @@
+import type { ReactNode } from 'react'
 import type { CompatibilitySummary } from '../../domain/compatibility.ts'
 import { Outcome } from '../../domain/literals.ts'
 import { count, date } from '../format.ts'
 import { compatibilityStatus, outcome, statusMeaning } from '../vocabulary.ts'
 import { FailureChips } from './FailureChips.tsx'
 
-export function GameStatus({ summary, pending }: { summary: CompatibilitySummary; pending: number }) {
+/** The game's computed state. `children` goes under its meaning, e.g. the "En Steam Deck" line. */
+export function GameStatus({ summary, pending, children }: { summary: CompatibilitySummary; pending: number; children?: ReactNode }) {
   const label = compatibilityStatus[summary.status]
   const base = summary.no_recent_confirmation ? summary.test_count : summary.recent_count
   // The environments the state counts, so the bar adds up to `base`.
@@ -35,6 +37,7 @@ export function GameStatus({ summary, pending }: { summary: CompatibilitySummary
         </div>
       </div>
       <p className="verdict-meaning">{statusMeaning[summary.status]}</p>
+      {children}
       {summary.no_recent_confirmation && (
         <p className="note small" data-tone="amarillo">
           Sin confirmación en el último año: todos los reportes aprobados tienen más de 12 meses.

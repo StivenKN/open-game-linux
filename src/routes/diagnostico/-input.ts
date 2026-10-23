@@ -23,6 +23,7 @@ const common = {
   gpu_modelo: Diagnostic.fields.gpu_model,
   ram_mb: Diagnostic.fields.ram_mb,
   vram_mb: Diagnostic.fields.vram_mb,
+  dispositivo: Diagnostic.fields.device,
 }
 
 export const ManualForm = Schema.Union([

@@ -2,11 +2,9 @@ import type { ReactNode } from 'react'
 import type { CompatibilitySummary } from '../../domain/compatibility.ts'
 import type { X86Level } from '../../domain/platform.ts'
 import type { GamePath } from '../../domain/graphics-path.ts'
-import { count, date } from '../format.ts'
-import { Badge } from '../Badge.tsx'
-import { compatibilityStatus } from '../vocabulary.ts'
 import { EvaluationChecklist, type EvaluatedProfile } from './EvaluationChecklist.tsx'
 import { GraphicsPath } from './GraphicsPath.tsx'
+import { ScopedStatus } from './ScopedStatus.tsx'
 
 export type Personal = {
   readonly on_my_distribution: { readonly name: string; readonly summary: CompatibilitySummary } | null
@@ -48,17 +46,7 @@ export function VerdictForMe({ personal, children }: { personal: Personal | null
         </p>
       ) : (
         <>
-          {mine && (
-            <p className="row small">
-              <span>En tu distribución, {mine.name}:</span>
-              <Badge label={compatibilityStatus[mine.summary.status]} />
-              <span className="muted">
-                {mine.summary.last_tested
-                  ? `${count(mine.summary.test_count, 'reporte aprobado', 'reportes aprobados')} · última prueba ${date(mine.summary.last_tested)}${mine.summary.no_recent_confirmation ? ' · sin confirmación en el último año' : ''}`
-                  : `nadie ha aprobado una prueba en ${mine.name}`}
-              </span>
-            </p>
-          )}
+          {mine && <ScopedStatus label={`En tu distribución, ${mine.name}:`} summary={mine.summary} none={`nadie ha aprobado una prueba en ${mine.name}`} />}
           <hr />
           <GraphicsPath path={personal.path} minX86Level={personal.x86_level_min} approximate={personal.approximate} />
           <hr />

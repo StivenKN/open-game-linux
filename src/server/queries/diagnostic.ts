@@ -11,7 +11,7 @@ import type { DiagnosticId, GuideId, GameId } from '../../domain/ids.ts'
 import { GraphicsApi, Outcome } from '../../domain/literals.ts'
 import type { X86Level } from '../../domain/platform.ts'
 import { gamePath } from '../../domain/graphics-path.ts'
-import { Diagnostic, Distribution, Machine, AdoptionGuide, Game, Profile } from '../../domain/tables.ts'
+import { Diagnostic, Distribution, Machine, AdoptionGuide, Game, GameEdition, Profile } from '../../domain/tables.ts'
 import { requireUser, Visitor } from '../auth.ts'
 import { captureOf } from '../diagnostics/payload.ts'
 import { machineOnLinux } from '../gpu/capability.ts'
@@ -129,6 +129,23 @@ const evaluateMachine = (machine: MachineOnLinux, setup: Setup, games: SteamLibr
     }
   })
 
+const ReportTarget = Schema.Struct({ game_id: Game.fields.id, title: Game.fields.title, edition_id: GameEdition.fields.id })
+
+/** The catalog game a report-mode capture (`--game`) names, through its Steam edition. */
+const reportTarget = (capture: Capture) =>
+  Effect.gen(function* () {
+    if (capture.operating_system !== 'Linux' || capture.steam_game === null) return null
+    const sql = yield* SqlClient.SqlClient
+    const [target] = yield* rows(
+      ReportTarget,
+      sql`
+        SELECT j.id AS game_id, j.title, ej.id AS edition_id
+        FROM game_edition ej JOIN launcher l ON l.id = ej.launcher_id JOIN game j ON j.id = ej.game_id
+        WHERE l.name = ${STEAM_LAUNCHER} AND ej.external_id = ${String(capture.steam_game.app_id)}`,
+    )
+    return target ?? null
+  })
+
 export const evaluateWithoutSaving = (
   input: DiagnosticInput,
 ): Effect.Effect<
@@ -138,6 +155,7 @@ export const evaluateWithoutSaving = (
     readonly matrix: ReadonlyArray<MatrixRow>
     readonly library: EvaluatedLibrary | null
     readonly distributions: { readonly guide: GuideId | null; readonly evaluated: ReadonlyArray<EvaluatedDistro> }
+    readonly report: typeof ReportTarget.Type | null
   },
   InvalidPayload | Infra,
   SqlClient.SqlClient
@@ -154,7 +172,7 @@ export const evaluateWithoutSaving = (
         : []
     const machine = machineOnLinux(capture)
     const setup = { distribution_id: distribution?.id ?? null, architecture: capture.architecture, x86_level: capture.x86_level }
-    return { capture, machine, ...(yield* evaluateMachine(machine, setup, capture.steam_library)) }
+    return { capture, machine, report: yield* reportTarget(capture), ...(yield* evaluateMachine(machine, setup, capture.steam_library)) }
   })
 
 const SavedDiagnostic = Schema.Struct({
@@ -179,6 +197,7 @@ const savedCapture = (d: typeof SavedDiagnostic.Type): Effect.Effect<Capture> =>
     swap_mb: d.swap_mb,
     gpu_pci_id: d.gpu_pci_id,
     steam_library: d.steam_library,
+    device: d.device,
   }
   if (d.operating_system === 'Windows') return Effect.succeed({ ...common, operating_system: 'Windows' })
   if (d.distribution === null) return Effect.die(`diagnostic ${d.id}: Linux without a distribution`)
@@ -190,6 +209,7 @@ const savedCapture = (d: typeof SavedDiagnostic.Type): Effect.Effect<Capture> =>
     driver_version: d.driver_version,
     vulkan_support: d.vulkan_support,
     vulkan_version: d.vulkan_version,
+    steam_game: null,
   })
 }
 
