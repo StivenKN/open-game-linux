@@ -83,7 +83,7 @@ function MyContributionsPage() {
       {profiles.length > 0 && (
         <Section id="perfiles" title="Perfiles de configuración">
           {profiles.map((p) => (
-            <Item key={p.id} review={p.review} sent={p.created_at}>
+            <Item key={p.id} review={p.review} sent={p.created_at} action={<ProfileAction profile={p} />}>
               <p className="row">
                 {/* A rejected or retired profile has no public page; its game still does. */}
                 {'reason' in p.review ? (
@@ -101,21 +101,6 @@ function MyContributionsPage() {
                   {p.game}
                 </Link>
               </p>
-              {p.editable ? (
-                <p className="small">
-                  <Link to="/perfiles/$profileId/editar" params={{ profileId: p.id }}>
-                    Editar la propuesta
-                  </Link>
-                </p>
-              ) : (
-                'reason' in p.review && (
-                  <p className="small">
-                    <Link to="/juegos/$gameId/perfiles/nuevo" params={{ gameId: p.game_id }} search={{ desde: p.id }}>
-                      Proponer una versión con cambios
-                    </Link>
-                  </p>
-                )
-              )}
             </Item>
           ))}
         </Section>
@@ -144,7 +129,30 @@ function Section({ id, title, children }: { id: string; title: string; children:
   )
 }
 
-function Item({ review, sent, children }: { review: Review; sent: Date; children: ReactNode }) {
+type MyProfile = Awaited<ReturnType<typeof myContributionsFn>>['profiles'][number]
+
+/** Its author edits a proposal nobody used yet, and reworks a refused one into a new version. */
+function ProfileAction({ profile: p }: { profile: MyProfile }) {
+  if (p.editable)
+    return (
+      <p className="small">
+        <Link to="/perfiles/$profileId/editar" params={{ profileId: p.id }}>
+          Editar la propuesta
+        </Link>
+      </p>
+    )
+  if (!('reason' in p.review)) return null
+  return (
+    <p className="small">
+      <Link to="/juegos/$gameId/perfiles/nuevo" params={{ gameId: p.game_id }} search={{ desde: p.id }}>
+        Proponer una versión con cambios
+      </Link>
+    </p>
+  )
+}
+
+/** `action` comes after the reviewer's reason, so a refused item reads the why before the what next. */
+function Item({ review, sent, action, children }: { review: Review; sent: Date; action?: ReactNode; children: ReactNode }) {
   return (
     <li className="card stack">
       <p className="row">
@@ -157,6 +165,7 @@ function Item({ review, sent, children }: { review: Review; sent: Date; children
           Motivo de la revisión: {review.reason}
         </p>
       )}
+      {action}
     </li>
   )
 }
