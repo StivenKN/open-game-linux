@@ -2,7 +2,7 @@
 
 # open-game-linux
 
-OpenGame Linux tells a player whether a Windows game runs on Linux, based only on community test reports that a reviewer approved. A visitor searches the catalog and opens a game's page to see its computed state, the environments that were tested, and how each Wine or Proton version fared over time. They can run a detector script to compare their computer with a game's known conditions, and follow a step-by-step configuration profile for Wine or Proton. Signed-in users report results and propose solutions, follow the review of each one under "Mis aportes", and can follow a game to see on "Seguidos" what changed since they last looked. Reviewers approve reports, solutions and profiles before they count. The interface is in Spanish.
+OpenGame Linux tells a player whether a Windows game runs on Linux, based only on community test reports that a reviewer approved. A visitor searches the catalog and opens a game's page to see its computed state, the environments that were tested, and how each Wine or Proton version fared over time. They can run a detector script to compare their computer with a game's known conditions, and follow a step-by-step configuration profile for Wine or Proton. Signed-in users report results, propose solutions and propose configuration profiles, follow the review of each one under "Mis aportes", and can follow a game to see on "Seguidos" what changed since they last looked. Reviewers approve reports, solutions and profiles before they count, and write the adoption guides. The interface is in Spanish.
 
 Created in [T3 Code](https://t3.codes).
 

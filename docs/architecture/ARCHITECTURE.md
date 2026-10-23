@@ -70,14 +70,14 @@ Three candidates ran in parallel with assigned shapes.
 - **`bigserial` ids.** They add bigint friction to every URL and React key. Ids are `integer GENERATED ALWAYS AS IDENTITY`.
 - **Running `evaluate` in the browser for guests.** It is attractive, but the server already evaluates in a read-only `runAction`, so there is one path for guests and users.
 
-**Known double homes, kept on purpose.** The FPS context rule is both the `FpsMeasurement` input type (for field errors before a request) and the CHECK `report_fps_with_context` (the enforcement). "Solo revisores publican guías" has no code home because there is no guide authoring UI. Guides come from seeders, and the defense deck says so.
+**Known double homes, kept on purpose.** The FPS context rule is both the `FpsMeasurement` input type (for field errors before a request) and the CHECK `report_fps_with_context` (the enforcement). "Solo revisores publican guías" had no code home until guide authoring: now `createGuide` and `editGuide` call `requireReviewer` (RATIONALE, Profile and guide authoring).
 
 ## Open decisions, with the defaults the build follows
 
 1. **`app_user`.** The doc's `usuario` table, owned by better-auth, with the columns `alias`, `email`, `role` and `active`. Two recorded deviations go in `COMMENT ON`. The id is text, and the password hash lives in `account.password`. The alternative is a hand-written session layer with the doc's `usuario.contrasena_hash` column and integer ids.
 2. **Native Linux games** (CS2, ETS2). `family` gains `Nativo` next to Wine and Proton. The alternative is to keep native titles out of the catalog.
 3. **Seed data.** Demo content is marked "Datos de ejemplo". Approved reports come only from the team's own real runs, so at least one game honestly shows "Sin evidencia verificada".
-4. **Wireframe screens that change shape.** The 5-step wizard becomes ficha plus profile page. The CPU/GPU dropdowns become a manual form. The Windows vs Linux RAM comparator is cut. Profiles and guides come from seeders.
+4. **Wireframe screens that change shape.** The 5-step wizard becomes ficha plus profile page. The CPU/GPU dropdowns become a manual form. The Windows vs Linux RAM comparator is cut. Profiles and guides come from seeders. Amended after the first delivery: users propose profiles and reviewers write guides (RATIONALE, Profile and guide authoring).
 5. **Strict "Resultados variables".** A mix of `funciona` and `funciona_con_ajustes` shows purple, as 8.10 says literally.
 
 ## Throughput checkpoint

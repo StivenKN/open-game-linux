@@ -157,7 +157,7 @@ The only lists the compiler cannot derive are the `Record<Union, …>` tables (`
 
 It is ceremony elsewhere, so it is absent there: React components and hooks, better-auth (left as is), the detector, pure functions (plain TS, no `Effect` return types). The only Effect type that crosses into the browser is `Schema`.
 
-**What it deliberately does not do.** It never stores a verdict, a projection or an FPS estimate. It stores a Steam library only when the user chooses to. It never executes or downloads a stored command. It has no HttpApi or OpenAPI, no serialization adapters, no client-side Effect runtime, no admin UI beyond role management, and no profile or guide authoring UI (round 1 cuts stand).
+**What it deliberately does not do.** It never stores a verdict, a projection or an FPS estimate. It stores a Steam library only when the user chooses to. It never executes or downloads a stored command. It has no HttpApi or OpenAPI, no serialization adapters, no client-side Effect runtime and no admin UI beyond role management (round 1 cuts stand). Profile and guide authoring, also cut in round 1, came back after the first delivery (Profile and guide authoring, below).
 
 ## Synthesis decision
 
@@ -274,7 +274,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 - `submitDiagnostic` serializes per user with a row lock. A unique index on `(user_id, lower(alias))` with `ON CONFLICT` would make convergence structural.
 - `ui/samples/fixtures.ts` is hand-written and could be derived with `summarize` and `evaluate`.
 - `pnpm db:up` from a second checkout recreates `opengame-pg` because the init-script mount path differs per checkout. The data survives, but connections drop.
-- Open product gaps from `cobertura.md`: no game editing after creation (RF-03), guides and profiles only from the seed (RF-09), no distribution recommendation from hardware, no "hardware modesto" filter (wireframe 9.1).
+- Open product gaps from `cobertura.md`: no game editing after creation (RF-03), no distribution recommendation from hardware, no "hardware modesto" filter (wireframe 9.1).
 
 ## U10: Windows detector, GPU projection and Steam library
 
@@ -322,7 +322,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 
 - `/mis-aportes` reads `myContributions` (`server/queries/contributions.ts`): one query per kind, for reports, solutions and profiles, plus `myMachines` for the saved diagnostics. A new kind of contribution is one more query, one more key and one more section. Each item links to its game, a profile to its page while it is active, and a diagnostic to its page.
 - The review reaches its author as `AuthorReview`, a union in which only `rechazado` and `retirado` carry the reason. The query reads the reason for every state and decoding drops it from the active member, so an approval's reason never leaves the server. No page names the reviewer, so this one does not either.
-- Profiles are listed although only the seed writes them today. They have an author and a review, so a profile authoring form only adds the form.
+- Profiles are listed with the other kinds. Profile authoring came later and added only the form (Profile and guide authoring).
 - A report that `protonReportPossible` admits, while it is active, links "Prepara el informe para Valve". The "Reporte enviado" panel was the only way to reach that page.
 - `/admin/usuarios` lists the 50 newest accounts, or those whose alias or email contains the search (`strpos`, so `%` and `_` match themselves). Each account is one form that posts its whole `AccessChange`: role and active flag. An administrator's own row has no form.
 - `changeAccess` (`server/commands/accounts.ts`) is the single writer of `app_user.role` and `app_user.active`, for the page, `pnpm set-role` and the seed. `src/boundaries.test.ts` fails on any other `UPDATE app_user` of those columns. It locks the target and every active administrador in id order, so two administrators who demote each other at once serialize, and the second one sees that it would leave none. An administrator never removes their own access (`acceso_propio`), and the last active administrador keeps it (`ultimo_administrador`). `pnpm set-role` passes no actor, so it can create the first administrador but cannot demote the last one. It also reactivates the account, so it is the way back for an administrator another one deactivated.
@@ -352,6 +352,36 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 
 - **Marking seen when the ficha opens.** Simpler to use, but it needs a write on a GET or an effect after render, and either one marks the news seen before the player read them.
 - **Storing the state at `seen_at`.** It would make "the state changed" one comparison, but it is a stored verdict that goes stale with the window and with retirements. Computing it from `reviewed_at` keeps sentence 4 of `ARCHITECTURE.md` true.
+
+## Profile and guide authoring
+
+**Problem.** Profiles and adoption guides came only from the seed, so the profile page had nothing a player could add and the spec's "Solo revisores publican guías" had no code home (`PLAN.md` cut "profile and guide authoring").
+
+**Shape.**
+
+- Any signed-in user proposes a profile from the game page (`/juegos/$gameId/perfiles/nuevo`): the environment (edition, distribution, layer version, architecture), the content (title, target game version, RAM, VRAM and Vulkan minimums, CPU and GPU notes, launch options) and ordered steps and dependencies. A dependency is picked from the catalog or typed as a new one, which upserts like a new layer version. The profile is `pendiente` and enters the existing queue on `/revision`; approval still needs an approved working report that used it.
+- Its author edits it on `/perfiles/$profileId/editar` while it is pending and no report or solution points at it. One SQL expression, `profileEditable` in `server/commands/contributions.ts`, decides that for the writer and for the profile page's «Editar la propuesta». The DB trigger `og_profile_frozen` still freezes a reviewed or tested profile, and now maps to the rule `perfil_congelado`.
+- An approved, rejected or used profile changes only through a new profile. «Proponer una versión con cambios» opens the form filled from it (`?desde=`). A new profile takes the next `revision` of its environment, so a second proposal for the same edition, distribution, layer and architecture is r2.
+- Reviewers and administrators create and edit guides on `/guias/nueva` and `/guias/$guideId/editar`. `createGuide` and `editGuide` call `requireReviewer`, which is the code home of "Solo revisores publican guías". Readers still see only published guides; reviewers also see drafts and archived ones, so they can reach them to edit.
+- Every write lives in `server/commands/contributions.ts`, and `src/boundaries.test.ts` fails on an `INSERT`, `UPDATE` or `DELETE` of `profile`, `profile_step`, `profile_dependency` or `adoption_guide` anywhere else. The seed now proposes its demo profiles and writes its guides through those writers.
+
+**The way back is deleting, not a new status.** The author of a pending profile nobody used can delete it, with its steps and dependencies. `rechazado` and `retirado` are a reviewer's verdicts: the review block requires a reviewer, a date and a reason, and `decide` forbids reviewing your own contribution, so an author's withdrawal cannot honestly be either. A pending, unused profile is evidence of nothing, so deleting it loses nothing. Once a report or a solution uses it, it stays, and a reviewer rejects or later retires it as before.
+
+**The environment is fixed at birth.** Editing changes the content, not the edition, distribution, layer or architecture. Those name what the profile is for, decide its revision number and are what a report is compared against. A wrong environment means deleting the proposal and proposing again.
+
+**A guide's revision counts what readers see.** Editing the type, distribution, title or text bumps `revision` and `updated_at`. Publishing, archiving or returning to draft does not. Any reviewer can edit any guide, and the author stays the reviewer who created it. Guides keep their plain-text format: a blank line separates paragraphs and a single line break is kept.
+
+**Alternatives considered.**
+
+- **Letting the author move a pending profile to `retirado`.** It needs a new transition, a reviewer id that is the author, and an exception to the self-review rule.
+- **Freezing a profile at its first save and versioning every edit.** A pending profile is a draft until someone tests it, and the existing trigger already freezes it at that moment.
+- **A separate writer module for guides.** Guides are reviewer-written catalog content like games, which `createGame` already writes from the same module.
+
+**Open questions and risks.**
+
+1. Two proposals for the same environment in the same instant collide on `profile_revision_uq`; the second gets the generic error and can resend.
+2. The profile page keeps a player's step checklist under the profile id and revision. Editing a pending profile keeps both, so a checklist can point at steps that moved.
+3. A new dependency typed by any user becomes a catalog row others can pick, like a new layer version from a report.
 
 ## Open questions and risks
 
