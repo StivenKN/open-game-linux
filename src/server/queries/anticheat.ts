@@ -1,5 +1,6 @@
 import { Effect, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
+import { blocksOnlinePlay } from '../../domain/anticheat.ts'
 import { GameId } from '../../domain/ids.ts'
 import { AntiCheatEntry } from '../../domain/tables.ts'
 import { rows } from '../rows.ts'
@@ -18,3 +19,9 @@ export const antiCheatEntries = (game: GameId | null) =>
         WHERE ${sql.and(game === null ? [] : [sql`e.game_id = ${game}`])}`,
     ),
   )
+
+/** AreWeAntiCheatYet's Broken or Denied by game: the catalog's anti-cheat filter and the library's "Te frenan" read it. */
+export const onlinePlayBlocks = Effect.map(
+  antiCheatEntries(null),
+  (entries) => new Map(entries.filter((r) => blocksOnlinePlay(r.status)).map((r) => [r.game_id, r.status])),
+)

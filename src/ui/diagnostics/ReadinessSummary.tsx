@@ -3,7 +3,8 @@ import { CompatibilityStatus } from '../../domain/compatibility.ts'
 import type { LibraryReadiness } from '../../domain/readiness.ts'
 import { Badge, Chip } from '../Badge.tsx'
 import { count } from '../format.ts'
-import { compatibilityStatus, failureType } from '../vocabulary.ts'
+import { AntiCheatAttribution } from '../anticheat/AntiCheat.tsx'
+import { antiCheatStatus, compatibilityStatus, failureType } from '../vocabulary.ts'
 import type { MatrixRow } from './DiagnosticMatrix.tsx'
 
 const SHORT_LIST = 5
@@ -93,10 +94,12 @@ export function ReadinessSummary({ readiness: r }: { readiness: LibraryReadiness
                           Tu equipo no cumple
                         </Chip>
                       )}
+                      {g.awacy !== null && <span className="small muted">{antiCheatStatus[g.awacy].text} según AreWeAntiCheatYet</span>}
                     </li>
                   ))}
                 </ul>
               )}
+              {r.holding_back.some((g) => g.awacy !== null) && <AntiCheatAttribution />}
             </section>
             {r.no_evidence.length > 0 && (
               <section className="stack" aria-labelledby="no-evidence">

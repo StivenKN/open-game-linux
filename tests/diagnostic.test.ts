@@ -202,7 +202,7 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       ])
     })))
 
-  it.effect('la matriz calcula el estado con el último año, como la ficha, y marca el bloqueo anti-cheat', withSeed((f) =>
+  it.effect('la matriz calcula el estado con el último año, como la ficha, y marca el bloqueo anti-cheat de cada fuente', withSeed((f) =>
     Effect.gen(function* () {
       const antiCheat = yield* idOf(f.sql`INSERT INTO failure_type (code, description) VALUES ('anti_cheat', 'd') RETURNING id`)
       const approve = (edition_id: number, outcome: string, tested_at: string) =>
@@ -216,10 +216,15 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
       yield* approve(f.ed, 'funciona', '2026-10-02T12:00:00Z')
       const blocked = yield* approve(f.ed2, 'no_inicia', '2026-10-02T12:00:00Z')
       yield* f.sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${blocked}, ${antiCheat}, 'el anti-trampas no deja entrar')`
+      // AreWeAntiCheatYet's Denied reaches the row on its own; Running is not a block.
+      const listed = (edition_id: number, status: string) =>
+        f.sql`INSERT INTO anticheat_entry ${f.sql.insert({ edition_id, status, anticheats: ['Easy Anti-Cheat'], changed_at: null, slug: `juego-${edition_id}` })}`
+      yield* listed(f.ed, 'Denied')
+      yield* listed(f.ed2, 'Running')
       const { matrix } = yield* evaluateWithoutSaving(payload()).pipe(onDay(new Date('2026-10-15T00:00:00Z')))
-      expect(matrix.map((m) => [m.title, m.status, m.test_count, m.blocked_by_anti_cheat])).toEqual([
-        ['Juego', 'funciona', 2, false],
-        ['Otro juego', 'no_inicia', 1, true],
+      expect(matrix.map((m) => [m.title, m.status, m.test_count, m.blocked_by_anti_cheat, m.awacy])).toEqual([
+        ['Juego', 'funciona', 2, false, 'Denied'],
+        ['Otro juego', 'no_inicia', 1, true, null],
       ])
     })))
 

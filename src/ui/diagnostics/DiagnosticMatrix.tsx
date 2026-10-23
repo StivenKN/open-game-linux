@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import type { CompatibilityStatus } from '../../domain/compatibility.ts'
+import type { AntiCheatStatus } from '../../domain/literals.ts'
 import type { GameId } from '../../domain/ids.ts'
 import type { X86Level } from '../../domain/platform.ts'
 import type { GamePath } from '../../domain/graphics-path.ts'
@@ -19,6 +20,7 @@ export type MatrixRow = {
   readonly regressed: boolean
   readonly blocked_by_anti_cheat: boolean
   readonly out_of_reach: boolean
+  readonly awacy: AntiCheatStatus | null
   readonly x86_level_min: X86Level | null
   readonly path: GamePath
   readonly profile: (EvaluatedProfile & { readonly layer: string; readonly distribution: string }) | null

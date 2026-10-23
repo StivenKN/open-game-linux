@@ -2,7 +2,7 @@ import { Array as Arr, Schema } from 'effect'
 import type { CompatibilityStatus } from './compatibility.ts'
 import type { Evaluation } from './evaluation.ts'
 import type { GamePath } from './graphics-path.ts'
-import { FailingOutcome, WorkingOutcome } from './literals.ts'
+import { type AntiCheatStatus, FailingOutcome, WorkingOutcome } from './literals.ts'
 
 /**
  * The machine certainly cannot run the game: no graphics path for its APIs or too low an x86-64 level,
@@ -21,10 +21,20 @@ type RatedGame = {
   readonly regressed: boolean
   readonly blocked_by_anti_cheat: boolean
   readonly out_of_reach: boolean
+  /** AreWeAntiCheatYet's Broken or Denied: another source, so it never touches the state or the counts. */
+  readonly awacy: AntiCheatStatus | null
 }
 
 const isWorking = Schema.is(WorkingOutcome)
 const isFailing = Schema.is(FailingOutcome)
+
+/**
+ * "Te frenan": the approved evidence fails or is blocked, AreWeAntiCheatYet says online play is blocked, or
+ * the machine falls short. A regression counts only when the state is not working, so a stale break on
+ * another store cannot contradict it.
+ */
+const holdsBack = (g: RatedGame): boolean =>
+  isFailing(g.status) || (g.regressed && !isWorking(g.status)) || g.blocked_by_anti_cheat || g.awacy !== null || g.out_of_reach
 
 /**
  * "Can I switch to Linux?" for a Steam library, computed on each request. `games` are the library games
@@ -49,13 +59,9 @@ export const libraryReadiness = <G extends RatedGame>(games: ReadonlyArray<G>, i
     working_out_of_reach: working.filter((g) => g.out_of_reach).length,
     working_stale: working.filter((g) => g.no_recent_confirmation).length,
     blocked_by_anti_cheat: games.filter((g) => g.blocked_by_anti_cheat).length,
-    /**
-     * "Te frenan": the approved evidence fails or is blocked, or the machine falls short. A regression
-     * counts only when the state is not working, so a stale break on another store cannot contradict it.
-     */
-    holding_back: games.filter((g) => isFailing(g.status) || (g.regressed && !isWorking(g.status)) || g.blocked_by_anti_cheat || g.out_of_reach),
-    /** "Sin evidencia": nobody has an approved test yet, and the machine does not rule the game out. */
-    no_evidence: games.filter((g) => g.status === 'sin_evidencia' && !g.out_of_reach),
+    holding_back: games.filter(holdsBack),
+    /** "Sin evidencia": nobody has an approved test yet, and nothing holds the game back. */
+    no_evidence: games.filter((g) => g.status === 'sin_evidencia' && !holdsBack(g)),
   }
 }
 

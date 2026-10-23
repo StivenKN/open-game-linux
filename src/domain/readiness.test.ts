@@ -2,12 +2,13 @@ import { describe, expect, it } from '@effect/vitest'
 import type { CompatibilityStatus } from './compatibility.ts'
 import type { RequirementsVerdict } from './evaluation.ts'
 import type { GamePath } from './graphics-path.ts'
+import type { AntiCheatStatus } from './literals.ts'
 import { libraryReadiness, outOfReach } from './readiness.ts'
 
 const game = (
   title: string,
   status: CompatibilityStatus,
-  flags: { anti_cheat?: boolean; regressed?: boolean; stale?: boolean; out_of_reach?: boolean } = {},
+  flags: { anti_cheat?: boolean; regressed?: boolean; stale?: boolean; out_of_reach?: boolean; awacy?: AntiCheatStatus } = {},
 ) => ({
   title,
   status,
@@ -15,6 +16,7 @@ const game = (
   regressed: flags.regressed ?? false,
   blocked_by_anti_cheat: flags.anti_cheat ?? false,
   out_of_reach: flags.out_of_reach ?? false,
+  awacy: flags.awacy ?? null,
 })
 
 const titles = (games: ReadonlyArray<{ readonly title: string }>) => games.map((g) => g.title)
@@ -61,6 +63,12 @@ describe('libraryReadiness', () => {
 
   it('a working state outweighs an old break on another edition, as the year window does', () => {
     expect(libraryReadiness([game('Funciona hoy', 'funciona', { regressed: true })], 1)).toMatchObject({ working: 1, holding_back: [] })
+  })
+
+  it("AreWeAntiCheatYet's block holds a game back without touching its state or the anti-cheat count", () => {
+    const r = libraryReadiness([game('Funciona solo', 'funciona', { awacy: 'Denied' }), game('Sin probar', 'sin_evidencia', { awacy: 'Broken' })], 2)
+    expect(r).toMatchObject({ working: 1, blocked_by_anti_cheat: 0, by_status: { funciona: 1, sin_evidencia: 1 }, no_evidence: [] })
+    expect(titles(r.holding_back)).toEqual(['Funciona solo', 'Sin probar'])
   })
 
   it('evidence older than a year still counts as working, and says so', () => {

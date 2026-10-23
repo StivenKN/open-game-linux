@@ -17,6 +17,7 @@ import { requireUser, Visitor } from '../auth.ts'
 import { captureOf } from '../diagnostics/payload.ts'
 import { machineOnLinux } from '../gpu/capability.ts'
 import { rows, type Infra } from '../rows.ts'
+import { onlinePlayBlocks } from './anticheat.ts'
 import { approvedTests } from './game.ts'
 import { layerLabel, distributionLabel } from './labels.ts'
 
@@ -53,6 +54,7 @@ const matrix = (machine: MachineOnLinux, setup: Setup, inLibrary: ReadonlySet<Ga
     )
     const now = new Date(yield* Clock.currentTimeMillis)
     const allTests = yield* approvedTests(null)
+    const awacy = yield* onlinePlayBlocks
     const profiles = yield* rows(
       ApprovedProfile,
       sql`
@@ -82,6 +84,7 @@ const matrix = (machine: MachineOnLinux, setup: Setup, inLibrary: ReadonlySet<Ga
         regressed: regressions.length > 0,
         blocked_by_anti_cheat: blockedByAntiCheat(tests, now),
         out_of_reach: outOfReach(path, evaluated),
+        awacy: awacy.get(game.id) ?? null,
         x86_level_min: game.x86_level_min,
         path,
         profile:
