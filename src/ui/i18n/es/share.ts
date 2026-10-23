@@ -18,6 +18,7 @@ export const share = {
   },
   /** The text drawn into the preview image and the badge. */
   image: {
+    gameNotFound: 'No encontramos ese juego.',
     noReports: 'Todavía no hay reportes aprobados',
     basedOn,
     demoNote: 'datos de ejemplo',

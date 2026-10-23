@@ -16,6 +16,7 @@ export const share = {
     demo: 'Demo data, from demo accounts.',
   },
   image: {
+    gameNotFound: "We couldn't find that game.",
     noReports: 'No approved reports yet',
     basedOn,
     demoNote: 'demo data',

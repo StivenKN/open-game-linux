@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { localizedPath, preferredLang, unprefixedRedirect, withoutLang } from './lang.ts'
+import { localizedPath, pagePath, preferredLang, unprefixedRedirect, withoutLang } from './lang.ts'
 
 const headers = (cookie?: string, acceptLanguage?: string) => {
   const h = new Headers()
@@ -54,5 +54,11 @@ describe('page paths', () => {
     expect(withoutLang('/en')).toBe('/')
     expect(withoutLang('/es/juegos/12')).toBe('/juegos/12')
     expect(withoutLang('/estado')).toBe('/estado')
+  })
+
+  it('reads a matched index route as its URL, without the trailing slash', () => {
+    expect(pagePath('/es/')).toBe('/')
+    expect(pagePath('/en/diagnostico/')).toBe('/diagnostico')
+    expect(pagePath('/es/juegos/12')).toBe('/juegos/12')
   })
 })

@@ -20,6 +20,6 @@ export const gameImage = async (request: Request, segment: string, contentType: 
   const t = messages[imageLang(new URL(request.url))]
   const id = gameId(segment)
   const card = Option.isSome(id) ? await runRead(gameCard(id.value)) : Option.none()
-  if (Option.isNone(card)) return new Response(t.notFound.title, { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+  if (Option.isNone(card)) return new Response(t.share.image.gameNotFound, { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
   return new Response(await draw(card.value, t), { headers: { 'content-type': contentType, 'cache-control': 'public, max-age=300' } })
 }

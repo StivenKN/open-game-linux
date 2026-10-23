@@ -133,6 +133,9 @@ export type RenderPathLabel = {
 /** Every label of one language: its dictionary's words on the shared tones, icons and names. */
 export const vocabulary = (text: typeof source) => {
   const compatibilityStatus = labels(statusStyles, text.compatibilityStatus)
+  // Failure types are rows, looked up by any code; the dictionaries word the seed's.
+  const failureNames: Readonly<Record<string, string>> = text.failureType
+  const failureDescriptions: Readonly<Record<string, string>> = text.failureTypeDescription
   const renderPath = Record.map(renderPathStyles, (style, path): RenderPathLabel => ({ ...style, ...text.renderPath[path] }))
   return {
     compatibilityStatus,
@@ -149,9 +152,9 @@ export const vocabulary = (text: typeof source) => {
     distroVerdict: labels(distroStyles, text.distroVerdict),
     gameRequestStatus: labels(requestStyles, text.gameRequestStatus),
     antiCheatStatus: Record.map(antiCheatStyles, (style, status) => ({ ...style, ...text.antiCheatStatus[status] })),
-    failureType: (code: string): Omit<Label, 'icon'> => ({ text: text.failureType[code] ?? code.replaceAll('_', ' '), tone: failureTones[code] ?? 'amarillo' }),
+    failureType: (code: string): Omit<Label, 'icon'> => ({ text: failureNames[code] ?? code.replaceAll('_', ' '), tone: failureTones[code] ?? 'amarillo' }),
     /** A failure type's description in this language, or the one stored with a type the dictionary lacks. */
-    failureTypeDescription: <D extends string | null>(code: string, stored: D) => text.failureTypeDescription[code] ?? stored,
+    failureTypeDescription: <D extends string | null>(code: string, stored: D) => failureDescriptions[code] ?? stored,
     vulkanSupport: text.vulkanSupport,
     secureBoot: text.secureBoot,
     tpm: text.tpm,

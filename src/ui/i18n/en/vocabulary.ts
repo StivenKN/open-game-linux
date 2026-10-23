@@ -1,6 +1,6 @@
 import type { vocabulary as source } from '../es/vocabulary.ts'
 
-const failureType: Readonly<Record<string, string>> = {
+const failureType = {
   anti_cheat: 'Anti-cheat',
   drm: 'DRM',
   lanzador: 'Launcher',
@@ -8,9 +8,9 @@ const failureType: Readonly<Record<string, string>> = {
   dependencia: 'Dependency',
   rendimiento: 'Performance',
   otro: 'Other',
-}
+} satisfies (typeof source)['failureType']
 
-const failureTypeDescription: Readonly<Record<string, string>> = {
+const failureTypeDescription = {
   anti_cheat: "The game's anti-cheat blocks Linux or the compatibility layer.",
   drm: 'Copy protection keeps the game from starting.',
   lanzador: "The publisher's launcher doesn't open, doesn't sign in or doesn't finish updating.",
@@ -18,7 +18,7 @@ const failureTypeDescription: Readonly<Record<string, string>> = {
   dependencia: 'A library or component the game needs is missing.',
   rendimiento: 'The game runs, but FPS drops or stutters make it unplayable.',
   otro: 'Cause not identified.',
-}
+} satisfies (typeof source)['failureTypeDescription']
 
 const d3dPath = {
   dxvk: { text: 'DXVK with Proton', detail: null },
@@ -47,7 +47,7 @@ export const vocabulary = {
   },
 
   requirementsVerdict: {
-    no_cumple: "Doesn't meet them",
+    no_cumple: "Doesn't meet the requirements",
     informacion_insuficiente: 'Not enough information',
     cumple: 'Meets the known requirements',
   },

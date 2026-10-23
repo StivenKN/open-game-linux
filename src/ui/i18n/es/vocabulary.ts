@@ -15,8 +15,8 @@ import type { NotExportableReason, SkipReason, NoReportReason } from '../../../d
 
 type Sentence = { readonly sentence: string; readonly note: string | null }
 
-// Failure types are rows; a code the dictionary lacks shows as itself.
-const failureType: Readonly<Record<string, string>> = {
+// Failure types are rows: these are the seed's. A code the dictionary lacks shows as itself.
+const failureType = {
   anti_cheat: 'Anti-cheat',
   drm: 'DRM',
   lanzador: 'Lanzador',
@@ -27,7 +27,7 @@ const failureType: Readonly<Record<string, string>> = {
 }
 
 // The seed's failure types, described; a type the dictionary lacks shows the description stored with it.
-const failureTypeDescription: Readonly<Record<string, string>> = {
+const failureTypeDescription = {
   anti_cheat: 'El sistema anti-trampas del juego bloquea Linux o la capa de compatibilidad.',
   drm: 'La protección anticopia impide iniciar el juego.',
   lanzador: 'El lanzador del editor no abre, no inicia sesión o no termina de actualizar.',

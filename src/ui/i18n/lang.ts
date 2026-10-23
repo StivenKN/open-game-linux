@@ -41,6 +41,9 @@ export const localizedPath = (lang: Lang, path: string) => (path === '/' ? `/${l
 /** The page path without its language: `/en/juegos/12` is `/juegos/12`, and `/en` is `/`. */
 export const withoutLang = (pathname: string) => pathname.replace(/^\/(es|en)(?=\/|$)/, '') || '/'
 
+/** A matched route's page path, as its URL reads: no language, and no index route's trailing slash (`/es/guias/` is `/guias`). */
+export const pagePath = (matchPathname: string) => withoutLang(matchPathname).replace(/(.)\/$/, '$1')
+
 /**
  * Where a GET for `url` redirects, or null when it stays. A path that already starts with a language stays,
  * and so do better-auth's /api/ and every file (a last segment with a dot): the detector scripts and the
