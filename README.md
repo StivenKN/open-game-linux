@@ -70,7 +70,7 @@ pnpm set-role demo_ana@demo.opengame.test revisor
 
 A game's page can also show aggregate numbers from [ProtonDB](https://www.protondb.com), in their own section. They never change the state that OpenGame computes from approved reports. ProtonDB publishes a monthly export at [github.com/bdefore/protondb-data](https://github.com/bdefore/protondb-data): one `reports/reports_<month><day>_<year>.tar.gz` file holding a single `reports_piiremoved.json`.
 
-To import the newest export, run the import with `--latest`. It finds the newest file in the `reports/` folder of that repository, downloads it and reads the JSON out of the archive as it arrives, so nothing is extracted to disk. If that export was already imported and no Steam game was added to the catalog since, it stops after one small request and downloads nothing.
+To import the newest export, run the import with `--latest`. It finds the newest file in the `reports/` folder of that repository, downloads it and reads the JSON out of the archive as it arrives, so nothing is extracted to disk. A download that is not the exact file GitHub lists fails and changes nothing. If that export was already imported and no Steam game was added to the catalog since, it stops after one small request and downloads nothing.
 
 ```sh
 pnpm db:protondb --latest

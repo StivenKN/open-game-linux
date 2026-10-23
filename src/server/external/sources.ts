@@ -60,9 +60,15 @@ export const alreadyImported = (source: ExternalSource, file: string) =>
     return last !== undefined && last.file_sha === file && last.steam_apps === steamAppsDigest(yield* steamEditions)
   })
 
-export type UpstreamFile = { readonly name: string; readonly sha: string; readonly url: string }
+export type UpstreamFile = { readonly name: string; readonly sha: string; readonly size: number; readonly url: string }
 
-const ListedFile = Schema.Struct({ name: Schema.String, sha: Schema.String, type: Schema.String, download_url: Schema.NullOr(Schema.String) })
+const ListedFile = Schema.Struct({
+  name: Schema.String,
+  sha: Schema.String,
+  size: Schema.Int,
+  type: Schema.String,
+  download_url: Schema.NullOr(Schema.String),
+})
 const decodeListing = Schema.decodeUnknownEffect(Schema.Array(ListedFile))
 
 // The response body as it arrives. GitHub asks API clients for a User-Agent. Node's fetch already fails a body
@@ -85,7 +91,7 @@ const listing = (directory: string) =>
       Effect.flatMap(decodeListing),
       Effect.mapError(() => new UnreachableSource({ reason: `${url} no devolvió una lista de archivos` })),
     )
-    return files.flatMap((f) => (f.type === 'file' && f.download_url !== null ? [{ name: f.name, sha: f.sha, url: f.download_url }] : []))
+    return files.flatMap(({ name, sha, size, type, download_url: url }) => (type === 'file' && url !== null ? [{ name, sha, size, url }] : []))
   })
 
 const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
@@ -122,8 +128,29 @@ export const latestAntiCheatList = Effect.flatMap(listing('AreWeAntiCheatYet/Are
   ),
 )
 
+/**
+ * Passes the bytes through, then fails unless they are the listed file: its size and git blob sha. A branch URL
+ * can serve the previous content for minutes after a commit, and recording the new sha with old bytes would skip
+ * the new version until the next one. The importers read everything before writing, so a mismatch changes nothing.
+ */
+export const checkedAgainst = (file: UpstreamFile) => {
+  const hash = createHash('sha1').update(`blob ${file.size}\0`)
+  let size = 0
+  return new TransformStream<Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>>({
+    transform(chunk, controller) {
+      hash.update(chunk)
+      size += chunk.byteLength
+      controller.enqueue(chunk)
+    },
+    flush() {
+      if (size !== file.size || hash.digest('hex') !== file.sha)
+        throw new InvalidExport({ reason: `lo descargado no es la versión de ${file.name} que lista GitHub` })
+    },
+  })
+}
+
 /** The file's bytes as they arrive. The 70 MB ProtonDB export took 9 minutes at 200 KB/s, so it gets 2 hours. */
-export const download = (file: UpstreamFile) => get(file.url, 2 * 60 * 60_000)
+export const download = (file: UpstreamFile) => Effect.map(get(file.url, 2 * 60 * 60_000), (body) => body.pipeThrough(checkedAgainst(file)))
 
 export async function* utf8(chunks: AsyncIterable<Uint8Array>): AsyncGenerator<string> {
   const decoder = new TextDecoder()
@@ -156,13 +183,16 @@ const REGULAR = new Set([0, 0x30, 0x37])
 /**
  * Yields the bytes of the first regular file in a tar stream whose name ends in `suffix`, as they arrive,
  * so an export never touches the disk or sits whole in memory. Every other entry, including pax and GNU
- * long-name records, is skipped. Fails on a header that is not tar, a truncated stream, or no such file.
+ * long-name records, is skipped; the name is the header's 100-byte field, so a longer one is not matched.
+ * It reads the stream to its end, so `checkedAgainst` sees every byte. Fails on a header that is not tar, a
+ * truncated stream, or no such file.
  */
 export async function* tarFile(chunks: AsyncIterable<Uint8Array>, suffix: string): AsyncGenerator<Uint8Array> {
   const header = new Uint8Array(BLOCK)
   let filled = 0
   let skip = 0
   let left = 0
+  let found = false
   for await (const chunk of chunks) {
     let i = 0
     while (i < chunk.length) {
@@ -171,8 +201,8 @@ export async function* tarFile(chunks: AsyncIterable<Uint8Array>, suffix: string
         left -= part.length
         i += part.length
         yield part
-        if (left === 0) return
-      } else if (skip > 0) {
+      } else if (found) i = chunk.length
+      else if (skip > 0) {
         const n = Math.min(skip, chunk.length - i)
         skip -= n
         i += n
@@ -188,11 +218,12 @@ export async function* tarFile(chunks: AsyncIterable<Uint8Array>, suffix: string
         if (!checksumMatches(header) || Number.isNaN(size)) throw new InvalidExport({ reason: 'no es un archivo .tar' })
         if (REGULAR.has(header[156] ?? -1) && field(header, 0, 100).endsWith(suffix)) {
           left = size
-          if (left === 0) return
+          found = true
         } else skip = Math.ceil(size / BLOCK) * BLOCK
       }
     }
   }
+  if (found && left === 0) return
   throw new InvalidExport({ reason: left > 0 || skip > 0 || filled > 0 ? 'el .tar está truncado' : `el .tar no contiene un archivo ${suffix}` })
 }
 

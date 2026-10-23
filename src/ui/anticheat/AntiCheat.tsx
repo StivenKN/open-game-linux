@@ -22,7 +22,11 @@ export function AntiCheatLine({ status }: { status: AntiCheatStatus }) {
 /** The game page's section. It never changes OpenGame's computed state. */
 export function AntiCheatSection({ anticheat: a }: { anticheat: AntiCheatEntry | null }) {
   if (a === null)
-    return <p className="card muted">Sin datos de AreWeAntiCheatYet para este juego. Esa lista solo incluye juegos con anti-cheat.</p>
+    return (
+      <p className="card muted">
+        Sin datos de AreWeAntiCheatYet para este juego. OpenGame lo busca en esa lista por el identificador de su edición de Steam.
+      </p>
+    )
   const label = antiCheatStatus[a.status]
   return (
     <div className="card stack">
