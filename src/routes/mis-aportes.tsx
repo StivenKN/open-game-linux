@@ -4,8 +4,8 @@ import { myContributionsFn } from '../fns/contributions.ts'
 import { Badge, Chip } from '../ui/Badge.tsx'
 import { DemoStamp } from '../ui/DemoStamp.tsx'
 import { SavedMachines } from '../ui/diagnostics/SavedMachines.tsx'
-import { date, dateTime } from '../ui/format.ts'
-import { failureType, outcome, reviewStatus } from '../ui/vocabulary.ts'
+import { count, date, dateTime } from '../ui/format.ts'
+import { failureType, gameRequestStatus, outcome, reviewStatus } from '../ui/vocabulary.ts'
 import { returnHere } from './-return-to.ts'
 
 export const Route = createFileRoute('/mis-aportes')({
@@ -20,8 +20,8 @@ export const Route = createFileRoute('/mis-aportes')({
 type Review = Awaited<ReturnType<typeof myContributionsFn>>['reports'][number]['review']
 
 function MyContributionsPage() {
-  const { demo, reports, solutions, profiles, machines } = Route.useLoaderData()
-  const empty = reports.length + solutions.length + profiles.length + machines.length === 0
+  const { demo, reports, solutions, profiles, machines, requests } = Route.useLoaderData()
+  const empty = reports.length + solutions.length + profiles.length + machines.length + requests.length === 0
   return (
     <main className="wrapper stack">
       <h1 className="row">Mis aportes {demo && <DemoStamp />}</h1>
@@ -102,6 +102,40 @@ function MyContributionsPage() {
                 </Link>
               </p>
             </Item>
+          ))}
+        </Section>
+      )}
+      {requests.length > 0 && (
+        <Section id="pedidos" title="Pedidos de juegos">
+          {requests.map((r) => (
+            <li key={r.id} className="card stack">
+              <p className="row">
+                <Badge label={gameRequestStatus[r.status]} />
+                <span className="small muted">Pedido el {date(r.requested_at)}</span>
+              </p>
+              <p>
+                <strong>{r.title}</strong>
+              </p>
+              {r.status === 'abierto' && (
+                <p className="row small">
+                  <span className="muted">{count(r.requesters, 'persona lo pide', 'personas lo piden')}</span>
+                  <Link to="/pedidos">Ver los pedidos abiertos</Link>
+                </p>
+              )}
+              {r.status === 'cumplido' && (
+                <p className="small">
+                  Un revisor lo agregó el {date(r.resolved_at)}.{' '}
+                  <Link to="/juegos/$gameId" params={{ gameId: r.game_id }}>
+                    Ver la ficha de {r.game}
+                  </Link>
+                </p>
+              )}
+              {r.status === 'rechazado' && (
+                <p className="note small" data-tone={gameRequestStatus.rechazado.tone}>
+                  Motivo del rechazo: {r.rejection_reason}
+                </p>
+              )}
+            </li>
           ))}
         </Section>
       )}

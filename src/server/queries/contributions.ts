@@ -8,6 +8,7 @@ import { requireUser } from '../auth.ts'
 import { profileEditable } from '../commands/contributions.ts'
 import { rows } from '../rows.ts'
 import { myMachines } from './diagnostic.ts'
+import { myGameRequests } from './game-requests.ts'
 import { distributionLabel, isDemo, layerLabel } from './labels.ts'
 
 /**
@@ -116,5 +117,6 @@ export const myContributions = Effect.gen(function* () {
     solutions: yield* solutions(user.id),
     profiles: yield* profiles(user.id),
     machines: yield* myMachines(),
+    requests: yield* myGameRequests(user.id),
   }
 })

@@ -8,6 +8,7 @@ import type { Role } from '../src/domain/review.ts'
 import { type SignedInUser, Visitor } from '../src/server/auth.ts'
 import { createGame } from '../src/server/commands/contributions.ts'
 import { rejectRequest, requestGame, withdrawRequest } from '../src/server/commands/game-requests.ts'
+import { myContributions } from '../src/server/queries/contributions.ts'
 import { gameRequests } from '../src/server/queries/game-requests.ts'
 import { constraintOf, idOf, inRollback, PgTest } from './support.ts'
 
@@ -184,7 +185,7 @@ layer(PgTest)('game requests', (it) => {
       ])
     })))
 
-  it.effect('the page lists open requests by requester count, and each requester sees their requests in every state', inScenario((e) =>
+  it.effect('/pedidos lists open requests by requester count, and Mis aportes shows each requester their requests in every state', inScenario((e) =>
     Effect.gen(function* () {
       const hades = yield* opened(e.demo, 'Hades')
       const celeste = yield* opened(e.demo, 'Celeste')
@@ -193,17 +194,20 @@ layer(PgTest)('game requests', (it) => {
       yield* asUser(e.rita)(reject(tunic))
 
       const asAna = yield* Effect.provideService(gameRequests, Visitor, Option.some(e.ana))
-      expect(asAna.open.map((r) => [r.title, r.requesters, r.mine, r.demo])).toEqual([
+      expect(asAna.map((r) => [r.title, r.requesters, r.mine, r.demo])).toEqual([
         ['Celeste', 2, true, false],
         ['Hades', 1, false, true],
       ])
-      expect(asAna.mine).toEqual([
+      const asGuest = yield* Effect.provideService(gameRequests, Visitor, Option.none())
+      expect(asGuest.map((r) => [r.id, r.mine])).toEqual([[celeste, false], [hades, false]])
+
+      const { requests } = yield* Effect.provideService(myContributions, Visitor, Option.some(e.ana))
+      expect(requests).toEqual([
         expect.objectContaining({ id: tunic, status: 'rechazado', rejection_reason: 'No es un juego de Windows' }),
         expect.objectContaining({ id: celeste, status: 'abierto', requesters: 2 }),
       ])
-      const asGuest = yield* Effect.provideService(gameRequests, Visitor, Option.none())
-      expect(asGuest.open.map((r) => [r.id, r.mine])).toEqual([[celeste, false], [hades, false]])
-      expect(asGuest.mine).toEqual([])
+      // Decoding keeps only the members' columns: an open request carries no resolution.
+      expect(Object.keys(requests[1] ?? {}).sort()).toEqual(['id', 'requested_at', 'requesters', 'status', 'title'])
     })))
 
   it.effect('the table shapes each state: an open request names no game and no reviewer', inScenario((e) =>

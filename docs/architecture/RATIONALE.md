@@ -320,7 +320,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 
 **Shape.**
 
-- `/mis-aportes` reads `myContributions` (`server/queries/contributions.ts`): one query per kind, for reports, solutions and profiles, plus `myMachines` for the saved diagnostics. A new kind of contribution is one more query, one more key and one more section. Each item links to its game, a profile to its page while it is active, and a diagnostic to its page.
+- `/mis-aportes` reads `myContributions` (`server/queries/contributions.ts`): one query per kind, for reports, solutions and profiles, plus `myMachines` for the saved diagnostics and `myGameRequests` for game requests. A new kind of contribution is one more query, one more key and one more section. Each item links to its game, a profile to its page while it is active, and a diagnostic to its page.
 - The review reaches its author as `AuthorReview`, a union in which only `rechazado` and `retirado` carry the reason. The query reads the reason for every state and decoding drops it from the active member, so an approval's reason never leaves the server. No page names the reviewer, so this one does not either.
 - Profiles are listed with the other kinds. Profile authoring came later and added only the form (Profile and guide authoring).
 - A report that `protonReportPossible` admits, while it is active, links "Prepara el informe para Valve". The "Reporte enviado" panel was the only way to reach that page.
@@ -334,7 +334,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 
 - **A trigger for the last administrador.** The rule spans rows, and the app's cross-row rules live in their writer.
 - **Separate actions for the role and for deactivation.** One form per account and one writer is less code, and the guard sees the whole change at once.
-- **Sharing the catalog's lenient search Schema.** It lives in `routes/index.tsx`, which the catalog lane is rewriting. `/admin/usuarios` reads `q` with a three-line function instead.
+- **Sharing the catalog's lenient search Schema.** It lived in `routes/index.tsx`, which the catalog lane was rewriting. `/admin/usuarios` reads `q` with a three-line function instead; the catalog lane has since moved the Schema to `routes/-search.ts`.
 
 ## Game page: version history and follows
 
@@ -392,7 +392,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 **Shape.**
 
 - Migration `8_catalog` creates `pg_trgm` and a GIN trigram index on `game.title`. `catalog` keeps the substring match and adds `q <% title`, then orders by `word_similarity(q, title)`. The threshold is the extension's default, 0.6: on the seeded titles every typo the tests try scores 0.62 or more, and the closest miss («theft» against «The Witcher 3: Wild Hunt») scores 0.5. `pg_trgm` is a trusted extension, so the database owner creates it without superuser; that was checked with a non-superuser owner.
-- `game_request` holds one row per requested game and `game_request_user` one row per requester. A request is `abierto` until a reviewer fulfils it by creating its game (`cumplido`, linked to the game) or rejects it with a reason (`rechazado`). The CHECK `game_request_resolution` shapes each state, like the review block. `/pedidos` lists the open requests by requester count and each user's own requests in every state; every catalog search links to it with the search as the title.
+- `game_request` holds one row per requested game and `game_request_user` one row per requester. A request is `abierto` until a reviewer fulfils it by creating its game (`cumplido`, linked to the game) or rejects it with a reason (`rechazado`). The CHECK `game_request_resolution` shapes each state, like the review block. `/pedidos` lists the open requests by requester count, and "Mis aportes" shows each user's own requests in every state (`myGameRequests`), so a requester follows a request where they follow everything else they sent. Every catalog search links to `/pedidos` with the search as the title.
 - `server/commands/game-requests.ts` is the single writer. A new request joins the open one with the same Steam App ID, or the same title (letters and digits, case-folded) when either side has no App ID; a game already in the catalog, matched the same way against its Steam edition, is pointed to instead. Every writer locks `game_request` first, so two first requests for one game cannot both create it. A request that joins one without an App ID gives it its own. The last requester to withdraw deletes the request. `createGame` fulfils, in its own transaction, the request it started from and every other open request that asks for the new game, so a request is never `cumplido` without its game and never stays open once its game exists.
 - Fuzzy search can stand a near miss in for a missing game («The Witcher 2» finds The Witcher 3), so the request link shows under any search, not only an empty one.
 - `server/external/steam.ts` calls the store's `appdetails` endpoint, with a 5-second timeout, for reviewers only, and fills the title, the plain-text short description and the Steam edition. Nothing is stored until the reviewer submits the form.

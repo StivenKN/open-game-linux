@@ -5,13 +5,11 @@ import { RejectRequest, RequestGame } from '../domain/contributions.ts'
 import { GameRequestId } from '../domain/ids.ts'
 import { canReview } from '../domain/review.ts'
 import { gameRequestsFn, rejectRequestFn, requestGameFn, withdrawRequestFn } from '../fns/game-requests.ts'
-import { Badge } from '../ui/Badge.tsx'
 import { DemoStamp } from '../ui/DemoStamp.tsx'
 import { FieldError } from '../ui/FieldError.tsx'
 import { Field, fieldProps } from '../ui/form.tsx'
 import { count, date } from '../ui/format.ts'
 import { ruleErrors, useAction } from '../ui/useAction.ts'
-import { gameRequestStatus } from '../ui/vocabulary.ts'
 import { lenient, SearchText } from './-search.ts'
 import { returnHere } from './-return-to.ts'
 
@@ -23,13 +21,13 @@ export const Route = createFileRoute('/pedidos')({
   component: GameRequestsPage,
 })
 
-type Requests = Awaited<ReturnType<typeof gameRequestsFn>>
+type OpenRequestRow = Awaited<ReturnType<typeof gameRequestsFn>>[number]
 type Outcome = Extract<Awaited<ReturnType<typeof requestGameFn>>, { ok: true }>['value']
 
 const requesters = (n: number) => count(n, 'persona lo pide', 'personas lo piden')
 
 function GameRequestsPage() {
-  const { open, mine } = Route.useLoaderData()
+  const open = Route.useLoaderData()
   const { titulo } = Route.useSearch()
   const { visitor } = Route.useRouteContext()
   const location = useLocation()
@@ -37,8 +35,11 @@ function GameRequestsPage() {
     <main className="wrapper">
       <h1>Pedidos de juegos</h1>
       <p className="muted">
-        ¿Falta un juego en el catálogo? Pídelo. Si alguien ya lo pidió, te sumas a su pedido. Un revisor lo agrega con sus datos, y aquí ves
-        cuándo está listo.
+        ¿Falta un juego en el catálogo? Pídelo. Si alguien ya lo pidió, te sumas a su pedido. Un revisor lo agrega con sus datos, y en{' '}
+        <Link to="/mis-aportes" hash="pedidos">
+          Mis aportes
+        </Link>{' '}
+        ves cuándo está listo.
       </p>
       {visitor === null ? (
         <p className="card">
@@ -49,19 +50,6 @@ function GameRequestsPage() {
         </p>
       ) : (
         <RequestForm title={titulo} />
-      )}
-
-      {mine.length > 0 && (
-        <section aria-labelledby="mine-title">
-          <h2 id="mine-title" className="section-title">
-            Tus pedidos
-          </h2>
-          <ul className="card-list">
-            {mine.map((r) => (
-              <MyRequest key={r.id} request={r} />
-            ))}
-          </ul>
-        </section>
       )}
 
       <section aria-labelledby="open-title">
@@ -131,43 +119,13 @@ function OutcomeNote({ outcome }: { outcome: Outcome }) {
   return (
     <p className="note small" data-tone="verde" role="status">
       {outcome.requesters === 1
-        ? `Pediste «${outcome.request.title}». Cuando un revisor lo agregue, lo verás en «Tus pedidos».`
+        ? `Pediste «${outcome.request.title}». Cuando un revisor lo agregue, lo verás en «Mis aportes».`
         : `Te sumaste al pedido de «${outcome.request.title}». Ya lo piden ${outcome.requesters} personas.`}
     </p>
   )
 }
 
-function MyRequest({ request: r }: { request: Requests['mine'][number] }) {
-  return (
-    <li className="card stack">
-      <div className="row">
-        <Badge label={gameRequestStatus[r.status]} />
-        <strong>{r.title}</strong>
-      </div>
-      {r.status === 'abierto' && (
-        <div className="row">
-          <span className="small muted">{requesters(r.requesters)}</span>
-          <WithdrawButton id={r.id} />
-        </div>
-      )}
-      {r.status === 'cumplido' && (
-        <p className="small no-margin">
-          Un revisor lo agregó el {date(r.resolved_at)}.{' '}
-          <Link to="/juegos/$gameId" params={{ gameId: r.game_id }}>
-            Ver la ficha de {r.game}
-          </Link>
-        </p>
-      )}
-      {r.status === 'rechazado' && (
-        <p className="small no-margin">
-          Un revisor lo rechazó el {date(r.resolved_at)}: {r.rejection_reason}
-        </p>
-      )}
-    </li>
-  )
-}
-
-function OpenRequest({ request: r, signedIn, reviewer }: { request: Requests['open'][number]; signedIn: boolean; reviewer: boolean }) {
+function OpenRequest({ request: r, signedIn, reviewer }: { request: OpenRequestRow; signedIn: boolean; reviewer: boolean }) {
   return (
     <li className="card stack">
       <div className="row">
@@ -183,7 +141,7 @@ function OpenRequest({ request: r, signedIn, reviewer }: { request: Requests['op
         <span className="small muted">
           {requesters(r.requesters)} · desde el {date(r.created_at)}
         </span>
-        {signedIn && (r.mine ? <span className="small">Ya lo pides</span> : <JoinButton id={r.id} />)}
+        {signedIn && (r.mine ? <WithdrawButton id={r.id} /> : <JoinButton id={r.id} />)}
       </div>
       {reviewer && <ReviewerActions id={r.id} />}
     </li>

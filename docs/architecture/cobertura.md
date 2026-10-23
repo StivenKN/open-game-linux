@@ -44,14 +44,14 @@ Gaps by requirement:
 
 | Feature | Route | Server program | Tests |
 |---|---|---|---|
-| A signed-in user sees their reports, solutions, profiles and saved diagnostics with each review state, and the reviewer's reason for a rejected or retired one | `/mis-aportes` (header "Mis aportes") | `myContributionsFn` → `server/queries/contributions.ts` `myContributions` | `tests/accounts.test.ts` "lista solo lo propio, con el motivo solo de lo rechazado o retirado y sin el revisor", "un invitado va a entrar" |
+| A signed-in user sees their reports, solutions, profiles, saved diagnostics and game requests with each review state, and the reviewer's reason for a rejected or retired one | `/mis-aportes` (header "Mis aportes") | `myContributionsFn` → `server/queries/contributions.ts` `myContributions` | `tests/accounts.test.ts` "lista solo lo propio, con el motivo solo de lo rechazado o retirado y sin el revisor", "un invitado va a entrar" |
 | An administrador changes an account's role and active flag; the last active administrador and the administrator's own access are kept | `/admin/usuarios?q=` (header "Usuarios", administrators only) | `accountsFn` → `server/queries/accounts.ts` `accounts`; `changeAccessFn` → `server/commands/accounts.ts` `changeAccess`, shared with `pnpm set-role` | `tests/accounts.test.ts` `changeAccess` (6, including "un administrador de ejemplo, cuya contraseña es pública, solo ve y cambia cuentas de ejemplo") and `accounts` (2). `tests/signup.test.ts` "con la contraseña correcta dice por qué y no abre sesión; con otra, no revela nada". `tests/run.test.ts` "una cuenta desactivada cuenta como visitante sin sesión" |
 
 ## Beyond section 7.1: game requests
 
 | Feature | Route | Server program | Tests |
 |---|---|---|---|
-| Signed-in users request a game the catalog lacks, or join an open request; reviewers create its game from it or reject it with a reason; requesters see each request's state | `/pedidos`, linked from every catalog search ("¿No está? Pídelo", or "¿No es ninguno de estos? Pídelo" under results); `/catalogo/nuevo?pedido=` | `gameRequestsFn` → `server/queries/game-requests.ts`; `requestGameFn`, `withdrawRequestFn`, `rejectRequestFn` → `server/commands/game-requests.ts`; `createGame` fulfils | `tests/game-requests.test.ts` (one open request per game, catalog matches, withdraw, reject, fulfil in the same transaction, a game created without its request still closes it, the read model, the resolution CHECK) |
+| Signed-in users request a game the catalog lacks, or join an open request; reviewers create its game from it or reject it with a reason; requesters see each request's state in "Mis aportes" | `/pedidos`, linked from every catalog search ("¿No está? Pídelo", or "¿No es ninguno de estos? Pídelo" under results); `/catalogo/nuevo?pedido=` | `gameRequestsFn` → `server/queries/game-requests.ts` `gameRequests`, and `myGameRequests` inside `myContributions`; `requestGameFn`, `withdrawRequestFn`, `rejectRequestFn` → `server/commands/game-requests.ts`; `createGame` fulfils | `tests/game-requests.test.ts` (one open request per game, catalog matches, withdraw, reject, fulfil in the same transaction, a game created without its request still closes it, `/pedidos` and "Mis aportes", the resolution CHECK) |
 
 ## Wireframed screens
 
