@@ -86,6 +86,14 @@ describe('boundaries', () => {
     expect(violations).toEqual([])
   })
 
+  it('only server/commands/contributions.ts writes profiles and guides (authoring single writer)', () => {
+    const write = /\b(INSERT INTO|UPDATE|DELETE FROM)\s+(profile|profile_step|profile_dependency|adoption_guide)\b/
+    const violations = [...files('src'), ...files('scripts')]
+      .filter((f) => f !== 'src/server/commands/contributions.ts' && !f.startsWith('src/server/schema/') && write.test(read(f)))
+      .map((f) => `${f} writes a profile or a guide; call proposeProfile(), editProfile(), deleteProfile(), createGuide() or editGuide() instead`)
+    expect(violations).toEqual([])
+  })
+
   it('only server/commands/upstream.ts writes upstream_fix (single writer)', () => {
     const write = /\b(INSERT INTO|UPDATE|DELETE FROM)\s+upstream_fix\b/
     const violations = [...files('src'), ...files('scripts')]

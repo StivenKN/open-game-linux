@@ -2,11 +2,26 @@ import { Effect, Schema, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { TargetProfile } from '../../domain/contributions.ts'
 import { NotFound } from '../../domain/errors.ts'
-import { DiagnosticId, DistributionId, EditionId, type GameId, type ProfileId, type ReportId } from '../../domain/ids.ts'
+import { DiagnosticId, DistributionId, EditionId, type GameId, type GuideId, type ProfileId, type ReportId } from '../../domain/ids.ts'
 import { activeStatuses } from '../../domain/review.ts'
-import { Diagnostic, Machine, Game, Launcher, Profile, Report, FailureType, LayerVersion } from '../../domain/tables.ts'
+import {
+  AdoptionGuide,
+  Dependency,
+  Diagnostic,
+  Distribution,
+  Machine,
+  Game,
+  Launcher,
+  Profile,
+  ProfileDependency,
+  ProfileStep,
+  Report,
+  FailureType,
+  LayerVersion,
+} from '../../domain/tables.ts'
+import { profileEditable } from '../commands/contributions.ts'
 import { requireReviewer, requireUser } from '../auth.ts'
-import { rows } from '../rows.ts'
+import { oneRow, rows } from '../rows.ts'
 import { layerLabel, distributionLabel } from './labels.ts'
 
 const GameRow = Game.mapFields(Struct.pick(['id', 'title']))
@@ -104,3 +119,120 @@ export const gameOptions = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
   return { launchers: yield* rows(LauncherRow, sql`SELECT id, name FROM launcher ORDER BY name`) }
 })
+
+const DistributionOption = Schema.Struct({ id: Distribution.fields.id, name: Name })
+const DependencyOption = Dependency.mapFields(Struct.pick(['id', 'name', 'package_manager']))
+
+const distributionOptions = Effect.flatMap(SqlClient.SqlClient, (sql) =>
+  rows(DistributionOption, sql`SELECT d.id, ${sql.literal(distributionLabel('d'))} AS name FROM distribution d ORDER BY d.name, d.version`),
+)
+
+const dependencyOptions = Effect.flatMap(SqlClient.SqlClient, (sql) =>
+  rows(DependencyOption, sql`SELECT id, name, package_manager FROM dependency ORDER BY name, package_manager`),
+)
+
+const contentColumns =
+  'p.title, p.target_game_version, p.ram_min_mb, p.vram_min_mb, p.requires_vulkan, p.vulkan_version_min, p.cpu_requirement, p.gpu_requirement, p.launch_options'
+
+const DraftContent = Profile.mapFields(
+  Struct.pick([
+    'title',
+    'target_game_version',
+    'ram_min_mb',
+    'vram_min_mb',
+    'requires_vulkan',
+    'vulkan_version_min',
+    'cpu_requirement',
+    'gpu_requirement',
+    'launch_options',
+  ]),
+)
+const DraftStep = ProfileStep.mapFields(Struct.pick(['title', 'instruction']))
+const DraftDependency = ProfileDependency.mapFields(Struct.pick(['dependency_id', 'required_version', 'required', 'install_instruction']))
+
+/** A profile's content, with its steps and dependencies in the order its page shows them, to fill the form. */
+const draftOf = (id: ProfileId) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    const content = yield* oneRow(DraftContent, sql`SELECT ${sql.literal(contentColumns)} FROM profile p WHERE p.id = ${id}`)
+    const steps = yield* rows(DraftStep, sql`SELECT title, instruction FROM profile_step WHERE profile_id = ${id} ORDER BY position`)
+    const dependencies = yield* rows(
+      DraftDependency,
+      sql`SELECT pd.dependency_id, pd.required_version, pd.required, pd.install_instruction
+          FROM profile_dependency pd JOIN dependency d ON d.id = pd.dependency_id
+          WHERE pd.profile_id = ${id} ORDER BY pd.required DESC, d.name`,
+    )
+    return { ...content, steps, dependencies }
+  })
+
+const SourceEnvironment = Profile.mapFields(Struct.pick(['id', 'edition_id', 'distribution_id', 'layer_version_id', 'architecture']))
+
+/** The propose form. `from` names a public profile of the same game to start from: a new version with changes. */
+export const profileOptions = (gameId: GameId, from: ProfileId | null) =>
+  Effect.gen(function* () {
+    yield* requireUser
+    const sql = yield* SqlClient.SqlClient
+    const [game] = yield* rows(GameRow, sql`SELECT id, title FROM game WHERE id = ${gameId}`)
+    if (game === undefined) return yield* Effect.fail(new NotFound())
+    const editions = yield* rows(
+      EditionRow,
+      sql`SELECT e.id, l.name AS launcher FROM game_edition e JOIN launcher l ON l.id = e.launcher_id
+          WHERE e.game_id = ${gameId} ORDER BY l.name`,
+    )
+    const layers = yield* rows(LayerVersion, sql`SELECT id, family, variant, version FROM layer_version ORDER BY family, variant, version`)
+    const [source] =
+      from === null
+        ? []
+        : yield* rows(
+            SourceEnvironment,
+            sql`SELECT p.id, p.edition_id, p.distribution_id, p.layer_version_id, p.architecture
+                FROM profile p JOIN game_edition e ON e.id = p.edition_id
+                WHERE p.id = ${from} AND e.game_id = ${gameId} AND p.review_status IN ${sql.in(activeStatuses)}`,
+          )
+    const draft = source === undefined ? null : { ...source, ...(yield* draftOf(source.id)) }
+    return { game, editions, layers, distributions: yield* distributionOptions, dependencies: yield* dependencyOptions, draft }
+  })
+
+const EditedProfile = Schema.Struct({
+  ...Profile.mapFields(Struct.pick(['id', 'revision', 'architecture'])).fields,
+  editable: Schema.Boolean,
+  game_id: Game.fields.id,
+  game: Game.fields.title,
+  launcher: Launcher.fields.name,
+  distribution: Name,
+  layer: Name,
+})
+
+/** The edit form, for the profile's author only; `editable` is false once it was used or reviewed. */
+export const profileEditOptions = (id: ProfileId) =>
+  Effect.gen(function* () {
+    const user = yield* requireUser
+    const sql = yield* SqlClient.SqlClient
+    const [profile] = yield* rows(
+      EditedProfile,
+      sql`SELECT p.id, p.revision, p.architecture, ${sql.literal(profileEditable('p'))} AS editable,
+                 j.id AS game_id, j.title AS game, l.name AS launcher,
+                 ${sql.literal(distributionLabel('di'))} AS distribution, ${sql.literal(layerLabel('c'))} AS layer
+          FROM profile p JOIN game_edition e ON e.id = p.edition_id JOIN game j ON j.id = e.game_id JOIN launcher l ON l.id = e.launcher_id
+            JOIN distribution di ON di.id = p.distribution_id JOIN layer_version c ON c.id = p.layer_version_id
+          WHERE p.id = ${id} AND p.author_id = ${user.id}`,
+    )
+    if (profile === undefined) return yield* Effect.fail(new NotFound())
+    return { profile, draft: yield* draftOf(id), dependencies: yield* dependencyOptions }
+  })
+
+export const guideOptions = Effect.gen(function* () {
+  yield* requireReviewer
+  return { distributions: yield* distributionOptions }
+})
+
+const GuideDraft = AdoptionGuide.mapFields(Struct.pick(['id', 'type', 'distribution_id', 'title', 'content', 'revision', 'status']))
+
+export const guideEditOptions = (id: GuideId) =>
+  Effect.gen(function* () {
+    yield* requireReviewer
+    const sql = yield* SqlClient.SqlClient
+    const [guide] = yield* rows(GuideDraft, sql`SELECT id, type, distribution_id, title, content, revision, status FROM adoption_guide WHERE id = ${id}`)
+    if (guide === undefined) return yield* Effect.fail(new NotFound())
+    return { guide, distributions: yield* distributionOptions }
+  })

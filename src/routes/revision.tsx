@@ -192,7 +192,10 @@ function ProfileDetail({ e }: { e: ItemOf<'perfil'> }) {
   return (
     <>
       <p>
-        <strong>{e.title}</strong> <span className="datum muted">r{e.revision}</span>
+        <Link to="/perfiles/$profileId" params={{ profileId: e.id }}>
+          <strong>{e.title}</strong>
+        </Link>{' '}
+        <span className="datum muted">r{e.revision}</span>
       </p>
       <p className="datum">
         {e.distribution} · {e.architecture} · {e.layer}

@@ -7,6 +7,8 @@ import { ReviewStatus, activeStatuses } from '../../domain/review.ts'
 import { LayerFamily } from '../../domain/literals.ts'
 import { Dependency, GameEdition, Game, ProfileStep, Profile, ProfileDependency } from '../../domain/tables.ts'
 import { exportFix, PrNumber } from '../../domain/upstream.ts'
+import { Visitor } from '../auth.ts'
+import { profileEditable } from '../commands/contributions.ts'
 import { machineOnLinux } from '../gpu/capability.ts'
 import { isDemo, layerLabel, distributionLabel } from './labels.ts'
 import { visitorDiagnostic } from './game.ts'
@@ -39,6 +41,8 @@ const ProfileRow = Profile.mapFields(
     layer: Schema.String,
     author: Schema.String,
     demo: Schema.Boolean,
+    // The visitor wrote it and may still change it.
+    editable: Schema.Boolean,
   }),
 )
 
@@ -53,6 +57,7 @@ const DependencyRow = ProfileDependency.mapFields(Struct.pick(['required_version
 export const profile = (id: ProfileId) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
+    const visitorId = Option.getOrNull(Option.map(yield* Visitor, (u) => u.id))
     const row = yield* SqlSchema.findOneOption({
       Request: ProfileId,
       Result: ProfileRow,
@@ -61,7 +66,8 @@ export const profile = (id: ProfileId) =>
                p.requires_vulkan, p.vulkan_version_min, p.cpu_requirement, p.gpu_requirement, p.launch_options, p.review_status,
                j.id AS game_id, j.title AS game, l.name AS launcher, e.external_id, vc.family,
                ${sql.literal(distributionLabel('dist'))} AS distribution, ${sql.literal(layerLabel('vc'))} AS layer,
-               u.alias AS author, ${sql.literal(isDemo('u'))} AS demo
+               u.alias AS author, ${sql.literal(isDemo('u'))} AS demo,
+               p.author_id IS NOT DISTINCT FROM ${visitorId} AND ${sql.literal(profileEditable('p'))} AS editable
         FROM profile p
         JOIN game_edition e ON e.id = p.edition_id
         JOIN game j ON j.id = e.game_id

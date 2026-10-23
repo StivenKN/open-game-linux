@@ -1,9 +1,21 @@
 import { Array as Arr, Effect, Schema, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { mismatches, type NewSolution, type NewGame, type NewReport, TargetProfile } from '../../domain/contributions.ts'
-import { type Unauthenticated, IncomparableProfile, type Rule, RuleViolated, type Forbidden } from '../../domain/errors.ts'
-import { GameId, ReportId, SolutionId, LayerVersionId } from '../../domain/ids.ts'
-import { activeStatuses } from '../../domain/review.ts'
+import {
+  type DependencyRef,
+  mismatches,
+  type NewGuide,
+  type NewProfile,
+  type NewSolution,
+  type NewGame,
+  type NewReport,
+  type GuideEdit,
+  type ProfileContent,
+  type ProfileEdit,
+  TargetProfile,
+} from '../../domain/contributions.ts'
+import { type Unauthenticated, IncomparableProfile, NotFound, type Rule, RuleViolated, type Forbidden } from '../../domain/errors.ts'
+import { DependencyId, GameId, GuideId, ProfileId, ReportId, SolutionId, LayerVersionId, UserId } from '../../domain/ids.ts'
+import { activeStatuses, type ReviewStatus } from '../../domain/review.ts'
 import { Diagnostic, Machine, Profile, Report } from '../../domain/tables.ts'
 import { requireReviewer, requireUser, type Visitor } from '../auth.ts'
 import { withDbRules } from '../schema/constraints.ts'
@@ -142,4 +154,140 @@ export const createGame = (j: NewGame): Write<{ readonly id: GameId }, RuleViola
     yield* withDbRules(sql`INSERT INTO game_edition ${sql.insert(j.editions.map((e) => ({ game_id: created.id, ...e })))}`)
     yield* sql`INSERT INTO game_api ${sql.insert(Arr.dedupe(j.apis).map((api) => ({ game_id: created.id, api })))}`
     return { id: created.id }
+  })
+
+const pending: ReviewStatus = 'pendiente'
+
+/**
+ * SQL over the profile alias `p`: its author may still change or delete it. Only while it is pending
+ * and no report or solution points at it, because a test or a recommendation is about this exact content.
+ * The profile page reads the same expression to offer «Editar».
+ */
+export const profileEditable = (p: string) =>
+  `${p}.review_status = '${pending}' AND NOT EXISTS (SELECT 1 FROM report r WHERE r.profile_id = ${p}.id)
+   AND NOT EXISTS (SELECT 1 FROM solution s WHERE s.profile_id = ${p}.id)`
+
+const ProfileIdRow = Schema.Struct({ id: ProfileId })
+const NextRevision = Schema.Struct({ revision: Profile.fields.revision })
+const DependencyIdRow = Schema.Struct({ id: DependencyId })
+const OwnProfile = Schema.Struct({ author_id: UserId, editable: Schema.Boolean })
+const ProfileGame = Schema.Struct({ game_id: GameId })
+
+const contentColumns = (c: ProfileContent) =>
+  Struct.pick(c, [
+    'title',
+    'target_game_version',
+    'ram_min_mb',
+    'vram_min_mb',
+    'requires_vulkan',
+    'vulkan_version_min',
+    'cpu_requirement',
+    'gpu_requirement',
+    'launch_options',
+  ])
+
+const resolveDependency = (ref: DependencyRef) =>
+  Effect.gen(function* () {
+    if (ref._tag === 'existente') return ref.id
+    const sql = yield* SqlClient.SqlClient
+    // As in resolveLayerVersion: a name the catalog already has keeps its row and its description.
+    const dependency = yield* oneRow(
+      DependencyIdRow,
+      sql`INSERT INTO dependency ${sql.insert({ name: ref.name, package_manager: ref.package_manager, description: ref.description })}
+          ON CONFLICT ON CONSTRAINT dependency_name_package_manager_uq DO UPDATE SET name = EXCLUDED.name RETURNING id`,
+    )
+    return dependency.id
+  })
+
+const insertStepsAndDependencies = (profile_id: ProfileId, c: ProfileContent) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    yield* withDbRules(sql`INSERT INTO profile_step ${sql.insert(c.steps.map((s, i) => ({ profile_id, position: i + 1, ...s })))}`)
+    const dependencies = yield* Effect.forEach(c.dependencies, ({ dependency, ...d }) =>
+      Effect.map(resolveDependency(dependency), (dependency_id) => ({ profile_id, dependency_id, ...d })),
+    )
+    if (Arr.isReadonlyArrayNonEmpty(dependencies)) yield* withDbRules(sql`INSERT INTO profile_dependency ${sql.insert(dependencies)}`)
+  })
+
+/** A new profile is pending and takes the next revision of its environment (edition, distribution, layer, architecture). */
+export const proposeProfile = (p: NewProfile): Write<{ readonly id: ProfileId }, RuleViolated> =>
+  Effect.gen(function* () {
+    const user = yield* requireUser
+    const sql = yield* SqlClient.SqlClient
+    const layer_version_id = yield* resolveLayerVersion(p.layer_version)
+    // Two proposals for one environment at the same instant collide on profile_revision_uq; the second can resend.
+    const { revision } = yield* oneRow(
+      NextRevision,
+      sql`SELECT COALESCE(max(revision), 0) + 1 AS revision FROM profile
+          WHERE edition_id = ${p.edition_id} AND distribution_id = ${p.distribution_id}
+            AND layer_version_id = ${layer_version_id} AND architecture = ${p.architecture}`,
+    )
+    const created = yield* oneRow(
+      ProfileIdRow,
+      sql`INSERT INTO profile ${sql.insert({
+        edition_id: p.edition_id,
+        distribution_id: p.distribution_id,
+        layer_version_id,
+        architecture: p.architecture,
+        author_id: user.id,
+        revision,
+        ...contentColumns(p),
+      })} RETURNING id`,
+    )
+    yield* insertStepsAndDependencies(created.id, p)
+    return { id: created.id }
+  })
+
+/** Locks the visitor's own profile; someone else's is NotFound, and a used or reviewed one is frozen. */
+const lockEditable = (id: ProfileId) =>
+  Effect.gen(function* () {
+    const user = yield* requireUser
+    const sql = yield* SqlClient.SqlClient
+    const [row] = yield* rows(OwnProfile, sql`SELECT p.author_id, ${sql.literal(profileEditable('p'))} AS editable FROM profile p WHERE p.id = ${id} FOR UPDATE`)
+    if (row === undefined || row.author_id !== user.id) return yield* Effect.fail(new NotFound())
+    if (!row.editable) return yield* violate('perfil_congelado')
+  })
+
+/** Replaces the content, steps and dependencies of the author's pending, unused profile. */
+export const editProfile = (p: ProfileEdit): Write<{ readonly id: ProfileId }, RuleViolated | NotFound> =>
+  Effect.gen(function* () {
+    yield* lockEditable(p.profile_id)
+    const sql = yield* SqlClient.SqlClient
+    yield* withDbRules(sql`UPDATE profile SET ${sql.update(contentColumns(p))} WHERE id = ${p.profile_id}`)
+    yield* withDbRules(sql`DELETE FROM profile_step WHERE profile_id = ${p.profile_id}`)
+    yield* withDbRules(sql`DELETE FROM profile_dependency WHERE profile_id = ${p.profile_id}`)
+    yield* insertStepsAndDependencies(p.profile_id, p)
+    return { id: p.profile_id }
+  })
+
+/** The author's way back: a pending profile nobody used is evidence of nothing, so it goes with its steps. */
+export const deleteProfile = (id: ProfileId): Write<{ readonly game_id: GameId }, RuleViolated | NotFound> =>
+  Effect.gen(function* () {
+    yield* lockEditable(id)
+    const sql = yield* SqlClient.SqlClient
+    return yield* withDbRules(
+      oneRow(ProfileGame, sql`DELETE FROM profile p USING game_edition e WHERE p.id = ${id} AND e.id = p.edition_id RETURNING e.game_id`),
+    )
+  })
+
+const GuideIdRow = Schema.Struct({ id: GuideId })
+
+/** Only reviewers write guides ("Solo revisores publican guías"); the author is the reviewer who created it. */
+export const createGuide = (g: NewGuide): Write<{ readonly id: GuideId }, Forbidden> =>
+  Effect.gen(function* () {
+    const reviewer = yield* requireReviewer
+    const sql = yield* SqlClient.SqlClient
+    return yield* oneRow(GuideIdRow, sql`INSERT INTO adoption_guide ${sql.insert({ ...g, author_id: reviewer.id, revision: 1 })} RETURNING id`)
+  })
+
+/** Any reviewer edits any guide. A change readers can see is a new revision; publishing or archiving is not. */
+export const editGuide = ({ guide_id, status, ...text }: GuideEdit): Write<{ readonly id: GuideId }, Forbidden | NotFound> =>
+  Effect.gen(function* () {
+    yield* requireReviewer
+    const sql = yield* SqlClient.SqlClient
+    const found = yield* rows(GuideIdRow, sql`UPDATE adoption_guide SET status = ${status} WHERE id = ${guide_id} RETURNING id`)
+    if (found.length === 0) return yield* Effect.fail(new NotFound())
+    yield* sql`UPDATE adoption_guide SET ${sql.update(text)}, revision = revision + 1, updated_at = now()
+               WHERE id = ${guide_id} AND (type, distribution_id, title, content) IS DISTINCT FROM (${text.type}, ${text.distribution_id}, ${text.title}, ${text.content})`
+    return { id: guide_id }
   })

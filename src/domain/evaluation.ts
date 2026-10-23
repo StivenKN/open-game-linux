@@ -8,8 +8,11 @@ export type VulkanSupport = typeof VulkanSupport.Type
 
 export type VulkanVersion = { readonly text: string; readonly parts: readonly [number, ...number[]] }
 
+/** The only version text `vulkanVersion` reads, such as 1.3; anything else is no version. */
+export const vulkanVersionPattern = /^\d+(\.\d+)*$/
+
 export const vulkanVersion = (text: string | null): VulkanVersion | null => {
-  if (text === null || !/^\d+(\.\d+)*$/.test(text)) return null
+  if (text === null || !vulkanVersionPattern.test(text)) return null
   const [major, ...rest] = text.split('.').map(Number)
   return major === undefined ? null : { text, parts: [major, ...rest] }
 }

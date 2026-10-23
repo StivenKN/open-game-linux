@@ -65,10 +65,24 @@ function ProfilePage() {
         <p className="small note" data-tone="azul">
           OpenGame no descarga ni ejecuta nada. Sigue los pasos tú mismo; los comandos se copian tal cual.
         </p>
-        <p>
+        {p.editable && (
+          <p className="small note" data-tone="morado">
+            Es tu propuesta. Puedes editarla o eliminarla mientras nadie la use en un reporte o una solución.
+          </p>
+        )}
+        <p className="row">
           <Link to="/juegos/$gameId/reportar" params={{ gameId: p.game_id }} search={{ perfil: p.id }} className="button">
             Reportar resultado con este perfil
           </Link>
+          {p.editable ? (
+            <Link to="/perfiles/$profileId/editar" params={{ profileId: p.id }} className="button-secondary">
+              Editar la propuesta
+            </Link>
+          ) : (
+            <Link to="/juegos/$gameId/perfiles/nuevo" params={{ gameId: p.game_id }} search={{ desde: p.id }} className="button-secondary">
+              Proponer una versión con cambios
+            </Link>
+          )}
         </p>
       </header>
 

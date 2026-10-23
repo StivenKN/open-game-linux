@@ -5,6 +5,11 @@ import type { FieldErrors } from './useAction.ts'
 /** Schema's StringTree encoding of null. */
 export const nullText = 'null'
 
+/** The hardware choices of the manual diagnosis, also the minimums a profile can declare. */
+export const ramGb = [2, 3, 4, 6, 8, 12, 16, 24, 32, 64]
+export const vramMb = [512, 1024, 2048, 3072, 4096, 6144, 8192, 12288, 16384]
+export const vulkanVersions = ['1.0', '1.1', '1.2', '1.3', '1.4']
+
 export const fieldProps = (errors: FieldErrors, name: string) => ({
   name,
   id: name,

@@ -8,7 +8,7 @@ import { CopyBox } from '../../ui/compatibility/CopyBox.tsx'
 import { FieldError } from '../../ui/FieldError.tsx'
 import { SavedMachines } from '../../ui/diagnostics/SavedMachines.tsx'
 import { memory } from '../../ui/format.ts'
-import { fieldProps } from '../../ui/form.tsx'
+import { fieldProps, ramGb, vramMb, vulkanVersions } from '../../ui/form.tsx'
 import { type FieldErrors, useAction } from '../../ui/useAction.ts'
 import { payloadReason, operatingSystem as operatingSystemLabel, vulkanSupport } from '../../ui/vocabulary.ts'
 import { type Input, manualInput, ManualForm, savePending, Pasted } from './-input.ts'
@@ -128,9 +128,6 @@ function Detector({ siteOrigin }: { siteOrigin: string }) {
 const isOperatingSystem = Schema.is(OperatingSystem)
 const isVulkanSupport = Schema.is(VulkanSupport)
 
-const ramGb = [2, 3, 4, 6, 8, 12, 16, 24, 32, 64]
-const vramMb = [512, 1024, 2048, 3072, 4096, 6144, 8192, 12288, 16384]
-const vulkanVersions = ['1.0', '1.1', '1.2', '1.3', '1.4']
 
 function Manual() {
   const evaluate = useEvaluate()

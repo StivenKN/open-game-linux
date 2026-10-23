@@ -1,13 +1,13 @@
 import { Effect, Option, Record, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { SaveDiagnostic, NewSolution, NewReport } from '../src/domain/contributions.ts'
+import { NewGuide, NewProfile, SaveDiagnostic, NewSolution, NewReport } from '../src/domain/contributions.ts'
 import { STEAM_LAUNCHER } from '../src/domain/library.ts'
 import type { GuideType } from '../src/domain/guides.ts'
 import { UserId } from '../src/domain/ids.ts'
 import { type GraphicsApi, requiresFailure, type LayerFamily, type Outcome } from '../src/domain/literals.ts'
 import type { X86Level } from '../src/domain/platform.ts'
 import { ContributionRef, Decision, type Role } from '../src/domain/review.ts'
-import { submitReport, submitSolution } from '../src/server/commands/contributions.ts'
+import { createGuide, proposeProfile, submitReport, submitSolution } from '../src/server/commands/contributions.ts'
 import { submitDiagnostic } from '../src/server/commands/diagnostic.ts'
 import { SCHEMA_VERSION } from '../src/server/diagnostics/payload.ts'
 import { decide } from '../src/server/commands/review.ts'
@@ -509,17 +509,15 @@ const program = Effect.gen(function* () {
   const insertedRows = new Map<string, number>()
   const count = (table: string) => insertedRows.set(table, (insertedRows.get(table) ?? 0) + 1)
 
-  const ensure = (table: string, key: Readonly<Record<string, Value>>, rest: Readonly<Record<string, Value>> = {}) =>
+  const idOf = (table: string, key: Readonly<Record<string, Value>>, rest: Readonly<Record<string, Value>> = {}) =>
     Effect.gen(function* () {
       const where = sql.and(Object.entries(key).map(([c, v]) => sql`${sql(c)} IS NOT DISTINCT FROM ${v}`))
       const [row] = yield* rows(IdRow, sql`SELECT id FROM ${sql(table)} WHERE ${where}`)
-      if (row !== undefined) return { id: row.id, inserted: false }
+      if (row !== undefined) return row.id
       const created = yield* oneRow(IdRow, sql`INSERT INTO ${sql(table)} ${sql.insert({ ...key, ...rest })} RETURNING id`)
       count(table)
-      return { id: created.id, inserted: true }
+      return created.id
     })
-  const idOf = (table: string, key: Readonly<Record<string, Value>>, rest: Readonly<Record<string, Value>> = {}) =>
-    Effect.map(ensure(table, key, rest), (r) => r.id)
 
   // Accounts go through better-auth so the password is hashed its way. Its own pool commits them
   // outside the transaction below; the lookup by email makes a rerun skip them.
@@ -570,58 +568,65 @@ const program = Effect.gen(function* () {
         }
       }
 
-      const profileOf = new Map<string, number>()
-      for (const p of profiles) {
-        const profile = yield* ensure(
-          'profile',
-          {
-            edition_id: yield* lookup(edition, p.edition.join('/')),
-            distribution_id: yield* lookup(distribution, p.distribution),
-            layer_version_id: yield* lookup(layer, p.layer),
-            architecture: 'x86_64',
-            revision: 1,
-          },
-          {
-            author_id: yield* lookup(user, p.author),
-            title: p.title,
-            ram_min_mb: p.ram_min_mb,
-            vram_min_mb: p.vram_min_mb,
-            requires_vulkan: p.requires_vulkan,
-            vulkan_version_min: p.vulkan_version_min,
-            launch_options: p.launch_options,
-          },
-        )
-        profileOf.set(profileKey(p), profile.id)
-        if (!profile.inserted) continue
-        for (const [i, [title, instruction]] of p.steps.entries()) {
-          yield* sql`INSERT INTO profile_step ${sql.insert({ profile_id: profile.id, position: i + 1, title, instruction })}`
-          count('profile_step')
-        }
-        for (const d of p.dependencies) {
-          const row = { profile_id: profile.id, dependency_id: yield* lookup(dependency, d.dependency), required: d.required, install_instruction: d.install_instruction }
-          yield* sql`INSERT INTO profile_dependency ${sql.insert(row)}`
-          count('profile_dependency')
-        }
-      }
-
-      for (const g of guides)
-        yield* idOf(
-          'adoption_guide',
-          { title: g.title },
-          {
-            author_id: yield* lookup(user, 'demo_revisor'),
-            distribution_id: g.distribution === null ? null : yield* lookup(distribution, g.distribution),
-            type: g.type,
-            content: g.content,
-            revision: 1,
-            status: 'publicada',
-          },
-        )
-
       const asUser = <A, E, R>(alias: Account, effect: Effect.Effect<A, E, R>) =>
         Effect.flatMap(lookup(user, alias), (id) =>
           Effect.provideService(effect, Visitor, Option.some({ id: Schema.decodeSync(UserId)(id), alias, role: accounts[alias] })),
         )
+
+      // Proposed by their demo authors, so each one is the first revision of its environment.
+      const profileOf = new Map<string, number>()
+      for (const p of profiles) {
+        const edition_id = yield* lookup(edition, p.edition.join('/'))
+        const distribution_id = yield* lookup(distribution, p.distribution)
+        const layer_version_id = yield* lookup(layer, p.layer)
+        const [existing] = yield* rows(
+          IdRow,
+          sql`SELECT id FROM profile WHERE edition_id = ${edition_id} AND distribution_id = ${distribution_id}
+                AND layer_version_id = ${layer_version_id} AND architecture = 'x86_64' AND revision = 1`,
+        )
+        if (existing !== undefined) {
+          profileOf.set(profileKey(p), existing.id)
+          continue
+        }
+        const dependencies: Array<{ dependency: { _tag: 'existente'; id: number }; required_version: null; required: boolean; install_instruction: string }> = []
+        for (const d of p.dependencies)
+          dependencies.push({ dependency: { _tag: 'existente', id: yield* lookup(dependency, d.dependency) }, required_version: null, required: d.required, install_instruction: d.install_instruction })
+        const proposal = yield* Schema.decodeUnknownEffect(NewProfile)({
+          edition_id,
+          distribution_id,
+          layer_version: { _tag: 'existente', id: layer_version_id },
+          architecture: 'x86_64',
+          title: p.title,
+          target_game_version: null,
+          ram_min_mb: p.ram_min_mb,
+          vram_min_mb: p.vram_min_mb,
+          requires_vulkan: p.requires_vulkan,
+          vulkan_version_min: p.vulkan_version_min,
+          cpu_requirement: null,
+          gpu_requirement: null,
+          launch_options: p.launch_options,
+          steps: p.steps.map(([title, instruction]) => ({ title, instruction })),
+          dependencies,
+        })
+        profileOf.set(profileKey(p), (yield* asUser(p.author, proposeProfile(proposal))).id)
+        count('profile')
+        for (const _ of p.steps) count('profile_step')
+        for (const _ of p.dependencies) count('profile_dependency')
+      }
+
+      for (const g of guides) {
+        const [existing] = yield* rows(IdRow, sql`SELECT id FROM adoption_guide WHERE title = ${g.title}`)
+        if (existing !== undefined) continue
+        const guide = yield* Schema.decodeUnknownEffect(NewGuide)({
+          type: g.type,
+          distribution_id: g.distribution === null ? null : yield* lookup(distribution, g.distribution),
+          title: g.title,
+          content: g.content,
+          status: 'publicada',
+        })
+        yield* asUser('demo_revisor', createGuide(guide))
+        count('adoption_guide')
+      }
 
       const diagnosticOf = new Map<keyof typeof machines, number>()
       for (const [k, machine] of Record.toEntries(machines)) {

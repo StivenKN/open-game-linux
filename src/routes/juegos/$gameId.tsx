@@ -135,6 +135,11 @@ function GamePage() {
               ))}
             </ul>
           )}
+          <p className="small block">
+            <Link to="/juegos/$gameId/perfiles/nuevo" params={{ gameId: game.id }}>
+              Proponer un perfil
+            </Link>
+          </p>
         </section>
 
         <section aria-labelledby="causes">
