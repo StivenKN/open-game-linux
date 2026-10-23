@@ -23,5 +23,5 @@ export const antiCheatEntries = (game: GameId | null) =>
 /** AreWeAntiCheatYet's Broken or Denied by game: the catalog's anti-cheat filter and the library's "Te frenan" read it. */
 export const onlinePlayBlocks = Effect.map(
   antiCheatEntries(null),
-  (entries) => new Map(entries.filter((r) => blocksOnlinePlay(r.status)).map((r) => [r.game_id, r.status])),
+  (entries) => new Map(entries.flatMap(({ game_id, status }) => (blocksOnlinePlay(status) ? [[game_id, status] as const] : []))),
 )

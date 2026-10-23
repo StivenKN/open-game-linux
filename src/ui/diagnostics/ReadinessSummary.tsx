@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { CompatibilityStatus } from '../../domain/compatibility.ts'
-import type { LibraryReadiness } from '../../domain/readiness.ts'
+import { type LibraryReadiness, stoppedWorking } from '../../domain/readiness.ts'
 import { Badge, Chip } from '../Badge.tsx'
 import { count } from '../format.ts'
 import { AntiCheatAttribution } from '../anticheat/AntiCheat.tsx'
@@ -87,7 +87,7 @@ export function ReadinessSummary({ readiness: r }: { readiness: LibraryReadiness
                         {g.title}
                       </Link>
                       <Badge label={compatibilityStatus[g.status]} />
-                      {g.regressed && <Chip tone="rojo">Dejó de funcionar</Chip>}
+                      {stoppedWorking(g) && <Chip tone="rojo">Dejó de funcionar</Chip>}
                       {g.blocked_by_anti_cheat && <Chip tone={antiCheat.tone}>{antiCheat.text}</Chip>}
                       {g.out_of_reach && (
                         <Chip tone="rojo" shape="punteado">

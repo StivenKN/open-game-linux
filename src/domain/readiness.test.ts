@@ -2,13 +2,13 @@ import { describe, expect, it } from '@effect/vitest'
 import type { CompatibilityStatus } from './compatibility.ts'
 import type { RequirementsVerdict } from './evaluation.ts'
 import type { GamePath } from './graphics-path.ts'
-import type { AntiCheatStatus } from './literals.ts'
+import type { OnlinePlayBlock } from './anticheat.ts'
 import { libraryReadiness, outOfReach } from './readiness.ts'
 
 const game = (
   title: string,
   status: CompatibilityStatus,
-  flags: { anti_cheat?: boolean; regressed?: boolean; stale?: boolean; out_of_reach?: boolean; awacy?: AntiCheatStatus } = {},
+  flags: { anti_cheat?: boolean; regressed?: boolean; stale?: boolean; out_of_reach?: boolean; awacy?: OnlinePlayBlock } = {},
 ) => ({
   title,
   status,

@@ -2,7 +2,8 @@ import { Array as Arr, Schema } from 'effect'
 import type { CompatibilityStatus } from './compatibility.ts'
 import type { Evaluation } from './evaluation.ts'
 import type { GamePath } from './graphics-path.ts'
-import { type AntiCheatStatus, FailingOutcome, WorkingOutcome } from './literals.ts'
+import type { OnlinePlayBlock } from './anticheat.ts'
+import { FailingOutcome, WorkingOutcome } from './literals.ts'
 
 /**
  * The machine certainly cannot run the game: no graphics path for its APIs or too low an x86-64 level,
@@ -22,19 +23,20 @@ type RatedGame = {
   readonly blocked_by_anti_cheat: boolean
   readonly out_of_reach: boolean
   /** AreWeAntiCheatYet's Broken or Denied: another source, so it never touches the state or the counts. */
-  readonly awacy: AntiCheatStatus | null
+  readonly awacy: OnlinePlayBlock | null
 }
 
 const isWorking = Schema.is(WorkingOutcome)
 const isFailing = Schema.is(FailingOutcome)
 
 /**
- * "Te frenan": the approved evidence fails or is blocked, AreWeAntiCheatYet says online play is blocked, or
- * the machine falls short. A regression counts only when the state is not working, so a stale break on
- * another store cannot contradict it.
+ * "Dejó de funcionar" as a reason to hold a game back: only when the state is not working, because a
+ * regression ignores the year window and a stale break on another store must not contradict the state.
  */
-const holdsBack = (g: RatedGame): boolean =>
-  isFailing(g.status) || (g.regressed && !isWorking(g.status)) || g.blocked_by_anti_cheat || g.awacy !== null || g.out_of_reach
+export const stoppedWorking = (g: Pick<RatedGame, 'status' | 'regressed'>): boolean => g.regressed && !isWorking(g.status)
+
+/** "Te frenan": the approved evidence fails or is blocked, AreWeAntiCheatYet says online play is blocked, or the machine falls short. */
+const holdsBack = (g: RatedGame): boolean => isFailing(g.status) || stoppedWorking(g) || g.blocked_by_anti_cheat || g.awacy !== null || g.out_of_reach
 
 /**
  * "Can I switch to Linux?" for a Steam library, computed on each request. `games` are the library games
