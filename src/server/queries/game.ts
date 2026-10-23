@@ -17,6 +17,17 @@ import { protonDbSummaries } from './protondb.ts'
 
 const GameTest = Schema.Struct({ ...ApprovedTest.fields, game_id: GameId, demo: Schema.Boolean })
 
+const DatabaseNow = Schema.Struct({ now: Schema.Date })
+
+/**
+ * What "Marcar como visto" may mark seen, read before the approved tests. It comes from the clock that stamps
+ * `reviewed_at` (Postgres, not the app's `Clock`), so every approval stamped later is news. Only an approval
+ * whose transaction is still open during the read can fall behind it.
+ */
+export const seenWatermark = Effect.flatMap(SqlClient.SqlClient, (sql) =>
+  Effect.map(oneRow(DatabaseNow, sql`SELECT now() AS now`), (row) => row.now),
+)
+
 /** The approved tests of one game, of the games a user follows, or (null) of the whole catalog. */
 export const approvedTests = (scope: { readonly game: GameId } | { readonly followedBy: UserId } | null) =>
   Effect.gen(function* () {
@@ -156,6 +167,7 @@ export const gamePage = (gameId: GameId) =>
     })(gameId)
 
     const now = new Date(yield* Clock.currentTimeMillis)
+    const asOf = yield* seenWatermark
     const tests = yield* approvedTests({ game: gameId })
     const summary = summarize(tests, now)
     const follow = yield* visitorFollow(gameId)
@@ -253,8 +265,7 @@ export const gamePage = (gameId: GameId) =>
       editions,
       summary,
       timeline: timeline(tests),
-      // What "Marcar como visto" marks seen: the instant this page was computed at.
-      as_of: now,
+      as_of: asOf,
       follow: Option.match(follow, { onNone: () => null, onSome: ({ seen_at }) => ({ seen_at, news: newsSince(tests, seen_at, now) }) }),
       protondb,
       demo: tests.some((p) => p.demo),

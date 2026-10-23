@@ -66,7 +66,7 @@ const scenario = Effect.gen(function* () {
     sql`SELECT seen_at FROM game_follow WHERE user_id = ${ana.id} AND game_id = ${game}`,
     Schema.decodeUnknownSync(Schema.Array(Schema.Struct({ seen_at: Schema.Date }))),
   )
-  return { sql, ana, game, approvedReport, seenAt, follows }
+  return { sql, ana, author, game, approvedReport, seenAt, follows }
 })
 
 /** Runs `program` as `user` (null: a guest) in a savepoint, so a refused write leaves the test transaction usable. */
@@ -83,6 +83,7 @@ layer(PgTest)('seguir un juego', (it) => {
       inRollback(
         Effect.gen(function* () {
           const e = yield* scenario
+          yield* asUser(e.author)(change({ _tag: 'Seguir', game_id: e.game }))
           expect(yield* asUser(e.ana)(change({ _tag: 'Seguir', game_id: e.game }))).toEqual({ changed: true })
           yield* e.seenAt('2026-10-01T00:00:00Z')
           expect(yield* asUser(e.ana)(change({ _tag: 'Seguir', game_id: e.game }))).toEqual({ changed: false })
@@ -90,6 +91,8 @@ layer(PgTest)('seguir un juego', (it) => {
           expect(yield* asUser(e.ana)(change({ _tag: 'Dejar', game_id: e.game }))).toEqual({ changed: true })
           expect(yield* asUser(e.ana)(change({ _tag: 'Dejar', game_id: e.game }))).toEqual({ changed: false })
           expect(yield* e.follows).toEqual([])
+          // Each visitor writes only their own follow.
+          expect(yield* e.sql`SELECT user_id FROM game_follow WHERE game_id = ${e.game}`).toEqual([{ user_id: e.author.id }])
         }),
       ))
 
@@ -133,7 +136,9 @@ layer(PgTest)('seguir un juego', (it) => {
           const asAna = <A, E>(program: Effect.Effect<A, E, SqlClient.SqlClient | Visitor>) =>
             Effect.provideService(program, Visitor, Option.some(e.ana)).pipe(onDay(today))
           const page = yield* asAna(gamePage(e.game))
-          expect([page.summary.status, page.follow?.news, page.as_of]).toEqual(['resultados_variables', news, today])
+          expect([page.summary.status, page.follow?.news]).toEqual(['resultados_variables', news])
+          // The watermark comes from the clock that stamps reviewed_at, not from the app's Clock.
+          expect(yield* e.sql`SELECT now() AS now`).toEqual([{ now: page.as_of }])
           expect((yield* asAna(myFollows)).games.map((g) => [g.title, g.status, g.news])).toEqual([['fo_juego', 'resultados_variables', news]])
           expect((yield* asAna(session)).followed_news).toBe(1)
 

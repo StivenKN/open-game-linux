@@ -39,7 +39,7 @@ export function FollowButton({ gameId, signedIn, following }: { gameId: GameId; 
 
 /**
  * What changed since the follower last marked the game seen, and "Marcar como visto", on the game page and
- * on "Seguidos". `asOf` is when the page was computed: marking seen covers what the follower saw, not more.
+ * on "Seguidos". `asOf` is the page's watermark: marking seen covers what the follower saw, not more.
  */
 export function FollowNews({
   gameId,

@@ -5,8 +5,8 @@ import { type ApprovedTest, type CompatibilityStatus, summarize } from './compat
 import { GameId } from './ids.ts'
 
 /**
- * The follow button and "Marcar como visto". `Visto` carries the instant the page was computed at, so a
- * report approved while the page sat open is still news afterwards.
+ * The follow button and "Marcar como visto". `Visto` carries the page's watermark, the database instant read
+ * before its approved tests, so a report approved while the page sat open is still news afterwards.
  */
 export const FollowChange = Schema.Union([
   Schema.TaggedStruct('Seguir', { game_id: GameId }),

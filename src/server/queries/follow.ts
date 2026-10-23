@@ -6,7 +6,7 @@ import type { UserId } from '../../domain/ids.ts'
 import { Game, GameFollow } from '../../domain/tables.ts'
 import { requireUser, Visitor } from '../auth.ts'
 import { rows } from '../rows.ts'
-import { approvedTests } from './game.ts'
+import { approvedTests, seenWatermark } from './game.ts'
 
 const FollowRow = GameFollow.mapFields(Struct.pick(['game_id', 'seen_at', 'created_at'])).mapFields(Struct.assign({ title: Game.fields.title }))
 
@@ -15,6 +15,7 @@ const followed = (user: UserId) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     const now = new Date(yield* Clock.currentTimeMillis)
+    const asOf = yield* seenWatermark
     const follows = yield* rows(
       FollowRow,
       sql`SELECT f.game_id, f.seen_at, f.created_at, g.title
@@ -28,7 +29,7 @@ const followed = (user: UserId) =>
       return { ...f, status: summarize(own, now).status, news: newsSince(own, f.seen_at, now) }
     })
     // Array.sort is stable, so the title order holds within each half.
-    return { as_of: now, games: games.sort((a, b) => Number(hasNews(b.news)) - Number(hasNews(a.news))) }
+    return { as_of: asOf, games: games.sort((a, b) => Number(hasNews(b.news)) - Number(hasNews(a.news))) }
   })
 
 /** The "Seguidos" page. */

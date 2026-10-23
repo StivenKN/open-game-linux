@@ -66,10 +66,10 @@ const migrate = (keys: ReadonlyArray<string>) =>
   PgMigrator.run({ loader: Migrator.fromRecord(Object.fromEntries(Object.entries(migrations).filter(([key]) => keys.includes(key)))) }).pipe(
     Effect.provide(NodeServices.layer),
   )
-// The upgrade stops at 7: later migrations use the English names, so they cannot run before 7.
-const upTo = (n: number) => Object.keys(migrations).filter((key) => Number.parseInt(key, 10) <= n)
-const throughSix = upTo(6)
-const throughSeven = upTo(7)
+const allMigrations = Object.keys(migrations)
+const throughSix = allMigrations.filter((key) => Number.parseInt(key, 10) <= 6)
+// What the migrator reports for each key it applies: [7, 'english_names'] and every later one.
+const fromSeven = allMigrations.filter((key) => !throughSix.includes(key)).map((key) => [Number.parseInt(key, 10), key.slice(key.indexOf('_') + 1)])
 
 // The migrator probes for its table with a query that fails on a fresh database, which aborts any
 // enclosing transaction, so the upgrade runs on a database of its own instead of inside a rollback.
@@ -102,8 +102,8 @@ layer(PgTest)('7_english_names', (it) => {
     const digestsBefore = yield* Effect.forEach(tables, (t) => Effect.map(digestOf(sql, t), (d) => [t, d] as const))
     expect(digestsBefore.every(([, d]) => d.n > 0)).toBe(true)
 
-    expect(yield* migrate(throughSeven)).toEqual([[7, 'english_names']])
-    expect(yield* migrate(throughSeven)).toEqual([])
+    expect(yield* migrate(allMigrations)).toEqual(fromSeven)
+    expect(yield* migrate(allMigrations)).toEqual([])
 
     const after = yield* census
     expect(after.filter((r) => carriesSpanish(r.name))).toEqual([])
