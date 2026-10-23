@@ -16,7 +16,7 @@ import { ProtonDbSection } from '../../../ui/protondb/ProtonDb.tsx'
 import { AntiCheatSection } from '../../../ui/anticheat/AntiCheat.tsx'
 import { DemoStamp } from '../../../ui/DemoStamp.tsx'
 import type { Messages } from '../../../ui/i18n/es.ts'
-import { imageQuery, type Lang } from '../../../ui/i18n/lang.ts'
+import { type Lang, langQuery } from '../../../ui/i18n/lang.ts'
 import { messages, useLang, useT } from '../../../ui/i18n/messages.ts'
 import { graphicsApi, x86Level } from '../../../ui/vocabulary.ts'
 import { FollowButton, FollowNews } from '../../-follow.tsx'
@@ -45,7 +45,7 @@ const preview = (lang: Lang, game: { id: GameId; title: string }, summary: Compa
   const state = t.share.game.title(game.title, t.compatibilityStatus[summary.status].text)
   const reports = summary.test_count === 0 ? t.share.game.noReports : t.share.game.reports(summary.test_count, summary.no_recent_confirmation)
   const description = demo ? `${reports} ${t.share.game.demo}` : reports
-  return { title: state, description, image: `/juegos/${game.id}/og.png${imageQuery(lang)}`, imageAlt: `${state}. ${description}` }
+  return { title: state, description, image: `/juegos/${game.id}/og.png${langQuery(lang)}`, imageAlt: `${state}. ${description}` }
 }
 
 function GamePage() {
@@ -236,7 +236,7 @@ function GamePage() {
           {steamAppId !== null && (
             <div className="stack report-detector">
               <p className="small">{g.played.detector}</p>
-              <CopyBox label={g.played.detectorLabel} text={`curl -fsSL ${origin}/opengame-detect.sh | bash -s -- --game ${steamAppId}`} />
+              <CopyBox label={g.played.detectorLabel} text={`curl -fsSL '${origin}/opengame-detect.sh${langQuery(lang)}' | bash -s -- --game ${steamAppId}`} />
               <p className="small muted">{g.played.noWindows}</p>
             </div>
           )}

@@ -24,7 +24,7 @@ describe('opengame-detect.ps1 source', () => {
     expect(sevenOnly.filter((pattern) => pattern.test(source))).toEqual([])
   })
 
-  it.each(['__OPENGAME_URL__', '__OPENGAME_MAX_JUEGOS__'])('has the one %s placeholder the route replaces', (marker) => {
+  it.each(['__OPENGAME_URL__', '__OPENGAME_MAX_JUEGOS__', '__OPENGAME_LANG__'])('has the one %s placeholder the route replaces', (marker) => {
     expect(source.split(marker).length - 1).toBe(1)
   })
 })
@@ -161,18 +161,28 @@ describe.skipIf(engine === null)(`opengame-detect.ps1 under ${engine ?? `pwsh (s
   })
 
   it('opens the import page with the payload in #d=', () => {
-    powershell({})
+    expect(powershell({})).toBe('Abriendo OpenGame Linux en tu navegador. Nada se guarda hasta que pulses Guardar.')
     const [opened, ...rest] = readHandoffLog()
     expect(rest).toEqual([])
-    expect(opened).toMatch(/^Start-Process http:\/\/ejemplo\.test\/diagnostico\/importar#d=[A-Za-z0-9_-]+$/)
+    expect(opened).toMatch(/^Start-Process http:\/\/ejemplo\.test\/es\/diagnostico\/importar#d=[A-Za-z0-9_-]+$/)
     expect(parse(fromUrl(opened ?? ''))).toMatchObject({ gpu_pci_id: '10de:1380', biblioteca_steam: newFormatLibrary })
   })
 
   it('copies a 30-game library, too big for a URL, to the clipboard and opens the paste box', () => {
     powershell({ OPENGAME_STEAM_DIR: join(tmp, 'mediana') })
     const [copied, opened, ...rest] = readHandoffLog()
-    expect([opened, rest]).toEqual(['Start-Process http://ejemplo.test/diagnostico?pegar=1', []])
+    expect([opened, rest]).toEqual(['Start-Process http://ejemplo.test/es/diagnostico?pegar=1', []])
     expect(parse((copied ?? '').replace(/^Set-Clipboard /, ''))).toMatchObject({ biblioteca_steam: expected(30) })
+  })
+
+  it('speaks English and opens the English pages when an English page gave the command (?lang=en)', () => {
+    expect(powershell({ OPENGAME_LANG: 'en' })).toBe('Opening OpenGame Linux in your browser. Nothing is saved until you press Save.')
+    expect(readHandoffLog()).toEqual([expect.stringMatching(/^Start-Process http:\/\/ejemplo\.test\/en\/diagnostico\/importar#d=[A-Za-z0-9_-]+$/)])
+    expect(powershell({ OPENGAME_LANG: 'en', OPENGAME_STEAM_DIR: join(tmp, 'mediana') }).split('\n')).toEqual([
+      'Your result does not fit in a web address, so we copied it to the clipboard.',
+      'Paste it with Ctrl+V on the page that just opened. Nothing is saved until you press Save.',
+    ])
+    expect(readHandoffLog()[1]).toBe('Start-Process http://ejemplo.test/en/diagnostico?pegar=1')
   })
 
   it('sends at most MAX_LIBRARY_GAMES games, the most recently played', () => {
@@ -202,7 +212,7 @@ describe.skipIf(process.platform !== 'linux')('opengame-detect.sh with a large S
 describe.skipIf(process.platform !== 'linux')('opengame-detect.sh --game: what Steam runs one game with', () => {
   const report = (appid: string, steamRoot = steam('nuevo')) => {
     const url = bash({ OPENGAME_STEAM_DIR: steamRoot, OPENGAME_DRY: '1', OPENGAME_URL: 'http://ejemplo.test' }, '--game', appid)
-    expect(url).toMatch(/^http:\/\/ejemplo\.test\/diagnostico\/importar#d=[A-Za-z0-9_-]+$/)
+    expect(url).toMatch(/^http:\/\/ejemplo\.test\/es\/diagnostico\/importar#d=[A-Za-z0-9_-]+$/)
     const c = capture(url)
     return c.operating_system === 'Linux' ? c.steam_game : null
   }

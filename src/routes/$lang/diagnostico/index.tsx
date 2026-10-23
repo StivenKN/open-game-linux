@@ -11,6 +11,7 @@ import { SavedMachines } from '../../../ui/diagnostics/SavedMachines.tsx'
 import { memory } from '../../../ui/format.ts'
 import { fieldProps, ramGb, vramMb, vulkanVersions } from '../../../ui/form.tsx'
 import type { Messages } from '../../../ui/i18n/es.ts'
+import { langQuery } from '../../../ui/i18n/lang.ts'
 import { useLang, useT } from '../../../ui/i18n/messages.ts'
 import { type FieldErrors, useAction } from '../../../ui/useAction.ts'
 import { device, operatingSystem as operatingSystemLabel } from '../../../ui/vocabulary.ts'
@@ -71,7 +72,11 @@ function Detector() {
   // The site's public address, which the commands below download the detector from.
   const { origin } = Route.useRouteContext()
   const t = useT()
+  const lang = useLang()
   const d = t.diagnosis.detector
+  // The scripts speak the page's language and open its pages. The commands quote the address, so zsh does not
+  // read `?lang=en` as a glob.
+  const script = (file: string) => `/${file}${langQuery(lang)}`
   const pasteBox = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     if (pegar === undefined) return
@@ -89,16 +94,16 @@ function Detector() {
         {d.heading}
       </h2>
       <p className="small muted">{d.intro}</p>
-      <CopyBox label={d.powershell} text={`irm ${origin}/opengame-detect.ps1 | iex`} />
+      <CopyBox label={d.powershell} text={`irm '${origin}${script('opengame-detect.ps1')}' | iex`} />
       <p className="small">
-        <a href="/opengame-detect.ps1" download="opengame-detect.ps1">
+        <a href={script('opengame-detect.ps1')} download="opengame-detect.ps1">
           {d.download('opengame-detect.ps1')}
         </a>{' '}
         <span className="muted">{d.readFirst}</span> <code>powershell -ExecutionPolicy Bypass -File .\opengame-detect.ps1</code>
       </p>
-      <CopyBox label={d.linux} text={`curl -fsSL ${origin}/opengame-detect.sh | bash -s -- --open`} />
+      <CopyBox label={d.linux} text={`curl -fsSL '${origin}${script('opengame-detect.sh')}' | bash -s -- --open`} />
       <p className="small">
-        <a href="/opengame-detect.sh" download="opengame-detect.sh">
+        <a href={script('opengame-detect.sh')} download="opengame-detect.sh">
           {d.download('opengame-detect.sh')}
         </a>{' '}
         <span className="muted">{d.readFirst}</span> <code>bash opengame-detect.sh --open</code>

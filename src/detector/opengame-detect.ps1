@@ -8,7 +8,8 @@
 # too long for a URL goes to the clipboard instead, and the page asks to paste it.
 # OPENGAME_URL overrides the app address. OPENGAME_DRY=1 prints the URL instead of opening it,
 # OPENGAME_IMPRIMIR=1 prints the JSON. OPENGAME_STEAM_DIR replaces the Steam folder read from the registry.
-# OPENGAME_MAX_JUEGOS overrides how many games are sent, which the server fills in like the URL.
+# OPENGAME_MAX_JUEGOS overrides how many games are sent, and OPENGAME_LANG the language (es or en) it speaks
+# and opens the app in; the server fills both in like the URL, the language from the script's own address (?lang=en).
 #
 # Must run on Windows PowerShell 5.1 (the Windows 10 default) as well as PowerShell 7: keep this file
 # ASCII (5.1 reads a file without BOM as ANSI) and free of 7-only syntax. A test checks both.
@@ -20,6 +21,11 @@
   $cap = '__OPENGAME_MAX_JUEGOS__'
   if ($env:OPENGAME_MAX_JUEGOS) { $cap = $env:OPENGAME_MAX_JUEGOS }
   if (-not [int]::TryParse($cap, [ref]$MaxGames) -or $MaxGames -le 0) { $MaxGames = [int]::MaxValue }
+  $Lang = '__OPENGAME_LANG__'
+  if ($env:OPENGAME_LANG) { $Lang = $env:OPENGAME_LANG }
+  if ($Lang -ne 'en') { $Lang = 'es' }
+  # A line for the person running it, in their language.
+  function Say($es, $en) { if ($Lang -eq 'en') { Write-Host $en } else { Write-Host $es } }
   # Start-Process opens the URL through ShellExecute, which cuts URLs at about 2048 chars.
   $MaxUrl = 2000
 
@@ -202,17 +208,17 @@
 
   if ($env:OPENGAME_IMPRIMIR -eq '1') { return $json }
   $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json)).TrimEnd('=').Replace('+', '-').Replace('/', '_')
-  $url = $AppUrl + '/diagnostico/importar#d=' + $b64
+  $url = $AppUrl + '/' + $Lang + '/diagnostico/importar#d=' + $b64
   if ($env:OPENGAME_DRY -eq '1') { return $url }
 
   if ($url.Length -le $MaxUrl) {
     Start-Process $url
-    Write-Host 'Abriendo OpenGame Linux en tu navegador. Nada se guarda hasta que pulses Guardar.'
+    Say 'Abriendo OpenGame Linux en tu navegador. Nada se guarda hasta que pulses Guardar.' 'Opening OpenGame Linux in your browser. Nothing is saved until you press Save.'
   }
   else {
     Set-Clipboard -Value $json
-    Start-Process ($AppUrl + '/diagnostico?pegar=1')
-    Write-Host 'Tu resultado no cabe en una direccion web, asi que lo copiamos al portapapeles.'
-    Write-Host 'Pegalo con Ctrl+V en la pagina que se acaba de abrir. Nada se guarda hasta que pulses Guardar.'
+    Start-Process ($AppUrl + '/' + $Lang + '/diagnostico?pegar=1')
+    Say 'Tu resultado no cabe en una direccion web, asi que lo copiamos al portapapeles.' 'Your result does not fit in a web address, so we copied it to the clipboard.'
+    Say 'Pegalo con Ctrl+V en la pagina que se acaba de abrir. Nada se guarda hasta que pulses Guardar.' 'Paste it with Ctrl+V on the page that just opened. Nothing is saved until you press Save.'
   }
 }

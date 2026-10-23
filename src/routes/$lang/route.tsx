@@ -1,7 +1,7 @@
 // Every page lives under /es or /en. The segment is the page's language (`useT()` reads it); any other
 // first segment names no page. Unprefixed paths never reach here: the start middleware redirects them.
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { imageQuery, isLang, type Lang, localizedPath, pagePath } from '../../ui/i18n/lang.ts'
+import { isLang, type Lang, langQuery, localizedPath, pagePath } from '../../ui/i18n/lang.ts'
 import { messages } from '../../ui/i18n/messages.ts'
 import { previewMeta } from '../-meta.ts'
 
@@ -27,7 +27,7 @@ export const Route = createFileRoute('/$lang')({
         ...previewMeta(match.context.origin, {
           title: 'OpenGame Linux',
           description: t.description,
-          image: `/og.png${imageQuery(params.lang)}`,
+          image: `/og.png${langQuery(params.lang)}`,
           imageAlt: t.share.site.imageAlt,
         }),
       ],

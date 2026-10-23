@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from '@effect/vitest'
 import { Result, Schema } from 'effect'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -28,7 +28,7 @@ describe.skipIf(process.platform !== 'linux')('opengame-detect.sh', () => {
     const json = parsePayload(runScript())
     expect(Result.isSuccess(json)).toBe(true)
     const url = runScript('--open')
-    expect(url).toMatch(/^http:\/\/ejemplo\.test\/diagnostico\/importar#d=[A-Za-z0-9_-]+$/)
+    expect(url).toMatch(/^http:\/\/ejemplo\.test\/es\/diagnostico\/importar#d=[A-Za-z0-9_-]+$/)
     const fromUrl = parsePayload(url)
     const withoutTime = Result.map((c: { readonly captured_at: Date }) => ({ ...c, captured_at: null }))
     expect(withoutTime(fromUrl)).toEqual(withoutTime(json))
@@ -197,5 +197,37 @@ describe.skipIf(process.platform !== 'linux')('opengame-detect.sh Steam Deck', (
     ['LENOVO', 'Jupiter', null],
   ])('%s %s is %o, and SteamOS is named by its ID', (vendor, product, device) => {
     expect(handheld(vendor, product)).toEqual([device, 'SteamOS', '3.7'])
+  })
+})
+
+describe.skipIf(process.platform !== 'linux')('opengame-detect.sh in the language of the page that gave the command', () => {
+  // No display, so --open cannot start a browser and says so. `/opengame-detect.sh?lang=en` fills in `en` as OPENGAME_LANG does.
+  const run = (lang: string | undefined, ...args: Array<string>) =>
+    spawnSync('bash', [script, ...args], {
+      encoding: 'utf8',
+      env: { ...process.env, HOME: tmp, OPENGAME_URL: 'http://ejemplo.test', DISPLAY: '', WAYLAND_DISPLAY: '', ...(lang === undefined ? {} : { OPENGAME_LANG: lang }) },
+    })
+
+  it.each([
+    {
+      lang: undefined,
+      page: 'es',
+      printed: 'Copia el JSON de arriba y pégalo en http://ejemplo.test/es/diagnostico',
+      noBrowser: 'No pudimos abrir el navegador. Abre esta dirección:',
+      usage: 'Uso: --game <appid>, el número del juego en Steam (por ejemplo --game 1245620)',
+    },
+    {
+      lang: 'en',
+      page: 'en',
+      printed: 'Copy the JSON above and paste it at http://ejemplo.test/en/diagnostico',
+      noBrowser: "We couldn't open your browser. Open this address:",
+      usage: "Usage: --game <appid>, the game's number on Steam (for example --game 1245620)",
+    },
+  ])('with OPENGAME_LANG=$lang, tells the person what to do and opens the pages in $page', ({ lang, page, printed, noBrowser, usage }) => {
+    expect(run(lang).stderr).toBe(`${printed}\n`)
+    const opened = run(lang, '--open')
+    expect(opened.stderr).toBe(`${noBrowser}\n`)
+    expect(opened.stdout).toMatch(new RegExp(`^http://ejemplo\\.test/${page}/diagnostico/importar#d=[A-Za-z0-9_-]+\n$`))
+    expect(run(lang, '--game', 'gta').stderr).toBe(`${usage}\n`)
   })
 })
