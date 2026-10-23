@@ -1,5 +1,4 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getRequest } from '@tanstack/react-start/server'
 import { Schema } from 'effect'
 import { DiagnosticInput, SaveDiagnostic } from '../domain/contributions.ts'
 import { InvalidPayload, RuleViolated } from '../domain/errors.ts'
@@ -7,7 +6,6 @@ import { DiagnosticId } from '../domain/ids.ts'
 import { submitDiagnostic } from '../server/commands/diagnostic.ts'
 import { evaluateWithoutSaving, myDiagnostic, myMachines } from '../server/queries/diagnostic.ts'
 import { runAction, runRead } from '../server/run.ts'
-import { publicOrigin } from '../server/origin.ts'
 
 export const evaluateDiagnosticFn = createServerFn({ method: 'POST' })
   .validator(Schema.toStandardSchemaV1(DiagnosticInput))
@@ -22,5 +20,3 @@ export const myMachinesFn = createServerFn({ method: 'GET' }).handler(() => runR
 export const myDiagnosticFn = createServerFn({ method: 'GET' })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ id: DiagnosticId })))
   .handler(({ data }) => runRead(myDiagnostic(data.id)))
-
-export const originFn = createServerFn({ method: 'GET' }).handler(() => publicOrigin(getRequest()))

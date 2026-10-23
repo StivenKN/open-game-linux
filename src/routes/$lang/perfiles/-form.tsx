@@ -5,6 +5,7 @@ import type { profileEditOptionsFn, profileOptionsFn } from '../../../fns/contri
 import { FieldError } from '../../../ui/FieldError.tsx'
 import { Field, fieldProps, nullText, ramGb, vramMb, vulkanVersions } from '../../../ui/form.tsx'
 import { memory } from '../../../ui/format.ts'
+import { useT } from '../../../ui/i18n/messages.ts'
 import type { FieldErrors } from '../../../ui/useAction.ts'
 
 export type ProfileDraft = Awaited<ReturnType<typeof profileEditOptionsFn>>['draft']
@@ -42,35 +43,32 @@ export function ProfileContentFields({
   draft: ProfileDraft | null
 }) {
   const [vulkan, setVulkan] = useState(String(draft?.requires_vulkan ?? nullText))
+  const t = useT()
+  const f = t.profile.form
   return (
     <>
-      <Field errors={errors} name="title" label="Título" help="Qué logra el perfil, por ejemplo «GTA V en gráficos bajos con Proton 8».">
+      <Field errors={errors} name="title" label={f.title.label} help={f.title.help}>
         <input {...fieldProps(errors, 'title')} defaultValue={draft?.title} />
       </Field>
-      <Field
-        errors={errors}
-        name="target_game_version"
-        label="Versión del juego (opcional)"
-        help="Solo si el perfil sirve para una versión concreta: un reporte con otra versión no podrá usarlo."
-      >
+      <Field errors={errors} name="target_game_version" label={f.gameVersion.label} help={f.gameVersion.help}>
         <input {...fieldProps(errors, 'target_game_version')} defaultValue={draft?.target_game_version ?? ''} placeholder="1.0.3179" />
       </Field>
 
-      <h2 className="section-title">Pasos</h2>
+      <h2 className="section-title">{t.profile.steps}</h2>
       <StepRows errors={errors} initial={draft?.steps ?? []} />
-      <Field errors={errors} name="launch_options" label="Parámetros de lanzamiento (opcional)" help="Quien siga el perfil los copia tal cual en su lanzador.">
+      <Field errors={errors} name="launch_options" label={f.launchOptions.label} help={f.launchOptions.help}>
         <input {...fieldProps(errors, 'launch_options')} defaultValue={draft?.launch_options ?? ''} placeholder="gamemoderun %command%" />
       </Field>
 
-      <h2 className="section-title">Dependencias</h2>
+      <h2 className="section-title">{t.profile.dependencies}</h2>
       <DependencyRows errors={errors} catalog={dependencies} initial={draft?.dependencies ?? []} />
 
-      <h2 className="section-title">Condiciones conocidas</h2>
-      <p className="small muted">La página del perfil compara la RAM, la VRAM y Vulkan con el diagnóstico de quien la abre. Lo que no declares no se compara.</p>
+      <h2 className="section-title">{t.profile.requirements}</h2>
+      <p className="small muted">{f.requirementsHelp}</p>
       <div className="fields-2">
-        <Field errors={errors} name="ram_min_mb" label="RAM mínima">
+        <Field errors={errors} name="ram_min_mb" label={t.profile.ramMin}>
           <select {...fieldProps(errors, 'ram_min_mb')} defaultValue={String(draft?.ram_min_mb ?? nullText)}>
-            <option value={nullText}>Sin declarar</option>
+            <option value={nullText}>{f.undeclared}</option>
             {ramGb.map((gb) => (
               <option key={gb} value={gb * 1024}>
                 {gb} GB
@@ -78,9 +76,9 @@ export function ProfileContentFields({
             ))}
           </select>
         </Field>
-        <Field errors={errors} name="vram_min_mb" label="VRAM mínima">
+        <Field errors={errors} name="vram_min_mb" label={t.profile.vramMin}>
           <select {...fieldProps(errors, 'vram_min_mb')} defaultValue={String(draft?.vram_min_mb ?? nullText)}>
-            <option value={nullText}>Sin declarar</option>
+            <option value={nullText}>{f.undeclared}</option>
             {vramMb.map((mb) => (
               <option key={mb} value={mb}>
                 {memory(mb)}
@@ -90,14 +88,14 @@ export function ProfileContentFields({
         </Field>
         <Field errors={errors} name="requires_vulkan" label="Vulkan">
           <select {...fieldProps(errors, 'requires_vulkan')} value={vulkan} onChange={(e) => setVulkan(e.currentTarget.value)}>
-            <option value={nullText}>Sin declarar</option>
-            <option value="true">Obligatorio</option>
-            <option value="false">No lo necesita</option>
+            <option value={nullText}>{f.undeclared}</option>
+            <option value="true">{f.vulkanRequired}</option>
+            <option value="false">{f.vulkanNotNeeded}</option>
           </select>
         </Field>
-        <Field errors={errors} name="vulkan_version_min" label="Versión mínima de Vulkan">
+        <Field errors={errors} name="vulkan_version_min" label={f.vulkanMin}>
           <select {...fieldProps(errors, 'vulkan_version_min')} defaultValue={draft?.vulkan_version_min ?? nullText} disabled={vulkan !== 'true'}>
-            <option value={nullText}>Cualquiera</option>
+            <option value={nullText}>{f.anyVersion}</option>
             {vulkanVersions.map((v) => (
               <option key={v} value={v}>
                 {v}
@@ -108,11 +106,11 @@ export function ProfileContentFields({
         {/* A disabled select posts nothing; without Vulkan there is no minimum. */}
         {vulkan !== 'true' && <input type="hidden" name="vulkan_version_min" value={nullText} />}
       </div>
-      <Field errors={errors} name="cpu_requirement" label="CPU (opcional)" help="Texto libre: se muestra, no se compara.">
-        <input {...fieldProps(errors, 'cpu_requirement')} defaultValue={draft?.cpu_requirement ?? ''} placeholder="4 núcleos con AVX" />
+      <Field errors={errors} name="cpu_requirement" label={f.cpu.label} help={f.freeText}>
+        <input {...fieldProps(errors, 'cpu_requirement')} defaultValue={draft?.cpu_requirement ?? ''} placeholder={f.cpu.example} />
       </Field>
-      <Field errors={errors} name="gpu_requirement" label="GPU (opcional)" help="Texto libre: se muestra, no se compara.">
-        <input {...fieldProps(errors, 'gpu_requirement')} defaultValue={draft?.gpu_requirement ?? ''} placeholder="GTX 1050 o equivalente" />
+      <Field errors={errors} name="gpu_requirement" label={f.gpu.label} help={f.freeText}>
+        <input {...fieldProps(errors, 'gpu_requirement')} defaultValue={draft?.gpu_requirement ?? ''} placeholder={f.gpu.example} />
       </Field>
     </>
   )
@@ -120,28 +118,29 @@ export function ProfileContentFields({
 
 function StepRows({ errors, initial }: { errors: FieldErrors; initial: ProfileDraft['steps'] }) {
   const { rows, add, remove, swap } = useRows(initial, initial.length === 0 ? 1 : 0)
+  const s = useT().profile.form.steps
   return (
     <>
-      <p className="small muted">En el orden en que se siguen. Escribe los comandos tal cual: la página los muestra para copiarlos.</p>
+      <p className="small muted">{s.help}</p>
       <ol className="card-list">
         {rows.map((row, i) => (
           <li key={row.key} className="card stack">
             <div className="row">
-              <b>Paso {i + 1}</b>
+              <b>{s.step(i + 1)}</b>
               <button type="button" className="button-secondary" disabled={i === 0} onClick={() => swap(i, i - 1)}>
-                Subir
+                {s.up}
               </button>
               <button type="button" className="button-secondary" disabled={i === rows.length - 1} onClick={() => swap(i, i + 1)}>
-                Bajar
+                {s.down}
               </button>
               <button type="button" className="button-secondary" disabled={rows.length === 1} onClick={() => remove(row.key)}>
-                Quitar
+                {s.remove}
               </button>
             </div>
-            <Field errors={errors} name={`steps[${i}][title]`} label="Título">
+            <Field errors={errors} name={`steps[${i}][title]`} label={s.title}>
               <input {...fieldProps(errors, `steps[${i}][title]`)} defaultValue={row.value?.title} />
             </Field>
-            <Field errors={errors} name={`steps[${i}][instruction]`} label="Qué hacer">
+            <Field errors={errors} name={`steps[${i}][instruction]`} label={s.instruction}>
               <textarea {...fieldProps(errors, `steps[${i}][instruction]`)} rows={3} defaultValue={row.value?.instruction} />
             </Field>
           </li>
@@ -149,7 +148,7 @@ function StepRows({ errors, initial }: { errors: FieldErrors; initial: ProfileDr
       </ol>
       <p>
         <button type="button" className="button-secondary" onClick={add}>
-          Añadir un paso
+          {s.add}
         </button>
       </p>
       <FieldError errors={errors} field="steps" />
@@ -159,9 +158,10 @@ function StepRows({ errors, initial }: { errors: FieldErrors; initial: ProfileDr
 
 function DependencyRows({ errors, catalog, initial }: { errors: FieldErrors; catalog: ReadonlyArray<DependencyOption>; initial: ProfileDraft['dependencies'] }) {
   const { rows, add, remove } = useRows(initial, 0)
+  const d = useT().profile.form.dependencies
   return (
     <>
-      <p className="small muted">Bibliotecas o programas que el juego necesita además de la capa, con el comando para instalarlos.</p>
+      <p className="small muted">{d.help}</p>
       {rows.length > 0 && (
         <ul className="card-list">
           {rows.map((row, i) => (
@@ -171,7 +171,7 @@ function DependencyRows({ errors, catalog, initial }: { errors: FieldErrors; cat
       )}
       <p>
         <button type="button" className="button-secondary" onClick={add}>
-          Añadir una dependencia
+          {d.add}
         </button>
       </p>
       <FieldError errors={errors} field="dependencies" />
@@ -193,56 +193,57 @@ function DependencyRow({
   onRemove: () => void
 }) {
   const [kind, setKind] = useState<'existente' | 'nueva'>(catalog.length === 0 ? 'nueva' : 'existente')
+  const d = useT().profile.form.dependencies
   const name = (field: string) => `dependencies[${index}]${field}`
   return (
     <li className="card stack">
       <div className="row">
         <label className="checkbox">
           <input type="radio" name={name('[dependency][_tag]')} value="existente" checked={kind === 'existente'} disabled={catalog.length === 0} onChange={() => setKind('existente')} />
-          Una de la lista
+          {d.listed}
         </label>
         <label className="checkbox">
           <input type="radio" name={name('[dependency][_tag]')} value="nueva" checked={kind === 'nueva'} onChange={() => setKind('nueva')} />
-          Otra
+          {d.other}
         </label>
         <button type="button" className="button-secondary" onClick={onRemove}>
-          Quitar
+          {d.remove}
         </button>
       </div>
       {kind === 'existente' ? (
-        <Field errors={errors} name={name('[dependency][id]')} label="Dependencia">
+        <Field errors={errors} name={name('[dependency][id]')} label={d.dependency}>
           <select {...fieldProps(errors, name('[dependency][id]'))} defaultValue={initial?.dependency_id}>
-            {catalog.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name} ({d.package_manager})
+            {catalog.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name} ({option.package_manager})
               </option>
             ))}
           </select>
         </Field>
       ) : (
         <div className="row inline-fields">
-          <Field errors={errors} name={name('[dependency][name]')} label="Nombre">
+          <Field errors={errors} name={name('[dependency][name]')} label={d.name}>
             <input {...fieldProps(errors, name('[dependency][name]'))} placeholder="vcrun2019" />
           </Field>
-          <Field errors={errors} name={name('[dependency][package_manager]')} label="Gestor">
+          <Field errors={errors} name={name('[dependency][package_manager]')} label={d.packageManager}>
             <input {...fieldProps(errors, name('[dependency][package_manager]'))} placeholder="winetricks" />
           </Field>
-          <Field errors={errors} name={name('[dependency][description]')} label="Qué es">
-            <input {...fieldProps(errors, name('[dependency][description]'))} placeholder="Bibliotecas de Visual C++ 2019" />
+          <Field errors={errors} name={name('[dependency][description]')} label={d.description.label}>
+            <input {...fieldProps(errors, name('[dependency][description]'))} placeholder={d.description.example} />
           </Field>
         </div>
       )}
       <FieldError errors={errors} field={name('[dependency]')} />
       <div className="row inline-fields">
-        <Field errors={errors} name={name('[required_version]')} label="Versión (opcional)">
+        <Field errors={errors} name={name('[required_version]')} label={d.version}>
           <input {...fieldProps(errors, name('[required_version]'))} defaultValue={initial?.required_version ?? ''} />
         </Field>
         <label className="checkbox">
           <input type="checkbox" name={name('[required]')} value="true" defaultChecked={initial?.required ?? true} />
-          Obligatoria
+          {d.required}
         </label>
       </div>
-      <Field errors={errors} name={name('[install_instruction]')} label="Cómo instalarla">
+      <Field errors={errors} name={name('[install_instruction]')} label={d.install}>
         <input {...fieldProps(errors, name('[install_instruction]'))} defaultValue={initial?.install_instruction} placeholder="protontricks 292030 vcrun2019" />
       </Field>
     </li>

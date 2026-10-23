@@ -57,6 +57,7 @@ export const common = {
     protonfixesPr: 'Paste the link of an umu-protonfixes PR (github.com/Open-Wine-Components/umu-protonfixes/pull/…).',
     email: 'Enter a valid email address.',
     passwordNeeded: 'Enter your password.',
+    detectorOutputNeeded: "Paste the detector's output.",
   },
 
   rules: {

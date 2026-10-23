@@ -1,4 +1,5 @@
 import { Option, Schema } from 'effect'
+import { says } from '../../../domain/checks.ts'
 import { DiagnosticInput } from '../../../domain/contributions.ts'
 import { VulkanSupport } from '../../../domain/evaluation.ts'
 import { Diagnostic, Distribution } from '../../../domain/tables.ts'
@@ -14,7 +15,7 @@ export const forgetPending = () => sessionStorage.removeItem(STORAGE_KEY)
 
 export const readPending = (): Option.Option<Input> => Schema.decodeUnknownOption(Stored)(sessionStorage.getItem(STORAGE_KEY))
 
-export const Pasted = Schema.Struct({ text: Schema.String.pipe(Schema.check(Schema.isNonEmpty({ message: 'Pega la salida del detector.' }))) })
+export const Pasted = Schema.Struct({ text: Schema.String.pipe(Schema.check(Schema.isNonEmpty(says('detectorOutputNeeded')))) })
 
 const common = {
   version_sistema: Diagnostic.fields.os_version,

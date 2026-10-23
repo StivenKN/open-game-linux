@@ -75,7 +75,7 @@ describe('NewReport from the report form', () => {
 
   it('a failing result with no failures fails on the failures field (8.7)', () => {
     expect(decode({ ...base, outcome: 'no_inicia' })).toEqual(
-      Result.fail([[['failures'], 'Si no inicia o falla, indica al menos un tipo de fallo (usa «otro» si no sabes la causa).']]),
+      Result.fail([[['failures'], 'failureNeeded']]),
     )
   })
 
@@ -93,7 +93,7 @@ describe('NewReport from the report form', () => {
   it('required text is trimmed, and blank after trimming is rejected (8.9)', () => {
     const r = decode({ ...base, game_version: '  1.0.3  ' })
     expect(Result.isSuccess(r) && r.success.game_version).toBe('1.0.3')
-    expect(decode({ ...base, game_version: '   ' })).toEqual(Result.fail([[['game_version'], 'Este campo es obligatorio.']]))
+    expect(decode({ ...base, game_version: '   ' })).toEqual(Result.fail([[['game_version'], 'required']]))
   })
 
   it('a new native layer version decodes (family Nativo)', () => {

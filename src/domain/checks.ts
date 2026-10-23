@@ -15,6 +15,7 @@ export const CheckMessage = Schema.Literals([
   'protonfixesPr',
   'email',
   'passwordNeeded',
+  'detectorOutputNeeded',
 ])
 export type CheckMessage = typeof CheckMessage.Type
 

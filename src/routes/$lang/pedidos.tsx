@@ -8,8 +8,9 @@ import { gameRequestsFn, rejectRequestFn, requestGameFn, withdrawRequestFn } fro
 import { DemoStamp } from '../../ui/DemoStamp.tsx'
 import { FieldError } from '../../ui/FieldError.tsx'
 import { Field, fieldProps } from '../../ui/form.tsx'
-import { count, date } from '../../ui/format.ts'
+import { useLang, useT } from '../../ui/i18n/messages.ts'
 import { ruleErrors, useAction } from '../../ui/useAction.ts'
+import { titled } from '../-head.ts'
 import { lenient, SearchText } from '../-search.ts'
 import { returnHere } from '../-return-to.ts'
 
@@ -17,36 +18,37 @@ export const Route = createFileRoute('/$lang/pedidos')({
   // `?titulo=` prefills the form: the catalog's request links pass the search.
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ titulo: lenient(Schema.optionalKey(SearchText)) })),
   loader: () => gameRequestsFn(),
-  head: () => ({ meta: [{ title: 'Pedidos de juegos · OpenGame Linux' }] }),
+  head: ({ params }) => titled(params.lang, (t) => t.requests.title),
   component: GameRequestsPage,
 })
 
 type OpenRequestRow = Awaited<ReturnType<typeof gameRequestsFn>>[number]
 type Outcome = Extract<Awaited<ReturnType<typeof requestGameFn>>, { ok: true }>['value']
 
-const requesters = (n: number) => count(n, 'persona lo pide', 'personas lo piden')
-
 function GameRequestsPage() {
   const open = Route.useLoaderData()
   const { titulo } = Route.useSearch()
   const { visitor } = Route.useRouteContext()
   const location = useLocation()
+  const t = useT()
+  const lang = useLang()
   return (
     <main className="wrapper">
-      <h1>Pedidos de juegos</h1>
+      <h1>{t.requests.title}</h1>
       <p className="muted">
-        ¿Falta un juego en el catálogo? Pídelo. Si alguien ya lo pidió, te sumas a su pedido. Un revisor lo agrega con sus datos, y en{' '}
-        <Link to="/mis-aportes" hash="pedidos">
-          Mis aportes
-        </Link>{' '}
-        ves cuándo está listo.
+        {t.requests.lede((text) => (
+          <Link to="/$lang/mis-aportes" params={{ lang }} hash="pedidos">
+            {text}
+          </Link>
+        ))}
       </p>
       {visitor === null ? (
         <p className="card">
-          <Link to="/entrar" search={returnHere(location)}>
-            Entra
-          </Link>{' '}
-          para pedir un juego o sumarte a un pedido.
+          {t.requests.signIn((text) => (
+            <Link to="/$lang/entrar" params={{ lang }} search={returnHere(location)}>
+              {text}
+            </Link>
+          ))}
         </p>
       ) : (
         <RequestForm title={titulo} />
@@ -54,10 +56,10 @@ function GameRequestsPage() {
 
       <section aria-labelledby="open-title">
         <h2 id="open-title" className="section-title">
-          Pedidos abiertos
+          {t.requests.open}
         </h2>
         {open.length === 0 ? (
-          <p className="card muted">No hay pedidos abiertos.</p>
+          <p className="card muted">{t.requests.none}</p>
         ) : (
           <ul className="card-list">
             {open.map((r) => (
@@ -72,6 +74,7 @@ function GameRequestsPage() {
 
 function RequestForm({ title }: { title: string | undefined }) {
   const router = useRouter()
+  const f = useT().requests.form
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const r = useAction(RequestGame, requestGameFn, {
     onFailure: ruleErrors,
@@ -83,23 +86,18 @@ function RequestForm({ title }: { title: string | undefined }) {
   return (
     <form className="card form form-wide" aria-labelledby="request-title" {...r.form}>
       <h2 id="request-title" className="no-margin">
-        Pedir un juego
+        {f.heading}
       </h2>
       <FieldError errors={r.errors} field="form" />
       <input type="hidden" name="_tag" value="nuevo" />
-      <Field errors={r.errors} name="title" label="Título">
+      <Field errors={r.errors} name="title" label={f.title}>
         <input {...fieldProps(r.errors, 'title')} defaultValue={title ?? ''} key={title} />
       </Field>
-      <Field
-        errors={r.errors}
-        name="steam_app_id"
-        label="Enlace o App ID de Steam (opcional)"
-        help="Con él, nadie pide el mismo juego dos veces y el revisor rellena la ficha desde la tienda."
-      >
+      <Field errors={r.errors} name="steam_app_id" label={f.steam} help={f.steamHelp}>
         <input {...fieldProps(r.errors, 'steam_app_id')} placeholder="https://store.steampowered.com/app/…" />
       </Field>
       <button type="submit" disabled={r.submitting}>
-        Pedirlo
+        {f.submit}
       </button>
       {outcome !== null && <OutcomeNote outcome={outcome} />}
     </form>
@@ -107,40 +105,41 @@ function RequestForm({ title }: { title: string | undefined }) {
 }
 
 function OutcomeNote({ outcome }: { outcome: Outcome }) {
+  const t = useT()
+  const lang = useLang()
   if (outcome._tag === 'en_catalogo')
     return (
       <p className="note small" data-tone="verde" role="status">
-        «{outcome.game.title}» ya está en el catálogo.{' '}
-        <Link to="/juegos/$gameId" params={{ gameId: outcome.game.id }}>
-          Ver su ficha
+        {t.requests.inCatalog(outcome.game.title)}{' '}
+        <Link to="/$lang/juegos/$gameId" params={{ lang, gameId: outcome.game.id }}>
+          {t.requests.viewGame}
         </Link>
       </p>
     )
   return (
     <p className="note small" data-tone="verde" role="status">
-      {outcome.requesters === 1
-        ? `Pediste «${outcome.request.title}». Cuando un revisor lo agregue, lo verás en «Mis aportes».`
-        : `Te sumaste al pedido de «${outcome.request.title}». Ya lo piden ${outcome.requesters} personas.`}
+      {outcome.requesters === 1 ? t.requests.requested(outcome.request.title) : t.requests.joined(outcome.request.title, outcome.requesters)}
     </p>
   )
 }
 
 // The `pedido-<id>` anchor is where Mis aportes links an open request.
 function OpenRequest({ request: r, signedIn, reviewer }: { request: OpenRequestRow; signedIn: boolean; reviewer: boolean }) {
+  const t = useT()
   return (
     <li id={`pedido-${r.id}`} className="card stack">
       <div className="row">
         <strong className="game-name">{r.title}</strong>
         {r.steam_app_id !== null && (
           <a href={`https://store.steampowered.com/app/${r.steam_app_id}`} target="_blank" rel="noreferrer" className="small">
-            Ver en Steam
+            {t.requests.viewOnSteam}
           </a>
         )}
         {r.demo && <DemoStamp />}
       </div>
       <div className="row">
         <span className="small muted">
-          {requesters(r.requesters)} · desde el {date(r.created_at)}
+          {t.requests.requesters(r.requesters)} · {t.requests.since(t.date(r.created_at))}
         </span>
         {signedIn && (r.mine ? <WithdrawButton id={r.id} /> : <JoinButton id={r.id} />)}
       </div>
@@ -153,13 +152,14 @@ const RequestRef = Schema.Struct({ id: GameRequestId })
 
 function JoinButton({ id }: { id: GameRequestId }) {
   const router = useRouter()
+  const t = useT()
   const r = useAction(RequestGame, requestGameFn, { onFailure: ruleErrors, onComplete: () => router.invalidate() })
   return (
     <form {...r.form}>
       <input type="hidden" name="_tag" value="existente" />
       <input type="hidden" name="id" value={id} />
       <button type="submit" className="button-secondary" disabled={r.submitting}>
-        Sumarme
+        {t.requests.join}
       </button>
       <FieldError errors={r.errors} field="form" />
     </form>
@@ -168,12 +168,13 @@ function JoinButton({ id }: { id: GameRequestId }) {
 
 function WithdrawButton({ id }: { id: GameRequestId }) {
   const router = useRouter()
+  const t = useT()
   const r = useAction(RequestRef, withdrawRequestFn, { onFailure: ruleErrors, onComplete: () => router.invalidate() })
   return (
     <form {...r.form}>
       <input type="hidden" name="id" value={id} />
       <button type="submit" className="button-secondary" disabled={r.submitting}>
-        Ya no lo pido
+        {t.requests.withdraw}
       </button>
       <FieldError errors={r.errors} field="form" />
     </form>
@@ -182,22 +183,24 @@ function WithdrawButton({ id }: { id: GameRequestId }) {
 
 function ReviewerActions({ id }: { id: GameRequestId }) {
   const router = useRouter()
+  const t = useT()
+  const lang = useLang()
   const r = useAction(RejectRequest, rejectRequestFn, { onFailure: ruleErrors, onComplete: () => router.invalidate() })
   return (
     <form className="form decision" {...r.form}>
       <FieldError errors={r.errors} field="form" />
       <input type="hidden" name="id" value={id} />
       <label>
-        Motivo (para rechazar)
+        {t.requests.rejectReason}
         <textarea name="reason" rows={2} aria-invalid={r.errors.reason !== undefined} />
       </label>
       <FieldError errors={r.errors} field="reason" />
       <div className="row">
-        <Link to="/catalogo/nuevo" search={{ pedido: id }} className="button">
-          Crear el juego
+        <Link to="/$lang/catalogo/nuevo" params={{ lang }} search={{ pedido: id }} className="button">
+          {t.requests.createGame}
         </Link>
         <button type="submit" className="button-secondary" disabled={r.submitting}>
-          Rechazar
+          {t.requests.reject}
         </button>
       </div>
     </form>

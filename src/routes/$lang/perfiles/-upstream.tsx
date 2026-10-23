@@ -5,15 +5,17 @@ import { type FixExport, FixNote, type PrNumber, type Skipped, openGamePrs, prUr
 import { noteFixFn } from '../../../fns/upstream.ts'
 import { CopyBox } from '../../../ui/compatibility/CopyBox.tsx'
 import { FieldError } from '../../../ui/FieldError.tsx'
-import { date } from '../../../ui/format.ts'
 import { Field, fieldProps } from '../../../ui/form.tsx'
 import { DemoStamp } from '../../../ui/DemoStamp.tsx'
+import { useT } from '../../../ui/i18n/messages.ts'
 import { ruleErrors, useAction } from '../../../ui/useAction.ts'
-import { notExportableReason, skipReason } from '../../../ui/vocabulary.ts'
 
 type Fix = { readonly pr: PrNumber; readonly noted_at: Date }
 
-/** "Compartir con umu-protonfixes" on an approved profile: its fix file, what did not translate, and the merged PRs it led to. */
+/**
+ * The "share with umu-protonfixes" section of an approved profile: its fix file, what did not translate, and the merged PRs it
+ * led to. The file and the PR text it proposes go to the project, so they stay in English in every language.
+ */
 export function ShareUpstream({
   profileId,
   fixExport: x,
@@ -25,50 +27,45 @@ export function ShareUpstream({
   fixes: ReadonlyArray<Fix>
   reviewer: boolean
 }) {
+  const t = useT()
+  const u = t.profile.upstream
   return (
     <section className="block stack" aria-labelledby="upstream">
       <h2 id="upstream" className="section-title">
-        Compartir con umu-protonfixes
+        {u.heading}
       </h2>
-      {x._tag === 'no_exportable' && <p className="card muted">{notExportableReason[x.reason]}</p>}
+      {x._tag === 'no_exportable' && <p className="card muted">{t.notExportableReason[x.reason]}</p>}
       {x._tag === 'nada_traducible' && (
         <div className="card stack">
-          <p>
-            {x.skipped.length === 0
-              ? 'Este perfil no tiene opciones de lanzamiento ni dependencias que se conviertan en un arreglo de umu-protonfixes.'
-              : 'Nada de este perfil se convierte en un arreglo de umu-protonfixes:'}
-          </p>
+          <p>{x.skipped.length === 0 ? u.nothing : u.nothingTranslates}</p>
           <SkippedList skipped={x.skipped} />
         </div>
       )}
       {x._tag === 'archivo' && (
         <>
-          <p>
-            umu-protonfixes aplica arreglos por juego cuando lo abres con GE-Proton o umu. Este perfil se traduce en el archivo{' '}
-            <code>{x.path}</code>; puedes usarlo hoy mismo y proponerlo al proyecto para que llegue a todos.
-          </p>
-          <CopyBox label="Úsalo ya en tu PC" text={x.local_command} />
+          <p>{u.file(x.path)}</p>
+          <CopyBox label={u.useNow} text={x.local_command} />
           <p className="small note" data-tone="azul">
-            Solo GE-Proton y umu leen esta carpeta; el Proton de Valve no.
+            {u.onlyGe}
           </p>
-          <CopyBox label={`Archivo ${x.path}`} text={x.content} />
+          <CopyBox label={u.fileCopy(x.path)} text={x.content} />
           {x.skipped.length > 0 && (
             <div className="stack">
-              <p className="small">No pasó al archivo:</p>
+              <p className="small">{u.skipped}</p>
               <SkippedList skipped={x.skipped} />
             </div>
           )}
           <p className="row">
             <a href={x.view_existing} target="_blank" rel="noreferrer">
-              ¿Ya existe un arreglo? Revísalo primero
+              {u.existing}
             </a>
             {x.propose._tag === 'enlace' ? (
               <a className="button" href={x.propose.url} target="_blank" rel="noreferrer">
-                Proponerlo en GitHub
+                {u.propose}
               </a>
             ) : (
               <span className="row small muted">
-                <DemoStamp /> Los datos de ejemplo no se envían a umu-protonfixes.
+                <DemoStamp /> {u.demo}
               </span>
             )}
           </p>
@@ -77,9 +74,9 @@ export function ShareUpstream({
               {fixes.map((a) => (
                 <li key={a.pr} className="card row">
                   <a href={prUrl(a.pr)} target="_blank" rel="noreferrer">
-                    Aceptado en umu-protonfixes · PR #{a.pr}
+                    {u.accepted(a.pr)}
                   </a>
-                  <span className="small muted">registrado el {date(a.noted_at)}</span>
+                  <span className="small muted">{u.notedOn(t.date(a.noted_at))}</span>
                   {reviewer && <RetractFix pr={a.pr} />}
                 </li>
               ))}
@@ -94,11 +91,12 @@ export function ShareUpstream({
 }
 
 function SkippedList({ skipped }: { skipped: ReadonlyArray<Skipped> }) {
+  const t = useT()
   return (
     <ul className="small">
       {skipped.map((o, i) => (
         <li key={i}>
-          <code>{o.text}</code>: {skipReason[o.reason]}.
+          <code>{o.text}</code>: {t.skipReason[o.reason]}.
         </li>
       ))}
     </ul>
@@ -108,22 +106,23 @@ function SkippedList({ skipped }: { skipped: ReadonlyArray<Skipped> }) {
 function NoteFix({ profileId }: { profileId: ProfileId }) {
   const router = useRouter()
   const r = useAction(FixNote, noteFixFn, { onFailure: ruleErrors, onComplete: () => router.invalidate() })
+  const n = useT().profile.upstream.note
   return (
     <form className="card form" {...r.form}>
       <FieldError errors={r.errors} field="form" />
       <input type="hidden" name="_tag" value="Aceptado" />
       <input type="hidden" name="profile_id" value={profileId} />
-      <Field errors={r.errors} name="pr" label="Registrar un PR fusionado (revisores)">
+      <Field errors={r.errors} name="pr" label={n.label}>
         <input {...fieldProps(r.errors, 'pr')} placeholder="https://github.com/Open-Wine-Components/umu-protonfixes/pull/…" />
       </Field>
       <p className="small muted">
-        Solo PR ya fusionados: cada uno suma al contador público.{' '}
+        {n.help}{' '}
         <a href={openGamePrs} target="_blank" rel="noreferrer">
-          Buscar PR fusionados de OpenGame
+          {n.search}
         </a>
       </p>
       <button type="submit" disabled={r.submitting}>
-        {r.submitting ? 'Registrando…' : 'Registrar PR aceptado'}
+        {r.submitting ? n.sending : n.submit}
       </button>
     </form>
   )
@@ -132,12 +131,13 @@ function NoteFix({ profileId }: { profileId: ProfileId }) {
 function RetractFix({ pr }: { pr: PrNumber }) {
   const router = useRouter()
   const r = useAction(FixNote, noteFixFn, { onFailure: ruleErrors, onComplete: () => router.invalidate() })
+  const t = useT()
   return (
     <form className="row" {...r.form}>
       <input type="hidden" name="_tag" value="Anular" />
       <input type="hidden" name="pr" value={pr} />
       <button type="submit" className="button-secondary" disabled={r.submitting}>
-        Anular
+        {t.profile.upstream.retract}
       </button>
       <FieldError errors={r.errors} field="form" />
     </form>

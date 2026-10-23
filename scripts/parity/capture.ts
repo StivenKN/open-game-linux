@@ -23,7 +23,9 @@ export type Identity = keyof typeof identities
 
 const widths = [1280, 390] as const
 
-export const routes = [
+// Every page lives under /es or /en; the detector scripts stay unprefixed. Spanish is the full sweep, and a
+// few English pages check the other dictionary.
+const pages = [
   '/',
   '/?q=elden',
   '/?estado=funciona&lanzador=1&sin_anti_cheat=true',
@@ -40,8 +42,6 @@ export const routes = [
   '/revision?tipo=perfil',
   '/revision?tipo=solucion',
   '/_muestras',
-  '/opengame-detect.sh',
-  '/opengame-detect.ps1',
   ...[1, 2, 3, 4, 5, 6].flatMap((id) => [`/juegos/${id}`, `/perfiles/${id}`]),
   ...[1, 2, 3].map((id) => `/guias/${id}`),
   ...[1, 2, 3, 4, 5].map((id) => `/diagnosticos/${id}`),
@@ -50,6 +50,15 @@ export const routes = [
   ...[1, 5, 8].map((id) => `/reportes/${id}/proton`),
   ...[4, 6, 7].map((id) => `/reportes/${id}/solucion`),
   '/reportes/4/solucion?tipoFallo=3',
+] as const
+
+const inLanguage = (lang: 'es' | 'en', page: string) => (page.startsWith('/?') ? `/${lang}${page.slice(1)}` : page === '/' ? `/${lang}` : `/${lang}${page}`)
+
+export const routes = [
+  ...pages.map((page) => inLanguage('es', page)),
+  ...['/', '/juegos/1', '/diagnostico', '/revision'].map((page) => inLanguage('en', page)),
+  '/opengame-detect.sh',
+  '/opengame-detect.ps1',
 ] as const
 
 export const slug = (route: string) => (route === '/' ? 'index' : route.slice(1).replace(/[^\w-]/g, '_'))
@@ -180,7 +189,7 @@ const frozenLiterals = async (databaseUrl: string) => {
 
 const signIn = async (context: BrowserContext, email: string) => {
   const page = await context.newPage()
-  await page.goto(`${ORIGIN}/entrar`)
+  await page.goto(`${ORIGIN}/es/entrar`)
   const response = await page.evaluate(
     async ([email, password]) => {
       const r = await fetch('/api/auth/sign-in/email', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password }) })
@@ -209,14 +218,14 @@ const writeFlow = async (browser: Browser, logs: string) => {
   await signIn(reviewer, identities.demo_revisor)
   const queue = await reviewer.newPage()
   try {
-    await form.goto(`${ORIGIN}/juegos/1/reportar`, { waitUntil: 'networkidle' })
+    await form.goto(`${ORIGIN}/es/juegos/1/reportar`, { waitUntil: 'networkidle' })
     await form.getByLabel('Versión o build del juego').fill('1.0.3179')
     await form.getByLabel('Fecha y hora de la prueba').fill('2026-10-14T20:00')
     await form.getByLabel('Observaciones').fill(NOTE)
     await form.getByRole('button', { name: 'Enviar reporte' }).click()
     await form.getByRole('heading', { name: 'Reporte enviado' }).waitFor({ timeout: 10_000 })
 
-    await queue.goto(`${ORIGIN}/revision`, { waitUntil: 'networkidle' })
+    await queue.goto(`${ORIGIN}/es/revision`, { waitUntil: 'networkidle' })
     const item = queue.locator('article').filter({ hasText: NOTE })
     await item.getByLabel('Motivo').fill('Reproducido por el arnés de paridad.')
     await item.getByLabel('Evidencia (para aprobar)').fill('Captura del arnés de paridad.')
@@ -289,7 +298,7 @@ const rawGet = (port: number, path: string, cookie: string) =>
 const waitForServer = async (port: number, server: ReturnType<typeof spawn>) => {
   for (let tries = 0; tries < 300; tries++) {
     if (server.exitCode !== null) throw new Error(`server exited with code ${server.exitCode}`)
-    const up = await rawGet(port, '/entrar', '').then(
+    const up = await rawGet(port, '/es/entrar', '').then(
       () => true,
       () => false,
     )

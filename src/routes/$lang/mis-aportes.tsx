@@ -4,16 +4,16 @@ import { myContributionsFn } from '../../fns/contributions.ts'
 import { Badge, Chip } from '../../ui/Badge.tsx'
 import { DemoStamp } from '../../ui/DemoStamp.tsx'
 import { SavedMachines } from '../../ui/diagnostics/SavedMachines.tsx'
-import { count, date, dateTime } from '../../ui/format.ts'
-import { failureType, gameRequestStatus, outcome, reviewStatus } from '../../ui/vocabulary.ts'
+import { useLang, useT } from '../../ui/i18n/messages.ts'
+import { titled } from '../-head.ts'
 import { returnHere } from '../-return-to.ts'
 
 export const Route = createFileRoute('/$lang/mis-aportes')({
-  beforeLoad: ({ context, location }) => {
-    if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
+  beforeLoad: ({ context, location, params }) => {
+    if (context.visitor === null) throw redirect({ to: '/$lang/entrar', params: { lang: params.lang }, search: returnHere(location) })
   },
   loader: () => myContributionsFn(),
-  head: () => ({ meta: [{ title: 'Mis aportes · OpenGame Linux' }] }),
+  head: ({ params }) => titled(params.lang, (t) => t.header.myContributions),
   component: MyContributionsPage,
 })
 
@@ -21,41 +21,45 @@ type Review = Awaited<ReturnType<typeof myContributionsFn>>['reports'][number]['
 
 function MyContributionsPage() {
   const { demo, reports, solutions, profiles, machines, requests } = Route.useLoaderData()
+  const t = useT()
+  const lang = useLang()
+  const m = t.account.myContributions
   const empty = reports.length + solutions.length + profiles.length + machines.length + requests.length === 0
   return (
     <main className="wrapper stack">
-      <h1 className="row">Mis aportes {demo && <DemoStamp />}</h1>
-      <p className="muted">
-        Lo que enviaste y en qué va su revisión. Un aporte cuenta en los resúmenes solo cuando un revisor lo aprueba; si lo rechaza o lo
-        retira, aquí ves el motivo.
-      </p>
+      <h1 className="row">
+        {t.header.myContributions} {demo && <DemoStamp />}
+      </h1>
+      <p className="muted">{m.lede}</p>
       {empty && (
         <section className="card stack">
-          <p>Todavía no tienes aportes.</p>
+          <p>{m.empty}</p>
           <p className="row">
-            <Link to="/diagnostico">Haz el diagnóstico de tu equipo</Link>
-            <span className="muted">y luego reporta cómo te funcionó un juego desde su ficha.</span>
+            <Link to="/$lang/diagnostico" params={{ lang }}>
+              {m.diagnose}
+            </Link>
+            <span className="muted">{m.thenReport}</span>
           </p>
         </section>
       )}
       {reports.length > 0 && (
-        <Section id="reportes" title="Reportes">
+        <Section id="reportes" title={m.reports}>
           {reports.map((r) => (
             <Item key={r.id} review={r.review} sent={r.created_at}>
               <p className="row">
-                <Link to="/juegos/$gameId" params={{ gameId: r.game_id }}>
+                <Link to="/$lang/juegos/$gameId" params={{ lang, gameId: r.game_id }}>
                   <strong>{r.game}</strong>
                 </Link>
                 <span className="datum muted">{r.launcher}</span>
-                <Badge label={outcome[r.outcome]} />
+                <Badge label={t.outcome[r.outcome]} />
               </p>
               <p className="datum">
-                {r.distribution} · {r.layer} · versión {r.game_version} · probado el {dateTime(r.tested_at)}
+                {r.distribution} · {r.layer} · {m.version(r.game_version)} · {m.testedOn(t.dateTime(r.tested_at))}
               </p>
               {r.valve && (
                 <p className="small">
-                  <Link to="/reportes/$reportId/proton" params={{ reportId: r.id }}>
-                    Prepara el informe para Valve
+                  <Link to="/$lang/reportes/$reportId/proton" params={{ lang, reportId: r.id }}>
+                    {m.valve}
                   </Link>
                 </p>
               )}
@@ -64,24 +68,26 @@ function MyContributionsPage() {
         </Section>
       )}
       {solutions.length > 0 && (
-        <Section id="soluciones" title="Soluciones">
+        <Section id="soluciones" title={m.solutions}>
           {solutions.map((s) => (
             <Item key={s.id} review={s.review} sent={s.created_at}>
               <p>
                 <strong>{s.title}</strong>
               </p>
               <p className="row small">
-                Para <Chip tone={failureType(s.failure_type).tone}>{failureType(s.failure_type).text}</Chip> en
-                <Link to="/juegos/$gameId" params={{ gameId: s.game_id }}>
-                  {s.game}
-                </Link>
+                {m.forFailureIn(
+                  <Chip tone={t.failureType(s.failure_type).tone}>{t.failureType(s.failure_type).text}</Chip>,
+                  <Link to="/$lang/juegos/$gameId" params={{ lang, gameId: s.game_id }}>
+                    {s.game}
+                  </Link>,
+                )}
               </p>
             </Item>
           ))}
         </Section>
       )}
       {profiles.length > 0 && (
-        <Section id="perfiles" title="Perfiles de configuración">
+        <Section id="perfiles" title={m.profiles}>
           {profiles.map((p) => (
             <Item key={p.id} review={p.review} sent={p.created_at} action={<ProfileAction profile={p} />}>
               <p className="row">
@@ -89,52 +95,53 @@ function MyContributionsPage() {
                 {'reason' in p.review ? (
                   <strong>{p.title}</strong>
                 ) : (
-                  <Link to="/perfiles/$profileId" params={{ profileId: p.id }}>
+                  <Link to="/$lang/perfiles/$profileId" params={{ lang, profileId: p.id }}>
                     <strong>{p.title}</strong>
                   </Link>
                 )}
                 <span className="datum muted">r{p.revision}</span>
               </p>
               <p className="small">
-                Para{' '}
-                <Link to="/juegos/$gameId" params={{ gameId: p.game_id }}>
-                  {p.game}
-                </Link>
+                {m.forGame(
+                  <Link to="/$lang/juegos/$gameId" params={{ lang, gameId: p.game_id }}>
+                    {p.game}
+                  </Link>,
+                )}
               </p>
             </Item>
           ))}
         </Section>
       )}
       {requests.length > 0 && (
-        <Section id="pedidos" title="Pedidos de juegos">
+        <Section id="pedidos" title={m.requests}>
           {requests.map((r) => (
             <li key={r.id} className="card stack">
               <p className="row">
-                <Badge label={gameRequestStatus[r.status]} />
-                <span className="small muted">Pedido el {date(r.requested_at)}</span>
+                <Badge label={t.gameRequestStatus[r.status]} />
+                <span className="small muted">{m.requestedOn(t.date(r.requested_at))}</span>
               </p>
               <p>
                 <strong>{r.title}</strong>
               </p>
               {r.status === 'abierto' && (
                 <p className="row small">
-                  <span className="muted">{count(r.requesters, 'persona lo pide', 'personas lo piden')}</span>
-                  <Link to="/pedidos" hash={`pedido-${r.id}`}>
-                    Verlo en los pedidos abiertos
+                  <span className="muted">{m.requesters(r.requesters)}</span>
+                  <Link to="/$lang/pedidos" params={{ lang }} hash={`pedido-${r.id}`}>
+                    {m.viewOpen}
                   </Link>
                 </p>
               )}
               {r.status === 'cumplido' && (
                 <p className="small">
-                  Un revisor lo agregó el {date(r.resolved_at)}.{' '}
-                  <Link to="/juegos/$gameId" params={{ gameId: r.game_id }}>
-                    Ver la ficha de {r.game}
+                  {m.added(t.date(r.resolved_at))}{' '}
+                  <Link to="/$lang/juegos/$gameId" params={{ lang, gameId: r.game_id }}>
+                    {m.viewGame(r.game)}
                   </Link>
                 </p>
               )}
               {r.status === 'rechazado' && (
-                <p className="note small" data-tone={gameRequestStatus.rechazado.tone}>
-                  Un revisor lo rechazó el {date(r.resolved_at)}. Motivo: {r.rejection_reason}
+                <p className="note small" data-tone={t.gameRequestStatus.rechazado.tone}>
+                  {m.rejected(t.date(r.resolved_at), r.rejection_reason)}
                 </p>
               )}
             </li>
@@ -144,9 +151,9 @@ function MyContributionsPage() {
       {machines.length > 0 && (
         <section className="stack" aria-labelledby="diagnosticos">
           <h2 id="diagnosticos" className="section-title">
-            Diagnósticos guardados
+            {m.diagnoses}
           </h2>
-          <p className="small muted">Solo tú los ves. Un reporte muestra el contexto técnico de su diagnóstico, no tu correo.</p>
+          <p className="small muted">{m.diagnosesHelp}</p>
           <SavedMachines machines={machines} />
         </section>
       )}
@@ -169,19 +176,21 @@ type MyProfile = Awaited<ReturnType<typeof myContributionsFn>>['profiles'][numbe
 
 /** Its author edits a proposal nobody used yet, and reworks a refused one into a new version. */
 function ProfileAction({ profile: p }: { profile: MyProfile }) {
+  const t = useT()
+  const lang = useLang()
   if (p.editable)
     return (
       <p className="small">
-        <Link to="/perfiles/$profileId/editar" params={{ profileId: p.id }}>
-          Editar la propuesta
+        <Link to="/$lang/perfiles/$profileId/editar" params={{ lang, profileId: p.id }}>
+          {t.account.myContributions.editProposal}
         </Link>
       </p>
     )
   if (!('reason' in p.review)) return null
   return (
     <p className="small">
-      <Link to="/juegos/$gameId/perfiles/nuevo" params={{ gameId: p.game_id }} search={{ desde: p.id }}>
-        Proponer una versión con cambios
+      <Link to="/$lang/juegos/$gameId/perfiles/nuevo" params={{ lang, gameId: p.game_id }} search={{ desde: p.id }}>
+        {t.account.myContributions.proposeChanges}
       </Link>
     </p>
   )
@@ -189,16 +198,17 @@ function ProfileAction({ profile: p }: { profile: MyProfile }) {
 
 /** `action` comes after the reviewer's reason, so a refused item reads the why before the what next. */
 function Item({ review, sent, action, children }: { review: Review; sent: Date; action?: ReactNode; children: ReactNode }) {
+  const t = useT()
   return (
     <li className="card stack">
       <p className="row">
-        <Badge label={reviewStatus[review.status]} />
-        <span className="small muted">Enviado el {date(sent)}</span>
+        <Badge label={t.reviewStatus[review.status]} />
+        <span className="small muted">{t.account.myContributions.sentOn(t.date(sent))}</span>
       </p>
       {children}
       {'reason' in review && (
-        <p className="note small" data-tone={reviewStatus[review.status].tone}>
-          Motivo de la revisión: {review.reason}
+        <p className="note small" data-tone={t.reviewStatus[review.status].tone}>
+          {t.account.myContributions.reviewReason(review.reason)}
         </p>
       )}
       {action}

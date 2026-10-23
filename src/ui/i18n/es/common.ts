@@ -63,6 +63,7 @@ export const common = {
     protonfixesPr: 'Pega el enlace de un PR de umu-protonfixes (github.com/Open-Wine-Components/umu-protonfixes/pull/…).',
     email: 'Escribe un correo válido.',
     passwordNeeded: 'Escribe tu contraseña.',
+    detectorOutputNeeded: 'Pega la salida del detector.',
   } satisfies Record<CheckMessage, string>,
 
   rules: {

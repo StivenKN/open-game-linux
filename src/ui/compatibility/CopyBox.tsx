@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useT } from '../i18n/messages.ts'
 
+// Also the keys of the dictionary's `copyBox.notice`.
 type CopyState = 'listo' | 'copiado' | 'fallo'
 
-const notice = {
-  listo: '',
-  copiado: 'Copiado al portapapeles.',
-  fallo: 'No se pudo copiar. Selecciona el texto y cópialo a mano.',
-} as const satisfies Record<CopyState, string>
-
 export function CopyBox({ text, label }: { text: string; label: string }) {
+  const m = useT().compatibility.copyBox
   const [state, setState] = useState<CopyState>('listo')
 
   useEffect(() => {
@@ -34,12 +31,12 @@ export function CopyBox({ text, label }: { text: string; label: string }) {
         <pre tabIndex={0}>
           <code>{text}</code>
         </pre>
-        <button type="button" onClick={copy} aria-label={`Copiar ${label.toLowerCase()}`} data-state={state}>
-          <span aria-hidden="true">{state === 'copiado' ? '✓ Copiado' : 'Copiar'}</span>
+        <button type="button" onClick={copy} aria-label={m.copyLabel(label)} data-state={state}>
+          <span aria-hidden="true">{state === 'copiado' ? `✓ ${m.copied}` : m.copy}</span>
         </button>
       </div>
       <p className="small" role="status" data-tone={state === 'fallo' ? 'rojo' : 'verde'}>
-        {notice[state]}
+        {m.notice[state]}
       </p>
     </figure>
   )

@@ -3,17 +3,18 @@ import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useEffect, useRef, useState } from 'react'
 import { mismatches, NewReport } from '../../../domain/contributions.ts'
-import { type Encoded, profileMismatches, type IncomparableProfile, type RuleViolated } from '../../../domain/errors.ts'
+import { type Encoded, mismatchField, type IncomparableProfile, type RuleViolated } from '../../../domain/errors.ts'
 import { LayerFamily, requiresFailure, Outcome } from '../../../domain/literals.ts'
 import { DiagnosticId, EditionId, GameId, ProfileId, type ReportId } from '../../../domain/ids.ts'
 import { type LayerPrefill, prefillLayer, SteamGame } from '../../../domain/steam-game.ts'
 import { protonReportPossible } from '../../../domain/upstream.ts'
 import { reportOptionsFn, submitReportFn } from '../../../fns/contributions.ts'
 import { FieldError } from '../../../ui/FieldError.tsx'
-import { dateTime } from '../../../ui/format.ts'
 import { Field, fieldProps, OptionalGroup, nullText } from '../../../ui/form.tsx'
+import type { Messages } from '../../../ui/i18n/es.ts'
+import { useLang, useT } from '../../../ui/i18n/messages.ts'
 import { ruleErrors, type FieldErrors, useAction } from '../../../ui/useAction.ts'
-import { reviewStatus, outcome as outcomeLabel, failureType } from '../../../ui/vocabulary.ts'
+import { titled } from '../../-head.ts'
 import { routeIdParser } from '../../-ids.ts'
 import { returnHere } from '../../-return-to.ts'
 
@@ -31,12 +32,12 @@ export const Route = createFileRoute('/$lang/juegos/$gameId_/reportar')({
       steam: Schema.optionalKey(SteamGame),
     }),
   ),
-  beforeLoad: ({ context, location }) => {
-    if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
+  beforeLoad: ({ context, location, params }) => {
+    if (context.visitor === null) throw redirect({ to: '/$lang/entrar', params: { lang: params.lang }, search: returnHere(location) })
   },
   loaderDeps: ({ search }) => ({ perfil: search.perfil ?? null }),
   loader: ({ params, deps }) => reportOptionsFn({ data: { gameId: params.gameId, perfil: deps.perfil } }),
-  head: ({ loaderData }) => ({ meta: [{ title: `Reportar ${loaderData?.game.title ?? 'resultado'} · OpenGame Linux` }] }),
+  head: ({ loaderData, params }) => titled(params.lang, (t) => t.report.form.title(loaderData?.game.title ?? null)),
   component: ReportPage,
 })
 
@@ -47,41 +48,44 @@ function ReportPage() {
   const options = Route.useLoaderData()
   const [submitted, setSubmitted] = useState<Submitted | null>(null)
   const { game } = options
+  const t = useT()
+  const lang = useLang()
+  const f = t.report.form
 
   return (
     <main className="wrapper">
-      <p className="caption">Reportar resultado</p>
+      <p className="caption">{f.caption}</p>
       <h1>{game.title}</h1>
       {submitted !== null ? (
         <section className="card stack" aria-live="polite">
-          <h2>Reporte enviado</h2>
-          <p>
-            Queda <strong>pendiente de revisión</strong> y no cuenta en el resumen del juego hasta que un revisor lo apruebe.
-          </p>
+          <h2>{f.sent.heading}</h2>
+          <p>{f.sent.pending}</p>
           <p className="row">
-            <Link to="/juegos/$gameId" params={{ gameId: game.id }}>
-              Volver a la ficha del juego
+            <Link to="/$lang/juegos/$gameId" params={{ lang, gameId: game.id }}>
+              {t.report.backToGame}
             </Link>
             {submitted.hasFailures && (
-              <Link to="/reportes/$reportId/solucion" params={{ reportId: submitted.id }}>
-                ¿Conoces una solución? Propónla
+              <Link to="/$lang/reportes/$reportId/solucion" params={{ lang, reportId: submitted.id }}>
+                {f.sent.proposeSolution}
               </Link>
             )}
             {submitted.proton && (
-              <Link to="/reportes/$reportId/proton" params={{ reportId: submitted.id }}>
-                Prepara el informe para Valve
+              <Link to="/$lang/reportes/$reportId/proton" params={{ lang, reportId: submitted.id }}>
+                {f.sent.valveReport}
               </Link>
             )}
             <button type="button" className="button-secondary" onClick={() => setSubmitted(null)}>
-              Reportar otro resultado
+              {f.sent.another}
             </button>
           </p>
         </section>
       ) : options.diagnostics.length === 0 ? (
         <section className="card note stack">
-          <p>Para reportar necesitas un diagnóstico de tu equipo hecho en Linux: el reporte guarda el entorno exacto de la prueba.</p>
+          <p>{f.needsDiagnosis}</p>
           <p>
-            <Link to="/diagnostico">Hacer un diagnóstico</Link>
+            <Link to="/$lang/diagnostico" params={{ lang }}>
+              {f.makeDiagnosis}
+            </Link>
           </p>
         </section>
       ) : (
@@ -93,23 +97,24 @@ function ReportPage() {
 
 const byId = <I extends number>(list: ReadonlyArray<{ readonly id: I }>, value: string) => list.find((x) => String(x.id) === value)?.id
 
-const mismatchNames = (o: Options) => {
+const mismatchNames = (o: Options, t: Messages) => {
+  const other = t.report.form.other
   const distributions = new Map<number, string>([
     ...o.profiles.map((p) => [p.distribution_id, p.distribution] as const),
     ...o.diagnostics.map((d) => [d.distribution_id, d.distribution] as const),
   ])
   const layerName = (id: number) => {
     const c = o.layers.find((x) => x.id === id)
-    return c === undefined ? 'otra capa' : `${c.family} ${c.variant} ${c.version}`
+    return c === undefined ? other.layer : `${c.family} ${c.variant} ${c.version}`
   }
   return (d: Encoded<IncomparableProfile>['mismatches'][number]): readonly [string, string] => {
     switch (d.aspect) {
       case 'edicion':
-        return [o.editions.find((e) => e.id === d.expected)?.launcher ?? 'otra edición', o.editions.find((e) => e.id === d.actual)?.launcher ?? 'otra edición']
+        return [o.editions.find((e) => e.id === d.expected)?.launcher ?? other.edition, o.editions.find((e) => e.id === d.actual)?.launcher ?? other.edition]
       case 'capa':
         return [layerName(d.expected), layerName(d.actual)]
       case 'distribucion':
-        return [distributions.get(d.expected) ?? 'otra distribución', distributions.get(d.actual) ?? 'otra distribución']
+        return [distributions.get(d.expected) ?? other.distribution, distributions.get(d.actual) ?? other.distribution]
       case 'arquitectura':
       case 'version_juego':
         return [d.expected, d.actual]
@@ -125,6 +130,8 @@ const minuteInput = (date: Date) => {
 
 function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (submitted: Submitted) => void }) {
   const { diagnostics, editions, layers, profiles, failureTypes, selectedProfile } = options
+  const t = useT()
+  const f = t.report.form
   const selected = profiles.find((p) => p.id === selectedProfile)
   const search = Route.useSearch()
   const steam = search.steam ?? null
@@ -153,17 +160,17 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
   const comparable = profiles.filter((p) => p.id === selectedProfile || (testRun !== null && mismatches(testRun, p).length === 0))
   const profileValue = comparable.some((p) => String(p.id) === profileId) ? profileId : nullText
 
-  const nameOf = mismatchNames(options)
   const r = useAction(NewReport, submitReportFn, {
-    onFailure: (f: Encoded<RuleViolated | IncomparableProfile>): FieldErrors => {
-      switch (f._tag) {
+    onFailure: (failure: Encoded<RuleViolated | IncomparableProfile>): FieldErrors => {
+      switch (failure._tag) {
         case 'ReglaIncumplida':
-          return ruleErrors(f)
+          return ruleErrors(failure, t)
         case 'PerfilNoComparable': {
+          const nameOf = mismatchNames(options, t)
           const errors: Record<string, string> = {}
-          for (const d of f.mismatches) {
-            const { field: c, message } = profileMismatches[d.aspect]
-            errors[c] = [errors[c], message(...nameOf(d))].filter((m) => m !== undefined).join(' ')
+          for (const d of failure.mismatches) {
+            const c = mismatchField[d.aspect]
+            errors[c] = [errors[c], t.mismatches[d.aspect](...nameOf(d))].filter((m) => m !== undefined).join(' ')
           }
           return errors
         }
@@ -195,17 +202,17 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
       <FieldError errors={r.errors} field="form" />
       {steam !== null && <DetectedNote steam={steam} layer={detected} testedAt={reportedDiagnostic !== undefined} />}
 
-      <h2 className="section-title">Dónde probaste</h2>
-      <Field errors={r.errors} name="diagnostic_id" label="Diagnóstico del equipo" help="Solo aparecen tus diagnósticos hechos en Linux.">
+      <h2 className="section-title">{f.where}</h2>
+      <Field errors={r.errors} name="diagnostic_id" label={f.diagnostic.label} help={f.diagnostic.help}>
         <select {...fieldProps(r.errors, 'diagnostic_id')} value={diagnosticId ?? ''} onChange={(e) => setDiagnosticId(byId(diagnostics, e.currentTarget.value))}>
           {diagnostics.map((d) => (
             <option key={d.id} value={d.id}>
-              {d.machine} · {d.distribution} · {d.architecture} · {dateTime(d.captured_at)}
+              {d.machine} · {d.distribution} · {d.architecture} · {t.dateTime(d.captured_at)}
             </option>
           ))}
         </select>
       </Field>
-      <Field errors={r.errors} name="edition_id" label="Edición (lanzador)">
+      <Field errors={r.errors} name="edition_id" label={f.edition}>
         <select {...fieldProps(r.errors, 'edition_id')} value={editionId ?? ''} onChange={(e) => setEditionId(byId(editions, e.currentTarget.value))}>
           {editions.map((e) => (
             <option key={e.id} value={e.id}>
@@ -216,19 +223,19 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
       </Field>
 
       <fieldset className="group">
-        <legend>Capa de compatibilidad usada</legend>
+        <legend>{f.layer.legend}</legend>
         <div className="row">
           <label className="checkbox">
             <input type="radio" name="layer_version[_tag]" value="existente" checked={layerType === 'existente'} onChange={() => setLayerType('existente')} />
-            Una versión de la lista
+            {f.layer.listed}
           </label>
           <label className="checkbox">
             <input type="radio" name="layer_version[_tag]" value="nueva" checked={layerType === 'nueva'} onChange={() => setLayerType('nueva')} />
-            Otra versión
+            {f.layer.other}
           </label>
         </div>
         {layerType === 'existente' ? (
-          <Field errors={r.errors} name="layer_version[id]" label="Versión">
+          <Field errors={r.errors} name="layer_version[id]" label={f.layer.version}>
             <select {...fieldProps(r.errors, 'layer_version[id]')} value={layerId ?? ''} onChange={(e) => setLayerId(byId(layers, e.currentTarget.value))}>
               {layers.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -239,18 +246,18 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
           </Field>
         ) : (
           <div className="row inline-fields">
-            <Field errors={r.errors} name="layer_version[family]" label="Familia">
+            <Field errors={r.errors} name="layer_version[family]" label={f.layer.family}>
               <select
                 {...fieldProps(r.errors, 'layer_version[family]')}
                 value={newLayer.family}
-                onChange={(e) => setNewLayer({ ...newLayer, family: LayerFamily.literals.find((f) => f === e.currentTarget.value) ?? newLayer.family })}
+                onChange={(e) => setNewLayer({ ...newLayer, family: LayerFamily.literals.find((family) => family === e.currentTarget.value) ?? newLayer.family })}
               >
-                {LayerFamily.literals.map((f) => (
-                  <option key={f}>{f}</option>
+                {LayerFamily.literals.map((family) => (
+                  <option key={family}>{family}</option>
                 ))}
               </select>
             </Field>
-            <Field errors={r.errors} name="layer_version[variant]" label="Variante">
+            <Field errors={r.errors} name="layer_version[variant]" label={f.layer.variant}>
               <input
                 {...fieldProps(r.errors, 'layer_version[variant]')}
                 value={newLayer.variant}
@@ -258,7 +265,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
                 placeholder="GE"
               />
             </Field>
-            <Field errors={r.errors} name="layer_version[version]" label="Versión exacta">
+            <Field errors={r.errors} name="layer_version[version]" label={f.layer.exactVersion}>
               <input {...fieldProps(r.errors, 'layer_version[version]')} defaultValue={startLayer?._tag === 'nueva' ? startLayer.version : undefined} placeholder="9-20" />
             </Field>
           </div>
@@ -267,142 +274,129 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
       </fieldset>
 
       <div className="row inline-fields">
-        <Field errors={r.errors} name="game_version" label="Versión o build del juego">
+        <Field errors={r.errors} name="game_version" label={f.gameVersion}>
           <input {...fieldProps(r.errors, 'game_version')} value={gameVersion} onChange={(e) => setGameVersion(e.currentTarget.value)} placeholder="1.0.3179" />
         </Field>
-        <Field errors={r.errors} name="launcher_version" label="Versión del lanzador (opcional)">
+        <Field errors={r.errors} name="launcher_version" label={f.launcherVersion}>
           <input {...fieldProps(r.errors, 'launcher_version')} />
         </Field>
       </div>
 
-      <Field
-        errors={r.errors}
-        name="profile_id"
-        label="Perfil que seguiste"
-        help="Solo aparecen los perfiles que coinciden con tu diagnóstico, la edición, la capa y la versión del juego."
-      >
+      <Field errors={r.errors} name="profile_id" label={f.profile.label} help={f.profile.help}>
         <select {...fieldProps(r.errors, 'profile_id')} value={profileValue} onChange={(e) => setProfileId(e.currentTarget.value)}>
-          <option value={nullText}>Sin perfil</option>
+          <option value={nullText}>{f.profile.none}</option>
           {comparable.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.title} (r{p.revision}, {reviewStatus[p.review_status].text.toLowerCase()}) · {p.distribution}
+              {p.title} (r{p.revision}, {t.reviewStatus[p.review_status].text.toLowerCase()}) · {p.distribution}
             </option>
           ))}
         </select>
       </Field>
 
-      <h2 className="section-title">Qué pasó</h2>
-      <Field errors={r.errors} name="tested_at" label="Fecha y hora de la prueba">
+      <h2 className="section-title">{f.what}</h2>
+      <Field errors={r.errors} name="tested_at" label={f.testedAt}>
         <input {...fieldProps(r.errors, 'tested_at')} ref={testedAt} type="datetime-local" />
       </Field>
       <fieldset className="group">
-        <legend>Resultado</legend>
+        <legend>{f.outcome}</legend>
         <div className="row">
           {Outcome.literals.map((value) => (
             <label key={value} className="checkbox">
               <input type="radio" name="outcome" value={value} checked={outcome === value} onChange={() => setOutcome(value)} />
-              {outcomeLabel[value].text}
+              {t.outcome[value].text}
             </label>
           ))}
         </div>
       </fieldset>
 
       <fieldset className="group">
-        <legend>Fallos observados</legend>
-        <p className="small muted">
-          {requiresFailure[outcome]
-            ? 'Indica al menos un tipo de fallo. Si no sabes la causa, elige «Otro» y describe el síntoma.'
-            : 'Opcional: anota cualquier problema aunque el juego funcione.'}
-        </p>
+        <legend>{f.failures.legend}</legend>
+        <p className="small muted">{requiresFailure[outcome] ? f.failures.required : f.failures.optional}</p>
         {failures.map((key, i) => (
           <div key={key} className="row inline-fields">
-            <Field errors={r.errors} name={`failures[${i}][failure_type_id]`} label="Tipo">
+            <Field errors={r.errors} name={`failures[${i}][failure_type_id]`} label={f.failures.type}>
               <select {...fieldProps(r.errors, `failures[${i}][failure_type_id]`)}>
-                {failureTypes.map((t) => (
-                  <option key={t.id} value={t.id} title={t.description}>
-                    {failureType(t.code).text}
+                {failureTypes.map((type) => (
+                  <option key={type.id} value={type.id} title={type.description}>
+                    {t.failureType(type.code).text}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field errors={r.errors} name={`failures[${i}][detail]`} label="Qué viste">
+            <Field errors={r.errors} name={`failures[${i}][detail]`} label={f.failures.detail}>
               <input {...fieldProps(r.errors, `failures[${i}][detail]`)} />
             </Field>
-            <button type="button" className="button-secondary" onClick={() => setFailures(failures.filter((f) => f !== key))}>
-              Quitar
+            <button type="button" className="button-secondary" onClick={() => setFailures(failures.filter((k) => k !== key))}>
+              {f.failures.remove}
             </button>
           </div>
         ))}
         <p>
           <button type="button" className="button-secondary" onClick={addFailure}>
-            Añadir un fallo
+            {f.failures.add}
           </button>
         </p>
         <FieldError errors={r.errors} field="failures" />
       </fieldset>
 
-      <OptionalGroup name="measurement" label="Medí los FPS">
-        <p className="small muted">Sin medición el reporte no guarda FPS; nunca se convierte en cero.</p>
+      <OptionalGroup name="measurement" label={f.measurement.label}>
+        <p className="small muted">{f.measurement.note}</p>
         <div className="row inline-fields">
-          <Field errors={r.errors} name="measurement[avg_fps]" label="FPS promedio">
+          <Field errors={r.errors} name="measurement[avg_fps]" label={f.measurement.avgFps}>
             <input {...fieldProps(r.errors, 'measurement[avg_fps]')} type="number" inputMode="decimal" min="0" step="0.01" />
           </Field>
-          <Field errors={r.errors} name="measurement[resolution]" label="Resolución">
+          <Field errors={r.errors} name="measurement[resolution]" label={f.measurement.resolution}>
             <input {...fieldProps(r.errors, 'measurement[resolution]')} placeholder="1920x1080" />
           </Field>
-          <Field errors={r.errors} name="measurement[graphics_quality]" label="Calidad gráfica">
-            <input {...fieldProps(r.errors, 'measurement[graphics_quality]')} placeholder="Medio" />
+          <Field errors={r.errors} name="measurement[graphics_quality]" label={f.measurement.quality}>
+            <input {...fieldProps(r.errors, 'measurement[graphics_quality]')} placeholder={f.measurement.qualityExample} />
           </Field>
         </div>
-        <Field errors={r.errors} name="measurement[measurement_method]" label="Cómo mediste">
-          <input {...fieldProps(r.errors, 'measurement[measurement_method]')} placeholder="MangoHud · escena · duración" />
+        <Field errors={r.errors} name="measurement[measurement_method]" label={f.measurement.method}>
+          <input {...fieldProps(r.errors, 'measurement[measurement_method]')} placeholder={f.measurement.methodExample} />
         </Field>
       </OptionalGroup>
 
-      <Field errors={r.errors} name="observations" label="Observaciones" help="Resultado, limitaciones y cualquier ajuste extra que hiciste fuera del perfil.">
+      <Field errors={r.errors} name="observations" label={f.observations.label} help={f.observations.help}>
         <textarea
           {...fieldProps(r.errors, 'observations')}
           rows={4}
-          defaultValue={steam?.launch_options ? `Opciones de lanzamiento: ${steam.launch_options}\n` : undefined}
+          defaultValue={steam?.launch_options ? f.observations.launchOptions(steam.launch_options) : undefined}
         />
       </Field>
 
       <button type="submit" disabled={r.submitting}>
-        {r.submitting ? 'Enviando…' : 'Enviar reporte'}
+        {r.submitting ? t.report.sending : f.submit}
       </button>
     </form>
   )
 }
 
-const layerNote = (steam: SteamGame, layer: LayerPrefill | null) => {
-  const tool = steam.tool_version === null || steam.tool_version === steam.tool ? `«${steam.tool}»` : `«${steam.tool}» (${steam.tool_version})`
-  if (steam.tool === null)
-    return steam.native
-      ? 'Steam lo ejecuta sin herramienta de compatibilidad, como juego nativo. Elige la versión nativa de la lista o escríbela.'
-      : 'El detector no pudo saber con qué la ejecuta Steam. Elígela tú.'
-  if (layer === null) return `Steam usa ${tool}, que no sabemos traducir a una capa. Elígela tú.`
-  if (layer._tag === 'existente') return `Steam usa ${tool}; la elegimos en la lista.`
-  if (layer.version === '') return `Steam usa ${tool} sin decir la versión exacta. Escríbela como aparece en Steam, en Propiedades > Compatibilidad.`
-  return `Steam usa ${tool}, que todavía no está en la lista; la dejamos escrita como otra versión.`
+const layerNote = (steam: SteamGame, layer: LayerPrefill | null, n: Messages['report']['detected']) => {
+  if (steam.tool === null) return steam.native ? n.native : n.unknownTool
+  const tool = n.tool(steam.tool, steam.tool_version === null || steam.tool_version === steam.tool ? null : steam.tool_version)
+  if (layer === null) return n.untranslatable(tool)
+  if (layer._tag === 'existente') return n.listed(tool)
+  if (layer.version === '') return n.noVersion(tool)
+  return n.unlisted(tool)
 }
 
 /** What report mode filled in from the detector, so the user knows what to check before sending. */
 function DetectedNote({ steam, layer, testedAt }: { steam: SteamGame; layer: LayerPrefill | null; testedAt: boolean }) {
+  const n = useT().report.detected
   return (
-    <section className="note stack" data-tone="azul" aria-label="Lo que leyó el detector">
-      <p>
-        <b>Lo llenamos con lo que leyó el detector en tu equipo.</b> Revisa cada campo antes de enviar.
-      </p>
+    <section className="note stack" data-tone="azul" aria-label={n.label}>
+      <p>{n.intro}</p>
       <ul className="small">
-        <li>Capa: {layerNote(steam, layer)}</li>
-        {steam.build_id !== null && <li>Build {steam.build_id}, en «Versión o build del juego».</li>}
+        <li>{n.layer(layerNote(steam, layer, n))}</li>
+        {steam.build_id !== null && <li>{n.build(steam.build_id)}</li>}
         {steam.launch_options !== null && (
           <li>
-            Opciones de lanzamiento: en «Observaciones», porque el reporte no tiene un campo para ellas.
-            {steam.guessed_account && ' Hay varias cuentas de Steam en ese equipo y ninguna figura como la última usada: son las de la primera.'}
+            {n.launchOptions}
+            {steam.guessed_account && n.guessedAccount}
           </li>
         )}
-        {testedAt && <li>Fecha y hora: la del diagnóstico, porque un reporte no puede ser anterior a él.</li>}
+        {testedAt && <li>{n.testedAt}</li>}
       </ul>
     </section>
   )

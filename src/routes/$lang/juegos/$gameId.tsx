@@ -123,12 +123,12 @@ function GamePage() {
       )}
 
       <section className="section" aria-labelledby="protondb">
-        <h2 id="protondb">Otras fuentes: ProtonDB</h2>
+        <h2 id="protondb">{t.sources.protondb.heading}</h2>
         <ProtonDbSection protondb={protondb} />
       </section>
 
       <section className="section" aria-labelledby="anticheat">
-        <h2 id="anticheat">Otras fuentes: AreWeAntiCheatYet</h2>
+        <h2 id="anticheat">{t.sources.anticheat.heading}</h2>
         <AntiCheatSection anticheat={anticheat} />
       </section>
 

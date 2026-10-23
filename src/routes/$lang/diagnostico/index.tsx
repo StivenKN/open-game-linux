@@ -4,43 +4,41 @@ import { useEffect, useRef, useState } from 'react'
 import { OperatingSystem, VulkanSupport } from '../../../domain/evaluation.ts'
 import { Device } from '../../../domain/platform.ts'
 import type { InvalidPayload } from '../../../domain/errors.ts'
-import { evaluateDiagnosticFn, myMachinesFn, originFn } from '../../../fns/diagnostic.ts'
+import { evaluateDiagnosticFn, myMachinesFn } from '../../../fns/diagnostic.ts'
 import { CopyBox } from '../../../ui/compatibility/CopyBox.tsx'
 import { FieldError } from '../../../ui/FieldError.tsx'
 import { SavedMachines } from '../../../ui/diagnostics/SavedMachines.tsx'
 import { memory } from '../../../ui/format.ts'
 import { fieldProps, ramGb, vramMb, vulkanVersions } from '../../../ui/form.tsx'
+import type { Messages } from '../../../ui/i18n/es.ts'
+import { useLang, useT } from '../../../ui/i18n/messages.ts'
 import { type FieldErrors, useAction } from '../../../ui/useAction.ts'
-import { device, payloadReason, operatingSystem as operatingSystemLabel, vulkanSupport } from '../../../ui/vocabulary.ts'
+import { device, operatingSystem as operatingSystemLabel } from '../../../ui/vocabulary.ts'
+import { titled } from '../../-head.ts'
 import { type Input, manualInput, ManualForm, savePending, Pasted } from './-input.ts'
 
 export const Route = createFileRoute('/$lang/diagnostico/')({
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ pegar: Schema.optionalKey(Schema.Literal(1)) })),
-  head: () => ({ meta: [{ title: 'Diagnóstico · OpenGame Linux' }] }),
-  loader: async () => {
-    const [siteOrigin, machines] = await Promise.all([originFn(), myMachinesFn()])
-    return { siteOrigin, machines }
-  },
+  head: ({ params }) => titled(params.lang, (t) => t.diagnosis.title),
+  loader: () => myMachinesFn(),
   component: DiagnosticPage,
 })
 
 function DiagnosticPage() {
-  const { siteOrigin, machines } = Route.useLoaderData()
+  const machines = Route.useLoaderData()
+  const t = useT()
   return (
     <main className="wrapper stack">
-      <h1>Diagnóstico de tu equipo</h1>
-      <p className="muted">
-        Compara la RAM, la VRAM y el soporte de Vulkan de tu computador con los perfiles aprobados de cada juego. Puedes
-        hacerlo sin cuenta: no guardamos nada hasta que pulses «Guardar en mi equipo».
-      </p>
+      <h1>{t.diagnosis.heading}</h1>
+      <p className="muted">{t.diagnosis.intro}</p>
       <div className="grid-2">
-        <Detector siteOrigin={siteOrigin} />
+        <Detector />
         <Manual />
       </div>
       {machines.length > 0 && (
         <section className="stack" aria-labelledby="my-machines">
           <h2 id="my-machines" className="section-title">
-            Tus equipos
+            {t.diagnosis.myMachines}
           </h2>
           <SavedMachines machines={machines} />
         </section>
@@ -51,11 +49,12 @@ function DiagnosticPage() {
 
 const useEvaluate = () => {
   const navigate = useNavigate()
+  const lang = useLang()
   return async (input: Input) => {
     const r = await evaluateDiagnosticFn({ data: input })
     if (r.ok) {
       savePending(input)
-      await navigate({ to: '/diagnostico/importar' })
+      await navigate({ to: '/$lang/diagnostico/importar', params: { lang } })
     }
     return r
   }
@@ -63,12 +62,16 @@ const useEvaluate = () => {
 
 const payloadErrors =
   (field: string) =>
-  (f: typeof InvalidPayload.Encoded): FieldErrors => ({
-    [field]: f.reason === 'campo_invalido' && f.field !== null ? `${payloadReason.campo_invalido} (${f.field})` : payloadReason[f.reason],
+  (f: typeof InvalidPayload.Encoded, t: Messages): FieldErrors => ({
+    [field]: f.reason === 'campo_invalido' && f.field !== null ? `${t.payloadReason.campo_invalido} (${f.field})` : t.payloadReason[f.reason],
   })
 
-function Detector({ siteOrigin }: { siteOrigin: string }) {
+function Detector() {
   const { pegar } = Route.useSearch()
+  // The site's public address, which the commands below download the detector from.
+  const { origin } = Route.useRouteContext()
+  const t = useT()
+  const d = t.diagnosis.detector
   const pasteBox = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     if (pegar === undefined) return
@@ -83,45 +86,39 @@ function Detector({ siteOrigin }: { siteOrigin: string }) {
   return (
     <section className="card stack" aria-labelledby="detector">
       <h2 id="detector" className="no-margin">
-        Detector automático
+        {d.heading}
       </h2>
-      <p className="small muted">
-        Un script que lee tu hardware y los juegos que tienes instalados en Steam, sin permisos de administrador. Al terminar
-        abre esta página con el resultado en la dirección (después de «#»), que tu navegador no envía a ningún servidor.
-      </p>
-      <CopyBox label="Ejecuta en PowerShell (Windows 10 u 11, sin administrador)" text={`irm ${siteOrigin}/opengame-detect.ps1 | iex`} />
+      <p className="small muted">{d.intro}</p>
+      <CopyBox label={d.powershell} text={`irm ${origin}/opengame-detect.ps1 | iex`} />
       <p className="small">
         <a href="/opengame-detect.ps1" download="opengame-detect.ps1">
-          Descargar opengame-detect.ps1
+          {d.download('opengame-detect.ps1')}
         </a>{' '}
-        <span className="muted">para leerlo antes de ejecutarlo con</span> <code>powershell -ExecutionPolicy Bypass -File .\opengame-detect.ps1</code>
+        <span className="muted">{d.readFirst}</span> <code>powershell -ExecutionPolicy Bypass -File .\opengame-detect.ps1</code>
       </p>
-      <CopyBox label="Ejecuta en una terminal de Linux" text={`curl -fsSL ${siteOrigin}/opengame-detect.sh | bash -s -- --open`} />
+      <CopyBox label={d.linux} text={`curl -fsSL ${origin}/opengame-detect.sh | bash -s -- --open`} />
       <p className="small">
         <a href="/opengame-detect.sh" download="opengame-detect.sh">
-          Descargar opengame-detect.sh
+          {d.download('opengame-detect.sh')}
         </a>{' '}
-        <span className="muted">para leerlo antes de ejecutarlo con</span> <code>bash opengame-detect.sh --open</code>
+        <span className="muted">{d.readFirst}</span> <code>bash opengame-detect.sh --open</code>
       </p>
       <form className="form" {...r.form}>
-        <label htmlFor="text">¿Sin navegador en ese equipo? Pega aquí lo que imprimió el detector</label>
+        <label htmlFor="text">{d.pasteLabel}</label>
         {pegar !== undefined && (
           <p className="small note" data-tone="verde">
-            El detector copió el resultado al portapapeles: pégalo aquí (Ctrl+V)
+            {d.copied}
           </p>
         )}
-        <textarea {...fieldProps(r.errors, 'text')} ref={pasteBox} className="code-field" spellCheck={false} placeholder='{"version_esquema":1,…} o la dirección completa con #d=' />
+        <textarea {...fieldProps(r.errors, 'text')} ref={pasteBox} className="code-field" spellCheck={false} placeholder={d.pastePlaceholder} />
         <FieldError errors={r.errors} field="text" />
         <FieldError errors={r.errors} field="form" />
         <button type="submit" disabled={r.submitting}>
-          {r.submitting ? 'Evaluando…' : 'Evaluar lo pegado'}
+          {r.submitting ? t.diagnosis.evaluating : d.evaluate}
         </button>
       </form>
-      <p className="small muted">
-        En Linux, ¿Vulkan aparece como «Desconocido»? Instala <code>vulkan-tools</code> y vuelve a ejecutar el detector, o compruébalo a
-        mano:
-      </p>
-      <CopyBox label="Comprobación manual de Vulkan" text={`vulkaninfo --summary | grep -E "driverName|apiVersion|deviceName"`} />
+      <p className="small muted">{d.vulkanUnknown}</p>
+      <CopyBox label={d.vulkanCheck} text={`vulkaninfo --summary | grep -E "driverName|apiVersion|deviceName"`} />
     </section>
   )
 }
@@ -129,9 +126,10 @@ function Detector({ siteOrigin }: { siteOrigin: string }) {
 const isOperatingSystem = Schema.is(OperatingSystem)
 const isVulkanSupport = Schema.is(VulkanSupport)
 
-
 function Manual() {
   const evaluate = useEvaluate()
+  const t = useT()
+  const m = t.diagnosis.manual
   const [os, setOs] = useState<OperatingSystem>('Windows')
   const [vulkan, setVulkan] = useState<VulkanSupport>('desconocido')
   const r = useAction(ManualForm, ({ data }) => evaluate(manualInput(data)), {
@@ -141,14 +139,14 @@ function Manual() {
   return (
     <section className="card stack" aria-labelledby="manual">
       <h2 id="manual" className="no-margin">
-        Descripción manual
+        {m.heading}
       </h2>
-      <p className="small muted">¿No puedes ejecutar el detector? Escribe lo que sabes de tu equipo.</p>
+      <p className="small muted">{m.intro}</p>
       <form className="form" {...r.form}>
         <FieldError errors={r.errors} field="form" />
         <div className="fields-2">
           <div>
-            <label htmlFor="sistema">Sistema</label>
+            <label htmlFor="sistema">{m.system}</label>
             <select {...fieldProps(r.errors, 'sistema')} value={os} onChange={(e) => isOperatingSystem(e.currentTarget.value) && setOs(e.currentTarget.value)}>
               {OperatingSystem.literals.map((s) => (
                 <option key={s} value={s}>
@@ -158,14 +156,14 @@ function Manual() {
             </select>
           </div>
           <div>
-            <label htmlFor="version_sistema">Versión</label>
-            <input {...fieldProps(r.errors, 'version_sistema')} placeholder={os === 'Windows' ? 'Windows 11' : 'Kernel, p. ej. 6.8'} defaultValue={os === 'Windows' ? 'Windows 11' : ''} key={os} />
+            <label htmlFor="version_sistema">{m.version}</label>
+            <input {...fieldProps(r.errors, 'version_sistema')} placeholder={os === 'Windows' ? 'Windows 11' : m.kernelPlaceholder} defaultValue={os === 'Windows' ? 'Windows 11' : ''} key={os} />
             <FieldError errors={r.errors} field="version_sistema" />
           </div>
         </div>
-        <label htmlFor="dispositivo">Equipo</label>
+        <label htmlFor="dispositivo">{m.device}</label>
         <select {...fieldProps(r.errors, 'dispositivo')} defaultValue="null">
-          <option value="null">PC o portátil</option>
+          <option value="null">{m.pc}</option>
           {Device.literals.map((d) => (
             <option key={d} value={d}>
               {device[d]}
@@ -175,26 +173,26 @@ function Manual() {
         {os === 'Linux' && (
           <div className="fields-2">
             <div>
-              <label htmlFor="distribucion[nombre]">Distribución</label>
+              <label htmlFor="distribucion[nombre]">{m.distribution}</label>
               <input {...fieldProps(r.errors, 'distribucion[nombre]')} placeholder="Linux Mint" />
               <FieldError errors={r.errors} field="distribucion[nombre]" />
             </div>
             <div>
-              <label htmlFor="distribucion[version]">Versión de la distribución</label>
-              <input {...fieldProps(r.errors, 'distribucion[version]')} placeholder="21.3 o rolling" />
+              <label htmlFor="distribucion[version]">{m.distributionVersion}</label>
+              <input {...fieldProps(r.errors, 'distribucion[version]')} placeholder={m.distributionVersionPlaceholder} />
               <FieldError errors={r.errors} field="distribucion[version]" />
             </div>
           </div>
         )}
-        <label htmlFor="cpu_modelo">Procesador (CPU)</label>
+        <label htmlFor="cpu_modelo">{m.cpu}</label>
         <input {...fieldProps(r.errors, 'cpu_modelo')} placeholder="Intel Core i5-4590" />
         <FieldError errors={r.errors} field="cpu_modelo" />
-        <label htmlFor="gpu_modelo">Tarjeta gráfica (GPU)</label>
+        <label htmlFor="gpu_modelo">{m.gpu}</label>
         <input {...fieldProps(r.errors, 'gpu_modelo')} placeholder="NVIDIA GeForce GTX 1050" />
         <FieldError errors={r.errors} field="gpu_modelo" />
         <div className="fields-2">
           <div>
-            <label htmlFor="ram_mb">Memoria RAM</label>
+            <label htmlFor="ram_mb">{m.ram}</label>
             <select {...fieldProps(r.errors, 'ram_mb')} defaultValue="8192">
               {ramGb.map((gb) => (
                 <option key={gb} value={gb * 1024}>
@@ -204,9 +202,9 @@ function Manual() {
             </select>
           </div>
           <div>
-            <label htmlFor="vram_mb">Memoria de video (VRAM)</label>
+            <label htmlFor="vram_mb">{m.vram}</label>
             <select {...fieldProps(r.errors, 'vram_mb')} defaultValue="null">
-              <option value="null">No sé</option>
+              <option value="null">{m.dontKnow}</option>
               {vramMb.map((mb) => (
                 <option key={mb} value={mb}>
                   {memory(mb)}
@@ -220,16 +218,16 @@ function Manual() {
             <div>
               <label htmlFor="soporte_vulkan">Vulkan</label>
               <select {...fieldProps(r.errors, 'soporte_vulkan')} value={vulkan} onChange={(e) => isVulkanSupport(e.currentTarget.value) && setVulkan(e.currentTarget.value)}>
-                <option value="desconocido">No sé</option>
-                <option value="si">{vulkanSupport.si}</option>
-                <option value="no">{vulkanSupport.no}</option>
+                <option value="desconocido">{m.dontKnow}</option>
+                <option value="si">{t.vulkanSupport.si}</option>
+                <option value="no">{t.vulkanSupport.no}</option>
               </select>
             </div>
             <div>
-              <label htmlFor="version_vulkan">Versión de Vulkan</label>
+              <label htmlFor="version_vulkan">{m.vulkanVersion}</label>
               {vulkan === 'si' ? (
                 <select {...fieldProps(r.errors, 'version_vulkan')} defaultValue="null">
-                  <option value="null">No sé</option>
+                  <option value="null">{m.dontKnow}</option>
                   {vulkanVersions.map((v) => (
                     <option key={v} value={v}>
                       {v}
@@ -238,20 +236,20 @@ function Manual() {
                 </select>
               ) : (
                 <>
-                  <input id="version_vulkan" disabled value="Solo con soporte" />
+                  <input id="version_vulkan" disabled value={m.onlyWithSupport} />
                   <input type="hidden" name="version_vulkan" value="null" />
                 </>
               )}
             </div>
           </div>
         )}
-        <label htmlFor="arquitectura">Arquitectura</label>
+        <label htmlFor="arquitectura">{m.architecture}</label>
         <select {...fieldProps(r.errors, 'arquitectura')} defaultValue="x86_64">
-          <option value="x86_64">x86_64 (Intel o AMD)</option>
+          <option value="x86_64">{m.x86}</option>
           <option value="aarch64">aarch64 (ARM)</option>
         </select>
         <button type="submit" disabled={r.submitting}>
-          {r.submitting ? 'Evaluando…' : 'Evaluar mi equipo'}
+          {r.submitting ? t.diagnosis.evaluating : m.evaluate}
         </button>
       </form>
     </section>

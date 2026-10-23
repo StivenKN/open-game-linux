@@ -11,13 +11,14 @@ import { CaptureSummary } from '../../../ui/diagnostics/CaptureSummary.tsx'
 import { GraphicsCardOnLinux } from '../../../ui/diagnostics/GraphicsCardOnLinux.tsx'
 import { FieldError } from '../../../ui/FieldError.tsx'
 import { fieldProps } from '../../../ui/form.tsx'
+import { useLang, useT } from '../../../ui/i18n/messages.ts'
 import { useAction } from '../../../ui/useAction.ts'
-import { payloadReason } from '../../../ui/vocabulary.ts'
+import { titled } from '../../-head.ts'
 import { type Input, savePending, readPending, forgetPending } from './-input.ts'
 
 export const Route = createFileRoute('/$lang/diagnostico/importar')({
   ssr: false,
-  head: () => ({ meta: [{ title: 'Tu diagnóstico · OpenGame Linux' }] }),
+  head: ({ params }) => titled(params.lang, (t) => t.diagnosis.import.title),
   loader: () => myMachinesFn(),
   component: ImportPage,
 })
@@ -33,6 +34,9 @@ const takeFragment = () => {
 
 function ImportPage() {
   const [state, setState] = useState<{ readonly input: Input; readonly evaluated: Evaluated | null } | 'vacio' | null>(null)
+  const t = useT()
+  const lang = useLang()
+  const p = t.diagnosis.import
 
   useEffect(() => {
     takeFragment()
@@ -46,39 +50,42 @@ function ImportPage() {
   if (state === 'vacio')
     return (
       <main className="wrapper stack">
-        <h1>No hay un diagnóstico para mostrar</h1>
+        <h1>{p.empty}</h1>
         <p className="muted">
-          Ejecuta el detector con <code>--open</code>, o pega su salida en <Link to="/diagnostico">Diagnóstico</Link>.
+          {p.emptyHelp(
+            <Link to="/$lang/diagnostico" params={{ lang }}>
+              {t.diagnosis.title}
+            </Link>,
+          )}
         </p>
       </main>
     )
   if (state === null || state.evaluated === null)
     return (
       <main className="wrapper">
-        <p role="status">Leyendo tu equipo…</p>
+        <p role="status">{p.reading}</p>
       </main>
     )
   const r = state.evaluated
   if (!r.ok)
     return (
       <main className="wrapper stack">
-        <h1>No pudimos leer este diagnóstico</h1>
+        <h1>{p.unreadable}</h1>
         <p role="alert">
-          {payloadReason[r.error.reason]}
+          {t.payloadReason[r.error.reason]}
           {r.error.field !== null && <span className="datum"> ({r.error.field})</span>}
         </p>
-        <Link to="/diagnostico">Volver a Diagnóstico</Link>
+        <Link to="/$lang/diagnostico" params={{ lang }}>
+          {p.back}
+        </Link>
       </main>
     )
   const { capture, report } = r.value
   const steam = capture.operating_system === 'Linux' ? capture.steam_game : null
   return (
     <main className="wrapper stack">
-      <h1>Tu equipo frente al catálogo</h1>
-      <p className="muted">
-        Esta evaluación no se ha guardado. Compara RAM, VRAM y Vulkan con el perfil aprobado sugerido para cada juego; no
-        predice FPS.
-      </p>
+      <h1>{p.heading}</h1>
+      <p className="muted">{p.intro}</p>
       {steam !== null && <ReportIntro steam={steam} title={report?.title ?? null} />}
       <CaptureSummary capture={capture} />
       <GraphicsCardOnLinux machine={r.value.machine} pci={capture.gpu_pci_id} />
@@ -95,25 +102,19 @@ function ImportPage() {
 
 /** Report mode (`--game`): which game the capture reports, and what the detector read from Steam. */
 function ReportIntro({ steam, title }: { steam: SteamGame; title: string | null }) {
+  const p = useT().diagnosis.import
   if (title === null)
     return (
       <p className="note" data-tone="amarillo">
-        El juego {steam.app_id} de Steam todavía no está en el catálogo, así que no hay un formulario de reporte que llenar. Puedes
-        guardar el diagnóstico igual.
+        {p.notInCatalog(steam.app_id)}
       </p>
     )
   return (
     <section className="note stack" data-tone="azul" aria-labelledby="report-mode">
       <h2 id="report-mode" className="no-margin">
-        Reportar {title}
+        {p.report(title)}
       </h2>
-      <p>
-        El detector leyó cómo ejecuta Steam este juego:{' '}
-        {steam.tool !== null ? `«${steam.tool_version ?? steam.tool}»` : steam.native ? 'sin herramienta de compatibilidad (nativo)' : 'sin saber con qué herramienta'}
-        {steam.launch_options !== null && <>, con las opciones de lanzamiento «{steam.launch_options}»</>}
-        {steam.build_id !== null && <>, build {steam.build_id}</>}. Guarda este diagnóstico y te llevamos al formulario del reporte ya
-        lleno. Nada se envía hasta que lo revises.
-      </p>
+      <p>{p.steamRead(steam)}</p>
     </section>
   )
 }
@@ -126,20 +127,20 @@ function SavePanel({ input, libraryGameCount, report }: { input: Input; libraryG
   const { visitor } = Route.useRouteContext()
   const machines = Route.useLoaderData()
   const navigate = useNavigate()
+  const t = useT()
+  const lang = useLang()
+  const s = t.diagnosis.save
   const [target, setTarget] = useState(() => (machines[0] === undefined ? 'nuevo' : String(machines[0].id)))
   const [saved, setSaved] = useState<Saved | null>(null)
   const r = useAction(SaveTarget, ({ data }) => saveDiagnosticFn({ data: { ...data, input } }), {
-    onFailure: (f) =>
-      f._tag === 'ReglaIncumplida'
-        ? { 'machine[id]': 'Ese equipo no es tuyo. Elige uno de tu lista.' }
-        : { form: payloadReason[f.reason] },
+    onFailure: (f, t) => (f._tag === 'ReglaIncumplida' ? { 'machine[id]': t.diagnosis.save.notYours } : { form: t.payloadReason[f.reason] }),
     onComplete: (value) => {
       forgetPending()
       setSaved(value)
       if (report !== null)
         void navigate({
-          to: '/juegos/$gameId/reportar',
-          params: { gameId: report.gameId },
+          to: '/$lang/juegos/$gameId/reportar',
+          params: { lang, gameId: report.gameId },
           search: { diagnostico: value.id, edicion: report.editionId, steam: report.steam },
         })
     },
@@ -147,51 +148,47 @@ function SavePanel({ input, libraryGameCount, report }: { input: Input; libraryG
 
   if (visitor === null)
     return (
-      <section className="card row" aria-label="Guardar">
-        <span>
-          {report === null
-            ? 'Para guardar este diagnóstico en tu equipo necesitas una cuenta.'
-            : 'Para reportar necesitas una cuenta. Tu diagnóstico te espera aquí al volver.'}
-        </span>
-        <Link to="/entrar" search={{ volver: '/diagnostico/importar' }} className="button">
-          {report === null ? 'Entrar para guardar' : 'Entrar para reportar'}
+      <section className="card row" aria-label={s.label}>
+        <span>{report === null ? s.needAccount : s.needAccountToReport}</span>
+        <Link to="/$lang/entrar" params={{ lang }} search={{ volver: '/diagnostico/importar' }} className="button">
+          {report === null ? s.signInToSave : s.signInToReport}
         </Link>
-        <Link to="/registro" search={{ volver: '/diagnostico/importar' }}>
-          Crear cuenta
+        <Link to="/$lang/registro" params={{ lang }} search={{ volver: '/diagnostico/importar' }}>
+          {t.header.signUp}
         </Link>
       </section>
     )
 
   return (
-    <section className="card" aria-label="Guardar">
+    <section className="card" aria-label={s.label}>
       <form className="stack" {...r.form}>
         <div className="row">
           <input type="hidden" name="machine[_tag]" value={target === 'nuevo' ? 'nuevo' : 'existente'} />
-          <label htmlFor="machine[id]">Guardar en</label>
+          <label htmlFor="machine[id]">{s.saveIn}</label>
           <select {...fieldProps(r.errors, 'machine[id]')} value={target} onChange={(e) => setTarget(e.currentTarget.value)}>
             {machines.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.alias}
               </option>
             ))}
-            <option value="nuevo">Un equipo nuevo…</option>
+            <option value="nuevo">{s.newMachine}</option>
           </select>
           {target === 'nuevo' && (
             <input
               {...fieldProps(r.errors, 'machine[alias]')}
-              aria-label="Nombre del equipo nuevo"
-              defaultValue={machines.length === 0 ? 'Mi equipo' : ''}
-              placeholder="Portátil del trabajo"
+              aria-label={s.newMachineName}
+              defaultValue={machines.length === 0 ? s.defaultAlias : ''}
+              placeholder={s.aliasPlaceholder}
             />
           )}
           <button type="submit" disabled={r.submitting}>
-            {r.submitting ? 'Guardando…' : report === null ? 'Guardar en mi equipo' : 'Guardar y reportar'}
+            {r.submitting ? s.saving : report === null ? s.save : s.saveAndReport}
           </button>
         </div>
         {libraryGameCount > 0 && (
           <label className="checkbox">
             <input type="checkbox" name="with_library" value="true" />
-            Guardar también mi lista de juegos de Steam ({libraryGameCount}). Solo tú la ves.
+            {s.withLibrary(libraryGameCount)}
           </label>
         )}
       </form>
@@ -200,9 +197,9 @@ function SavePanel({ input, libraryGameCount, report }: { input: Input; libraryG
       <FieldError errors={r.errors} field="form" />
       {saved && (
         <p role="status" className="small">
-          {saved.inserted ? 'Guardado.' : 'Ya estaba guardado; no se creó una copia.'}{' '}
-          <Link to="/diagnosticos/$diagnosticId" params={{ diagnosticId: saved.id }}>
-            Ver el diagnóstico guardado
+          {saved.inserted ? s.saved : s.alreadySaved}{' '}
+          <Link to="/$lang/diagnosticos/$diagnosticId" params={{ lang, diagnosticId: saved.id }}>
+            {s.viewSaved}
           </Link>
         </p>
       )}

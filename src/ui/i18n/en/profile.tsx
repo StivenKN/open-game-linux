@@ -1,3 +1,156 @@
+import { count } from '../../format.ts'
 import type { profile as source } from '../es/profile.tsx'
 
-export const profile = {} satisfies typeof source
+export const profile = {
+  breadcrumb: 'Profile',
+  editProposal: 'Edit the proposal',
+  newVersion: 'Propose a version with changes',
+  steps: 'Steps',
+  dependencies: 'Dependencies',
+  requirements: 'Known requirements',
+  ramMin: 'Minimum RAM',
+  vramMin: 'Minimum VRAM',
+
+  page: {
+    catalog: 'Catalog',
+    testing: 'in testing',
+    approvedOn: (date) => `Approved on ${date}`,
+    author: (name) => `by ${name}`,
+    gameVersion: (version) => `game version ${version}`,
+    unapproved:
+      "This profile isn't approved yet: a user wrote it and no reviewer has read its steps. Read each command before you run it. If you try it, an approved report with a working result is what its approval needs.",
+    nothingRuns: "OpenGame doesn't download or run anything. Follow the steps yourself; the commands copy exactly as written.",
+    yours: "It's your proposal. You can edit or delete it as long as nobody uses it in a report or a solution.",
+    report: 'Report a result with this profile',
+    noSteps: 'This profile has no steps.',
+    launchOptions: 'Launch options',
+    noDependencies: 'It needs no extra dependencies.',
+    required: 'required',
+    optional: 'optional',
+    version: (version) => `version ${version}`,
+    install: (name) => `Install ${name}`,
+    requirementsCaption: "The profile's known requirements",
+    undeclared: 'not declared',
+    vulkanRequired: (min) => (min ? `required, ${min} or newer` : 'required'),
+    vulkanNotNeeded: 'not needed',
+    noEvaluation: {
+      perfil_en_prueba: 'Your machine is only compared with approved profiles.',
+      sin_diagnostico: 'No diagnosis. Run the detector to compare your RAM, VRAM and Vulkan with this profile.',
+    },
+    progress: (done, total) => `${done} of ${count(total, 'step', 'steps')} done · saved only in this browser`,
+    reset: 'Reset',
+    done: 'Done',
+  },
+
+  propose: {
+    title: (game) => `Propose a profile for ${game ?? 'a game'}`,
+    caption: 'Propose a profile',
+    intro:
+      'A profile is the steps that make the game work in a specific setup. It stays pending until a reviewer approves it with a working report that uses it. While nobody uses it, you can edit or delete it.',
+    startingFrom: (title) => `You're starting from the data of “${title}”. What you submit is a new profile; the original doesn't change.`,
+    setup: 'Which setup it is for',
+    setupHelp: 'A report can only use the profile if it matches its edition, distribution, architecture and layer.',
+    edition: 'Edition (launcher)',
+    distribution: 'Distribution',
+    architecture: { label: 'Architecture', help: 'The one uname -m shows: x86_64 on almost every PC.' },
+    layer: {
+      legend: 'Compatibility layer',
+      listed: 'A version from the list',
+      other: 'Another version',
+      version: 'Version',
+      family: 'Family',
+      variant: 'Variant',
+      exactVersion: 'Exact version',
+    },
+    sending: 'Submitting…',
+    submit: 'Propose the profile',
+    back: 'Back to the game page',
+  },
+
+  edit: {
+    title: 'Edit the profile',
+    breadcrumb: 'Edit',
+    setupStays: 'The setup stays as you proposed it. If you got the setup wrong, delete the proposal and propose another one.',
+    saving: 'Saving…',
+    save: 'Save the changes',
+    cancel: 'Cancel',
+    frozen: "Someone already used this profile in a report or a solution, or a reviewer already reviewed it, so it doesn't change.",
+    delete: {
+      heading: 'Delete the proposal',
+      note: "It's deleted with its steps and dependencies. This can't be undone.",
+      confirm: 'Yes, delete it',
+      keep: 'No',
+    },
+  },
+
+  form: {
+    title: { label: 'Title', help: 'What the profile achieves, for example “GTA V on low graphics with Proton 8”.' },
+    gameVersion: {
+      label: 'Game version (optional)',
+      help: "Only if the profile is for a specific version: a report with another version won't be able to use it.",
+    },
+    launchOptions: { label: 'Launch options (optional)', help: 'Whoever follows the profile copies them as they are into their launcher.' },
+    requirementsHelp: "The profile page compares the RAM, the VRAM and Vulkan with the diagnosis of whoever opens it. What you don't declare isn't compared.",
+    undeclared: 'Not declared',
+    vulkanRequired: 'Required',
+    vulkanNotNeeded: 'Not needed',
+    vulkanMin: 'Minimum Vulkan version',
+    anyVersion: 'Any',
+    freeText: "Free text: it's shown, not compared.",
+    cpu: { label: 'CPU (optional)', example: '4 cores with AVX' },
+    gpu: { label: 'GPU (optional)', example: 'GTX 1050 or equivalent' },
+    steps: {
+      help: 'In the order they are followed. Type the commands exactly: the page shows them for copying.',
+      step: (n) => `Step ${n}`,
+      up: 'Move up',
+      down: 'Move down',
+      remove: 'Remove',
+      title: 'Title',
+      instruction: 'What to do',
+      add: 'Add a step',
+    },
+    dependencies: {
+      help: 'Libraries or programs the game needs besides the layer, with the command to install them.',
+      add: 'Add a dependency',
+      listed: 'One from the list',
+      other: 'Another one',
+      remove: 'Remove',
+      dependency: 'Dependency',
+      name: 'Name',
+      packageManager: 'Package manager',
+      description: { label: 'What it is', example: 'Visual C++ 2019 libraries' },
+      version: 'Version (optional)',
+      required: 'Required',
+      install: 'How to install it',
+    },
+  },
+
+  upstream: {
+    heading: 'Share with umu-protonfixes',
+    nothing: 'This profile has no launch options or dependencies that become an umu-protonfixes fix.',
+    nothingTranslates: 'Nothing in this profile becomes an umu-protonfixes fix:',
+    file: (path) => (
+      <>
+        umu-protonfixes applies per-game fixes when you open a game with GE-Proton or umu. This profile becomes the file <code>{path}</code>; you can use it
+        today and propose it to the project so it reaches everyone.
+      </>
+    ),
+    useNow: 'Use it now on your PC',
+    onlyGe: "Only GE-Proton and umu read this folder; Valve's Proton doesn't.",
+    fileCopy: (path) => `File ${path}`,
+    skipped: "Didn't make it into the file:",
+    existing: 'Is there already a fix? Check it first',
+    propose: 'Propose it on GitHub',
+    demo: "Demo data isn't sent to umu-protonfixes.",
+    accepted: (pr) => `Accepted in umu-protonfixes · PR #${pr}`,
+    notedOn: (date) => `noted on ${date}`,
+    note: {
+      label: 'Record a merged PR (reviewers)',
+      help: 'Only PRs that are already merged: each one adds to the public counter.',
+      search: 'Search merged OpenGame PRs',
+      sending: 'Recording…',
+      submit: 'Record accepted PR',
+    },
+    retract: 'Retract',
+  },
+} satisfies typeof source

@@ -6,7 +6,9 @@ import { ProfileEdit } from '../../../domain/contributions.ts'
 import { ProfileId } from '../../../domain/ids.ts'
 import { deleteProfileFn, editProfileFn, profileEditOptionsFn } from '../../../fns/contributions.ts'
 import { FieldError } from '../../../ui/FieldError.tsx'
+import { useLang, useT } from '../../../ui/i18n/messages.ts'
 import { ruleErrors, useAction } from '../../../ui/useAction.ts'
+import { titled } from '../../-head.ts'
 import { routeIdParser } from '../../-ids.ts'
 import { returnHere } from '../../-return-to.ts'
 import { ProfileContentFields } from './-form.tsx'
@@ -15,11 +17,11 @@ const profileId = routeIdParser(ProfileId)
 
 export const Route = createFileRoute('/$lang/perfiles/$profileId_/editar')({
   params: { parse: (p) => ({ profileId: profileId(p.profileId) }), stringify: (p) => ({ profileId: String(p.profileId) }) },
-  beforeLoad: ({ context, location }) => {
-    if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
+  beforeLoad: ({ context, location, params }) => {
+    if (context.visitor === null) throw redirect({ to: '/$lang/entrar', params: { lang: params.lang }, search: returnHere(location) })
   },
   loader: ({ params }) => profileEditOptionsFn({ data: params }),
-  head: () => ({ meta: [{ title: 'Editar el perfil · OpenGame Linux' }] }),
+  head: ({ params }) => titled(params.lang, (t) => t.profile.edit.title),
   component: EditProfilePage,
 })
 
@@ -28,18 +30,21 @@ type Profile = Awaited<ReturnType<typeof profileEditOptionsFn>>['profile']
 function EditProfilePage() {
   const { profile: p, draft, dependencies } = Route.useLoaderData()
   const navigate = useNavigate()
+  const t = useT()
+  const lang = useLang()
+  const e = t.profile.edit
   const r = useAction(ProfileEdit, editProfileFn, {
     onFailure: ruleErrors,
-    onComplete: ({ id }) => void navigate({ to: '/perfiles/$profileId', params: { profileId: id } }),
+    onComplete: ({ id }) => void navigate({ to: '/$lang/perfiles/$profileId', params: { lang, profileId: id } }),
   })
 
   return (
     <main className="wrapper">
       <div className="breadcrumbs">
-        <Link to="/juegos/$gameId" params={{ gameId: p.game_id }}>{p.game}</Link> /{' '}
-        <Link to="/perfiles/$profileId" params={{ profileId: p.id }}>Perfil</Link> / Editar
+        <Link to="/$lang/juegos/$gameId" params={{ lang, gameId: p.game_id }}>{p.game}</Link> /{' '}
+        <Link to="/$lang/perfiles/$profileId" params={{ lang, profileId: p.id }}>{t.profile.breadcrumb}</Link> / {e.breadcrumb}
       </div>
-      <h1>Editar la propuesta</h1>
+      <h1>{t.profile.editProposal}</h1>
       <div className="chip-row">
         <span className="chip">{p.launcher}</span>
         <span className="chip">{p.distribution}</span>
@@ -49,19 +54,17 @@ function EditProfilePage() {
       </div>
       {p.editable ? (
         <>
-          <p className="muted">
-            El entorno queda como lo propusiste. Si te equivocaste de entorno, elimina la propuesta y propón otra.
-          </p>
+          <p className="muted">{e.setupStays}</p>
           <form className="card form form-wide" {...r.form}>
             <FieldError errors={r.errors} field="form" />
             <input type="hidden" name="profile_id" value={p.id} />
             <ProfileContentFields errors={r.errors} dependencies={dependencies} draft={draft} />
             <p className="row">
               <button type="submit" disabled={r.submitting}>
-                {r.submitting ? 'Guardando…' : 'Guardar los cambios'}
+                {r.submitting ? e.saving : e.save}
               </button>
-              <Link to="/perfiles/$profileId" params={{ profileId: p.id }}>
-                Cancelar
+              <Link to="/$lang/perfiles/$profileId" params={{ lang, profileId: p.id }}>
+                {e.cancel}
               </Link>
             </p>
           </form>
@@ -69,10 +72,10 @@ function EditProfilePage() {
         </>
       ) : (
         <section className="card note stack" data-tone="amarillo">
-          <p>Alguien ya usó este perfil en un reporte o una solución, o un revisor ya lo revisó, así que no cambia.</p>
+          <p>{e.frozen}</p>
           <p>
-            <Link to="/juegos/$gameId/perfiles/nuevo" params={{ gameId: p.game_id }} search={{ desde: p.id }}>
-              Proponer una versión con cambios
+            <Link to="/$lang/juegos/$gameId/perfiles/nuevo" params={{ lang, gameId: p.game_id }} search={{ desde: p.id }}>
+              {t.profile.newVersion}
             </Link>
           </p>
         </section>
@@ -85,29 +88,31 @@ const DeleteForm = Schema.Struct({ profile_id: ProfileId })
 
 function DeleteProposal({ profile: p }: { profile: Profile }) {
   const navigate = useNavigate()
+  const lang = useLang()
+  const d = useT().profile.edit.delete
   const [confirming, setConfirming] = useState(false)
   const r = useAction(DeleteForm, deleteProfileFn, {
     onFailure: ruleErrors,
-    onComplete: ({ game_id }) => void navigate({ to: '/juegos/$gameId', params: { gameId: game_id } }),
+    onComplete: ({ game_id }) => void navigate({ to: '/$lang/juegos/$gameId', params: { lang, gameId: game_id } }),
   })
   return (
     <section className="card stack form-wide" aria-labelledby="delete-proposal">
-      <h2 id="delete-proposal">Eliminar la propuesta</h2>
-      <p className="small muted">Se borra con sus pasos y dependencias. No se puede deshacer.</p>
+      <h2 id="delete-proposal">{d.heading}</h2>
+      <p className="small muted">{d.note}</p>
       <form className="row" {...r.form}>
         <input type="hidden" name="profile_id" value={p.id} />
         {confirming ? (
           <>
             <button type="submit" disabled={r.submitting}>
-              Sí, eliminarla
+              {d.confirm}
             </button>
             <button type="button" className="button-secondary" onClick={() => setConfirming(false)}>
-              No
+              {d.keep}
             </button>
           </>
         ) : (
           <button type="button" className="button-secondary" onClick={() => setConfirming(true)}>
-            Eliminar la propuesta
+            {d.heading}
           </button>
         )}
       </form>

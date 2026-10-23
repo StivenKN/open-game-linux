@@ -5,9 +5,9 @@ import { Role } from '../../../domain/review.ts'
 import { accountsFn, changeAccessFn } from '../../../fns/accounts.ts'
 import { Chip } from '../../../ui/Badge.tsx'
 import { FieldError } from '../../../ui/FieldError.tsx'
-import { date } from '../../../ui/format.ts'
+import { useLang, useT } from '../../../ui/i18n/messages.ts'
 import { ruleErrors, useAction } from '../../../ui/useAction.ts'
-import { role } from '../../../ui/vocabulary.ts'
+import { titled } from '../../-head.ts'
 import { returnHere } from '../../-return-to.ts'
 
 // The router JSON-parses each query value, so an alias typed as `?q=2` arrives as the number 2. The key is
@@ -16,13 +16,13 @@ const searchText = (q: unknown) => (typeof q === 'string' ? q : typeof q === 'nu
 
 export const Route = createFileRoute('/$lang/admin/usuarios')({
   validateSearch: (search: Record<string, unknown>): { readonly q?: string | undefined } => ({ q: searchText(search.q) }),
-  beforeLoad: ({ context, location }) => {
-    if (context.visitor === null) throw redirect({ to: '/entrar', search: returnHere(location) })
+  beforeLoad: ({ context, location, params }) => {
+    if (context.visitor === null) throw redirect({ to: '/$lang/entrar', params: { lang: params.lang }, search: returnHere(location) })
     if (context.visitor.role !== 'administrador') throw notFound()
   },
   loaderDeps: ({ search }) => ({ q: search.q?.trim() ?? '' }),
   loader: ({ deps }) => accountsFn({ data: deps }),
-  head: () => ({ meta: [{ title: 'Usuarios · OpenGame Linux' }] }),
+  head: ({ params }) => titled(params.lang, (t) => t.header.users),
   component: UsersPage,
 })
 
@@ -31,7 +31,10 @@ type Account = Awaited<ReturnType<typeof accountsFn>>['accounts'][number]
 function UsersPage() {
   const { accounts, more } = Route.useLoaderData()
   const { q } = Route.useLoaderDeps()
-  const navigate = useNavigate({ from: '/admin/usuarios' })
+  const navigate = useNavigate({ from: '/$lang/admin/usuarios' })
+  const t = useT()
+  const lang = useLang()
+  const u = t.account.users
   const onSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const text = new FormData(e.currentTarget).get('q')
@@ -39,20 +42,17 @@ function UsersPage() {
   }
   return (
     <main className="wrapper stack">
-      <h1>Usuarios</h1>
-      <p className="muted">
-        Un revisor aprueba aportes; un administrador además gestiona los roles. Desactivar una cuenta cierra sus sesiones y no la deja
-        entrar hasta que la reactives. Cada cambio se aplica en la siguiente página que abra esa cuenta.
-      </p>
-      <form role="search" className="row" method="get" action="/admin/usuarios" onSubmit={onSearch}>
+      <h1>{t.header.users}</h1>
+      <p className="muted">{u.lede}</p>
+      <form role="search" className="row" method="get" action={`/${lang}/admin/usuarios`} onSubmit={onSearch}>
         <label htmlFor="q" className="sr-only">
-          Buscar por alias o correo
+          {u.searchLabel}
         </label>
-        <input id="q" name="q" type="search" placeholder="Alias o correo" defaultValue={q} key={q} />
-        <button type="submit">Buscar</button>
+        <input id="q" name="q" type="search" placeholder={u.searchPlaceholder} defaultValue={q} key={q} />
+        <button type="submit">{u.search}</button>
       </form>
       {accounts.length === 0 ? (
-        <p className="card">{q === '' ? 'Todavía no hay cuentas.' : `Ninguna cuenta tiene «${q}» en su alias o correo.`}</p>
+        <p className="card">{q === '' ? u.none : u.noMatch(q)}</p>
       ) : (
         <ul className="card-list">
           {accounts.map((a) => (
@@ -60,13 +60,15 @@ function UsersPage() {
           ))}
         </ul>
       )}
-      {more && <p className="small muted">Se muestran las {accounts.length} cuentas más recientes. Busca por alias o correo para encontrar otra.</p>}
+      {more && <p className="small muted">{u.more(accounts.length)}</p>}
     </main>
   )
 }
 
 function AccountItem({ account: a }: { account: Account }) {
   const router = useRouter()
+  const t = useT()
+  const u = t.account.users
   const [saved, setSaved] = useState<boolean | null>(null)
   const r = useAction(AccessChange, changeAccessFn, {
     onFailure: ruleErrors,
@@ -81,39 +83,39 @@ function AccountItem({ account: a }: { account: Account }) {
       <p className="row">
         <strong id={headingId}>{a.alias}</strong>
         <span className="datum muted">{a.email}</span>
-        <Chip>{role[a.role]}</Chip>
-        {!a.active && <Chip tone="rojo">Desactivada</Chip>}
-        {a.is_self && <Chip tone="azul">Tu cuenta</Chip>}
-        <span className="small muted">desde el {date(a.created_at)}</span>
+        <Chip>{t.role[a.role]}</Chip>
+        {!a.active && <Chip tone="rojo">{u.deactivated}</Chip>}
+        {a.is_self && <Chip tone="azul">{u.yours}</Chip>}
+        <span className="small muted">{u.since(t.date(a.created_at))}</span>
       </p>
       {a.is_self ? (
-        <p className="small muted">Es tu cuenta: otro administrador debe cambiar tu rol o desactivarla.</p>
+        <p className="small muted">{u.self}</p>
       ) : (
         <form className="row" {...r.form}>
           <input type="hidden" name="user_id" value={a.id} />
           <label className="row" htmlFor={`rol-${a.id}`}>
-            Rol
+            {u.role}
             <select id={`rol-${a.id}`} name="role" defaultValue={a.role}>
               {Role.literals.map((l) => (
                 <option key={l} value={l}>
-                  {role[l]}
+                  {t.role[l]}
                 </option>
               ))}
             </select>
           </label>
           <label className="checkbox">
             <input type="checkbox" name="active" value="true" defaultChecked={a.active} />
-            Cuenta activa
+            {u.active}
           </label>
           <button type="submit" className="button-secondary" disabled={r.submitting}>
-            {r.submitting ? 'Guardando…' : 'Guardar'}
+            {r.submitting ? u.saving : u.save}
           </button>
         </form>
       )}
       <FieldError errors={r.errors} field="form" />
       {saved !== null && (
         <p role="status" className="small">
-          {saved ? 'Guardado.' : 'No había nada que cambiar.'}
+          {saved ? u.saved : u.unchanged}
         </p>
       )}
     </li>

@@ -2,37 +2,33 @@
 import { GuideStatus, GuideType } from '../../../domain/guides.ts'
 import type { guideEditOptionsFn, guideOptionsFn } from '../../../fns/guides.ts'
 import { Field, fieldProps, nullText } from '../../../ui/form.tsx'
+import { useT } from '../../../ui/i18n/messages.ts'
 import type { FieldErrors } from '../../../ui/useAction.ts'
-import { guideStatus, guideType } from '../../../ui/vocabulary.ts'
 
 type Distribution = Awaited<ReturnType<typeof guideOptionsFn>>['distributions'][number]
 type Guide = Awaited<ReturnType<typeof guideEditOptionsFn>>['guide']
 
-const statusHelp = {
-  borrador: 'Solo la ven los revisores.',
-  publicada: 'Aparece en Guías para todos.',
-  archivada: 'Deja de verse en Guías; los revisores la siguen viendo.',
-} as const satisfies Record<GuideStatus, string>
-
 export function GuideFields({ errors, distributions, guide }: { errors: FieldErrors; distributions: ReadonlyArray<Distribution>; guide: Guide | null }) {
+  const t = useT()
+  const f = t.guides.form
   return (
     <>
-      <Field errors={errors} name="title" label="Título">
+      <Field errors={errors} name="title" label={f.title}>
         <input {...fieldProps(errors, 'title')} defaultValue={guide?.title} />
       </Field>
       <div className="fields-2">
-        <Field errors={errors} name="type" label="Tipo">
+        <Field errors={errors} name="type" label={f.type}>
           <select {...fieldProps(errors, 'type')} defaultValue={guide?.type}>
-            {GuideType.literals.map((t) => (
-              <option key={t} value={t}>
-                {guideType[t]}
+            {GuideType.literals.map((type) => (
+              <option key={type} value={type}>
+                {t.guideType[type]}
               </option>
             ))}
           </select>
         </Field>
-        <Field errors={errors} name="distribution_id" label="Distribución">
+        <Field errors={errors} name="distribution_id" label={f.distribution}>
           <select {...fieldProps(errors, 'distribution_id')} defaultValue={String(guide?.distribution_id ?? nullText)}>
-            <option value={nullText}>Cualquier distribución</option>
+            <option value={nullText}>{f.anyDistribution}</option>
             {distributions.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -41,20 +37,15 @@ export function GuideFields({ errors, distributions, guide }: { errors: FieldErr
           </select>
         </Field>
       </div>
-      <Field
-        errors={errors}
-        name="content"
-        label="Contenido"
-        help="Texto sin formato. Una línea en blanco separa párrafos; un salto de línea simple se respeta, útil para pasos numerados."
-      >
+      <Field errors={errors} name="content" label={f.content} help={f.contentHelp}>
         <textarea {...fieldProps(errors, 'content')} rows={14} defaultValue={guide?.content} />
       </Field>
       <fieldset className="group">
-        <legend>Estado</legend>
+        <legend>{f.status}</legend>
         {GuideStatus.literals.map((s) => (
           <label key={s} className="checkbox">
             <input type="radio" name="status" value={s} defaultChecked={s === (guide?.status ?? 'borrador')} />
-            {guideStatus[s]} <span className="small muted">{statusHelp[s]}</span>
+            {t.guideStatus[s]} <span className="small muted">{f.statusHelp[s]}</span>
           </label>
         ))}
       </fieldset>
