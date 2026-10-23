@@ -120,6 +120,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | formato | format |
 | formulario | form |
 | frase | sentence |
+| fuente | source (`ExternalSource`, the imported datasets; `UnreachableSource`, a GitHub request that failed, whose `_tag` stays `FuenteInalcanzable`) |
 | funcionales | working (`working_reports`) |
 | gestor | package manager |
 | guardado | saved (`SavedMachines`) |
@@ -143,6 +144,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | leer | read; parse (`parseUrl`) |
 | lienzo | canvas |
 | limpiar | clean |
+| lista | list (AreWeAntiCheatYet's `games.json`; `ListedGame`, one entry of it) |
 | lote | batch |
 | manejo | handlers |
 | marco | layout |

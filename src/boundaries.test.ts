@@ -14,7 +14,7 @@ const importsOf = (code: string) => [...code.matchAll(/^\s*import\s[^'"]*['"]([^
 const layers = {
   'src/domain/': { allowed: ['effect', 'src/domain/'], fix: 'domain is pure and isomorphic; move I/O to server/' },
   'src/server/': {
-    allowed: ['effect', '@effect/', 'better-auth', 'pg', '@tanstack/react-start/server', '@tanstack/react-router', 'src/domain/', 'src/server/'],
+    allowed: ['effect', '@effect/', 'better-auth', 'pg', 'node:crypto', '@tanstack/react-start/server', '@tanstack/react-router', 'src/domain/', 'src/server/'],
     fix: 'server must not reach fns/, routes/ or ui/',
   },
   'src/fns/': { allowed: ['@tanstack/react-start', 'effect', 'src/domain/', 'src/server/'], fix: 'fns/ is the server-fn boundary only' },
@@ -99,6 +99,22 @@ describe('boundaries', () => {
     const violations = [...files('src'), ...files('scripts')]
       .filter((f) => f !== 'src/server/commands/game-requests.ts' && !f.startsWith('src/server/schema/') && write.test(read(f)))
       .map((f) => `${f} writes game_request; call requestGame(), withdrawRequest(), rejectRequest() or fulfillRequests() from server/commands/game-requests.ts instead`)
+    expect(violations).toEqual([])
+  })
+
+  it('only server/external/anticheat.ts writes anticheat_entry (external evidence single writer)', () => {
+    const write = /\b(INSERT INTO|UPDATE|DELETE FROM|TRUNCATE)\s+(TABLE\s+)?anticheat_entry\b/
+    const violations = [...files('src'), ...files('scripts')]
+      .filter((f) => f !== 'src/server/external/anticheat.ts' && !f.startsWith('src/server/schema/') && write.test(read(f)))
+      .map((f) => `${f} writes anticheat_entry; call importAntiCheat() from server/external/anticheat.ts instead`)
+    expect(violations).toEqual([])
+  })
+
+  it('only server/external/sources.ts writes external_import (single writer)', () => {
+    const write = /\b(INSERT INTO|UPDATE|DELETE FROM|TRUNCATE)\s+(TABLE\s+)?external_import\b/
+    const violations = [...files('src'), ...files('scripts')]
+      .filter((f) => f !== 'src/server/external/sources.ts' && !f.startsWith('src/server/schema/') && write.test(read(f)))
+      .map((f) => `${f} writes external_import; an importer calls recordImport() from server/external/sources.ts inside its transaction`)
     expect(violations).toEqual([])
   })
 

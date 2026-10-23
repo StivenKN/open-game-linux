@@ -1,5 +1,6 @@
 # One image serves the app (`pnpm start`) and runs the TypeScript scripts (`pnpm db:migrate`, `pnpm db:seed`,
-# `pnpm set-role`, `pnpm db:protondb`), which import src/ directly. The build stage keeps the dev dependencies out of the final image.
+# `pnpm set-role`, `pnpm db:protondb`, `pnpm db:anticheat`), which import src/ directly. compose.prod.yaml's `imports`
+# service runs scripts/scheduled-imports.sh from the same image. The build stage keeps the dev dependencies out of the final image.
 FROM node:24-slim AS build
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable

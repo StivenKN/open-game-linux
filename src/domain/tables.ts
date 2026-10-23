@@ -24,7 +24,7 @@ import {
   LayerVersionId,
 } from './ids.ts'
 import { maxLengths } from './max-lengths.ts'
-import { GraphicsApi, LayerFamily, Outcome, ProtonVariant } from './literals.ts'
+import { AntiCheatStatus, ExternalSource, GraphicsApi, LayerFamily, Outcome, ProtonVariant } from './literals.ts'
 import { Device, SecureBoot, X86Level, Tpm } from './platform.ts'
 import { ReviewStatus, Role } from './review.ts'
 
@@ -289,3 +289,24 @@ export type GameRequest = typeof GameRequest.Type
 
 export const GameRequestUser = Schema.Struct({ request_id: GameRequestId, user_id: UserId, created_at: Schema.Date })
 export type GameRequestUser = typeof GameRequestUser.Type
+
+/** One Steam edition's entry in AreWeAntiCheatYet's list. `changed_at` is null when the list's date does not parse. */
+export const AntiCheatEntry = Schema.Struct({
+  edition_id: EditionId,
+  status: AntiCheatStatus,
+  anticheats: Schema.Array(TextUpTo(maxLengths.anticheat_entry.anticheat)),
+  changed_at: Schema.NullOr(Schema.Date),
+  slug: TextUpTo(maxLengths.anticheat_entry.slug),
+})
+export type AntiCheatEntry = typeof AntiCheatEntry.Type
+
+/**
+ * What a source's last `--latest` import read: the upstream file's git blob sha and a digest of the catalog's
+ * Steam app ids. A file or stdin import leaves no row, so the next `--latest` run downloads again.
+ */
+export const ExternalImport = Schema.Struct({
+  source: ExternalSource,
+  file_sha: Schema.String,
+  steam_apps: Schema.String,
+})
+export type ExternalImport = typeof ExternalImport.Type

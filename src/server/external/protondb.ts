@@ -1,13 +1,11 @@
-// Single writer of protondb_resumen. The export is read whole before the database is touched, then every
+// Single writer of protondb_summary. The export is read whole before the database is touched, then every
 // row is replaced in one transaction: a rerun converges, and a failed read leaves the last import intact.
-import { Array as Arr, Clock, Effect, Option, Schema, Struct } from 'effect'
+import { Array as Arr, Clock, Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import type { EditionId } from '../../domain/ids.ts'
 import { parseReport, type ProtonDbReport, summarizeProtonDb } from '../../domain/protondb.ts'
-import { GameEdition } from '../../domain/tables.ts'
-import { rows, oneRow } from '../rows.ts'
-
-export class InvalidExport extends Schema.TaggedError<InvalidExport>()('ExportacionInvalida', { reason: Schema.String }) {}
+import { oneRow } from '../rows.ts'
+import { InvalidExport, readInput, recordImport, steamEditions } from './sources.ts'
 
 export type ImportResult = {
   readonly read: number
@@ -115,18 +113,6 @@ export async function* arrayElements(chunks: AsyncIterable<string>): AsyncGenera
   if (!finished) throw new InvalidExport({ reason: 'el archivo está truncado' })
 }
 
-const SteamEdition = GameEdition.mapFields(Struct.pick(['id'])).mapFields(Struct.assign({ app_id: Schema.String }))
-
-const steamEditions = Effect.flatMap(SqlClient.SqlClient, (sql) =>
-  rows(
-    SteamEdition,
-    sql`
-      SELECT e.id, e.external_id AS app_id
-      FROM game_edition e JOIN launcher l ON l.id = e.launcher_id
-      WHERE l.name = 'Steam' AND e.external_id IS NOT NULL`,
-  ),
-)
-
 const readExport = async (chunks: AsyncIterable<string>, editions: ReadonlyMap<string, EditionId>, until: number) => {
   let read = 0
   let discarded = 0
@@ -157,19 +143,15 @@ const Previous = Schema.Struct({ exported_at: Schema.NullOr(Schema.Date) })
 /**
  * Stores one aggregate per catalog Steam edition from a ProtonDB export, replacing the last import.
  * Refuses an export older than the stored one; the same export again converges to the same rows.
+ * `file` is the export's blob sha when `--latest` downloaded it, else null (see `recordImport`).
  */
-export const importProtonDb = (chunks: AsyncIterable<string>) =>
+export const importProtonDb = (chunks: AsyncIterable<string>, file: string | null) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const editions = new Map((yield* steamEditions).map((e) => [e.app_id, e.id]))
+    const steam = yield* steamEditions
+    const editions = new Map(steam.map((e) => [e.app_id, e.id]))
     const until = yield* Clock.currentTimeMillis
-    const parsed = yield* Effect.tryPromise({
-      try: () => readExport(chunks, editions, until),
-      catch: (e) =>
-        e instanceof InvalidExport
-          ? e
-          : new InvalidExport({ reason: `no se pudo leer la entrada (${e instanceof Error ? e.message : String(e)})` }),
-    })
+    const parsed = yield* readInput(() => readExport(chunks, editions, until))
     if (parsed.exported === 0) return yield* new InvalidExport({ reason: 'ningún reporte válido' })
     const exported_at = new Date(parsed.exported)
     const summaries = [...parsed.byEdition].map(([edition, reports]) => summarizeProtonDb(edition, reports, exported_at))
@@ -182,6 +164,7 @@ export const importProtonDb = (chunks: AsyncIterable<string>) =>
           return yield* new InvalidExport({ reason: 'exportación más antigua que la importada' })
         yield* sql`DELETE FROM protondb_summary`
         for (const batch of Arr.chunksOf(summaries, 500)) yield* sql`INSERT INTO protondb_summary ${sql.insert(batch)}`
+        yield* recordImport('protondb', file, steam)
       }),
     )
 

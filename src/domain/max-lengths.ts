@@ -35,4 +35,6 @@ export const maxLengths = {
   adoption_guide: { type: 25, title: 180, status: 15 },
   protondb_summary: { layer_variant: 15, layer_version: 60 },
   game_request: { status: 15 },
+  anticheat_entry: { status: 15, anticheat: 80, slug: 200 },
+  external_import: { source: 15 },
 } as const

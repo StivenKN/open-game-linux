@@ -19,6 +19,7 @@
     "db:reset": "node --env-file-if-exists=.env scripts/migrate.ts --reset",
     "db:seed": "node --env-file-if-exists=.env scripts/seed.ts",
     "db:protondb": "node --env-file-if-exists=.env scripts/protondb.ts",
+    "db:anticheat": "node --env-file-if-exists=.env scripts/anticheat.ts",
     "set-role": "node --env-file-if-exists=.env scripts/set-role.ts",
     "db:auth-sql": "node --env-file-if-exists=.env scripts/auth-sql.ts",
     "gpu:generate": "node scripts/generate-gpus.ts",

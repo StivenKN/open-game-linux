@@ -70,26 +70,49 @@ pnpm set-role demo_ana@demo.opengame.test revisor
 
 A game's page can also show aggregate numbers from [ProtonDB](https://www.protondb.com), in their own section. They never change the state that OpenGame computes from approved reports. ProtonDB publishes a monthly export at [github.com/bdefore/protondb-data](https://github.com/bdefore/protondb-data): one `reports/reports_<month><day>_<year>.tar.gz` file holding a single `reports_piiremoved.json`.
 
-1. Download the newest export from the `reports/` folder of that repository.
-2. Import it. The command reads the JSON from standard input when the argument is `-`, so the archive never needs to be extracted to disk.
+To import the newest export, run the import with `--latest`. It finds the newest file in the `reports/` folder of that repository, downloads it and reads the JSON out of the archive as it arrives, so nothing is extracted to disk. A download that is not the exact file GitHub lists fails and changes nothing. If that export was already imported and no Steam game was added to the catalog since, it stops after one small request and downloads nothing.
 
-   ```sh
-   tar -xzOf reports_oct1_2026.tar.gz | pnpm db:protondb -
-   ```
+```sh
+pnpm db:protondb --latest
+```
 
-   You can also pass the path of an extracted `reports_piiremoved.json`.
+To import an export you already have, pipe the JSON in. The command reads standard input when the argument is `-`. You can also pass the path of an extracted `reports_piiremoved.json`.
+
+```sh
+tar -xzOf reports_oct1_2026.tar.gz | pnpm db:protondb -
+```
 
 The import keeps one row of counts per catalog game with a Steam edition, matched by the edition's store identifier (the Steam appId). It stores no individual report. It reads the whole file before it changes the database, then replaces the previous import in one transaction. Importing the same export again leaves the same rows. An empty or truncated file, or an export older than the one already imported, fails and changes nothing. "Last year" on the page means the 12 months before the export's newest report.
 
-Run the import again after a reviewer adds a game with a Steam edition, so that the new game gets its row.
+A game a reviewer adds gets its row at the next import. The scheduled import below notices the new Steam game and imports again the next day. To import an export again anyway, for example after a change to what the counts mean, pass the file or `-`, because `--latest` skips an export it already imported.
 
 The data is licensed under the [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/). Every page that shows it carries the attribution "Datos de ProtonDB, licencia ODbL" with links to ProtonDB and the license. The license's share-alike terms apply if you publish a database derived from it.
 
-With the plain Docker deployment below, pipe the archive into the running `app` container. The `-T` flag lets standard input through.
+## Import AreWeAntiCheatYet data
+
+A game's page also shows what [AreWeAntiCheatYet](https://areweanticheatyet.com) says about the game's anti-cheat on Linux: its status (Supported, Running, Planned, Broken or Denied), the anti-cheats it uses and the date the list last changed the entry. AreWeAntiCheatYet is a community list kept in one `games.json` file at [github.com/AreWeAntiCheatYet/AreWeAntiCheatYet](https://github.com/AreWeAntiCheatYet/AreWeAntiCheatYet). Like ProtonDB, it never changes the state that OpenGame computes. The catalog uses it in two places. The "Sin bloqueo anti-cheat" filter also hides games the list marks Broken or Denied, and their cards say so, with the list's name.
+
+```sh
+pnpm db:anticheat --latest
+```
+
+`--latest` downloads `games.json` only when it changed since the last import, or when a Steam game was added to the catalog. You can also pass a path to a `games.json`, or `-` to read it from standard input. The import matches entries by the Steam edition's appId, as the ProtonDB import does. When two entries name the same appId, the one the list changed most recently wins. It replaces the previous import in one transaction. An empty, truncated or unreadable file fails and changes nothing, and so does a download that is not the exact file GitHub lists.
+
+The list is published under the [MIT License](https://github.com/AreWeAntiCheatYet/AreWeAntiCheatYet/blob/master/LICENSE), Copyright © 2021 Starz0r and Curve, which allows reuse as long as the copyright and permission notice go with it. Every page that shows the data carries "Datos de AreWeAntiCheatYet, licencia MIT", with links to the site and to that license.
+
+## Scheduled imports
+
+The Docker deployment below runs both imports by itself. Its `imports` service waits until `app` has applied the migrations, then runs `pnpm db:anticheat --latest` and `pnpm db:protondb --latest` once a day, starting when the container starts. Each import runs in its own process in its own container, so a failed or slow import never reaches the app. A failure is logged and tried again the next day. An unchanged source costs one request to the GitHub API, and the service makes two a day, well under GitHub's limit of 60 an hour without a token.
+
+Read what the last runs did in the service's logs, in Coolify's Logs tab for `imports` or with `docker compose ... logs imports`.
+
+To run an import by hand, open a terminal in the `app` or `imports` container and run either command above, for example `pnpm db:protondb --latest`. With plain Docker, pipe a local export into the running `app` container. The `-T` flag lets standard input through.
 
 ```sh
 tar -xzOf reports_oct1_2026.tar.gz | docker compose -p opengame-prod --env-file .env.prod -f compose.prod.yaml -f compose.local.yaml exec -T app pnpm db:protondb -
 ```
+
+To turn the schedule off, set `SCHEDULED_IMPORTS=off` and deploy again. The `imports` container then logs that it is off and does nothing. The data already imported stays.
 
 ## Run the detector
 
@@ -220,14 +243,15 @@ The server makes one outbound request: when a reviewer presses "Rellenar desde S
 
 ## Deploy on a VPS
 
-`compose.prod.yaml` runs the app and PostgreSQL 18 in Docker. The `app` container applies pending migrations on every start, then serves on port 3000. Neither container publishes a port to the host, so a reverse proxy must front the app. The database lives in the `datos` volume.
+`compose.prod.yaml` runs the app, PostgreSQL 18 and the daily [scheduled imports](#scheduled-imports) in Docker. The `app` container applies pending migrations on every start, then serves on port 3000. No container publishes a port to the host, so a reverse proxy must front the app. The database lives in the `datos` volume.
 
-The stack reads four variables, listed in `.env.prod.example`:
+The stack reads five variables, listed in `.env.prod.example`:
 
 - `POSTGRES_PASSWORD`. Use `openssl rand -hex 32`, because the app puts it in a database URL.
 - `BETTER_AUTH_SECRET`. Use `openssl rand -base64 32`.
 - `BETTER_AUTH_URL`. The public https address, for example `https://opengame.example.com`. Sign-in accepts only this origin, and the detector command is built from it.
 - `BETTER_AUTH_TRUSTED_ORIGINS`. Optional extra origins, comma-separated.
+- `SCHEDULED_IMPORTS`. Optional. `off` turns the scheduled imports off.
 
 ### Coolify
 

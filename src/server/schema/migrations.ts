@@ -6,7 +6,7 @@ import { PgMigrator } from '@effect/sql-pg'
 import { OperatingSystem, VulkanSupport } from '../../domain/evaluation.ts'
 import type { GameRequestStatus } from '../../domain/game-requests.ts'
 import { GuideStatus, GuideType } from '../../domain/guides.ts'
-import { GraphicsApi, LayerFamily, Outcome, ProtonVariant } from '../../domain/literals.ts'
+import { AntiCheatStatus, ExternalSource, GraphicsApi, LayerFamily, Outcome, ProtonVariant } from '../../domain/literals.ts'
 import { Device, SecureBoot, X86Level, Tpm } from '../../domain/platform.ts'
 import { type ReviewStatus, Role } from '../../domain/review.ts'
 import { maxLengths as L } from '../../domain/max-lengths.ts'
@@ -873,6 +873,26 @@ const steamDeck = [
   check('diagnostic', 'device_domain', `device IN (${Device.literals.map((v) => `'${v}'`).join(', ')})`),
 ]
 
+const imports = [
+  `CREATE TABLE anticheat_entry (
+     edition_id integer PRIMARY KEY REFERENCES game_edition(id) ON DELETE RESTRICT,
+     status varchar(${L.anticheat_entry.status}) NOT NULL,
+     anticheats varchar(${L.anticheat_entry.anticheat})[] NOT NULL,
+     changed_at timestamptz,
+     slug varchar(${L.anticheat_entry.slug}) NOT NULL)`,
+  check('anticheat_entry', 'status_domain', `status IN (${AntiCheatStatus.literals.map((v) => `'${v}'`).join(', ')})`),
+  check('anticheat_entry', 'slug_not_blank', hasText('slug')),
+  `COMMENT ON TABLE anticheat_entry IS 'Per Steam edition entry of AreWeAntiCheatYet''s games.json (MIT). Does not feed the computed status. Single writer: server/external/anticheat.ts'`,
+  `CREATE TABLE external_import (
+     source varchar(${L.external_import.source}) PRIMARY KEY,
+     file_sha text NOT NULL,
+     steam_apps text NOT NULL)`,
+  check('external_import', 'source_domain', `source IN (${ExternalSource.literals.map((v) => `'${v}'`).join(', ')})`),
+  check('external_import', 'file_sha_format', `file_sha ~ '^[0-9a-f]{40,64}$'`),
+  check('external_import', 'steam_apps_format', `steam_apps ~ '^[0-9a-f]{64}$'`),
+  `COMMENT ON TABLE external_import IS 'The upstream file and catalog digest each --latest import last read, so an unchanged source is not downloaded again. Single writer: server/external/sources.ts'`,
+]
+
 export const migrations = {
   '1_auth': runStatements(auth),
   '2_opengame': runStatements([...functions, ...userTable, ...catalog, ...diagnostics, ...profiles, ...results, ...guides]),
@@ -884,6 +904,7 @@ export const migrations = {
   '8_gamepage': runStatements(follows),
   '9_catalog': runStatements(catalogSearchAndRequests),
   '10_detector': runStatements(steamDeck),
+  '11_imports': runStatements(imports),
 }
 
 export const migrate = PgMigrator.run({ loader: Migrator.fromRecord(migrations) })
