@@ -76,7 +76,7 @@ const gta: Sample = {
     status: 'resultados_variables', test_count: 4, last_tested: day('2026-10-02'),
     setups: [gtaFedora, gtaMint, gtaArch], failures: [{ code: 'lanzador', reports: 1 }],
     regressions: [
-      { edition_id: EditionId.make(1), launcher: 'Steam', tested_at: day('2026-10-02'), game_version: '1.0.3258', layer: 'Proton 9.0-3', outcome: 'falla_en_ejecucion' },
+      { edition_id: EditionId.make(1), launcher: 'Steam', tested_at: day('2026-10-02'), game_version: '1.0.3258', ...layer.proton9, outcome: 'falla_en_ejecucion' },
     ],
   }),
   pending: 1,

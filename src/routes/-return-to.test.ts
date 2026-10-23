@@ -12,6 +12,8 @@ describe('ReturnTo (?volver= on /entrar and /registro)', () => {
     ['/catalogo/nuevo', '/catalogo/nuevo'],
     ['/mis-aportes', '/mis-aportes'],
     ['/admin/usuarios', '/admin/usuarios'],
+    ['/juegos/4', '/juegos/4'],
+    ['/seguidos', '/seguidos'],
   ])('keeps %s', (input, expected) => {
     expect(ReturnTo({ volver: input })).toEqual({ volver: expected })
   })
@@ -34,7 +36,7 @@ describe('ReturnTo (?volver= on /entrar and /registro)', () => {
     '/juegos/4/reportar/../../entrar',
     '/juegos/01/reportar',
     '/diagnosticos/99999999999999999999999',
-    '/juegos/4',
+    '/juegos/4/',
     '/',
     42,
     undefined,

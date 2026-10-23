@@ -363,7 +363,24 @@ td {
   color: var(--text);
   background: var(--card-2);
 }
+/* Followed games with news, next to "Seguidos". */
+.nav-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--blue);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+/* Like the brand, the greeting stays on one line; on a phone it shrinks, so a long alias cannot overflow. */
 .account {
+  flex: none;
   margin-left: auto;
   display: flex;
   align-items: center;
@@ -1137,8 +1154,15 @@ label.checkbox {
   max-width: 62ch;
   color: #eadfea;
 }
+/* Stacked, so a second action does not narrow the title. */
 .game-page-action {
   flex: none;
+  display: grid;
+  gap: 10px;
+}
+.follow-form {
+  display: grid;
+  gap: 6px;
 }
 .game-page-body {
   position: relative;
@@ -1149,6 +1173,24 @@ label.checkbox {
   margin-top: 24px;
 }
 .game-page-banner + .game-page-body {
+  margin-top: -56px;
+}
+/* A follower's news take the banner overlap from the status panels, which then follow at their usual gap. */
+.follow-news {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 24px;
+  margin-top: 24px;
+  padding: 18px 24px;
+  border: 1.5px solid var(--line);
+  border-left: 6px solid var(--blue);
+  border-radius: 18px;
+  background: var(--card);
+}
+.game-page-banner + .follow-news {
   margin-top: -56px;
 }
 /* After the tone rules: the panel takes its status color from data-tone, but its text stays page-colored. */
@@ -1383,6 +1425,50 @@ label.checkbox {
   gap: 6px;
   text-align: right;
 }
+.timeline {
+  margin: 0;
+  list-style: none;
+}
+.timeline-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+  padding-bottom: 22px;
+}
+/* The line that joins each version to the next one. */
+.timeline-step::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 24px;
+  bottom: 2px;
+  width: 2px;
+  background: var(--line);
+}
+.timeline-step:last-child {
+  padding-bottom: 0;
+}
+.timeline-step:last-child::before {
+  display: none;
+}
+.timeline-dot {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  border-radius: 50%;
+}
+.timeline-what h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.timeline-what p {
+  margin: 4px 0 0;
+}
+.timeline-what .note {
+  margin-top: 10px;
+}
 .solution {
   margin-top: 16px;
   padding: 16px 18px;
@@ -1539,6 +1625,9 @@ label.checkbox {
   .optional-group {
     padding: 10px 12px 14px;
   }
+  .account {
+    flex: 0 1 auto;
+  }
   .account button,
   .account .button,
   .account .button-secondary {
@@ -1555,8 +1644,20 @@ label.checkbox {
     padding: 24px 20px 60px;
     border-radius: 18px;
   }
-  .game-page-banner + .game-page-body {
+  .game-page-banner + .game-page-body,
+  .game-page-banner + .follow-news {
     margin-top: -24px;
+  }
+  .follow-news {
+    padding: 16px;
+  }
+  .timeline-step {
+    grid-template-columns: 18px minmax(0, 1fr);
+    row-gap: 8px;
+  }
+  .timeline-step .badge {
+    grid-column: 2;
+    justify-self: start;
   }
   .verdict,
   .machine-panel {

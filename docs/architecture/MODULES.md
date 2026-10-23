@@ -19,6 +19,7 @@ ui/ ─────┴───────────────────�
 | protondb_summary writes | only `server/external/protondb.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
 | upstream_fix writes | only `server/commands/upstream.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
 | `app_user.role` and `app_user.active` writes | only `server/commands/accounts.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
+| game_follow writes | only `server/commands/follow.ts` | `src/boundaries.test.ts`, same scan of `src/` and `scripts/` |
 | browser bundle | no server code, no GPU table, no detector script | `scripts/no-server-in-client.ts` after `vite build`, inside `pnpm check` (markers include `OPENGAME_TABLA_GPU` and `Win32_VideoController`) |
 | `styles.css` | every rule closed (no accidental nesting), one rule per selector | `src/styles.test.ts` |
 
@@ -30,7 +31,8 @@ Each failure message names the fix, for example: "routes call server fns from sr
 |---|---|---|
 | `domain/ids.ts` | Branded integer ids (including `DependencyId`), text `UserId`, `RequiredText` (trim + non-empty), `OptionalText` (blank → null), `routeIdParser` (`routes/-ids.ts`) | |
 | `domain/literals.ts` | `LayerFamily`, `Outcome` with `WorkingOutcome`/`FailingOutcome`, `requiresFailure`, `ProtonVariant`. Imports only `effect`, so `contributions.ts` can spread `tables.ts` fields without a cycle | |
-| `domain/compatibility.ts` | `CompatibilityStatus`, `statusByOutcome` (explicit map), **`statusOf`** (the only result-set rule), `ApprovedTest` (row schema that proves approval), **`summarize(tests, now)`** (the one state function for ficha and catalog: last-year base set, `no_recent_confirmation`, `regressions`), `onDistribution` | Queries, the clock |
+| `domain/compatibility.ts` | `CompatibilityStatus`, `statusByOutcome` (explicit map), **`statusOf`** (the only result-set rule), `ApprovedTest` (row schema that proves approval), **`summarize(tests, now)`** (the one state function for ficha and catalog: last-year base set, `no_recent_confirmation`, `regressions`), `onDistribution`, **`timeline`** (the ficha's "Historial por versión": approved tests per layer version in first-tested order, each carrying the regressions that broke on it) | Queries, the clock |
+| `domain/follow.ts` | `FollowChange` (`Seguir`, `Dejar`, `Visto` with the page's watermark, `seenWatermark` in `server/queries/game.ts`), `News`, **`newsSince`** (approvals after `seen_at`, and the state computed at `seen_at` when it differs from now's), `hasNews` | Storing anything but `seen_at` |
 | `domain/recency.ts` | **`isRecent`**, the only 365-day window, for OpenGame's reports (against `now`) and ProtonDB's (against the export date) | |
 | `domain/protondb.ts` | The export's boundary Schema (private), `parseReport`, `summarizeProtonDb` (the stored aggregate, deduplicated) | OpenGame's state: nothing here reaches `summarize` |
 | `domain/evaluation.ts` | `OperatingSystem`, `VulkanSupport`, `MachineVulkan` (tagged by `support`; `si` and `no` carry their `origin`, `medido` or `proyectado`, and `si` a `VulkanRange`, one point when measured), `vulkanVersion`/`atLeast`, `vulkanRangeText`, `Capabilities`, `KnownRequirements`, **`evaluate`** (3 outcomes, no FPS field; a projected range that straddles the minimum is `desconocido`), the `requirements` column adapter, `suggestProfile` | Building `Capabilities` from columns (`server/gpu/capability.ts`) |
@@ -54,9 +56,10 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `server/commands/diagnostic.ts` | **Single writer** of machine and diagnostic, and the distribution a capture names (`submitDiagnostic`, converging on one machine per alias and one capture per time). Stores `steam_library` only when `with_library` is true | |
 | `server/commands/review.ts` | **Single writer** of the review block. `decide`, `approvalBlockers`, the reviewable-table registry | |
 | `server/commands/accounts.ts` | **Single writer** of `app_user.role` and `app_user.active` (`changeAccess`, for `/admin/usuarios` through `administerAccess`, `pnpm set-role` and the seed): the last active administrador keeps that access, an administrator never removes their own, a demo administrador changes only demo accounts, and deactivating deletes the account's sessions | Sign-up, passwords, sessions (better-auth) |
+| `server/commands/follow.ts` | **Single writer** of game_follow (`changeFollow`, the visitor's own follows): idempotent follow and unfollow; `Visto` moves `seen_at` forward only and never past now | |
 | `server/commands/upstream.ts` | **Single writer** of upstream_fix (`noteFix`, reviewers only): merged umu-protonfixes PRs of approved, exportable, non-demo profiles | |
 | `server/external/protondb.ts` | **Single writer** of `protondb_summary`. `arrayElements` (streams the export's top-level array), `importProtonDb` (read all, then replace in one transaction; refuses an older export), `importSummary` | Catalog rows: it only matches existing Steam editions |
-| `server/queries/*.ts` | Read models: `catalog`, `profile`, `guides`, `guide`, `reportOptions`, `solutionOptions`, `gameOptions`, `gamePage`, `queue`, `evaluateWithoutSaving`, `myDiagnostic`, `myMachines`, `protonDbSummaries` (ficha and catalog), `myProtonReport`, `myContributions` (one query per kind; only a refusal carries the reviewer's reason), `accounts` (administrators only). Their success types are the page types. `gamePage` and `catalog` read `now` once from the `Clock` | Writes |
+| `server/queries/*.ts` | Read models: `catalog`, `profile`, `guides`, `guide`, `reportOptions`, `solutionOptions`, `gameOptions`, `gamePage`, `queue`, `evaluateWithoutSaving`, `myDiagnostic`, `myMachines`, `protonDbSummaries` (ficha and catalog), `myProtonReport`, `myContributions` (one query per kind; only a refusal carries the reviewer's reason), `accounts` (administrators only), `myFollows` ("Seguidos") and `session` (the header's visitor and its count of followed games with news, from the same read model). Their success types are the page types. `gamePage` and `catalog` read `now` once from the `Clock` | Writes |
 | `server/diagnostics/payload.ts` | **The only detector parser**: `parsePayload` over payload v1, a union on `sistema` (the Windows member has no Vulkan and no kernel driver). It normalizes `gpu_pci_id` (a malformed id becomes null), the library (drops Steam tools and bad app ids, keeps the first of each id in the detector's order, cuts at 1000) and `rolling`. The private `pciLabel` names a GPU the detector could not name | |
 | `server/gpu/capability.ts` | **`machineOnLinux`**, the only builder of what `evaluate` consumes: PCI id to family, the policy per family (Linux driver, Vulkan range, warnings), the Direct3D path. Measured Linux Vulkan wins over the projection, and a Windows row's stored Vulkan is never read | Storing anything |
 | `server/gpu/families.generated.ts` | The PCI id to `GpuFamily` table, generated by `pnpm gpu:generate` with its source pins in the header. Never edited by hand | |
@@ -64,13 +67,14 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | `fns/*.ts` | The server API surface: one `createServerFn` per operation | Anything else |
 | `routes/**` | Pages, loaders, search params, route guards (UX only) | Data rules |
 | `ui/useAction.ts` | The one form hook: the form's props (`method="post"` included), decode FormData → call fn → narrow `Reply` → field errors | |
+| `routes/-follow.tsx` | `FollowButton` ("Seguir", "Dejar de seguir", and a sign-in link for guests) and `FollowNews` (what changed, with "Marcar como visto"), shared by the ficha and "Seguidos". Under `routes/` because its forms call a server fn | |
 | `routes/-return-to.ts` | `Destination` and the only parser of `?volver=` on `/entrar` and `/registro`; `returnHere` for route guards | |
 | `ui/format.ts` | Display formatting. Every instant prints in Bogotá time with the year (`date` day, `dateTime` day and 24-hour time) | |
 | `ui/progress.ts` | The profile page's local step checklist (`localStorage`, SSR-safe) | |
 | `ui/vocabulary.ts` | Spanish label and tone for every domain literal, exhaustive via `satisfies Record` | |
 | `ui/diagnostics/GraphicsCardOnLinux.tsx` | The "Tu tarjeta gráfica en Linux" card: family, Linux driver, Vulkan labelled "Detectado" or "Proyectado", the Direct3D path with its launch option, and the warnings | |
 | `ui/diagnostics/MachineGames.tsx` | The diagnosis matrix, split into "Tu biblioteca de Steam", "Juegos que todavía no conocemos" and "Resto del catálogo" when the capture has a library | |
-| `ui/compatibility/*` | `GameStatus` (variant 1 badge, the stale note and "Dejó de funcionar"), `EnvironmentMatrix`, `VerdictForMe` (with the "En tu distribución" line), `GraphicsPath` (the hardware-only path, apart from the community state and the profile check), evaluation checklist, copy box | |
+| `ui/compatibility/*` | `GameStatus` (variant 1 badge, the stale note and "Dejó de funcionar"), `EnvironmentMatrix`, `LayerTimeline` ("Historial por versión"), `VerdictForMe` (with the "En tu distribución" line), `GraphicsPath` (the hardware-only path, apart from the community state and the profile check), evaluation checklist, copy box | |
 | `ui/protondb/ProtonDb.tsx` | The ficha's "Otras fuentes: ProtonDB" section, the catalog card line, the ODbL attribution | |
 | `ui/diagnostics/SavedMachines.tsx` | The visitor's machines with links to their saved diagnostics, on `/diagnostico` and `/mis-aportes` | |
 | `ui/diagnostics/Distributions.tsx` | The "Distribuciones" section: candidates grouped by verdict with their reasons | |
@@ -84,7 +88,8 @@ Each failure message names the fix, for example: "routes call server fns from sr
 | Wireframe / RF | Path | Loader / action fns | Auth |
 |---|---|---|---|
 | 9.1 Inicio + buscador (RF-01, 02) | `/` `?q&estado&lanzador&sin_anti_cheat` | `catalogFn` | public |
-| 9.3 Ficha (RF-02, 03, 06, 08, 10) | `/juegos/$gameId` | `gamePageFn` | public; personal verdict when logged in with a diagnosis |
+| 9.3 Ficha (RF-02, 03, 06, 08, 10) | `/juegos/$gameId` | `gamePageFn`; `changeFollowFn` | public; personal verdict when logged in with a diagnosis; following needs login |
+| followed games | `/seguidos` | `myFollowsFn` / `changeFollowFn` | login |
 | 9.4 Asistente → profile page (RF-06, 07) | `/perfiles/$profileId` | `profileFn`; reviewers record merged PRs with `noteFixFn` | public (pending shows "en prueba") |
 | RF-08 report | `/juegos/$gameId/reportar?perfil=` | `reportOptionsFn` / `submitReportFn` | login |
 | RF-08 solution | `/reportes/$reportId/solucion?tipoFallo=` | `submitSolutionFn` | login |
@@ -137,8 +142,11 @@ Every 8.7, 8.9 and 8.11 rule has exactly one home. Constraint and trigger names 
 | state from the approved reports of the last 365 days, else all of them flagged | app: domain/compatibility.ts summarize + domain/recency.ts |
 | ProtonDB never feeds the computed state; aggregates only (8.9) | app: no path from domain/protondb.ts to summarize; DB: protondb_summary has no report rows |
 | ProtonDB row counts nest, a layer only with its count | DB CHECK protondb_summary_nested_counts, _layer_with_reports, _version_with_variant |
+| one follow per user and game | DB PK game_follow (user_id, game_id) |
+| a follow's news: approvals after `seen_at`, the state at `seen_at` against now; a retired report counts in neither | app: domain/follow.ts newsSince |
+| `seen_at` only moves forward, never past now | app: server/commands/follow.ts changeFollow |
 
-Single writers. `src/boundaries.test.ts` checks the SQL in `src/` and `scripts/` for the first two and the last three.
+Single writers. `src/boundaries.test.ts` checks the SQL in `src/` and `scripts/` for the first two and the last four.
 
 | Tables | Writer |
 |---|---|
@@ -148,3 +156,4 @@ Single writers. `src/boundaries.test.ts` checks the SQL in `src/` and `scripts/`
 | `protondb_summary` | `server/external/protondb.ts` `importProtonDb` |
 | `upstream_fix` | `server/commands/upstream.ts` `noteFix` |
 | `app_user.role`, `app_user.active` | `server/commands/accounts.ts` `changeAccess` |
+| `game_follow` | `server/commands/follow.ts` `changeFollow` |

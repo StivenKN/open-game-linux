@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { hasNews } from '../../domain/follow.ts'
 import { GameId } from '../../domain/ids.ts'
 import { gamePageFn } from '../../fns/catalog.ts'
 import { GameStatus } from '../../ui/compatibility/GameStatus.tsx'
 import { EnvironmentMatrix } from '../../ui/compatibility/EnvironmentMatrix.tsx'
+import { LayerTimeline } from '../../ui/compatibility/LayerTimeline.tsx'
 import { VerdictForMe } from '../../ui/compatibility/VerdictForMe.tsx'
 import { count, date } from '../../ui/format.ts'
 import { Chip, Badge } from '../../ui/Badge.tsx'
@@ -10,6 +12,7 @@ import { Artwork } from '../../ui/Cover.tsx'
 import { ProtonDbSection } from '../../ui/protondb/ProtonDb.tsx'
 import { DemoStamp } from '../../ui/DemoStamp.tsx'
 import { graphicsApi, x86Level, failureType, requirementsVerdict } from '../../ui/vocabulary.ts'
+import { FollowButton, FollowNews } from '../-follow.tsx'
 import { routeIdParser } from '../-ids.ts'
 
 const gameId = routeIdParser(GameId)
@@ -22,7 +25,8 @@ export const Route = createFileRoute('/juegos/$gameId')({
 })
 
 function GamePage() {
-  const { game, editions, summary, protondb, demo, pending, profiles, causes, diagnostic, personal } = Route.useLoaderData()
+  const { game, editions, summary, timeline, as_of, follow, protondb, demo, pending, profiles, causes, diagnostic, personal } = Route.useLoaderData()
+  const { visitor } = Route.useRouteContext()
   const reportLink = (
     <Link to="/juegos/$gameId/reportar" params={{ gameId: game.id }} className="button">
       Reportar un resultado
@@ -52,8 +56,15 @@ function GamePage() {
             {game.x86_level_min !== null && <span>CPU mínima: {x86Level[game.x86_level_min]}</span>}
           </p>
         </div>
-        <div className="game-page-action">{reportLink}</div>
+        <div className="game-page-action">
+          <FollowButton gameId={game.id} signedIn={visitor !== null} following={follow !== null} />
+          {reportLink}
+        </div>
       </header>
+
+      {follow !== null && hasNews(follow.news) && (
+        <FollowNews gameId={game.id} status={summary.status} seenAt={follow.seen_at} news={follow.news} asOf={as_of} />
+      )}
 
       <div className="game-page-body">
         <GameStatus summary={summary} pending={pending} />
@@ -71,6 +82,17 @@ function GamePage() {
         <p className="muted">Cada fila es un entorno con reportes aprobados.</p>
         <EnvironmentMatrix setups={summary.setups} myDistribution={diagnostic?.distribution_id ?? null} />
       </section>
+
+      {timeline.length > 0 && (
+        <section className="section" aria-labelledby="history">
+          <h2 id="history">Historial por versión</h2>
+          <p className="muted">
+            Cada paso es una versión de Proton, Wine o nativa, en el orden en que se probó por primera vez. Cuentan todos los
+            reportes aprobados, de cualquier fecha.
+          </p>
+          <LayerTimeline history={timeline} />
+        </section>
+      )}
 
       <section className="section" aria-labelledby="protondb">
         <h2 id="protondb">Otras fuentes: ProtonDB</h2>

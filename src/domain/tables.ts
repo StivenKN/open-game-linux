@@ -259,3 +259,12 @@ export const ProtonDbSummary = Schema.Struct({
   layer_reports: NonNegative,
 })
 export type ProtonDbSummary = typeof ProtonDbSummary.Type
+
+/** A user following a game. `seen_at` is when they last marked it seen; approvals after it are news. */
+export const GameFollow = Schema.Struct({
+  user_id: UserId,
+  game_id: GameId,
+  seen_at: Schema.Date,
+  created_at: Schema.Date,
+})
+export type GameFollow = typeof GameFollow.Type

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
-import { type CompatibilityStatus, onDistribution, statusOf, type ApprovedTest, summarize } from './compatibility.ts'
-import { DistributionId, EditionId, ReportId } from './ids.ts'
+import { type CompatibilityStatus, onDistribution, statusOf, type ApprovedTest, summarize, timeline } from './compatibility.ts'
+import { DistributionId, EditionId, LayerVersionId, ReportId } from './ids.ts'
 import type { Outcome } from './literals.ts'
 import { ets2, gtaV, valorant } from './samples.ts'
 import { isRecent } from './recency.ts'
@@ -163,6 +163,7 @@ describe('summarize regressions', () => {
         launcher: 'Steam',
         tested_at: new Date('2026-10-02T12:00:00Z'),
         game_version: '1.0.3258',
+        layer_version_id: LayerVersionId.make(3),
         layer: 'Proton 9.0-3',
         outcome: 'falla_en_ejecucion',
       },
@@ -190,10 +191,44 @@ describe('summarize regressions', () => {
         launcher: 'Steam',
         tested_at: new Date(sameDay),
         game_version: '1.0.3179',
+        layer_version_id: LayerVersionId.make(1),
         layer: 'Proton 8.0-5',
         outcome: 'no_inicia',
       },
     ])
     expect(summarize([approved(10, 'no_inicia', sameDay), approved(11, 'funciona', sameDay)], now).regressions).toEqual([])
+  })
+})
+
+describe('timeline', () => {
+  it('GTA V: one step per layer version in the order each was first tested, and the regression on the version that broke', () => {
+    expect(timeline(gtaV.tests).map((h) => [h.layer, h.status, h.test_count, h.first_tested, h.last_tested, h.regressions.length])).toEqual([
+      ['GE-Proton 9-4', 'funciona_con_ajustes', 1, new Date('2026-09-02T12:00:00Z'), new Date('2026-09-02T12:00:00Z'), 0],
+      ['Proton 8.0-5', 'funciona', 2, new Date('2026-09-14T12:00:00Z'), new Date('2026-09-28T12:00:00Z'), 0],
+      ['Proton 9.0-3', 'falla_en_ejecucion', 1, new Date('2026-10-02T12:00:00Z'), new Date('2026-10-02T12:00:00Z'), 1],
+    ])
+    expect(timeline(gtaV.tests).flatMap((h) => h.regressions)).toEqual(summarize(gtaV.tests, now).regressions)
+  })
+
+  it('a version groups every edition and setup, and its state is statusOf over all of them, however old', () => {
+    const [only, ...others] = timeline([
+      approved(1, 'funciona', '2023-01-10T12:00:00Z'),
+      approved(2, 'no_inicia', '2026-10-01T12:00:00Z', { edition_id: EditionId.make(2), failures: ['anti_cheat'] }),
+    ])
+    expect(others).toEqual([])
+    expect([only?.status, only?.test_count, only?.first_tested]).toEqual(['resultados_variables', 2, new Date('2023-01-10T12:00:00Z')])
+  })
+
+  it('two versions first tested at the same instant keep the order their reports were registered in', () => {
+    const sameDay = '2026-10-01T12:00:00Z'
+    const proton9 = { layer_version_id: LayerVersionId.make(3), layer: 'Proton 9.0-3' }
+    expect(timeline([approved(11, 'funciona', sameDay, proton9), approved(10, 'funciona', sameDay)]).map((h) => h.layer)).toEqual([
+      'Proton 8.0-5',
+      'Proton 9.0-3',
+    ])
+  })
+
+  it('no approved test, no history', () => {
+    expect(timeline([])).toEqual([])
   })
 })

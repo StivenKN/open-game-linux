@@ -817,6 +817,17 @@ export const englishNames = [
   ...englishComments,
 ]
 
+// A follow is the user's own bookmark, not evidence, so it goes with its user or game. It stores no state:
+// what changed since `seen_at` is computed from the approved reports (domain/follow.ts).
+const follows = [
+  `CREATE TABLE game_follow (
+     user_id text NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+     game_id integer NOT NULL REFERENCES game(id) ON DELETE CASCADE,
+     seen_at timestamptz NOT NULL DEFAULT now(),
+     created_at timestamptz NOT NULL DEFAULT now(),
+     PRIMARY KEY (user_id, game_id))`,
+]
+
 export const migrations = {
   '1_auth': runStatements(auth),
   '2_opengame': runStatements([...functions, ...userTable, ...catalog, ...diagnostics, ...profiles, ...results, ...guides]),
@@ -825,6 +836,7 @@ export const migrations = {
   '5_protondb': runStatements(protondb),
   '6_upstream': runStatements(upstream),
   '7_english_names': runStatements(englishNames),
+  '8_gamepage': runStatements(follows),
 }
 
 export const migrate = PgMigrator.run({ loader: Migrator.fromRecord(migrations) })

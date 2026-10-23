@@ -1,9 +1,11 @@
 import { Schema } from 'effect'
 import { ContributionType } from '../domain/review.ts'
 
+// The game page is public, but "Seguir" sends a guest to sign in and back to it.
 export type Destination =
   | '/diagnostico/importar'
   | `/diagnosticos/${number}`
+  | `/juegos/${number}`
   | `/juegos/${number}/reportar`
   | `/juegos/${number}/reportar?perfil=${number}`
   | `/reportes/${number}/solucion`
@@ -13,6 +15,7 @@ export type Destination =
   | '/catalogo/nuevo'
   | '/mis-aportes'
   | '/admin/usuarios'
+  | '/seguidos'
 
 // Resolving against a fixed origin turns `//host/…`, `/\host/…` and absolute URLs into another origin.
 const baseOrigin = 'http://opengame.invalid'
@@ -35,13 +38,16 @@ const destination = (text: unknown): Destination | undefined => {
   if (url === null || url.origin !== baseOrigin) return undefined
   const path = url.pathname
   const query = (key: string) => url.searchParams.get(key)
-  if (path === '/diagnostico/importar' || path === '/catalogo/nuevo' || path === '/mis-aportes' || path === '/admin/usuarios') return path
+  if (path === '/diagnostico/importar' || path === '/catalogo/nuevo' || path === '/mis-aportes' || path === '/admin/usuarios' || path === '/seguidos')
+    return path
   if (path === '/revision') {
     const contributionType = query('tipo')
     return isContributionType(contributionType) ? `/revision?tipo=${contributionType}` : path
   }
   const diagnostic = id(/^\/diagnosticos\/([^/]+)$/.exec(path)?.[1])
   if (diagnostic !== undefined) return `/diagnosticos/${diagnostic}`
+  const gamePage = id(/^\/juegos\/([^/]+)$/.exec(path)?.[1])
+  if (gamePage !== undefined) return `/juegos/${gamePage}`
   const game = id(/^\/juegos\/([^/]+)\/reportar$/.exec(path)?.[1])
   if (game !== undefined) {
     const profile = id(query('perfil'))
