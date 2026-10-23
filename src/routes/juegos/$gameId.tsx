@@ -228,7 +228,7 @@ function GamePage() {
           Pon el estado de este juego en un README, un foro o tu sitio. La insignia sigue al estado calculado: cambia sola
           cuando un revisor aprueba nuevos reportes.
         </p>
-        <Embed origin={origin} game={game} status={summary.status} />
+        <Embed origin={origin} game={game} status={summary.status} demo={demo} />
       </section>
 
       <section className="report" aria-labelledby="report">

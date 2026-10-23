@@ -58,11 +58,13 @@ const filled = (status: CompatibilityStatus) =>
 const require = createRequire(import.meta.url)
 
 // The static @fontsource packages: satori reads WOFF but not the WOFF2 the page's variable fonts ship as.
+// The game title is the only text not written here, so its face loads first: a character missing from a face
+// comes from the first other loaded font that has it.
 const faces = [
-  ['Onest', 'onest', 500],
-  ['Onest', 'onest', 700],
-  ['Unbounded', 'unbounded', 800],
   ['Big Shoulders Display', 'big-shoulders-display', 900],
+  ['Onest', 'onest', 700],
+  ['Onest', 'onest', 500],
+  ['Unbounded', 'unbounded', 800],
 ] as const satisfies ReadonlyArray<readonly [string, string, FontWeight]>
 
 // Every subset a package ships (Latin, Cyrillic, Vietnamese…). satori draws a face with one font per name and

@@ -17,11 +17,11 @@ export const embedCodes = (origin: string, game: Game) => {
 }
 
 /** The game page's "Compartir" block: the live badge, then the codes that embed it. */
-export function Embed({ origin, game, status }: { origin: string; game: Game; status: CompatibilityStatus }) {
+export function Embed({ origin, game, status, demo }: { origin: string; game: Game; status: CompatibilityStatus; demo: boolean }) {
   const { markdown, html } = embedCodes(origin, game)
   return (
     <div className="stack">
-      <img src={`/juegos/${game.id}/badge.svg`} alt={`Insignia: OpenGame Linux, ${compatibilityStatus[status].text}`} height={22} />
+      <img src={`/juegos/${game.id}/badge.svg`} alt={`Insignia: OpenGame Linux, ${compatibilityStatus[status].text}${demo ? ', datos de ejemplo' : ''}`} height={22} />
       <div className="columns-2">
         <CopyBox label="Markdown" text={markdown} />
         <CopyBox label="HTML" text={html} />
