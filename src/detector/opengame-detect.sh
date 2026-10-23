@@ -11,9 +11,15 @@
 #
 # OPENGAME_DRY=1 with --open or --game prints the URL instead of opening a browser. OPENGAME_URL overrides the
 # app address. OPENGAME_STEAM_DIR adds a Steam folder to the ones searched for installed games. OPENGAME_MAX_JUEGOS
-# overrides how many games are sent, which the server fills in like the URL. OPENGAME_DRM, OPENGAME_DMI and
-# OPENGAME_OS_RELEASE replace /sys/class/drm, /sys/class/dmi/id and /etc/os-release, so tests can describe a machine.
+# overrides how many games are sent, and OPENGAME_LANG the language (es or en) it speaks and opens the app in; the
+# server fills both in like the URL, the language from the script's own address (?lang=en). OPENGAME_DRM, OPENGAME_DMI
+# and OPENGAME_OS_RELEASE replace /sys/class/drm, /sys/class/dmi/id and /etc/os-release, so tests can describe a machine.
 set -u
+
+lang="${OPENGAME_LANG:-__OPENGAME_LANG__}"
+[ "$lang" = en ] || lang=es
+# say <Spanish> <English>: one line for the person running it, on stderr, in their language.
+say() { if [ "$lang" = en ]; then printf '%s\n' "$2" >&2; else printf '%s\n' "$1" >&2; fi; }
 
 open=""; game=""
 while [ $# -gt 0 ]; do
@@ -21,7 +27,10 @@ while [ $# -gt 0 ]; do
     --open) open=1 ;;
     --game)
       case "${2:-}" in ''|*[!0-9]*|???????????*) game=0 ;; *) game=$((10#$2)) ;; esac
-      if [ "$game" -eq 0 ]; then echo "Uso: --game <appid>, el número del juego en Steam (por ejemplo --game 1245620)" >&2; exit 2; fi
+      if [ "$game" -eq 0 ]; then
+        say "Uso: --game <appid>, el número del juego en Steam (por ejemplo --game 1245620)" "Usage: --game <appid>, the game's number on Steam (for example --game 1245620)"
+        exit 2
+      fi
       open=1; shift ;;
   esac
   shift
@@ -199,7 +208,8 @@ fi
 game_block="null"
 if [ -n "$game" ]; then
   manifest=""; for m in "${manifests[@]}"; do case "$m" in */appmanifest_"$game".acf) manifest=$m ;; esac; done
-  [ -n "$manifest" ] || echo "No encontramos el juego $game instalado en Steam; enviamos solo lo que guarda su configuración." >&2
+  [ -n "$manifest" ] || say "No encontramos el juego $game instalado en Steam; enviamos solo lo que guarda su configuración." \
+    "We couldn't find game $game installed on Steam; we're sending only what its settings keep."
   build=""; prefix=""
   if [ -n "$manifest" ]; then
     build=$(vdf_pairs "$manifest" | awk -F'\t' '$2 == "appstate/buildid" { print $3; exit }')
@@ -285,21 +295,22 @@ payload="{\"version_esquema\":1,\"capturado_en\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ
 
 if [ -z "$open" ]; then
   printf '%s\n' "$payload"
-  echo "Copia el JSON de arriba y pégalo en $APP_URL/diagnostico" >&2
+  say "Copia el JSON de arriba y pégalo en $APP_URL/$lang/diagnostico" "Copy the JSON above and paste it at $APP_URL/$lang/diagnostico"
   exit 0
 fi
 
-url="$APP_URL/diagnostico/importar#d=$(printf '%s' "$payload" | base64 | tr -d '\n=' | tr '+/' '-_')"
+url="$APP_URL/$lang/diagnostico/importar#d=$(printf '%s' "$payload" | base64 | tr -d '\n=' | tr '+/' '-_')"
 if [ "${#url}" -gt 100000 ]; then # Linux caps one command-line argument at 128 KiB, so xdg-open could not take it
   printf '%s\n' "$payload"
-  echo "Tu resultado no cabe en una dirección web. Copia el JSON de arriba y pégalo en $APP_URL/diagnostico" >&2
+  say "Tu resultado no cabe en una dirección web. Copia el JSON de arriba y pégalo en $APP_URL/$lang/diagnostico" \
+    "Your result doesn't fit in a web address. Copy the JSON above and paste it at $APP_URL/$lang/diagnostico"
 elif [ "${OPENGAME_DRY:-}" = 1 ]; then
   printf '%s\n' "$url"
 elif command -v xdg-open >/dev/null && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
   # Some openers wait until the browser exits, so it runs in the background.
   xdg-open "$url" >/dev/null 2>&1 &
-  echo "Abriendo OpenGame Linux en tu navegador. Nada se guarda hasta que pulses «Guardar»." >&2
+  say "Abriendo OpenGame Linux en tu navegador. Nada se guarda hasta que pulses «Guardar»." "Opening OpenGame Linux in your browser. Nothing is saved until you press “Save”."
 else
-  echo "No pudimos abrir el navegador. Abre esta dirección:" >&2
+  say "No pudimos abrir el navegador. Abre esta dirección:" "We couldn't open your browser. Open this address:"
   printf '%s\n' "$url"
 fi

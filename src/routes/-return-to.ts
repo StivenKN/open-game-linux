@@ -22,6 +22,12 @@ export type Destination =
   | `/catalogo/nuevo?pedido=${number}`
   | '/pedidos'
   | `/pedidos?titulo=${string}`
+  | '/guias/nueva'
+  | `/guias/${number}/editar`
+  | `/juegos/${number}/perfiles/nuevo`
+  | `/juegos/${number}/perfiles/nuevo?desde=${number}`
+  | `/perfiles/${number}/editar`
+  | `/reportes/${number}/proton`
 
 // Resolving against a fixed origin turns `//host/…`, `/\host/…` and absolute URLs into another origin.
 const baseOrigin = 'http://opengame.invalid'
@@ -44,7 +50,7 @@ const destination = (text: unknown): Destination | undefined => {
   if (url === null || url.origin !== baseOrigin) return undefined
   const path = url.pathname
   const query = (key: string) => url.searchParams.get(key)
-  if (path === '/diagnostico/importar' || path === '/mis-aportes' || path === '/admin/usuarios' || path === '/seguidos') return path
+  if (path === '/diagnostico/importar' || path === '/mis-aportes' || path === '/admin/usuarios' || path === '/seguidos' || path === '/guias/nueva') return path
   if (path === '/catalogo/nuevo') {
     const request = id(query('pedido'))
     return request === undefined ? path : `/catalogo/nuevo?pedido=${request}`
@@ -70,6 +76,17 @@ const destination = (text: unknown): Destination | undefined => {
   if (report !== undefined) {
     const failureType = id(query('tipoFallo'))
     return failureType === undefined ? `/reportes/${report}/solucion` : `/reportes/${report}/solucion?tipoFallo=${failureType}`
+  }
+  const protonReport = id(/^\/reportes\/([^/]+)\/proton$/.exec(path)?.[1])
+  if (protonReport !== undefined) return `/reportes/${protonReport}/proton`
+  const guide = id(/^\/guias\/([^/]+)\/editar$/.exec(path)?.[1])
+  if (guide !== undefined) return `/guias/${guide}/editar`
+  const profile = id(/^\/perfiles\/([^/]+)\/editar$/.exec(path)?.[1])
+  if (profile !== undefined) return `/perfiles/${profile}/editar`
+  const profileGame = id(/^\/juegos\/([^/]+)\/perfiles\/nuevo$/.exec(path)?.[1])
+  if (profileGame !== undefined) {
+    const source = id(query('desde'))
+    return source === undefined ? `/juegos/${profileGame}/perfiles/nuevo` : `/juegos/${profileGame}/perfiles/nuevo?desde=${source}`
   }
   return undefined
 }

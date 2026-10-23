@@ -118,7 +118,7 @@ To turn the schedule off, set `SCHEDULED_IMPORTS=off` and deploy again. The `imp
 
 ## Interface languages
 
-Every page lives under a language: <http://localhost:3000/es> and <http://localhost:3000/en>, `/en/juegos/12` beside `/es/juegos/12`. The path after the language stays Spanish in both. A link without a language, such as `/juegos/12?x=1`, an old bookmark or the detector's `/diagnostico/importar#d=…`, redirects to the same path and query in the visitor's language: the one they last picked with the header's language link (a `lang` cookie), else the first of Spanish or English their browser asks for, else Spanish. The `#fragment` survives the redirect. `/api/auth/*`, the detector scripts and the images never take a language prefix.
+Every page lives under a language: <http://localhost:3000/es> and <http://localhost:3000/en>, `/en/juegos/12` beside `/es/juegos/12`. The path after the language stays Spanish in both. A link without a language, such as `/juegos/12?x=1`, an old bookmark or the `/diagnostico/importar#d=…` of a detector downloaded before the scripts named a language, redirects to the same path and query in the visitor's language: the one they last picked with the header's language link (a `lang` cookie), else the first of Spanish or English their browser asks for, else Spanish. The `#fragment` survives the redirect. `/api/auth/*`, the detector scripts and the images never take a language prefix.
 
 Content people write (game descriptions, reports, solutions, profile steps, guides) shows as written, in both interfaces.
 
@@ -158,9 +158,9 @@ To read the script before you run it, download <http://localhost:3000/opengame-d
 powershell -ExecutionPolicy Bypass -File .\opengame-detect.ps1
 ```
 
-If the result is too long for a URL, the Windows script copies it to the clipboard and opens `/diagnostico?pegar=1`, where you paste it. The Linux script prints it for you to paste instead. Both scripts accept `OPENGAME_DRY=1`.
+If the result is too long for a URL, the Windows script copies it to the clipboard and opens `/es/diagnostico?pegar=1` (or `/en/…`), where you paste it. The Linux script prints it for you to paste instead. Both scripts accept `OPENGAME_DRY=1`.
 
-The `/diagnostico` page shows both commands, and it also accepts the pasted output or a manual form.
+The `/diagnostico` page shows both commands, and it also accepts the pasted output or a manual form. The scripts print their instructions in Spanish and open the Spanish pages, unless their address asks for English with `?lang=en`, as the English page's commands, download links and the game page's `--game` command do. The commands quote that address, because zsh reads `?` as a wildcard. `OPENGAME_LANG=en` does the same for a script already downloaded.
 
 On a Steam Deck, the Linux script reads the model (LCD or OLED) from the firmware, and the diagnosis says so. The manual form has the same choice.
 

@@ -1,5 +1,5 @@
 // The interface languages, and how a request picks one. Every page lives under /es or /en (`routes/$lang`);
-// a request for an unprefixed page path (an old link, the detector's /diagnostico/importar) gets a redirect
+// a request for an unprefixed page path (an old link, an old copy of the detector's /diagnostico/importar) gets a redirect
 // from the start middleware to the same path and query in the visitor's language.
 import { Schema } from 'effect'
 
@@ -56,11 +56,11 @@ export const unprefixedRedirect = (url: URL, headers: Headers): string | null =>
 }
 
 /**
- * The images (badge.svg, og.png) live outside the language prefix, so their words come from `?lang=`:
- * `imageQuery` writes it for a page's language, `imageLang` reads it, Spanish by default.
+ * The images (badge.svg, og.png) and the detector scripts live outside the language prefix, so their words come
+ * from `?lang=`: `langQuery` writes it for a page's language, `urlLang` reads it, Spanish by default.
  */
-export const imageQuery = (lang: Lang) => (lang === 'es' ? '' : `?lang=${lang}`)
-export const imageLang = (url: URL): Lang => {
+export const langQuery = (lang: Lang) => (lang === 'es' ? '' : `?lang=${lang}`)
+export const urlLang = (url: URL): Lang => {
   const lang = url.searchParams.get('lang')
   return isLang(lang) ? lang : 'es'
 }

@@ -70,9 +70,10 @@ The badge, the previews and their tags follow the page's language: English pages
 
 | Feature | Route | Server program | Tests |
 |---|---|---|---|
-| Every page in Spanish and English, with the language in the URL; an unprefixed link (an old bookmark, the detector's handoff) opens in the visitor's language | `/es/…`, `/en/…`; the header's language switcher | `start.ts` request middleware with `ui/i18n/lang.ts` `unprefixedRedirect`; `routes/$lang/route.tsx` | `ui/i18n/lang.test.ts` (cookie, `Accept-Language`, redirect target, no fragment in the Location) |
+| Every page in Spanish and English, with the language in the URL; an unprefixed link (an old bookmark, the handoff of a detector downloaded before the scripts named a language) opens in the visitor's language | `/es/…`, `/en/…`; the header's language switcher | `start.ts` request middleware with `ui/i18n/lang.ts` `unprefixedRedirect`; `routes/$lang/route.tsx` | `ui/i18n/lang.test.ts` (cookie, `Accept-Language`, redirect target, no fragment in the Location) |
 | Field errors and rule messages in the page's language, from codes the server and the Schemas send | every form | `useAction` with `ruleErrors`, `accountErrors` and the `checks` dictionary | `ui/useAction.test.ts`, `ui/form.test.ts`, `tests/game-requests.test.ts` "the writer sends a code, and each language words it under the field it names", `tests/signup.test.ts` |
 | The two dictionaries keep the same shape, and no component holds Spanish copy | | `ui/i18n/en.ts` `satisfies Messages` | `tsc`; `ui/i18n/copy.test.ts` |
+| The detectors print their instructions in the language of the page that gave the command, and open its pages in it | `/opengame-detect.sh?lang=en`, `/opengame-detect.ps1?lang=en`, from `/en/diagnostico` and the English game page | `routes/opengame-detect[.]sh.ts` and `[.]ps1.ts` fill in `urlLang` | `server/diagnostics/detector.test.ts` "in the language of the page that gave the command", `detector/detector-ps1.test.ts` "speaks English" |
 
 ## Wireframed screens
 

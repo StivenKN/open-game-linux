@@ -5,7 +5,7 @@ import type { GameCard } from '../images/render.tsx'
 import { gameCard } from '../server/queries/share.ts'
 import { runRead } from '../server/run.ts'
 import type { Messages } from '../ui/i18n/es.ts'
-import { imageLang } from '../ui/i18n/lang.ts'
+import { urlLang } from '../ui/i18n/lang.ts'
 import { messages } from '../ui/i18n/messages.ts'
 import { routeId } from './-ids.ts'
 
@@ -17,7 +17,7 @@ const gameId = routeId(GameId)
  * caches keep the image five minutes only.
  */
 export const gameImage = async (request: Request, segment: string, contentType: string, draw: (card: GameCard, t: Messages) => Promise<BodyInit>) => {
-  const t = messages[imageLang(new URL(request.url))]
+  const t = messages[urlLang(new URL(request.url))]
   const id = gameId(segment)
   const card = Option.isSome(id) ? await runRead(gameCard(id.value)) : Option.none()
   if (Option.isNone(card)) return new Response(t.share.image.gameNotFound, { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
