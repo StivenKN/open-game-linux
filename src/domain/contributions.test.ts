@@ -112,6 +112,7 @@ describe('ManualCapture from the manual form', () => {
     gpu_modelo: 'Intel Iris Xe',
     ram_mb: '16384',
     vram_mb: 'null',
+    dispositivo: 'null',
   }
   const linux = {
     ...common,
@@ -133,6 +134,12 @@ describe('ManualCapture from the manual form', () => {
     expect(Result.isFailure(decode({ ...common, sistema: 'Linux', soporte_vulkan: 'desconocido' }))).toBe(true)
     const r = decode(linux)
     expect(Result.isSuccess(r) && r.success).toMatchObject({ sistema: 'Linux', distribucion: { nombre: 'Ubuntu', version: '24.04' }, controlador: null })
+  })
+
+  it('says which Steam Deck it is, and nothing else', () => {
+    const r = decode({ ...linux, dispositivo: 'steam_deck_oled' })
+    expect(Result.isSuccess(r) && r.success).toMatchObject({ dispositivo: 'steam_deck_oled' })
+    expect(Result.isFailure(decode({ ...linux, dispositivo: 'rog_ally' }))).toBe(true)
   })
 
   it('a Vulkan version without support si is rejected', () => {

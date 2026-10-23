@@ -108,23 +108,35 @@ const nvidiaCodenames: ReadonlyArray<readonly [RegExp, GpuFamily]> = [
 // pci.ids names chipset and GPU functions with the same codename ("TU116 USB 3.1 Host Controller").
 const notGpu = /\b(Audio|Bridge|bridge|Controller|PCIe host|USB|UCSI|SMBus|Ethernet|SATA|IDE)\b/
 
-export const nvidiaIds = (text: string): ReadonlyArray<Device> => {
-  const lines = text.split('\n')
-  const start = lines.findIndex((l) => l.startsWith('10de  '))
-  if (start === -1) throw new Error('pci.ids: cannot find vendor 10de')
-  const devices: Array<Device> = []
-  for (const [i, line] of lines.slice(start + 1).entries()) {
-    if (/^([0-9a-f]{4}  |C )/.test(line)) break
-    if (line.trim() === '' || line.startsWith('#') || /^\t\t[0-9a-f]{4} [0-9a-f]{4}  /.test(line)) continue
-    const m = /^\t([0-9a-f]{4})  (.+)$/.exec(line)
-    if (m?.[1] === undefined || m[2] === undefined) throw new Error(`pci.ids:${start + i + 2}: unreadable line «${line}»`)
-    const name = m[2]
-    if (notGpu.test(name.replace(/\[[^\]]*\]/g, ''))) continue
-    const family = nvidiaCodenames.find(([re]) => re.test(name))?.[1]
-    if (family !== undefined) devices.push({ vendor: '10de', device: m[1], family })
+// The GPU lines of one vendor's block in pci.ids whose name starts with a codename the rules know.
+const codenameIds =
+  (vendor: GpuVendor, codenames: ReadonlyArray<readonly [RegExp, GpuFamily]>) =>
+  (text: string): ReadonlyArray<Device> => {
+    const lines = text.split('\n')
+    const start = lines.findIndex((l) => l.startsWith(`${vendor}  `))
+    if (start === -1) throw new Error(`pci.ids: cannot find vendor ${vendor}`)
+    const devices: Array<Device> = []
+    for (const [i, line] of lines.slice(start + 1).entries()) {
+      if (/^([0-9a-f]{4}  |C )/.test(line)) break
+      if (line.trim() === '' || line.startsWith('#') || /^\t\t[0-9a-f]{4} [0-9a-f]{4}  /.test(line)) continue
+      const m = /^\t([0-9a-f]{4})  (.+)$/.exec(line)
+      if (m?.[1] === undefined || m[2] === undefined) throw new Error(`pci.ids:${start + i + 2}: unreadable line «${line}»`)
+      const name = m[2]
+      if (notGpu.test(name.replace(/\[[^\]]*\]/g, ''))) continue
+      const family = codenames.find(([re]) => re.test(name))?.[1]
+      if (family !== undefined) devices.push({ vendor, device: m[1], family })
+    }
+    return devices
   }
-  return devices
-}
+
+export const nvidiaIds = codenameIds('10de', nvidiaCodenames)
+
+/**
+ * amdgpu matches its IP-discovery parts by PCI class, so amdgpu_drv.c names no id for them, and pci.ids names
+ * them by codename. Only the Steam Deck's APUs are taken from there (Van Gogh in the LCD model, Sephiroth in
+ * the OLED one, both RDNA 2); the rest stay unprojected (RATIONALE, U10, risk 5).
+ */
+export const amdApuIds = codenameIds('1002', [[/^(VanGogh|Sephiroth)\b/, 'amd_gcn3_o_posterior']])
 
 export const withFloor = <A>(source: string, floor: number, ids: ReadonlyArray<A>): ReadonlyArray<A> => {
   if (ids.length < floor) throw new Error(`${source}: ${ids.length} ids, under the floor of ${floor}; did the format change?`)

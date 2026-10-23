@@ -119,6 +119,7 @@ const rejects: ReadonlyArray<Case> = [
   ['VRAM negativa', 'diagnostic_vram_non_negative', (f) => diagnostic(f, { vram_mb: -1 })],
   ['nivel x86-64 fuera del dominio', 'diagnostic_x86_level_domain', (f) => diagnostic(f, { x86_level: 'v5' })],
   ['TPM fuera del dominio', 'diagnostic_tpm_domain', (f) => diagnostic(f, { tpm: '3.0' })],
+  ['dispositivo fuera del dominio', 'diagnostic_device_domain', (f) => diagnostic(f, { device: 'game_boy' })],
   ['zram negativa', 'diagnostic_zram_non_negative', (f) => diagnostic(f, { zram_mb: -1 })],
   ['API gráfica fuera del dominio', 'game_api_api_domain', (f) =>
     f.sql`INSERT INTO game_api (game_id, api) SELECT game_id, 'd3d13' FROM game_edition WHERE id = ${f.ed}`],

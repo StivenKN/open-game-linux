@@ -1,0 +1,20 @@
+"UserLocalConfigStore"
+{
+	"Software"
+	{
+		"Valve"
+		{
+			"Steam"
+			{
+				"apps"
+				{
+					"271590"
+					{
+						"LastPlayed"		"1760000000"
+						"LaunchOptions"		"PROTON_ENABLE_NVAPI=1 %command% -nobattleye \"modo seguro\""
+					}
+				}
+			}
+		}
+	}
+}

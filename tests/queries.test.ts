@@ -296,6 +296,28 @@ layer(PgTest)('consultas', (it) => {
         }),
       ).pipe(onDay(today)),
     )
+
+    it.effect('con un reporte de una Steam Deck, la ficha lo resume aparte y el filtro solo deja lo que funcionó en una', () =>
+      inRollback(
+        Effect.gen(function* () {
+          const e = yield* scenario
+          const steamOs = yield* e.insert('distribution', { name: 'SteamOS', version: '3.7' })
+          const deck = yield* e.insert('machine', { user_id: 'ana', alias: 'deck de ana' })
+          const onDeck = yield* e.insert('diagnostic', {
+            machine_id: deck, captured_at: new Date('2026-08-05T00:00:00Z'), operating_system: 'Linux', os_version: '6.5', distribution_id: steamOs,
+            architecture: 'x86_64', cpu_model: 'AMD Custom APU 0932', gpu_model: 'AMD Custom GPU 0932', ram_mb: 16384, vulkan_support: 'desconocido',
+            device: 'steam_deck_oled',
+          })
+          const onTheDeck = { diagnostic_id: onDeck, layer_version_id: e.proton9, observations: 'o', ...e.approved }
+          yield* e.insert('report', { ...onTheDeck, edition_id: e.gtaSteam, game_version: '1.0.3258', outcome: 'funciona_con_ajustes', tested_at: new Date('2026-10-06T12:00:00Z') })
+          expect(titles(yield* catalog({ steam_deck: true }))).toEqual(['Grand Theft Auto V'])
+
+          const page = yield* Effect.provideService(gamePage(e.gta), Visitor, guest)
+          expect([page.steam_deck.status, page.steam_deck.test_count]).toEqual(['funciona_con_ajustes', 1])
+          expect(page.summary.setups.filter((s) => s.device !== null).map((s) => [s.distribution, s.device])).toEqual([['SteamOS 3.7', 'steam_deck_oled']])
+        }),
+      ).pipe(onDay(today)),
+    )
   })
 
   describe('catalog search', () => {

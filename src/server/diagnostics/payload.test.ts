@@ -38,6 +38,8 @@ describe('parsePayload', () => {
       swap_mb: null,
       gpu_pci_id: null,
       steam_library: null,
+      device: null,
+      steam_game: null,
     })
   })
 
@@ -62,6 +64,7 @@ describe('parsePayload', () => {
       tpm: null,
       zram_mb: null,
       swap_mb: null,
+      device: null,
       steam_library: [
         { app_id: 9999990, nombre: 'Café "Noir": Édition™' },
         { app_id: 271590, nombre: 'Grand Theft Auto V' },
@@ -107,6 +110,31 @@ describe('parsePayload', () => {
     const library = capture(JSON.stringify({ ...prototype, biblioteca_steam })).steam_library
     expect([library?.length, library?.[0], library?.[999]]).toEqual([1000, { app_id: 1, nombre: 'Juego 1' }, { app_id: 1000, nombre: 'Juego 1000' }])
     expect(capture(JSON.stringify({ ...prototype, biblioteca_steam: [] })).steam_library).toEqual([])
+  })
+
+  it('reads report mode: what Steam runs the game with, blanks as null', () => {
+    const juego = {
+      app_id: 1245620,
+      herramienta: 'proton_9',
+      version_herramienta: ' proton-9.0-2 ',
+      opciones_lanzamiento: '',
+      build: '15563723',
+      cuenta_supuesta: true,
+    }
+    expect(capture(JSON.stringify({ ...prototype, juego }))).toMatchObject({ steam_game: {
+      app_id: 1245620,
+      tool: 'proton_9',
+      tool_version: 'proton-9.0-2',
+      launch_options: null,
+      build_id: '15563723',
+      guessed_account: true,
+    } })
+  })
+
+  it('reads a Steam Deck, and ignores report mode in a Windows payload', () => {
+    expect(capture(JSON.stringify({ ...prototype, dispositivo: 'steam_deck_lcd' })).device).toBe('steam_deck_lcd')
+    const juego = { app_id: 1, herramienta: null, version_herramienta: null, opciones_lanzamiento: null, build: null, cuenta_supuesta: false }
+    expect(capture(JSON.stringify({ ...JSON.parse(windowsJson), juego }))).toEqual(capture(windowsJson))
   })
 
   it('keeps the Vulkan version when support is si', () => {
@@ -168,6 +196,8 @@ describe('parsePayload', () => {
     [{ tpm: '2' }, 'tpm'],
     [{ zram_mb: -1 }, 'zram_mb'],
     [{ swap_mb: 1.5 }, 'swap_mb'],
+    [{ dispositivo: 'rog_ally' }, 'dispositivo'],
+    [{ juego: { app_id: 0, herramienta: null, version_herramienta: null, opciones_lanzamiento: null, build: null, cuenta_supuesta: false } }, 'juego.app_id'],
   ])('a bad field %o is campo_invalido at %s', (override, field) => {
     expect(parsePayload(JSON.stringify({ ...prototype, ...override }))).toEqual(
       Result.fail(new InvalidPayload({ reason: 'campo_invalido', field })),

@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Schema } from 'effect'
 import { useEffect, useRef, useState } from 'react'
 import { OperatingSystem, VulkanSupport } from '../../domain/evaluation.ts'
+import { Device } from '../../domain/platform.ts'
 import type { InvalidPayload } from '../../domain/errors.ts'
 import { evaluateDiagnosticFn, myMachinesFn, originFn } from '../../fns/diagnostic.ts'
 import { CopyBox } from '../../ui/compatibility/CopyBox.tsx'
@@ -10,7 +11,7 @@ import { SavedMachines } from '../../ui/diagnostics/SavedMachines.tsx'
 import { memory } from '../../ui/format.ts'
 import { fieldProps, ramGb, vramMb, vulkanVersions } from '../../ui/form.tsx'
 import { type FieldErrors, useAction } from '../../ui/useAction.ts'
-import { payloadReason, operatingSystem as operatingSystemLabel, vulkanSupport } from '../../ui/vocabulary.ts'
+import { device, payloadReason, operatingSystem as operatingSystemLabel, vulkanSupport } from '../../ui/vocabulary.ts'
 import { type Input, manualInput, ManualForm, savePending, Pasted } from './-input.ts'
 
 export const Route = createFileRoute('/diagnostico/')({
@@ -162,6 +163,15 @@ function Manual() {
             <FieldError errors={r.errors} field="version_sistema" />
           </div>
         </div>
+        <label htmlFor="dispositivo">Equipo</label>
+        <select {...fieldProps(r.errors, 'dispositivo')} defaultValue="null">
+          <option value="null">PC o portátil</option>
+          {Device.literals.map((d) => (
+            <option key={d} value={d}>
+              {device[d]}
+            </option>
+          ))}
+        </select>
         {os === 'Linux' && (
           <div className="fields-2">
             <div>

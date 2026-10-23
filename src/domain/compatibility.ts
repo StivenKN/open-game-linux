@@ -1,6 +1,7 @@
 import { Schema } from 'effect'
 import { DistributionId, EditionId, ProfileId, ReportId, LayerVersionId } from './ids.ts'
 import { Outcome, FailingOutcome, WorkingOutcome } from './literals.ts'
+import { Device } from './platform.ts'
 import { isRecent } from './recency.ts'
 
 export const CompatibilityStatus = Schema.Literals([
@@ -48,6 +49,7 @@ export const ApprovedTest = Schema.Struct({
   graphics_quality: Schema.NullOr(Schema.String),
   measurement_method: Schema.NullOr(Schema.String),
   failures: Schema.Array(Schema.String),
+  device: Schema.NullOr(Device),
 })
 export type ApprovedTest = typeof ApprovedTest.Type
 
@@ -61,7 +63,7 @@ export type MeasuredFps = {
 
 export type TestedSetup = Pick<
   ApprovedTest,
-  'edition_id' | 'launcher' | 'game_version' | 'distribution_id' | 'distribution' | 'layer_version_id' | 'layer' | 'profile_id' | 'profile'
+  'edition_id' | 'launcher' | 'game_version' | 'distribution_id' | 'distribution' | 'layer_version_id' | 'layer' | 'profile_id' | 'profile' | 'device'
 > & {
   readonly key: string
   readonly status: CompatibilityStatus
@@ -145,6 +147,13 @@ export const timeline = (tests: ReadonlyArray<ApprovedTest>): ReadonlyArray<Laye
 export const onDistribution = (tests: ReadonlyArray<ApprovedTest>, distribution: DistributionId, now: Date): CompatibilitySummary =>
   summarize(tests.filter((p) => p.distribution_id === distribution), now)
 
+/** The game page's "En Steam Deck": every `Device` is a Steam Deck model. */
+export const onSteamDeck = (tests: ReadonlyArray<ApprovedTest>, now: Date): CompatibilitySummary =>
+  summarize(tests.filter((p) => p.device !== null), now)
+
+/** The catalog's "Probado en Steam Deck": at least one approved test on a Deck worked, however old. */
+export const workedOnSteamDeck = (tests: ReadonlyArray<ApprovedTest>): boolean => tests.some((p) => p.device !== null && isWorking(p.outcome))
+
 const baseOf = (tests: ReadonlyArray<ApprovedTest>, now: Date) => {
   const recent = tests.filter((p) => isRecent(p.tested_at, now))
   return { recent, base: recent.length > 0 ? recent : tests }
@@ -157,8 +166,9 @@ const newest = (tests: readonly [ApprovedTest, ...ApprovedTest[]]): ApprovedTest
 
 const oldest = (tests: readonly [ApprovedTest, ...ApprovedTest[]]): ApprovedTest => tests.reduce((a, b) => (byAge(b, a) < 0 ? b : a))
 
+// A Steam Deck is its own environment, apart from a desktop with the same distribution.
 const keyOf = (p: ApprovedTest): string =>
-  JSON.stringify([p.edition_id, p.game_version, p.distribution_id, p.layer_version_id, p.profile_id])
+  JSON.stringify([p.edition_id, p.game_version, p.distribution_id, p.layer_version_id, p.profile_id, p.device])
 
 const testedSetup = (tests: readonly [ApprovedTest, ...ApprovedTest[]], now: Date): TestedSetup => {
   const [p] = tests
@@ -176,6 +186,7 @@ const testedSetup = (tests: readonly [ApprovedTest, ...ApprovedTest[]], now: Dat
     layer: p.layer,
     profile_id: p.profile_id,
     profile: p.profile,
+    device: p.device,
     status: statusOf(base.map((x) => x.outcome)),
     test_count: tests.length,
     recent_count: recent.length,

@@ -5,11 +5,22 @@ import { type SteamLibrary, isSteamTool, MAX_LIBRARY_GAMES } from '../../domain/
 import { OperatingSystem, VulkanSupport } from '../../domain/evaluation.ts'
 import { PciId, vendorOf, type GpuVendor } from '../../domain/gpu.ts'
 import { maxLengths } from '../../domain/max-lengths.ts'
+import type { SteamGame } from '../../domain/steam-game.ts'
 import { Diagnostic, Distribution } from '../../domain/tables.ts'
 
 export const SCHEMA_VERSION = 1
 
 const SentGame = Schema.Struct({ app_id: Schema.Number, nombre: Schema.String })
+
+// Report mode (`--game`): what Steam runs one game with.
+const SentSteamGame = Schema.Struct({
+  app_id: Schema.Number,
+  herramienta: Schema.NullOr(Schema.String),
+  version_herramienta: Schema.NullOr(Schema.String),
+  opciones_lanzamiento: Schema.NullOr(Schema.String),
+  build: Schema.NullOr(Schema.String),
+  cuenta_supuesta: Schema.Boolean,
+})
 
 const commonFields = {
   version_esquema: Schema.Literal(SCHEMA_VERSION),
@@ -22,6 +33,7 @@ const commonFields = {
   ram_mb: Schema.Int,
   vram_mb: Schema.NullOr(Schema.Int),
   biblioteca_steam: Schema.optionalKey(Schema.NullOr(Schema.Array(SentGame))),
+  dispositivo: Schema.optionalKey(Diagnostic.fields.device),
 }
 
 const PayloadV1 = {
@@ -39,6 +51,7 @@ const PayloadV1 = {
     tpm: Schema.optionalKey(Diagnostic.fields.tpm),
     zram_mb: Schema.optionalKey(Diagnostic.fields.zram_mb),
     swap_mb: Schema.optionalKey(Diagnostic.fields.swap_mb),
+    juego: Schema.optionalKey(Schema.NullOr(SentSteamGame)),
   }),
   Windows: Schema.Struct({ ...commonFields, sistema: Schema.Literal('Windows') }),
 } satisfies Record<OperatingSystem, Schema.Top>
@@ -65,6 +78,7 @@ export const parsePayload = (text: string): Result.Result<Capture, InvalidPayloa
       ram_mb: p.ram_mb,
       vram_mb: p.vram_mb,
       steam_library: p.biblioteca_steam === undefined || p.biblioteca_steam === null ? null : libraryOf(p.biblioteca_steam),
+      device: p.dispositivo ?? null,
     }
     const candidate: typeof Capture.Encoded =
       p.sistema === 'Linux'
@@ -81,6 +95,7 @@ export const parsePayload = (text: string): Result.Result<Capture, InvalidPayloa
             tpm: p.tpm ?? null,
             zram_mb: p.zram_mb ?? null,
             swap_mb: p.swap_mb ?? null,
+            steam_game: p.juego === undefined || p.juego === null ? null : steamGameOf(p.juego),
           }
         : { ...common, operating_system: 'Windows' }
     return yield* fitsColumns(yield* Result.mapError(Schema.decodeResult(Capture)(candidate), invalidCaptureField))
@@ -99,6 +114,20 @@ const libraryOf = (games: ReadonlyArray<typeof SentGame.Type>): typeof SteamLibr
     })
     .slice(0, MAX_LIBRARY_GAMES)
 }
+
+const textOrNull = (text: string | null) => {
+  const trimmed = text?.trim() ?? ''
+  return trimmed === '' ? null : trimmed
+}
+
+const steamGameOf = (g: typeof SentSteamGame.Type): typeof SteamGame.Encoded => ({
+  app_id: g.app_id,
+  tool: textOrNull(g.herramienta),
+  tool_version: textOrNull(g.version_herramienta),
+  launch_options: textOrNull(g.opciones_lanzamiento),
+  build_id: textOrNull(g.build),
+  guessed_account: g.cuenta_supuesta,
+})
 
 export const captureOf = (input: DiagnosticInput): Effect.Effect<Capture, InvalidPayload> =>
   Effect.fromResult(input._tag === 'manual' ? fitsColumns(manualCapture(input.captura)) : parsePayload(input.texto))
@@ -119,6 +148,7 @@ const manualCapture = (m: ManualCapture): Capture => {
     tpm: null,
     zram_mb: null,
     swap_mb: null,
+    device: m.dispositivo,
   }
   return m.sistema === 'Linux'
     ? {
@@ -129,6 +159,7 @@ const manualCapture = (m: ManualCapture): Capture => {
         driver_version: m.version_controlador,
         vulkan_support: m.soporte_vulkan,
         vulkan_version: m.version_vulkan,
+        steam_game: null,
       }
     : { ...common, operating_system: 'Windows' }
 }
@@ -163,6 +194,8 @@ const payloadNameOf: Record<string, string> = {
   x86_level: 'nivel_x86',
   secure_boot: 'arranque_seguro',
   steam_library: 'biblioteca_steam',
+  device: 'dispositivo',
+  steam_game: 'juego',
 }
 
 const pciId = (value: unknown): PciId | null =>

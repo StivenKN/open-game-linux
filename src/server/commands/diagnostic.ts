@@ -57,6 +57,7 @@ export const submitDiagnostic = (
       tpm: capture.tpm,
       zram_mb: capture.zram_mb,
       swap_mb: capture.swap_mb,
+      device: capture.device,
       ...linuxOnly,
       gpu_pci_id: capture.gpu_pci_id,
       // Sent as JSON text: the untyped parameter takes the jsonb column's type.

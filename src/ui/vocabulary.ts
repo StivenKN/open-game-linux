@@ -6,7 +6,7 @@ import type { InvalidPayload, SteamUnavailable } from '../domain/errors.ts'
 import type { GameRequestStatus } from '../domain/game-requests.ts'
 import type { Blocker, ReviewStatus, Role } from '../domain/review.ts'
 import type { GuideStatus, GuideType } from '../domain/guides.ts'
-import type { SecureBoot, X86Level, Tpm } from '../domain/platform.ts'
+import type { Device, SecureBoot, X86Level, Tpm } from '../domain/platform.ts'
 import type { RenderPath, AntiCheatRiskPath, Requirement, GamePath } from '../domain/graphics-path.ts'
 import type { ObjectionCode, Objection, DistroVerdict } from '../domain/distros.ts'
 import type { NotExportableReason, SkipReason, NoReportReason } from '../domain/upstream.ts'
@@ -68,6 +68,8 @@ export const secureBoot = {
 } as const satisfies Record<SecureBoot, string>
 
 export const tpm = { '2.0': 'TPM 2.0', '1.2': 'TPM 1.2', no_detectado: 'Sin TPM' } as const satisfies Record<Tpm, string>
+
+export const device = { steam_deck_lcd: 'Steam Deck (LCD)', steam_deck_oled: 'Steam Deck (OLED)' } as const satisfies Record<Device, string>
 
 /** A level as a requirement, named by the instruction set games actually ask for. */
 export const x86Level = {

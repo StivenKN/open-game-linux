@@ -15,6 +15,7 @@ export const maxLengths = {
     x86_level: 2,
     secure_boot: 10,
     tpm: 15,
+    device: 20,
   },
   game: { title: 180, x86_level_min: 2 },
   game_api: { api: 10 },

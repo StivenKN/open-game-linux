@@ -1,7 +1,7 @@
 import { Clock, Effect, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
 import type { CatalogFilter } from '../../domain/contributions.ts'
-import { type CompatibilityStatus, summarize } from '../../domain/compatibility.ts'
+import { type CompatibilityStatus, summarize, workedOnSteamDeck } from '../../domain/compatibility.ts'
 import { Game, Launcher } from '../../domain/tables.ts'
 import { oneRow } from '../rows.ts'
 import { approvedTests } from './game.ts'
@@ -61,11 +61,13 @@ export const catalog = (filter: CatalogFilter) =>
         return {
           ...j,
           summary: { status, test_count, no_recent_confirmation, last_tested, failures },
+          steam_deck: workedOnSteamDeck(tests),
           demo: tests.some((p) => p.demo),
           protondb: external ? Struct.pick(external, ['recent', 'recent_working', 'total_reports']) : null,
         }
       })
       .filter((j) => filter.sin_anti_cheat !== true || !j.summary.failures.some((f) => f.code === 'anti_cheat'))
+      .filter((j) => filter.steam_deck !== true || j.steam_deck)
     const games = filter.estado === undefined ? candidates : candidates.filter((j) => j.summary.status === filter.estado)
 
     // Counted before the estado filter, so each status filter shows how many games it would list.

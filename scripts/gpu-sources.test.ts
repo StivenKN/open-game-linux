@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { mesaChipsets, withFloor, crocusFamily, irisFamily, amdgpuIds, nvidiaIds, tableOf } from './gpu-sources.ts'
+import { mesaChipsets, withFloor, crocusFamily, irisFamily, amdgpuIds, amdApuIds, nvidiaIds, tableOf } from './gpu-sources.ts'
 
 describe('mesaChipsets', () => {
   it('reads every CHIPSET line and skips blank ones', () => {
@@ -108,6 +108,19 @@ describe('nvidiaIds', () => {
   })
   it('fails on a line it cannot read inside the vendor block', () => {
     expect(() => nvidiaIds('10de  NVIDIA Corporation\n\t0de1 GF108')).toThrow('pci.ids:2: unreadable line')
+  })
+})
+
+describe('amdApuIds', () => {
+  it('takes only the Steam Deck APUs from the AMD block, which amdgpu_drv.c matches by class', () => {
+    const text = `1002  Advanced Micro Devices, Inc. [AMD/ATI]
+\t1435  Sephiroth [AMD Custom GPU 0405]
+\t1640  Rembrandt Radeon High Definition Audio Controller
+\t163f  VanGogh [AMD Custom GPU 0405]
+\t744c  Navi 31 [Radeon RX 7900 XT/7900 XTX/7900 GRE/7900M]
+\t1636  Renoir [Radeon RX Vega 6 (Ryzen 4000/5000 Mobile Series)]
+1003  ULSI Systems`
+    expect(amdApuIds(text).map((d) => `${d.vendor}:${d.device} ${d.family}`)).toEqual(['1002:1435 amd_gcn3_o_posterior', '1002:163f amd_gcn3_o_posterior'])
   })
 })
 

@@ -118,6 +118,7 @@ describe.skipIf(engine === null)(`opengame-detect.ps1 under ${engine ?? `pwsh (s
       tpm: null,
       zram_mb: null,
       swap_mb: null,
+      device: null,
       steam_library: newFormatLibrary.filter((j) => j.nombre !== 'Proton 9.0'),
     })
     expect({ ...capture(powershell({ OPENGAME_DRY: '1' })), captured_at: captured.captured_at }).toEqual(captured)
@@ -152,6 +153,7 @@ describe.skipIf(engine === null)(`opengame-detect.ps1 under ${engine ?? `pwsh (s
       tpm: null,
       zram_mb: null,
       swap_mb: null,
+      device: null,
       steam_library: null,
     })
   })
@@ -192,5 +194,44 @@ describe.skipIf(process.platform !== 'linux')('opengame-detect.sh with a large S
   it('prints the JSON, capped at MAX_LIBRARY_GAMES games, instead of a --open URL longer than 100 000 chars', () => {
     const output = bash({ OPENGAME_STEAM_DIR: join(tmp, 'grande'), OPENGAME_DRY: '1', OPENGAME_URL: 'http://ejemplo.test' }, '--open')
     expect(parse(output)).toMatchObject({ sistema: 'Linux', biblioteca_steam: expected(2000).slice(0, MAX_LIBRARY_GAMES) })
+  })
+})
+
+describe.skipIf(process.platform !== 'linux')('opengame-detect.sh --game: what Steam runs one game with', () => {
+  const report = (appid: string, steamRoot = steam('nuevo')) => {
+    const url = bash({ OPENGAME_STEAM_DIR: steamRoot, OPENGAME_DRY: '1', OPENGAME_URL: 'http://ejemplo.test' }, '--game', appid)
+    expect(url).toMatch(/^http:\/\/ejemplo\.test\/diagnostico\/importar#d=[A-Za-z0-9_-]+$/)
+    const c = capture(url)
+    return c.operating_system === 'Linux' ? c.steam_game : null
+  }
+
+  it('reads the game’s own tool, its exact release from the tool’s version file, the last account’s launch options and the build', () => {
+    expect(report('271590')).toEqual({
+      app_id: 271590,
+      tool: 'proton_9',
+      tool_version: 'proton-9.0-2',
+      launch_options: 'PROTON_ENABLE_NVAPI=1 %command% -nobattleye "modo seguro"',
+      build_id: '15563723',
+      guessed_account: false,
+    })
+  })
+
+  it('takes the default tool for a game Proton already ran, with a custom tool’s version', () => {
+    expect(report('292030')).toMatchObject({ tool: 'GE-Proton9-4', tool_version: 'GE-Proton9-4', launch_options: null, build_id: null })
+  })
+
+  it('reads a game Proton never ran as native, although a default tool is set', () => {
+    expect(report('227300')).toMatchObject({ tool: null, tool_version: null })
+  })
+
+  it('with several accounts and none marked as the last one, takes the first and says so', () => {
+    const root = join(tmp, 'sin-login')
+    cpSync(steam('nuevo'), root, { recursive: true })
+    rmSync(join(root, 'config/loginusers.vdf'))
+    expect(report('271590', root)).toMatchObject({ launch_options: 'otra cuenta %command%', guessed_account: true })
+  })
+
+  it.each(['', 'gta', '0'])('refuses --game %o, which is no Steam app', (appid) => {
+    expect(spawnSync('bash', [sh, '--game', appid], { encoding: 'utf8' }).status).toBe(2)
   })
 })

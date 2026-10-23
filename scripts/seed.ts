@@ -41,6 +41,7 @@ const distributions = {
   fedora: { name: 'Fedora', version: '40', official_url: 'https://fedoraproject.org' },
   arch: { name: 'Arch Linux', version: 'rolling', official_url: 'https://archlinux.org' },
   pop: { name: 'Pop!_OS', version: '22.04', official_url: 'https://pop.system76.com' },
+  steamos: { name: 'SteamOS', version: '3.7', official_url: 'https://store.steampowered.com/steamos' },
 } as const
 
 const layers = {
@@ -397,6 +398,26 @@ const machines = {
       nivel_x86: 'v1',
     },
   },
+  // A Steam Deck OLED: its Sephiroth APU projects through amdgpu like any RDNA 2 GPU.
+  brunoDeck: {
+    owner: 'demo_bruno',
+    alias: 'Steam Deck de Bruno',
+    distribution: 'steamos',
+    diagnostic: {
+      capturado_en: '2026-10-08T18:00:00Z',
+      version_sistema: '6.5.0-valve22-1-neptune-65',
+      cpu_modelo: 'AMD Custom APU 0932',
+      gpu_modelo: 'AMD Custom GPU 0932',
+      ram_mb: 16384,
+      vram_mb: 1024,
+      controlador: 'amdgpu',
+      version_controlador: 'Mesa 24.3.0',
+      gpu_pci_id: '1002:1435',
+      version_vulkan: '1.3.296',
+      nivel_x86: 'v3',
+      dispositivo: 'steam_deck_oled',
+    },
+  },
 } as const satisfies Record<string, { owner: Account; alias: string; distribution: keyof typeof distributions; diagnostic: Readonly<Record<string, Value>> }>
 
 type DemoReport = {
@@ -476,6 +497,12 @@ const reports: ReadonlyArray<DemoReport> = [
     tested_at: '2026-10-08T21:00:00Z', outcome: 'funciona', measurement: null,
     failures: [], observations: 'Abre y llega al menú principal.', approve: false,
     rejection: 'Llegar al menú no prueba que el juego funcione: cuenta una partida de al menos unos minutos y envíalo de nuevo.',
+  },
+  {
+    machine: 'brunoDeck', edition: ['witcher3', 'steam'], layer: 'proton9', withProfile: false, game_version: '4.04',
+    tested_at: '2026-10-09T21:00:00Z', outcome: 'funciona',
+    measurement: { avg_fps: 40, resolution: '1280x800', graphics_quality: 'Steam Deck', measurement_method: 'Superposición de rendimiento de SteamOS · Velen · 15 min' },
+    failures: [], observations: 'En modo juego, con el preajuste gráfico «Steam Deck» y el límite de 40 FPS. Sin cierres en una hora.', approve: true,
   },
 ]
 

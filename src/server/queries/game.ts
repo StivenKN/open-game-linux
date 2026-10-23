@@ -1,6 +1,6 @@
 import { Clock, Effect, Option, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
-import { onDistribution, ApprovedTest, summarize, timeline } from '../../domain/compatibility.ts'
+import { onDistribution, onSteamDeck, ApprovedTest, summarize, timeline } from '../../domain/compatibility.ts'
 import { requirements, evaluate, suggestProfile } from '../../domain/evaluation.ts'
 import { NotFound } from '../../domain/errors.ts'
 import { newsSince } from '../../domain/follow.ts'
@@ -48,7 +48,7 @@ export const approvedTests = (scope: { readonly game: GameId } | { readonly foll
              r.profile_id, ${sql.literal(profileLabel('p'))} AS profile,
              r.outcome, r.tested_at, r.reviewed_at, r.avg_fps, r.resolution, r.graphics_quality, r.measurement_method,
              COALESCE(array_agg(tf.code ORDER BY tf.code) FILTER (WHERE tf.id IS NOT NULL), '{}') AS failures,
-             ${sql.literal(isDemo('u'))} AS demo
+             d.device, ${sql.literal(isDemo('u'))} AS demo
       FROM report r
       JOIN game_edition e ON e.id = r.edition_id
       JOIN launcher l ON l.id = e.launcher_id
@@ -265,6 +265,7 @@ export const gamePage = (gameId: GameId) =>
       game: { ...game.value, apis },
       editions,
       summary,
+      steam_deck: onSteamDeck(tests, now),
       timeline: timeline(tests),
       as_of: asOf,
       follow: Option.match(follow, { onNone: () => null, onSome: ({ seen_at }) => ({ seen_at, news: newsSince(tests, seen_at, now) }) }),

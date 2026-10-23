@@ -1,0 +1,19 @@
+"users"
+{
+	"76561197960287930"
+	{
+		"AccountName"		"ana"
+		"PersonaName"		"Ana"
+		"RememberPassword"		"1"
+		"MostRecent"		"0"
+		"Timestamp"		"1750000000"
+	}
+	"76561197960287931"
+	{
+		"AccountName"		"ana_familia"
+		"PersonaName"		"Ana (familia)"
+		"RememberPassword"		"1"
+		"MostRecent"		"1"
+		"Timestamp"		"1760000000"
+	}
+}

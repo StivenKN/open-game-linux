@@ -34,8 +34,9 @@ const layer = {
 const noProfile = { profile_id: null, profile: null }
 const day = (iso: string) => new Date(`${iso}T12:00:00Z`)
 
-const setup = (e: Omit<TestedSetup, 'key' | 'recent_count'>): TestedSetup => ({
+const setup = (e: Omit<TestedSetup, 'key' | 'recent_count' | 'device'>): TestedSetup => ({
   ...e,
+  device: null,
   recent_count: e.test_count,
   key: [e.edition_id, e.game_version, e.distribution_id, e.layer_version_id, e.profile_id ?? '-'].join('|'),
 })

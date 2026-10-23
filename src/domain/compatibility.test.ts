@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { type CompatibilityStatus, onDistribution, statusOf, type ApprovedTest, summarize, timeline } from './compatibility.ts'
+import { type CompatibilityStatus, onDistribution, onSteamDeck, statusOf, type ApprovedTest, summarize, timeline, workedOnSteamDeck } from './compatibility.ts'
 import { DistributionId, EditionId, LayerVersionId, ReportId } from './ids.ts'
 import type { Outcome } from './literals.ts'
 import { ets2, gtaV, valorant } from './samples.ts'
@@ -230,5 +230,28 @@ describe('timeline', () => {
 
   it('no approved test, no history', () => {
     expect(timeline([])).toEqual([])
+  })
+})
+
+describe('Steam Deck', () => {
+  const desktop = approved(10, 'funciona', '2026-10-01T12:00:00Z')
+  const lcd = approved(11, 'no_inicia', '2026-10-02T12:00:00Z', { device: 'steam_deck_lcd', failures: ['anti_cheat'] })
+
+  it('onSteamDeck summarizes only the tests run on a Deck', () => {
+    expect(onSteamDeck([desktop, lcd], now)).toMatchObject({ status: 'no_inicia', test_count: 1, failures: [{ code: 'anti_cheat', reports: 1 }] })
+    expect(onSteamDeck([desktop], now)).toMatchObject({ status: 'sin_evidencia', test_count: 0 })
+  })
+
+  it('workedOnSteamDeck needs a working test on a Deck, however old', () => {
+    expect(workedOnSteamDeck([desktop, lcd])).toBe(false)
+    expect(workedOnSteamDeck([desktop, lcd, approved(12, 'funciona_con_ajustes', '2024-01-01T12:00:00Z', { device: 'steam_deck_oled' })])).toBe(true)
+  })
+
+  it('a Deck is its own environment, apart from a desktop with the same setup', () => {
+    const oled = approved(12, 'funciona', '2026-10-03T12:00:00Z', { device: 'steam_deck_oled' })
+    expect(summarize([desktop, oled], now).setups.map((e) => [e.device, e.test_count])).toEqual([
+      ['steam_deck_oled', 1],
+      [null, 1],
+    ])
   })
 })
