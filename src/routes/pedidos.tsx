@@ -125,9 +125,10 @@ function OutcomeNote({ outcome }: { outcome: Outcome }) {
   )
 }
 
+// The `pedido-<id>` anchor is where Mis aportes links an open request.
 function OpenRequest({ request: r, signedIn, reviewer }: { request: OpenRequestRow; signedIn: boolean; reviewer: boolean }) {
   return (
-    <li className="card stack">
+    <li id={`pedido-${r.id}`} className="card stack">
       <div className="row">
         <strong className="game-name">{r.title}</strong>
         {r.steam_app_id !== null && (

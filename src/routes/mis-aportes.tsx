@@ -119,7 +119,9 @@ function MyContributionsPage() {
               {r.status === 'abierto' && (
                 <p className="row small">
                   <span className="muted">{count(r.requesters, 'persona lo pide', 'personas lo piden')}</span>
-                  <Link to="/pedidos">Ver los pedidos abiertos</Link>
+                  <Link to="/pedidos" hash={`pedido-${r.id}`}>
+                    Verlo en los pedidos abiertos
+                  </Link>
                 </p>
               )}
               {r.status === 'cumplido' && (
@@ -132,7 +134,7 @@ function MyContributionsPage() {
               )}
               {r.status === 'rechazado' && (
                 <p className="note small" data-tone={gameRequestStatus.rechazado.tone}>
-                  Motivo del rechazo: {r.rejection_reason}
+                  Un revisor lo rechazó el {date(r.resolved_at)}. Motivo: {r.rejection_reason}
                 </p>
               )}
             </li>
