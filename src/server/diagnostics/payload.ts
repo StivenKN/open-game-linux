@@ -156,7 +156,7 @@ const manualCapture = (m: ManualCapture): Capture => {
     ? {
         ...common,
         operating_system: 'Linux',
-        distribution: { name: m.distribucion.nombre, version: m.distribucion.version },
+        distribution: { name: m.distribucion.nombre, version: distributionVersion(m.distribucion.nombre, m.distribucion.version) },
         driver: m.controlador,
         driver_version: m.version_controlador,
         vulkan_support: m.soporte_vulkan,

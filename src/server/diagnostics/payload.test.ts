@@ -1,8 +1,8 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Result, Schema } from 'effect'
+import { Effect, Result, Schema } from 'effect'
 import { readFileSync } from 'node:fs'
 import { InvalidPayload } from '../../domain/errors.ts'
-import { parsePayload } from './payload.ts'
+import { captureOf, parsePayload } from './payload.ts'
 
 const outJson = readFileSync(new URL('../../../prototypes/detector/out.json', import.meta.url), 'utf8')
 const windowsJson = readFileSync(new URL('../../../prototypes/detector/windows-out.json', import.meta.url), 'utf8')
@@ -157,6 +157,15 @@ describe('parsePayload', () => {
     const steamOs = (version: string) => capture(JSON.stringify({ ...prototype, distribucion: { nombre: 'SteamOS', version } }))
     expect([steamOs('3.7.13'), steamOs('3.7')]).toMatchObject([{ distribution: { version: '3.7' } }, { distribution: { version: '3.7' } }])
     expect(capture(JSON.stringify({ ...prototype, distribucion: { nombre: 'Debian GNU/Linux', version: '12.7' } }))).toMatchObject({ distribution: { version: '12.7' } })
+    const manual = captureOf({
+      _tag: 'manual',
+      captura: {
+        sistema: 'Linux', capturado_en: new Date('2026-10-20T12:00:00Z'), version_sistema: '6.5.0-valve22', arquitectura: 'x86_64',
+        cpu_modelo: 'AMD Custom APU 0405', gpu_modelo: 'AMD Custom GPU 0405', ram_mb: 16384, vram_mb: null, dispositivo: 'steam_deck_lcd',
+        distribucion: { nombre: 'SteamOS', version: '3.7.13' }, controlador: null, version_controlador: null, soporte_vulkan: 'desconocido', version_vulkan: null,
+      },
+    })
+    expect(Effect.runSync(manual)).toMatchObject({ distribution: { name: 'SteamOS', version: '3.7' }, device: 'steam_deck_lcd' })
   })
 
   it.each([
