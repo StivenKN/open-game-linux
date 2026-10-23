@@ -41,8 +41,8 @@ function UsersPage() {
     <main className="wrapper stack">
       <h1>Usuarios</h1>
       <p className="muted">
-        Un revisor aprueba aportes; un administrador además gestiona los roles. Una cuenta desactivada navega como invitada: no puede
-        reportar, guardar diagnósticos ni revisar. Cada cambio se aplica en la siguiente página que abra esa cuenta.
+        Un revisor aprueba aportes; un administrador además gestiona los roles. Desactivar una cuenta cierra sus sesiones y no la deja
+        entrar hasta que la reactives. Cada cambio se aplica en la siguiente página que abra esa cuenta.
       </p>
       <form role="search" className="row" method="get" action="/admin/usuarios" onSubmit={onSearch}>
         <label htmlFor="q" className="sr-only">
