@@ -120,6 +120,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | guia | guide |
 | hay | found (the EXISTS alias in `review.ts`) |
 | hecho | done |
+| historial | history (`timeline` and `LayerHistory`, the ficha's "Historial por versión") |
 | huella | fingerprint |
 | icono | icon |
 | identificador | id (`external_id`) |
@@ -151,6 +152,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | nombre | name |
 | normalizado | normalized |
 | nota | note |
+| novedades | news (`News`, `newsSince`: what a follower has not seen) |
 | nuevo | inserted (the diagnostic save flag and its CTE) |
 | objecion | objection |
 | obligatoria | required |
@@ -199,6 +201,8 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | ruta | path (a graphics path to the GPU); route (`routeIdParser`, a router path param) |
 | salida | kernel (distros: the kernel line a Kepler card stays on); spans (`encodeSpans` in `server/gpu/ranges.ts`); output (script output in `detector.test.ts`) |
 | salir | sign out |
+| seguidos | followed games (`myFollows`, the `/seguidos` page) |
+| seguir | follow (`changeFollow`, the `game_follow` table) |
 | sello | stamp |
 | semilla | seed |
 | separar | split |
@@ -224,4 +228,5 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | vigencia | recency window |
 | vigente | recent (inside the window); active (`activeStatuses`) |
 | visitante | visitor |
+| visto | seen (`seen_at`; "Marcar como visto" posts the `Visto` change) |
 | volver | return to (the search key volver stays) |

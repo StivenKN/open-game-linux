@@ -336,6 +336,23 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 - **Separate actions for the role and for deactivation.** One form per account and one writer is less code, and the guard sees the whole change at once.
 - **Sharing the catalog's lenient search Schema.** It lives in `routes/index.tsx`, which the catalog lane is rewriting. `/admin/usuarios` reads `q` with a three-line function instead.
 
+## Game page: version history and follows
+
+**Problem.** A player wants to know which Wine or Proton versions worked for a game, from when, and whether one broke it, and to hear when a game they care about changes. The app has no mail channel, so following is in-app only.
+
+**Shape.**
+
+- `timeline` in `domain/compatibility.ts` groups the approved tests by layer version, in the order each version was first tested. Version strings do not order across families (Proton 9.0-3, GE-Proton 10-1, Wine 9.0), so the test date is the honest order. It is history, so no window applies, as with regressions, and each step prints its dates. "Dejó de funcionar" stays one rule: `regressionsOf` feeds both `summarize` and `timeline`, and `Regression` now carries the layer version id, so the step where an edition broke is matched by id.
+- A follow is one `game_follow` row per user and game with `seen_at` and `created_at`, and nothing else. `newsSince` in `domain/follow.ts` counts the reports approved after `seen_at` and compares the state computed at `seen_at`, from what was approved by then, with the state now. `ApprovedTest` gains `reviewed_at`, the approval instant. A retired report counts in neither state: retiring overwrites `reviewed_at`, so its approval instant is gone, and a retired report never counts anyway. The state can also change with no new approval, when the year window passes the evidence. That counts as news, because the ficha would show another state.
+- "Marcar como visto" is an explicit action, not a write in a loader: the router runs loaders on preload and on every invalidation, and a read that writes would mark news seen that nobody saw. The form posts the instant the page was computed (`as_of`), and `changeFollow` sets `seen_at` to the earlier of it and now, forward only. A report approved while the page sat open stays news.
+- The header count comes from the root route's `beforeLoad`, which already ran on every navigation for the visitor. `session` returns the visitor and the count from the same `followed` read model as "Seguidos", so the two cannot disagree. For a signed-in visitor that costs two queries per navigation: the follows, and their games' approved tests.
+- A follow is the user's own bookmark, not evidence, so its row goes with its user or game (`ON DELETE CASCADE`). `?volver=` now also accepts the public game page, where "Entra para seguirlo" sends a guest, and `/seguidos`.
+
+**Alternatives considered.**
+
+- **Marking seen when the ficha opens.** Simpler to use, but it needs a write on a GET or an effect after render, and either one marks the news seen before the player read them.
+- **Storing the state at `seen_at`.** It would make "the state changed" one comparison, but it is a stored verdict that goes stale with the window and with retirements. Computing it from `reviewed_at` keeps sentence 4 of `ARCHITECTURE.md` true.
+
 ## Open questions and risks
 
 1. Does `Schema.fromFormData(Schema.toCodecStringTree(S))` decode the report form's nested shape (`failures[0][failure_type_id]`, the `layer_version[_tag]` union, a null `profile_id`) at runtime? It typechecks. If not, U0 falls back to a controlled form object decoded with plain `Schema.decodeUnknownResult(S)`, and the hook signature stays the same.

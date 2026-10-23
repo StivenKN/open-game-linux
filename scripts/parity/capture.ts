@@ -35,6 +35,7 @@ export const routes = [
   '/diagnostico?pegar=1',
   '/diagnostico/importar',
   '/guias',
+  '/seguidos',
   '/revision',
   '/revision?tipo=perfil',
   '/revision?tipo=solucion',
