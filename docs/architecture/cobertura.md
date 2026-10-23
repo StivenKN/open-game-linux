@@ -51,7 +51,7 @@ Gaps by requirement:
 
 | Feature | Route | Server program | Tests |
 |---|---|---|---|
-| Signed-in users request a game the catalog lacks, or join an open request; reviewers create its game from it or reject it with a reason; requesters see each request's state | `/pedidos`, linked from the catalog's empty search ("¿No está? Pídelo"); `/catalogo/nuevo?pedido=` | `gameRequestsFn` → `server/queries/game-requests.ts`; `requestGameFn`, `withdrawRequestFn`, `rejectRequestFn` → `server/commands/game-requests.ts`; `createGame` fulfils | `tests/game-requests.test.ts` (one open request per game, catalog matches, withdraw, reject, fulfil in the same transaction, the read model, the resolution CHECK) |
+| Signed-in users request a game the catalog lacks, or join an open request; reviewers create its game from it or reject it with a reason; requesters see each request's state | `/pedidos`, linked from every catalog search ("¿No está? Pídelo", or "¿No es ninguno de estos? Pídelo" under results); `/catalogo/nuevo?pedido=` | `gameRequestsFn` → `server/queries/game-requests.ts`; `requestGameFn`, `withdrawRequestFn`, `rejectRequestFn` → `server/commands/game-requests.ts`; `createGame` fulfils | `tests/game-requests.test.ts` (one open request per game, catalog matches, withdraw, reject, fulfil in the same transaction, a game created without its request still closes it, the read model, the resolution CHECK) |
 
 ## Wireframed screens
 

@@ -16,7 +16,7 @@ import { lenient, SearchText } from './-search.ts'
 import { returnHere } from './-return-to.ts'
 
 export const Route = createFileRoute('/pedidos')({
-  // `?titulo=` prefills the form: the catalog's "¿No está? Pídelo" passes the search that found nothing.
+  // `?titulo=` prefills the form: the catalog's request links pass the search.
   validateSearch: Schema.toStandardSchemaV1(Schema.Struct({ titulo: lenient(Schema.optionalKey(SearchText)) })),
   loader: () => gameRequestsFn(),
   head: () => ({ meta: [{ title: 'Pedidos de juegos · OpenGame Linux' }] }),

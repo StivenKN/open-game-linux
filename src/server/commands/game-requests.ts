@@ -69,7 +69,7 @@ const matchOrCreate = (title: string, appid: SteamAppId | null) =>
           WHERE status = ${open}
             AND (steam_app_id = (${appid})::integer
                  OR (${titleKey(sql, sql`title`)} = ${titleKey(sql, title)} AND (steam_app_id IS NULL OR (${appid})::integer IS NULL)))
-          ORDER BY id LIMIT 1`,
+          ORDER BY (steam_app_id = (${appid})::integer) IS TRUE DESC, id LIMIT 1`,
     )
     if (existing === undefined)
       return { _tag: 'pedido', request: yield* oneRow(RequestRow, sql`INSERT INTO game_request ${sql.insert({ title, steam_app_id: appid })} RETURNING id, title`) } as const

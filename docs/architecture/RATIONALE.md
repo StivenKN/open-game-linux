@@ -392,7 +392,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 **Shape.**
 
 - Migration `8_catalog` creates `pg_trgm` and a GIN trigram index on `game.title`. `catalog` keeps the substring match and adds `q <% title`, then orders by `word_similarity(q, title)`. The threshold is the extension's default, 0.6: on the seeded titles every typo the tests try scores 0.62 or more, and the closest miss («theft» against «The Witcher 3: Wild Hunt») scores 0.5. `pg_trgm` is a trusted extension, so the database owner creates it without superuser; that was checked with a non-superuser owner.
-- `game_request` holds one row per requested game and `game_request_user` one row per requester. A request is `abierto` until a reviewer fulfils it by creating its game (`cumplido`, linked to the game) or rejects it with a reason (`rechazado`). The CHECK `game_request_resolution` shapes each state, like the review block. `/pedidos` lists the open requests by requester count and each user's own requests in every state; the catalog's empty search links to it with the search as the title.
+- `game_request` holds one row per requested game and `game_request_user` one row per requester. A request is `abierto` until a reviewer fulfils it by creating its game (`cumplido`, linked to the game) or rejects it with a reason (`rechazado`). The CHECK `game_request_resolution` shapes each state, like the review block. `/pedidos` lists the open requests by requester count and each user's own requests in every state; every catalog search links to it with the search as the title.
 - `server/commands/game-requests.ts` is the single writer. A new request joins the open one with the same Steam App ID, or the same title (letters and digits, case-folded) when either side has no App ID; a game already in the catalog, matched the same way against its Steam edition, is pointed to instead. Every writer locks `game_request` first, so two first requests for one game cannot both create it. A request that joins one without an App ID gives it its own. The last requester to withdraw deletes the request. `createGame` fulfils, in its own transaction, the request it started from and every other open request that asks for the new game, so a request is never `cumplido` without its game and never stays open once its game exists.
 - Fuzzy search can stand a near miss in for a missing game («The Witcher 2» finds The Witcher 3), so the request link shows under any search, not only an empty one.
 - `server/external/steam.ts` calls the store's `appdetails` endpoint, with a 5-second timeout, for reviewers only, and fills the title, the plain-text short description and the Steam edition. Nothing is stored until the reviewer submits the form.
@@ -412,7 +412,8 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 **Open questions and risks.**
 
 1. A typo in a requested title without an App ID opens a second request. Listing similar open requests next to the form would catch most of them.
-2. The store API is commonly reported to allow about 200 calls per 5 minutes per address; Valve documents no limit. One reviewer pressing the button stays far below it.
+2. A game created with no Steam App ID closes every open request with its title, including same-title requests with different App IDs (two DOOMs). Giving the Steam edition its App ID avoids it.
+3. The store API is commonly reported to allow about 200 calls per 5 minutes per address; Valve documents no limit. One reviewer pressing the button stays far below it.
 
 ## Open questions and risks
 
