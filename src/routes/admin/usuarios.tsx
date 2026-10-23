@@ -1,5 +1,5 @@
-import { createFileRoute, notFound, redirect, useRouter } from '@tanstack/react-router'
-import { useState } from 'react'
+import { createFileRoute, notFound, redirect, useNavigate, useRouter } from '@tanstack/react-router'
+import { type FormEvent, useState } from 'react'
 import { AccessChange } from '../../domain/accounts.ts'
 import { Role } from '../../domain/review.ts'
 import { accountsFn, changeAccessFn } from '../../fns/accounts.ts'
@@ -31,6 +31,12 @@ type Account = Awaited<ReturnType<typeof accountsFn>>['accounts'][number]
 function UsersPage() {
   const { accounts, more } = Route.useLoaderData()
   const { q } = Route.useLoaderDeps()
+  const navigate = useNavigate({ from: '/admin/usuarios' })
+  const onSearch = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const text = new FormData(e.currentTarget).get('q')
+    void navigate({ search: typeof text === 'string' && text.trim() !== '' ? { q: text.trim() } : {} })
+  }
   return (
     <main className="wrapper stack">
       <h1>Usuarios</h1>
@@ -38,7 +44,7 @@ function UsersPage() {
         Un revisor aprueba aportes; un administrador además gestiona los roles. Una cuenta desactivada navega como invitada: no puede
         reportar, guardar diagnósticos ni revisar. Cada cambio se aplica en la siguiente página que abra esa cuenta.
       </p>
-      <form role="search" className="row" method="get" action="/admin/usuarios">
+      <form role="search" className="row" method="get" action="/admin/usuarios" onSubmit={onSearch}>
         <label htmlFor="q" className="sr-only">
           Buscar por alias o correo
         </label>

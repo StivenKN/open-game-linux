@@ -140,7 +140,7 @@ The only lists the compiler cannot derive are the `Record<Union, …>` tables (`
 
 **Rules have one home each.** The index sits in the header of `server/schema/migrations.ts`. Row-local rules are DB CHECKs, keys and three triggers. Every trigger now raises `USING ERRCODE='check_violation', CONSTRAINT='og_*'`, so `withDbRules` can map it (Q5). Cross-row rules live in the two single writers. Comparability is one pure function, `mismatches`, called at save, at approval, and by the report form's loader to offer only comparable profiles. The failing-result rule is a filter on `NewReport`, so the browser shows it before any request.
 
-**Auth: the doc's `usuario` table, named `app_user` since migration 7.** Round 1 kept Laravel's `users` because renaming meant forking the starter kit. That reason is gone. better-auth's `modelName: 'app_user'` plus `fields` maps the table's column names (alias and email, then `correo`, were observed in the spike; the timestamp fields are a U0 probe), and `rol`/`activo` are `additionalFields` with `input: false`, so sign-up cannot set them. Two recorded deviations go in a `COMMENT ON`: `id` is text, and `contrasena_hash` lives in `account.password`. Roles are enforced by type. `requireUser` yields a `User`. `requireReviewer` yields a `Reviewer` brand, and `decide` cannot run without one. Promotion happens only through `pnpm set-role`. Route `beforeLoad` guards are UX only.
+**Auth: the doc's `usuario` table, named `app_user` since migration 7.** Round 1 kept Laravel's `users` because renaming meant forking the starter kit. That reason is gone. better-auth's `modelName: 'app_user'` plus `fields` maps the table's column names (alias and email, then `correo`, were observed in the spike; the timestamp fields are a U0 probe), and `rol`/`activo` are `additionalFields` with `input: false`, so sign-up cannot set them. Two recorded deviations go in a `COMMENT ON`: `id` is text, and `contrasena_hash` lives in `account.password`. Roles are enforced by type. `requireUser` yields a `User`. `requireReviewer` yields a `Reviewer` brand, and `decide` cannot run without one. Roles change only through `changeAccess`, from `pnpm set-role` or `/admin/usuarios`, which needs the `Admin` brand from `requireAdmin`. Route `beforeLoad` guards are UX only.
 
 **Migrations and seeds.** The Effect `PgMigrator` owns every table. `1_auth` is better-auth's own `compileMigrations()` output, pasted verbatim. A DB test asserts that `getMigrations(auth.options)` then has nothing left to create, so the config and the SQL cannot drift. The seed writes approvals only through `decide` (the boundaries test forbids any other write of `review_status`), so it replays the 8.10 walkthrough and proves the rules admit the demo.
 
@@ -157,7 +157,7 @@ The only lists the compiler cannot derive are the `Record<Union, …>` tables (`
 
 It is ceremony elsewhere, so it is absent there: React components and hooks, better-auth (left as is), the detector, pure functions (plain TS, no `Effect` return types). The only Effect type that crosses into the browser is `Schema`.
 
-**What it deliberately does not do.** It never stores a verdict, a projection or an FPS estimate. It stores a Steam library only when the user chooses to. It never executes or downloads a stored command. It has no HttpApi or OpenAPI, no serialization adapters, no client-side Effect runtime, no admin UI, and no profile or guide authoring UI (round 1 cuts stand).
+**What it deliberately does not do.** It never stores a verdict, a projection or an FPS estimate. It stores a Steam library only when the user chooses to. It never executes or downloads a stored command. It has no HttpApi or OpenAPI, no serialization adapters, no client-side Effect runtime, no admin UI beyond role management, and no profile or guide authoring UI (round 1 cuts stand).
 
 ## Synthesis decision
 
@@ -203,7 +203,7 @@ Once a unit lands, its code is authoritative and the sketch is history. The rule
 - **`useAction` binds `onSubmit`, not `<form action>`.** React 19 resets an action form's fields after every action, so a field error would wipe what the user typed. `submit` builds the FormData with the submitter, so `<button name="decision[_tag]" value="Aprobar">` still posts its value.
 - **Field errors are keyed by the input's name.** A nested issue lands on `failures[0][detail]`, not on `failures`. A rule from `rules` still lands on its `field`. Decoding reports every invalid field at once.
 - **No better-auth cookie cache.** With it, `pnpm set-role` and deactivation would take up to five minutes to apply. Each request reads the session from the database instead.
-- **`assignRole` lives in `server/auth.ts`.** `pnpm set-role` and the seed share it, so role writes have one home.
+- **`assignRole` lives in `server/auth.ts`.** `pnpm set-role` and the seed share it, so role writes have one home. The accounts lane replaced it with `changeAccess` (section Accounts).
 - **Demo content is marked by its author.** No table has a demo column. Every seeded profile and guide belongs to a `@demo.opengame.test` account (`demoDomain`), a reserved domain. A `hooks.before` in `server/auth.ts` rejects it on any `/sign-up/email` request that reaches `/api/auth` (`DOMINIO_RESERVADO`, shown under the email field), while the seed's in-process `auth.api.signUpEmail` carries no request and passes. Queries can derive "Datos de ejemplo" from the author's email.
 - **`src/start.ts` adds Start's CSRF middleware for server fns.** A cross-site call gets 403.
 - **Infra errors leave as a bare `Error`.** `runRead` and `runAction` log the full cause on the server, because Start serializes a thrown error's message to the browser, and a `SqlError` message carries SQL.
@@ -313,6 +313,28 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 4. The library match joins on `launcher.name = 'Steam'` (`STEAM_LAUNCHER`), a string key older than U10. Renaming that launcher row would turn every library game into an unknown game.
 5. An id the table does not list projects nothing; the card says the GPU is not recognized. The table has no ids for AMD's IP-discovery parts (Radeon RX 7000 and newer), which `amdgpu_drv.c` matches by class, so those cards get no projection yet. A guessed "newest family" was tried and removed: it projected Vulkan 1.3 to 1.4 for PowerVR and pre-GCN parts that are also missing from the sources.
 6. A pasted payload over 300 000 characters fails the server fn validator and shows a generic error, not a field message. A full library of 1000 games with 120-character names is about 200 000 characters in base64url, so a real detector stays under the limit with ASCII names. PowerShell writes a non-ASCII character as `\uXXXX`, so a full library of long non-ASCII names can exceed it.
+
+## Accounts: "Mis aportes" and role management
+
+**Problem.** A user who sent a report or a solution could not find it again. A pending one has no public page, and a rejected one disappeared with the reviewer's reason, so the author never learned what to fix. Roles changed only from a shell on the server, with `pnpm set-role`.
+
+**Shape.**
+
+- `/mis-aportes` reads `myContributions` (`server/queries/contributions.ts`): one query per kind, for reports, solutions and profiles, plus `myMachines` for the saved diagnostics. A new kind of contribution is one more query, one more key and one more section. Each item links to its game, a profile to its page while it is active, and a diagnostic to its page.
+- The review reaches its author as `AuthorReview`, a union in which only `rechazado` and `retirado` carry the reason. The query reads the reason for every state and decoding drops it from the active member, so an approval's reason never leaves the server. No page names the reviewer, so this one does not either.
+- Profiles are listed although only the seed writes them today. They have an author and a review, so a profile authoring form only adds the form.
+- A report that `protonReportPossible` admits, while it is active, links "Prepara el informe para Valve". The "Reporte enviado" panel was the only way to reach that page.
+- `/admin/usuarios` lists the 50 newest accounts, or those whose alias or email contains the search (`strpos`, so `%` and `_` match themselves). Each account is one form that posts its whole `AccessChange`: role and active flag. An administrator's own row has no form.
+- `changeAccess` (`server/commands/accounts.ts`) is the single writer of `app_user.role` and `app_user.active`, for the page, `pnpm set-role` and the seed. `src/boundaries.test.ts` fails on any other `UPDATE app_user` of those columns. It locks the target and every active administrador in id order, so two administrators who demote each other at once serialize, and the second one sees that it would leave none. An administrator never removes their own access (`acceso_propio`), and the last active administrador keeps it (`ultimo_administrador`). `pnpm set-role` passes no actor, so it can create the first administrador but cannot demote the last one.
+- **`active` has a real effect, so the page offers it.** `visitorOf` already turned a deactivated account into a guest on every request. Signing in still succeeded, though, and the user stayed a guest with no explanation. A `databaseHooks.session.create.before` hook in `server/auth.ts` now refuses the session with `CUENTA_DESACTIVADA`, and the sign-in form says the account is deactivated. The hook runs after the password check, so it tells nothing to someone without the password.
+- A change applies on the account's next request, because sessions are read from the database (U3, no cookie cache).
+
+**Alternatives considered.**
+
+- **A trigger for the last administrador.** The rule spans rows, and the app's cross-row rules live in their writer.
+- **Separate actions for the role and for deactivation.** One form per account and one writer is less code, and the guard sees the whole change at once.
+- **Revoking sessions on deactivation.** `visitorOf` already ignores them, and a reactivated account gets them back.
+- **Sharing the catalog's lenient search Schema.** It lives in `routes/index.tsx`, which the catalog lane is rewriting. `/admin/usuarios` reads `q` with a three-line function instead.
 
 ## Open questions and risks
 

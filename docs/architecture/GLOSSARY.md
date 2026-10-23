@@ -15,7 +15,7 @@ Some Spanish names are not code identifiers. They are contracts with players, wi
 | Detector payload keys and values | `capturado_en`, `distribucion`, `biblioteca_steam`, `soporte_vulkan`, `desconocido` | Copies of the detector script that players already downloaded keep sending them. The `/diagnostico/importar#d=` link baked into the scripts and the `OPENGAME_*` environment variables stay for the same reason. |
 | Stored data values | CHECK values such as `pendiente`, `funciona` and `revisor`, `_tag` values, the `nombre` key of each game in the `steam_library` jsonb | They are rows in a deployed database, not names in code. Changing them needs a data migration. |
 | Storage keys | `opengame:diagnostico-pendiente`, `opengame:perfil:<id>:r<revision>:pasos` | A browser that saved state under the old key would lose it. |
-| Auth fields | the session fields `rol` and `activo`, the `DOMINIO_RESERVADO` error code | better-auth sends them to the browser in its session and error JSON. Their database columns are `role` and `active`. |
+| Auth fields | the session fields `rol` and `activo`, the `DOMINIO_RESERVADO` and `CUENTA_DESACTIVADA` error codes | better-auth sends them to the browser in its session and error JSON. Their database columns are `role` and `active`. |
 | Docker volume | `datos` | Renaming the volume orphans a deployed database. |
 
 UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` (historical records) also keep their Spanish text.
@@ -24,13 +24,15 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 
 | Spanish | English in code |
 |---|---|
+| acceso | access (`Access`, `AccessChange` and `changeAccess`: an account's role and active flag) |
 | accion | action (`runAction` runs a write in a transaction) |
 | activo | active (the `app_user` column; the session field activo stays) |
+| administrador | admin (`requireAdmin` and the `Admin` brand; the role value administrador stays) |
 | alternar | toggle |
 | anidados | nested |
 | anotar | note |
-| antes | before (the previous role in `assignRole`) |
-| aporte | contribution (domain); commands (the `server/commands` directory of writes) |
+| antes | before (an account's access before `changeAccess` applies a change) |
+| aporte | contribution (domain; `myContributions` reads "Mis aportes"); commands (the `server/commands` directory of writes) |
 | aprobados | approved |
 | arranque_seguro | secure boot |
 | arreglo | fix (an upstream umu-protonfixes fix); array (`arrayElements`, a JSON array in `server/external/protondb.ts`) |
@@ -67,7 +69,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | correo | email |
 | creado | created |
 | crear | create; sign up (`SignUpPage`, the sign-up page) |
-| cuenta | account (`AccountFailure`); count (a tally: `doneCount`, total) |
+| cuenta | account (`AccountFailure`; `accounts`, the list on /admin/usuarios); count (a tally: `doneCount`, total) |
 | cuerpo | body |
 | decidir | decide |
 | dependencia | dependency |
@@ -86,6 +88,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | entorno | setup (a tested environment); env (a shell variable) |
 | entrada | input; sign in (`SignIn`, the sign-in form schema in `routes/-account.ts`, from entrar) |
 | entrar | sign in |
+| enviado | sent (the `sent` date of an item in `routes/mis-aportes.tsx`) |
 | enviar | submit |
 | equipo | machine |
 | errores | errors |
@@ -112,6 +115,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | frase | sentence |
 | funcionales | working (`working_reports`) |
 | gestor | package manager |
+| guardado | saved (`SavedMachines`) |
 | guardar | save |
 | guia | guide |
 | hay | found (the EXISTS alias in `review.ts`) |

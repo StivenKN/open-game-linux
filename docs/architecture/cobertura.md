@@ -39,6 +39,13 @@ Gaps by requirement:
 | An approved Steam profile on Proton becomes a umu-protonfixes file, usable locally and proposable through a prefilled GitHub link; reviewers record merged PRs | `/perfiles/$profileId` "Compartir con umu-protonfixes" | `server/queries/profile.ts` `profile` (`fixExport`, `fixes`) with `domain/upstream.ts` `exportFix`; `noteFixFn` → `server/commands/upstream.ts` | `domain/upstream.test.ts`, `tests/upstream.test.ts` |
 | A failing Steam test on Valve's Proton becomes a prefilled compatibility report for Valve | `/reportes/$reportId/proton` (owner only), linked from the "Reporte enviado" panel | `protonReportFn` → `server/queries/upstream.ts` `myProtonReport` with `protonReport` | `domain/upstream.test.ts`, `tests/upstream.test.ts` "su autora recibe el informe; nadie más sabe que existe" |
 
+## Beyond section 7.1: accounts
+
+| Feature | Route | Server program | Tests |
+|---|---|---|---|
+| A signed-in user sees their reports, solutions, profiles and saved diagnostics with each review state, and the reviewer's reason for a rejected or retired one | `/mis-aportes` (header "Mis aportes") | `myContributionsFn` → `server/queries/contributions.ts` `myContributions` | `tests/accounts.test.ts` "lista solo lo propio, con el motivo solo de lo rechazado o retirado y sin el revisor", "un invitado va a entrar" |
+| An administrador changes an account's role and active flag; the last active administrador and the administrator's own access are kept | `/admin/usuarios?q=` (header "Usuarios", administrators only) | `accountsFn` → `server/queries/accounts.ts` `accounts`; `changeAccessFn` → `server/commands/accounts.ts` `changeAccess`, shared with `pnpm set-role` | `tests/accounts.test.ts` `changeAccess` (4) and `accounts` (2). `tests/signup.test.ts` "con la contraseña correcta dice por qué y no abre sesión; con otra, no revela nada". `tests/run.test.ts` "una cuenta desactivada cuenta como visitante sin sesión" |
+
 ## Wireframed screens
 
 | Screen | Route | Built | Not built, and why |

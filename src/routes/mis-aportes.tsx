@@ -41,7 +41,7 @@ function MyContributionsPage() {
       {reports.length > 0 && (
         <Section id="reportes" title="Reportes">
           {reports.map((r) => (
-            <Item key={r.id} review={r.review}>
+            <Item key={r.id} review={r.review} sent={r.created_at}>
               <p className="row">
                 <Link to="/juegos/$gameId" params={{ gameId: r.game_id }}>
                   <strong>{r.game}</strong>
@@ -52,7 +52,6 @@ function MyContributionsPage() {
               <p className="datum">
                 {r.distribution} · {r.layer} · versión {r.game_version} · probado el {dateTime(r.tested_at)}
               </p>
-              <Sent at={r.created_at} />
               {r.valve && (
                 <p className="small">
                   <Link to="/reportes/$reportId/proton" params={{ reportId: r.id }}>
@@ -67,7 +66,7 @@ function MyContributionsPage() {
       {solutions.length > 0 && (
         <Section id="soluciones" title="Soluciones">
           {solutions.map((s) => (
-            <Item key={s.id} review={s.review}>
+            <Item key={s.id} review={s.review} sent={s.created_at}>
               <p>
                 <strong>{s.title}</strong>
               </p>
@@ -77,7 +76,6 @@ function MyContributionsPage() {
                   {s.game}
                 </Link>
               </p>
-              <Sent at={s.created_at} />
             </Item>
           ))}
         </Section>
@@ -85,7 +83,7 @@ function MyContributionsPage() {
       {profiles.length > 0 && (
         <Section id="perfiles" title="Perfiles de configuración">
           {profiles.map((p) => (
-            <Item key={p.id} review={p.review}>
+            <Item key={p.id} review={p.review} sent={p.created_at}>
               <p className="row">
                 {/* A rejected or retired profile has no public page; its game still does. */}
                 {'reason' in p.review ? (
@@ -103,7 +101,6 @@ function MyContributionsPage() {
                   {p.game}
                 </Link>
               </p>
-              <Sent at={p.created_at} />
             </Item>
           ))}
         </Section>
@@ -132,11 +129,12 @@ function Section({ id, title, children }: { id: string; title: string; children:
   )
 }
 
-function Item({ review, children }: { review: Review; children: ReactNode }) {
+function Item({ review, sent, children }: { review: Review; sent: Date; children: ReactNode }) {
   return (
     <li className="card stack">
-      <p>
+      <p className="row">
         <Badge label={reviewStatus[review.status]} />
+        <span className="small muted">Enviado el {date(sent)}</span>
       </p>
       {children}
       {'reason' in review && (
@@ -146,8 +144,4 @@ function Item({ review, children }: { review: Review; children: ReactNode }) {
       )}
     </li>
   )
-}
-
-function Sent({ at }: { at: Date }) {
-  return <p className="small muted">Enviado el {date(at)}</p>
 }

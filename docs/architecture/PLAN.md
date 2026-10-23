@@ -38,3 +38,5 @@
 **Cuts.** The round 1 cuts table stands (one-click apply, FPS estimates, CPU/GPU dropdowns, the 5-step wizard, profile and guide authoring, live counters and votes, admin UI, trigram search). This stack adds one cut: **no HttpApi/OpenAPI**, because there is no second client.
 
 U10 (2026-10-15) reversed two round 1 cuts in a narrow form, because interviewed players want to know before they migrate (RATIONALE, U10). "Windows comparators" became the Windows detector plus a Linux projection labelled as one. There is still no Windows 11 versus Linux RAM comparator. "PCI device database" became a generated table from PCI id to GPU family, with no device UI.
+
+The accounts lane (2026-10-23) reversed the "admin UI" cut in a narrow form, because roles could change only from a shell on the server (RATIONALE, Accounts). `/admin/usuarios` changes an account's role and active flag through the same writer as `pnpm set-role`. There is still no account deletion, no content editing and no moderation UI beyond `/revision`.

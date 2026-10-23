@@ -410,6 +410,8 @@ type DemoReport = {
   failures: ReadonlyArray<readonly [keyof typeof failureTypes, string]>
   observations: string
   approve: boolean
+  /** The reviewer's reason, for a report that is not approved: "Mis aportes" shows it to its author. */
+  rejection?: string
 }
 
 const reports: ReadonlyArray<DemoReport> = [
@@ -467,6 +469,12 @@ const reports: ReadonlyArray<DemoReport> = [
     machine: 'anaTower', edition: ['witcher3', 'steam'], layer: 'proton9', withProfile: true, game_version: '4.04',
     tested_at: '2026-10-06T19:00:00Z', outcome: 'funciona', measurement: null,
     failures: [], observations: 'Con el perfil el juego abre directo, sin el lanzador de CD Projekt, y se mantiene a 60 FPS en Novigrado.', approve: true,
+  },
+  {
+    machine: 'brunoPc', edition: ['witcher3', 'steam'], layer: 'proton9', withProfile: false, game_version: '4.04',
+    tested_at: '2026-10-08T21:00:00Z', outcome: 'funciona', measurement: null,
+    failures: [], observations: 'Abre y llega al menú principal.', approve: false,
+    rejection: 'Llegar al menú no prueba que el juego funcione: cuenta una partida de al menos unos minutos y envíalo de nuevo.',
   },
 ]
 
@@ -695,6 +703,12 @@ const program = Effect.gen(function* () {
           tested.add(yield* lookup(profileOf, profileKey({ edition: r.edition, distribution: machines[r.machine].distribution, layer: r.layer })))
       for (const id of tested) yield* approve({ _tag: 'perfil', id }, 'Perfil con un reporte funcional aprobado,')
       yield* approve({ _tag: 'solucion', id: solution_id }, 'Solución')
+      for (const [i, r] of reports.entries()) {
+        if (r.rejection === undefined) continue
+        const ref = yield* Schema.decodeUnknownEffect(ContributionRef)({ _tag: 'reporte', id: yield* lookup(reportOf, i) })
+        const rejection = yield* Schema.decodeUnknownEffect(Decision)({ _tag: 'Rechazar', reason: r.rejection })
+        if ((yield* asUser('demo_revisor', decide(ref, rejection))).changed) count('rechazo de reporte')
+      }
     }),
   )
 

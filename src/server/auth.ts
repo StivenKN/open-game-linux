@@ -17,10 +17,25 @@ if (url === undefined || url === '') throw new Error('DATABASE_URL is not set')
 // Queries label content "Datos de ejemplo" when its author's email is in this domain (queries/labels.ts).
 export const demoDomain = 'demo.opengame.test'
 
+// better-auth types its user without additionalFields; `activo` is there at runtime.
+const isDeactivated = Schema.is(Schema.Struct({ activo: Schema.Literal(false) }))
+
 export const auth = betterAuth({
   ...authSchema,
   database: new Pool({ connectionString: url, max: 5 }),
   emailAndPassword: { enabled: true },
+  databaseHooks: {
+    session: {
+      create: {
+        // After the password check: a deactivated account learns why sign-in failed instead of landing as a
+        // guest, and nobody learns it without the password. visitorOf already ignores its older sessions.
+        before: async (session, ctx) => {
+          if (isDeactivated(await ctx?.context.internalAdapter.findUserById(session.userId)))
+            throw new APIError('FORBIDDEN', { code: 'CUENTA_DESACTIVADA', message: 'Esta cuenta está desactivada' })
+        },
+      },
+    },
+  },
   hooks: {
     // Only a call through /api/auth carries `request`. An in-process auth.api call, like the seed's,
     // does not, so only server code can create a demo account.
