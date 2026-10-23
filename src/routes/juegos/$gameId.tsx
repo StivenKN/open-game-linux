@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import type { CompatibilitySummary } from '../../domain/compatibility.ts'
 import { hasNews } from '../../domain/follow.ts'
 import { GameId } from '../../domain/ids.ts'
 import { gamePageFn } from '../../fns/catalog.ts'
-import { originFn } from '../../fns/diagnostic.ts'
 import { CopyBox } from '../../ui/compatibility/CopyBox.tsx'
+import { Embed } from '../../ui/compatibility/Embed.tsx'
 import { GameStatus } from '../../ui/compatibility/GameStatus.tsx'
 import { EnvironmentMatrix } from '../../ui/compatibility/EnvironmentMatrix.tsx'
 import { LayerTimeline } from '../../ui/compatibility/LayerTimeline.tsx'
@@ -15,26 +16,38 @@ import { Artwork } from '../../ui/Cover.tsx'
 import { ProtonDbSection } from '../../ui/protondb/ProtonDb.tsx'
 import { AntiCheatSection } from '../../ui/anticheat/AntiCheat.tsx'
 import { DemoStamp } from '../../ui/DemoStamp.tsx'
-import { graphicsApi, x86Level, failureType, requirementsVerdict } from '../../ui/vocabulary.ts'
+import { compatibilityStatus, graphicsApi, x86Level, failureType, requirementsVerdict } from '../../ui/vocabulary.ts'
 import { FollowButton, FollowNews } from '../-follow.tsx'
 import { routeIdParser } from '../-ids.ts'
+import { previewMeta } from '../-meta.ts'
 
 const gameId = routeIdParser(GameId)
 
 export const Route = createFileRoute('/juegos/$gameId')({
   params: { parse: (p) => ({ gameId: gameId(p.gameId) }), stringify: (p) => ({ gameId: String(p.gameId) }) },
-  loader: async ({ params }) => {
-    const [page, siteOrigin] = await Promise.all([gamePageFn({ data: params }), originFn()])
-    return { ...page, siteOrigin }
-  },
-  head: ({ loaderData }) => ({ meta: [{ title: loaderData ? `${loaderData.game.title} · OpenGame Linux` : 'OpenGame Linux' }] }),
+  loader: ({ params }) => gamePageFn({ data: params }),
+  head: ({ loaderData, match }) => ({
+    meta: loaderData
+      ? [{ title: `${loaderData.game.title} · OpenGame Linux` }, ...previewMeta(match.context.origin, preview(loaderData.game, loaderData.summary))]
+      : [{ title: 'OpenGame Linux' }],
+  }),
   component: GamePage,
 })
 
+/** The link preview of a game: its state as the title says it, and the approved reports behind it. */
+const preview = (game: { id: GameId; title: string }, summary: CompatibilitySummary) => {
+  const state = `${game.title} en Linux: ${compatibilityStatus[summary.status].text}`
+  const reports =
+    summary.test_count === 0
+      ? 'Todavía no hay reportes aprobados. ¿Lo jugaste en Linux? Cuenta cómo te fue.'
+      : `Según ${count(summary.test_count, 'reporte aprobado', 'reportes aprobados')} de jugadores en Linux.${summary.no_recent_confirmation ? ' Sin confirmación en el último año.' : ''}`
+  return { title: state, description: reports, image: `/juegos/${game.id}/og.png`, imageAlt: `${state}. ${reports}` }
+}
+
 function GamePage() {
-  const { game, editions, steam_app_id: steamAppId, summary, steam_deck, timeline, as_of, follow, protondb, anticheat, demo, pending, profiles, causes, diagnostic, personal, siteOrigin } =
+  const { game, editions, steam_app_id: steamAppId, summary, steam_deck, timeline, as_of, follow, protondb, anticheat, demo, pending, profiles, causes, diagnostic, personal } =
     Route.useLoaderData()
-  const { visitor } = Route.useRouteContext()
+  const { visitor, origin } = Route.useRouteContext()
   const reportLink = (
     <Link to="/juegos/$gameId/reportar" params={{ gameId: game.id }} className="button">
       Reportar un resultado
@@ -208,6 +221,15 @@ function GamePage() {
         </section>
       </div>
 
+      <section className="section" aria-labelledby="share">
+        <h2 id="share">Compartir</h2>
+        <p className="muted">
+          Pon el estado de este juego en un README, un foro o tu sitio. La insignia sigue al estado calculado: cambia sola
+          cuando un revisor aprueba nuevos reportes.
+        </p>
+        <Embed origin={origin} game={game} status={summary.status} />
+      </section>
+
       <section className="report" aria-labelledby="report">
         <div className="report-text">
           <h2 id="report">¿Lo jugaste en Linux?</h2>
@@ -218,7 +240,7 @@ function GamePage() {
                 ¿No sabes tu versión de Proton? Ejecuta esto en el equipo donde jugaste: lee la herramienta de compatibilidad que
                 Steam usa para este juego, sus opciones de lanzamiento y su build, y abre el formulario lleno para que lo revises.
               </p>
-              <CopyBox label="Reportar con el detector, en Linux" text={`curl -fsSL ${siteOrigin}/opengame-detect.sh | bash -s -- --game ${steamAppId}`} />
+              <CopyBox label="Reportar con el detector, en Linux" text={`curl -fsSL ${origin}/opengame-detect.sh | bash -s -- --game ${steamAppId}`} />
               <p className="small muted">En Windows no hay modo de reporte: un reporte necesita un diagnóstico hecho en Linux.</p>
             </div>
           )}

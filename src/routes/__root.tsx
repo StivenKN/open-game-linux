@@ -6,14 +6,33 @@ import unbounded from '@fontsource-variable/unbounded/files/unbounded-latin-wght
 import icon from '../../assets/icon.svg?url'
 import { sessionFn } from '../fns/session.ts'
 import appCss from '../styles.css?url'
+import { Brand } from '../ui/Brand.tsx'
 import { count } from '../ui/format.ts'
 import { authClient } from './-auth-client.ts'
+import { previewMeta } from './-meta.ts'
 
 export const Route = createRootRoute({
   // Runs on every navigation, so the header's count of followed games with news stays current.
   beforeLoad: () => sessionFn(),
-  head: () => ({
-    meta: [{ charSet: 'utf-8' }, { name: 'viewport', content: 'width=device-width, initial-scale=1' }, { title: 'OpenGame Linux' }],
+  head: ({ match, matches }) => ({
+    meta: [
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: 'OpenGame Linux' },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:site_name', content: 'OpenGame Linux' },
+      // An index route matches with a trailing slash, which the router redirects away from.
+      { property: 'og:url', content: `${match.context.origin}${(matches.at(-1)?.pathname ?? '/').replace(/(.)\/$/, '$1')}` },
+      { property: 'og:image:width', content: '1200' },
+      { property: 'og:image:height', content: '630' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      ...previewMeta(match.context.origin, {
+        title: 'OpenGame Linux',
+        description: 'Mira si un juego de Windows funciona en Linux, según los reportes de jugadores que aprobó un revisor.',
+        image: '/og.png',
+        imageAlt: 'OpenGame Linux: lleva tu biblioteca de Windows a Linux.',
+      }),
+    ],
     links: [
       { rel: 'stylesheet', href: appCss },
       // The stylesheet only discovers its fonts after it parses; preloading the Latin files lets SSR text
@@ -119,17 +138,6 @@ function SiteHeader() {
         )}
       </div>
     </header>
-  )
-}
-
-function Brand() {
-  return (
-    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
-      <rect x="2" y="6" width="16" height="22" rx="4" fill="#5b4568" transform="rotate(-10 10 17)" />
-      <rect x="9" y="4" width="16" height="22" rx="4" fill="#8a6d99" />
-      <rect x="16" y="6" width="16" height="22" rx="4" fill="#fbf1e7" transform="rotate(10 24 17)" />
-      <rect x="16" y="22" width="16" height="6" fill="#43d98a" transform="rotate(10 24 17)" />
-    </svg>
   )
 }
 
