@@ -3,7 +3,7 @@ import type { GraphicsApi, Outcome, ProtonVariant } from '../domain/literals.ts'
 import type { RequirementCheck, DataOrigin, OperatingSystem, VulkanSupport, RequirementsVerdict } from '../domain/evaluation.ts'
 import type { GpuWarning, LinuxDriver, GpuFamily, D3dPath } from '../domain/gpu.ts'
 import type { InvalidPayload } from '../domain/errors.ts'
-import type { Blocker, ReviewStatus } from '../domain/review.ts'
+import type { Blocker, ReviewStatus, Role } from '../domain/review.ts'
 import type { GuideType } from '../domain/guides.ts'
 import type { SecureBoot, X86Level, Tpm } from '../domain/platform.ts'
 import type { RenderPath, AntiCheatRiskPath, Requirement, GamePath } from '../domain/graphics-path.ts'
@@ -82,6 +82,8 @@ export const reviewStatus = {
   rechazado: { text: 'Rechazado', tone: 'rojo', icon: '✕' },
   retirado: { text: 'Retirado', tone: 'gris', icon: '–' },
 } as const satisfies Record<ReviewStatus, Label>
+
+export const role = { usuario: 'Usuario', revisor: 'Revisor', administrador: 'Administrador' } as const satisfies Record<Role, string>
 
 export const blocker = {
   perfil_sin_reporte_funcional_aprobado: 'Falta un reporte aprobado que use este perfil con resultado funcional.',

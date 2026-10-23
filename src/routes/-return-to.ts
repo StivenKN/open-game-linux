@@ -11,6 +11,8 @@ export type Destination =
   | '/revision'
   | `/revision?tipo=${ContributionType}`
   | '/catalogo/nuevo'
+  | '/mis-aportes'
+  | '/admin/usuarios'
 
 // Resolving against a fixed origin turns `//host/…`, `/\host/…` and absolute URLs into another origin.
 const baseOrigin = 'http://opengame.invalid'
@@ -33,7 +35,7 @@ const destination = (text: unknown): Destination | undefined => {
   if (url === null || url.origin !== baseOrigin) return undefined
   const path = url.pathname
   const query = (key: string) => url.searchParams.get(key)
-  if (path === '/diagnostico/importar' || path === '/catalogo/nuevo') return path
+  if (path === '/diagnostico/importar' || path === '/catalogo/nuevo' || path === '/mis-aportes' || path === '/admin/usuarios') return path
   if (path === '/revision') {
     const contributionType = query('tipo')
     return isContributionType(contributionType) ? `/revision?tipo=${contributionType}` : path

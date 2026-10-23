@@ -11,7 +11,8 @@ import { submitReport, submitSolution } from '../src/server/commands/contributio
 import { submitDiagnostic } from '../src/server/commands/diagnostic.ts'
 import { SCHEMA_VERSION } from '../src/server/diagnostics/payload.ts'
 import { decide } from '../src/server/commands/review.ts'
-import { assignRole, auth, demoDomain, Visitor } from '../src/server/auth.ts'
+import { auth, demoDomain, Visitor } from '../src/server/auth.ts'
+import { changeAccess } from '../src/server/commands/accounts.ts'
 import { rows, oneRow } from '../src/server/rows.ts'
 import { PgLive } from '../src/server/runtime.ts'
 
@@ -521,7 +522,7 @@ const program = Effect.gen(function* () {
     if (existing === undefined) count('app_user')
     const id =
       existing?.id ?? (yield* Effect.promise(() => auth.api.signUpEmail({ body: { name: alias, email, password: demoPassword } }))).user.id
-    if ((yield* assignRole(email, role)).changed) count('app_user.role')
+    if ((yield* changeAccess(Schema.decodeSync(UserId)(id), { role }, null)).changed) count('app_user.role')
     user.set(alias, id)
   }
 

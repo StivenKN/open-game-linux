@@ -4,13 +4,11 @@ import { betterAuth } from 'better-auth'
 import { APIError, createAuthMiddleware } from 'better-auth/api'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { Context, Effect, Option, Schema } from 'effect'
-import { SqlClient } from 'effect/sql'
 import { Pool } from 'pg'
-import { Unauthenticated, NotFound, Forbidden } from '../domain/errors.ts'
-import { canReview, type Role } from '../domain/review.ts'
+import { Unauthenticated, Forbidden } from '../domain/errors.ts'
+import { canReview } from '../domain/review.ts'
 import { User } from '../domain/tables.ts'
 import { authSchema } from './schema/auth.ts'
-import { rows } from './rows.ts'
 
 const url = process.env.DATABASE_URL
 // Without this, pg silently falls back to PGHOST/localhost:5432 and auth talks to some other database.
@@ -69,18 +67,10 @@ export const requireReviewer: Effect.Effect<Reviewer, Unauthenticated | Forbidde
   canReview[u.role] ? Effect.succeed({ ...u, [reviewer]: true as const }) : Effect.fail(new Forbidden()),
 )
 
-const RoleChange = Schema.Struct({ alias: User.fields.alias, before: User.fields.role })
+const admin: unique symbol = Symbol('Administrador')
 
-export const assignRole = (email: string, role: Role) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient
-    const [row] = yield* rows(
-      RoleChange,
-      sql`
-      WITH previous AS (SELECT id, alias, role AS before FROM app_user WHERE email = lower(btrim(${email})) FOR UPDATE),
-           change AS (UPDATE app_user u SET role = ${role} FROM previous WHERE u.id = previous.id AND previous.before <> ${role} RETURNING u.id)
-      SELECT alias, before FROM previous`,
-    )
-    if (row === undefined) return yield* Effect.fail(new NotFound())
-    return { alias: row.alias, role, changed: row.before !== role }
-  })
+export type Admin = SignedInUser & { readonly [admin]: true }
+
+export const requireAdmin: Effect.Effect<Admin, Unauthenticated | Forbidden, Visitor> = Effect.flatMap(requireUser, (u) =>
+  u.role === 'administrador' ? Effect.succeed({ ...u, [admin]: true as const }) : Effect.fail(new Forbidden()),
+)
