@@ -1494,6 +1494,14 @@ label.checkbox {
 .report p {
   margin: 0;
 }
+.report-text {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+}
+.report-detector {
+  margin-top: 20px;
+}
 .report .button {
   margin-left: auto;
   min-height: 50px;

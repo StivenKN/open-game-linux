@@ -375,7 +375,7 @@ function ReportForm({ options, onSubmitted }: { options: Options; onSubmitted: (
 }
 
 const layerNote = (steam: SteamGame, layer: LayerPrefill | null) => {
-  const tool = steam.tool_version === null ? `«${steam.tool}»` : `«${steam.tool}» (${steam.tool_version})`
+  const tool = steam.tool_version === null || steam.tool_version === steam.tool ? `«${steam.tool}»` : `«${steam.tool}» (${steam.tool_version})`
   if (steam.tool === null) return 'Steam lo ejecuta sin herramienta de compatibilidad, como juego nativo. Elige la versión nativa de la lista o escríbela.'
   if (layer === null) return `Steam usa ${tool}, que no sabemos traducir a una capa. Elígela tú.`
   if (layer._tag === 'existente') return `Steam usa ${tool}; la elegimos en la lista.`

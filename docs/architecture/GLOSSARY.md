@@ -11,8 +11,8 @@ Some Spanish names are not code identifiers. They are contracts with players, wi
 | Contract | Examples | Why it stays |
 |---|---|---|
 | URL paths | `/juegos/12`, `/perfiles/3`, `/diagnostico/importar`, `/reportes/10/solucion` | TanStack Router builds URLs from route file names, so the route files keep their Spanish names. Bookmarks, shared links and the detector link point at them. Route param names such as `$gameId` never reach the URL, so they are English. |
-| Search keys and values | `q`, `estado`, `lanzador`, `sin_anti_cheat`, `volver`, `tipo`, `pegar`, `perfil`, `tipoFallo`, `desde`, `titulo`, `pedido` | They are part of URLs that players share and bookmark. |
-| Detector payload keys and values | `capturado_en`, `distribucion`, `biblioteca_steam`, `soporte_vulkan`, `desconocido` | Copies of the detector script that players already downloaded keep sending them. The `/diagnostico/importar#d=` link baked into the scripts and the `OPENGAME_*` environment variables stay for the same reason. |
+| Search keys and values | `q`, `estado`, `lanzador`, `sin_anti_cheat`, `steam_deck`, `volver`, `tipo`, `pegar`, `perfil`, `tipoFallo`, `desde`, `titulo`, `pedido`, and report mode's `diagnostico`, `edicion` and `steam` | They are part of URLs that players share and bookmark. |
+| Detector payload keys and values | `capturado_en`, `distribucion`, `biblioteca_steam`, `soporte_vulkan`, `desconocido`, `dispositivo`, and report mode's `juego` block (`herramienta`, `version_herramienta`, `opciones_lanzamiento`, `build`, `nativo`, `cuenta_supuesta`) | Copies of the detector script that players already downloaded keep sending them. The `/diagnostico/importar#d=` link baked into the scripts and the `OPENGAME_*` environment variables stay for the same reason. |
 | Stored data values | CHECK values such as `pendiente`, `funciona` and `revisor`, `_tag` values, the `nombre` key of each game in the `steam_library` jsonb | They are rows in a deployed database, not names in code. Changing them needs a data migration. |
 | Storage keys | `opengame:diagnostico-pendiente`, `opengame:perfil:<id>:r<revision>:pasos` | A browser that saved state under the old key would lose it. |
 | Auth fields | the session fields `rol` and `activo`, the `DOMINIO_RESERVADO` and `CUENTA_DESACTIVADA` error codes | better-auth sends them to the browser in its session and error JSON. Their database columns are `role` and `active`. |
@@ -83,6 +83,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | detalle | detail |
 | diagnostico | diagnostic |
 | discrepancia | mismatch |
+| dispositivo | device (`diagnostic.device`, the Steam Deck model the detector reads from DMI) |
 | distribucion | distribution |
 | dominio | domain (the `_domain` CHECKs; DOMINIO_RESERVADO stays) |
 | edicion | edition |
@@ -125,6 +126,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | guardar | save |
 | guia | guide |
 | hay | found (the EXISTS alias in `review.ts`) |
+| herramienta | tool (the Steam compatibility tool, `SteamGame.tool`) |
 | hecho | done |
 | historial | history (`timeline` and `LayerHistory`, the ficha's "Historial por versión") |
 | huella | fingerprint |
@@ -135,7 +137,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | inmutable | immutable |
 | insignia | badge |
 | instruccion | instruction |
-| juego | game |
+| juego | game; Steam game (`steam_game`, the report-mode block of the detector payload) |
 | lanzador | launcher |
 | largo | max length; `tooLong` and oversized (test inputs past a limit); length (the `_length` CHECKs) |
 | leer | read; parse (`parseUrl`) |
@@ -223,6 +225,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | solucion | solution |
 | soporte | support |
 | sumarse | join (`RequestGame` with `_tag` existente) |
+| supuesta | guessed (`guessed_account`: several Steam accounts and none marked as the last one used) |
 | texto | text; schema (the argument of `OptionalTextOf`) |
 | tiene | has |
 | tienda | store (`SteamStoreRef`, a Steam store link or App ID) |

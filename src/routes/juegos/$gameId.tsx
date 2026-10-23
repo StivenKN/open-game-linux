@@ -205,18 +205,18 @@ function GamePage() {
       </div>
 
       <section className="report" aria-labelledby="report">
-        <div className="stack">
+        <div className="report-text">
           <h2 id="report">¿Lo jugaste en Linux?</h2>
           <p className="muted">Cuenta en qué distribución y con qué configuración. Un revisor lo aprueba y pasa a contar.</p>
           {steamAppId !== null && (
-            <>
+            <div className="stack report-detector">
               <p className="small">
                 ¿No sabes tu versión de Proton? Ejecuta esto en el equipo donde jugaste: lee la herramienta de compatibilidad que
                 Steam usa para este juego, sus opciones de lanzamiento y su build, y abre el formulario lleno para que lo revises.
               </p>
               <CopyBox label="Reportar con el detector, en Linux" text={`curl -fsSL ${siteOrigin}/opengame-detect.sh | bash -s -- --game ${steamAppId}`} />
               <p className="small muted">En Windows no hay modo de reporte: un reporte necesita un diagnóstico hecho en Linux.</p>
-            </>
+            </div>
           )}
         </div>
         {reportLink}
