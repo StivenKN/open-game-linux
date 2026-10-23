@@ -2,7 +2,7 @@ import { Effect, Schema, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { profileContentColumns, TargetProfile } from '../../domain/contributions.ts'
 import { NotFound } from '../../domain/errors.ts'
-import { DiagnosticId, DistributionId, EditionId, type GameId, type GuideId, type ProfileId, type ReportId } from '../../domain/ids.ts'
+import { DiagnosticId, DistributionId, EditionId, type GameId, type GameRequestId, type GuideId, type ProfileId, type ReportId } from '../../domain/ids.ts'
 import { activeStatuses } from '../../domain/review.ts'
 import {
   AdoptionGuide,
@@ -11,6 +11,7 @@ import {
   Distribution,
   Machine,
   Game,
+  GameRequest,
   Launcher,
   Profile,
   ProfileDependency,
@@ -113,12 +114,17 @@ export const solutionOptions = (reportId: ReportId) =>
   })
 
 const LauncherRow = Launcher.mapFields(Struct.pick(['id', 'name']))
+const RequestRow = GameRequest.mapFields(Struct.pick(['id', 'title', 'steam_app_id']))
 
-export const gameOptions = Effect.gen(function* () {
-  yield* requireReviewer
-  const sql = yield* SqlClient.SqlClient
-  return { launchers: yield* rows(LauncherRow, sql`SELECT id, name FROM launcher ORDER BY name`) }
-})
+/** The new-game form's launchers, and the open request it starts from (`?pedido=`); null once that request closed. */
+export const gameOptions = (requestId: GameRequestId | null) =>
+  Effect.gen(function* () {
+    yield* requireReviewer
+    const sql = yield* SqlClient.SqlClient
+    const launchers = yield* rows(LauncherRow, sql`SELECT id, name FROM launcher ORDER BY name`)
+    const [request] = requestId === null ? [] : yield* rows(RequestRow, sql`SELECT id, title, steam_app_id FROM game_request WHERE id = ${requestId} AND status = 'abierto'`)
+    return { launchers, request: request ?? null }
+  })
 
 const DistributionOption = Schema.Struct({ id: Distribution.fields.id, name: Name })
 const DependencyOption = Dependency.mapFields(Struct.pick(['id', 'name', 'package_manager']))

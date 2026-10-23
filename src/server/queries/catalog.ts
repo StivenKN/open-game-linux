@@ -39,13 +39,15 @@ export const catalog = (filter: CatalogFilter) =>
         LEFT JOIN game_edition e ON e.game_id = j.id
         LEFT JOIN launcher l ON l.id = e.launcher_id
         WHERE ${sql.and([
-          ...(q === '' ? [] : [sql`j.title ILIKE ${literalLike(q)}`]),
+          // A substring, or a near miss: `<%` holds when word_similarity(q, title) reaches pg_trgm's
+          // word_similarity_threshold, whose default 0.6 lets «cyberpnk» find Cyberpunk 2077 (tests/queries.test.ts).
+          ...(q === '' ? [] : [sql`(j.title ILIKE ${literalLike(q)} OR ${q} <% j.title)`]),
           ...(filter.lanzador === undefined
             ? []
             : [sql`EXISTS (SELECT 1 FROM game_edition x WHERE x.game_id = j.id AND x.launcher_id = ${filter.lanzador})`]),
         ])}
         GROUP BY j.id
-        ORDER BY j.title`,
+        ORDER BY ${q === '' ? sql`j.title` : sql`word_similarity(${q}, j.title) DESC, j.title`}`,
     })(undefined)
 
     const now = new Date(yield* Clock.currentTimeMillis)

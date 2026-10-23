@@ -1,6 +1,6 @@
 import { Effect, Option, Record, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { NewGuide, NewProfile, SaveDiagnostic, NewSolution, NewReport } from '../src/domain/contributions.ts'
+import { NewGuide, NewProfile, SaveDiagnostic, NewSolution, NewReport, RequestGame } from '../src/domain/contributions.ts'
 import { STEAM_LAUNCHER } from '../src/domain/library.ts'
 import type { GuideType } from '../src/domain/guides.ts'
 import { UserId } from '../src/domain/ids.ts'
@@ -9,6 +9,7 @@ import type { X86Level } from '../src/domain/platform.ts'
 import { ContributionRef, Decision, type Role } from '../src/domain/review.ts'
 import { createGuide, proposeProfile, submitReport, submitSolution } from '../src/server/commands/contributions.ts'
 import { submitDiagnostic } from '../src/server/commands/diagnostic.ts'
+import { requestGame } from '../src/server/commands/game-requests.ts'
 import { SCHEMA_VERSION } from '../src/server/diagnostics/payload.ts'
 import { decide } from '../src/server/commands/review.ts'
 import { auth, demoDomain, Visitor } from '../src/server/auth.ts'
@@ -489,6 +490,12 @@ const demoSolution = {
   ].join('\n'),
 } as const satisfies { report: number; failureType: keyof typeof failureTypes; title: string; instructions: string }
 
+// Games the catalog lacks: one with its Steam App ID, which a reviewer can fill from the store, and one by title.
+const gameRequests = [
+  { title: 'Cyberpunk 2077', steam_app_id: '1091500', requesters: ['demo_ana', 'demo_bruno'] },
+  { title: "Baldur's Gate 3", steam_app_id: null, requesters: ['demo_bruno'] },
+] as const satisfies ReadonlyArray<{ title: string; steam_app_id: string | null; requesters: ReadonlyArray<Account> }>
+
 const demoApproval = (subject: string) =>
   Schema.decodeUnknownSync(Decision)({
     _tag: 'Aprobar',
@@ -713,6 +720,20 @@ const program = Effect.gen(function* () {
         const ref = yield* Schema.decodeUnknownEffect(ContributionRef)({ _tag: 'reporte', id: yield* lookup(reportOf, i) })
         const rejection = yield* Schema.decodeUnknownEffect(Decision)({ _tag: 'Rechazar', reason: r.rejection })
         if ((yield* asUser('demo_revisor', decide(ref, rejection))).changed) count('rechazo de reporte')
+      }
+
+      for (const g of gameRequests) {
+        const request = yield* Schema.decodeUnknownEffect(RequestGame)({ _tag: 'nuevo', title: g.title, steam_app_id: g.steam_app_id })
+        for (const alias of g.requesters) {
+          const [asked] = yield* rows(
+            IdRow,
+            sql`SELECT r.id FROM game_request r JOIN game_request_user u ON u.request_id = r.id
+                WHERE r.title = ${g.title} AND u.user_id = ${yield* lookup(user, alias)}`,
+          )
+          if (asked !== undefined) continue
+          yield* asUser(alias, requestGame(request))
+          count('game_request_user')
+        }
       }
     }),
   )

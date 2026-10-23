@@ -17,9 +17,11 @@ import {
   OptionalText,
   FailureTypeId,
   LayerVersionId,
+  GameRequestId,
+  OptionalTextOf,
 } from './ids.ts'
 import { GraphicsApi, LayerFamily, FailingOutcome, WorkingOutcome } from './literals.ts'
-import { MAX_LIBRARY_GAMES } from './library.ts'
+import { MAX_LIBRARY_GAMES, SteamStoreRef } from './library.ts'
 import { maxLengths } from './max-lengths.ts'
 import {
   AdoptionGuide,
@@ -108,6 +110,8 @@ export const NewGame = Schema.Struct({
     Schema.withDecodingDefaultKey(Effect.succeed([])),
   ),
   x86_level_min: Game.fields.x86_level_min,
+  // The open request this game answers, when a reviewer started from one; creating the game fulfils it.
+  request_id: Schema.NullOr(GameRequestId),
 })
 export type NewGame = typeof NewGame.Type
 
@@ -179,6 +183,19 @@ export type NewGuide = typeof NewGuide.Type
 
 export const GuideEdit = NewGuide.mapFields(Struct.assign({ guide_id: GuideId }))
 export type GuideEdit = typeof GuideEdit.Type
+
+/** "Pídelo": a title and, if known, the Steam store link or App ID. "Sumarme": join an open request. */
+export const RequestGame = Schema.Union([
+  Schema.TaggedStruct('nuevo', { title: Game.fields.title, steam_app_id: OptionalTextOf(SteamStoreRef) }),
+  Schema.TaggedStruct('existente', { id: GameRequestId }),
+])
+export type RequestGame = typeof RequestGame.Type
+
+export const RejectRequest = Schema.Struct({ id: GameRequestId, reason: RequiredText })
+export type RejectRequest = typeof RejectRequest.Type
+
+/** "Rellenar desde Steam" on the new-game form. */
+export const SteamLookup = Schema.Struct({ steam_app_id: SteamStoreRef })
 
 const captureFields = {
   captured_at: Schema.DateFromString,

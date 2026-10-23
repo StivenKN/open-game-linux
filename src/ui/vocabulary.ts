@@ -2,7 +2,8 @@ import type { CompatibilityStatus } from '../domain/compatibility.ts'
 import type { GraphicsApi, Outcome, ProtonVariant } from '../domain/literals.ts'
 import type { RequirementCheck, DataOrigin, OperatingSystem, VulkanSupport, RequirementsVerdict } from '../domain/evaluation.ts'
 import type { GpuWarning, LinuxDriver, GpuFamily, D3dPath } from '../domain/gpu.ts'
-import type { InvalidPayload } from '../domain/errors.ts'
+import type { InvalidPayload, SteamUnavailable } from '../domain/errors.ts'
+import type { GameRequestStatus } from '../domain/game-requests.ts'
 import type { Blocker, ReviewStatus, Role } from '../domain/review.ts'
 import type { GuideStatus, GuideType } from '../domain/guides.ts'
 import type { SecureBoot, X86Level, Tpm } from '../domain/platform.ts'
@@ -302,3 +303,15 @@ export const noReportReason = {
   capa_no_valve: 'Valve solo atiende informes de su propio Proton; GE-Proton y Wine tienen sus propios canales.',
   funciona: 'El juego funcionó sin ajustes: no hay nada que informar a Valve.',
 } as const satisfies Record<NoReportReason, string>
+
+export const gameRequestStatus = {
+  abierto: { text: 'Abierto', tone: 'azul', icon: '…' },
+  cumplido: { text: 'Ya está en el catálogo', tone: 'verde', icon: '✓' },
+  rechazado: { text: 'Rechazado', tone: 'rojo', icon: '✕' },
+} as const satisfies Record<GameRequestStatus, Label>
+
+export const steamUnavailable = {
+  no_encontrado: 'Steam no tiene ese App ID. Revisa el enlace, o rellena el formulario a mano.',
+  no_es_juego: 'Ese App ID es de un DLC, una demo o un programa. Usa el del juego base, o rellena el formulario a mano.',
+  sin_respuesta: 'Steam no respondió a tiempo. Intenta de nuevo, o rellena el formulario a mano.',
+} as const satisfies Record<SteamUnavailable['reason'], string>

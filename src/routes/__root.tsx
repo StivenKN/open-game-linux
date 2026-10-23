@@ -74,6 +74,7 @@ function SiteHeader() {
         </Link>
         <Link to="/diagnostico">Diagnóstico</Link>
         <Link to="/guias">Guías</Link>
+        <Link to="/pedidos">Pedidos</Link>
         {visitor !== null && (
           <>
             <Link to="/mis-aportes">Mis aportes</Link>

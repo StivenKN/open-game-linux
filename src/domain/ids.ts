@@ -27,6 +27,8 @@ export const DependencyId = Schema.Int.pipe(Schema.brand('DependencyId'))
 export type DependencyId = typeof DependencyId.Type
 export const GuideId = Schema.Int.pipe(Schema.brand('GuideId'))
 export type GuideId = typeof GuideId.Type
+export const GameRequestId = Schema.Int.pipe(Schema.brand('GameRequestId'))
+export type GameRequestId = typeof GameRequestId.Type
 
 export const UserId = Schema.String.pipe(Schema.brand('UserId'))
 export type UserId = typeof UserId.Type
@@ -35,7 +37,7 @@ export const RequiredText = Schema.Trim.pipe(
   Schema.check(Schema.isNonEmpty({ message: 'Este campo es obligatorio.' })),
 )
 
-export const OptionalTextOf = <S extends Schema.Codec<string, string>>(schema: S) =>
+export const OptionalTextOf = <S extends Schema.Codec<unknown, string>>(schema: S) =>
   Schema.NullOr(Schema.String).pipe(
     Schema.decodeTo(
       Schema.NullOr(schema),

@@ -1,10 +1,11 @@
 import { createServerFn } from '@tanstack/react-start'
 import { Schema } from 'effect'
-import { NewSolution, NewGame, NewProfile, NewReport, ProfileEdit } from '../domain/contributions.ts'
-import { IncomparableProfile, RuleViolated } from '../domain/errors.ts'
-import { GameId, ProfileId, ReportId } from '../domain/ids.ts'
+import { NewSolution, NewGame, NewProfile, NewReport, ProfileEdit, SteamLookup } from '../domain/contributions.ts'
+import { IncomparableProfile, RuleViolated, SteamUnavailable } from '../domain/errors.ts'
+import { GameId, GameRequestId, ProfileId, ReportId } from '../domain/ids.ts'
 import { createGame, deleteProfile, editProfile, proposeProfile, submitReport, submitSolution } from '../server/commands/contributions.ts'
 import { myContributions } from '../server/queries/contributions.ts'
+import { steamGame } from '../server/external/steam.ts'
 import { gameOptions, profileEditOptions, profileOptions, reportOptions, solutionOptions } from '../server/queries/form-options.ts'
 import { runAction, runRead } from '../server/run.ts'
 
@@ -24,7 +25,13 @@ export const submitSolutionFn = createServerFn({ method: 'POST' })
   .validator(Schema.toStandardSchemaV1(NewSolution))
   .handler(({ data }) => runAction(RuleViolated, submitSolution(data)))
 
-export const gameOptionsFn = createServerFn({ method: 'GET' }).handler(() => runRead(gameOptions))
+export const gameOptionsFn = createServerFn({ method: 'GET' })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ pedido: Schema.NullOr(GameRequestId) })))
+  .handler(({ data }) => runRead(gameOptions(data.pedido)))
+
+export const steamGameFn = createServerFn({ method: 'POST' })
+  .validator(Schema.toStandardSchemaV1(SteamLookup))
+  .handler(({ data }) => runAction(SteamUnavailable, steamGame(data.steam_app_id)))
 
 export const createGameFn = createServerFn({ method: 'POST' })
   .validator(Schema.toStandardSchemaV1(NewGame))

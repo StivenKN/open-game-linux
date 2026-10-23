@@ -4,6 +4,7 @@ import { Effect, Schema } from 'effect'
 import { Migrator, SqlClient } from 'effect/sql'
 import { PgMigrator } from '@effect/sql-pg'
 import { OperatingSystem, VulkanSupport } from '../../domain/evaluation.ts'
+import type { GameRequestStatus } from '../../domain/game-requests.ts'
 import { GuideStatus, GuideType } from '../../domain/guides.ts'
 import { GraphicsApi, LayerFamily, Outcome, ProtonVariant } from '../../domain/literals.ts'
 import { SecureBoot, X86Level, Tpm } from '../../domain/platform.ts'
@@ -828,6 +829,44 @@ const follows = [
      PRIMARY KEY (user_id, game_id))`,
 ]
 
+const openRequest: GameRequestStatus = 'abierto'
+
+// A reviewer closes a request once: by creating its game, or with a reason.
+const requestShapeByStatus = {
+  abierto: 'resolved_by IS NULL AND resolved_at IS NULL AND rejection_reason IS NULL AND game_id IS NULL',
+  cumplido: 'resolved_by IS NOT NULL AND resolved_at IS NOT NULL AND rejection_reason IS NULL AND game_id IS NOT NULL',
+  rechazado: `resolved_by IS NOT NULL AND resolved_at IS NOT NULL AND ${hasText('rejection_reason')} AND game_id IS NULL`,
+} satisfies Record<GameRequestStatus, string>
+
+// pg_trgm is a trusted extension (PostgreSQL 13+): the database owner creates it without being a superuser.
+const catalogSearchAndRequests = [
+  'CREATE EXTENSION IF NOT EXISTS pg_trgm',
+  'CREATE INDEX game_title_trgm_idx ON game USING gin (title gin_trgm_ops)',
+  `CREATE TABLE game_request (${id},
+     title varchar(${L.game.title}) NOT NULL,
+     steam_app_id integer,
+     status varchar(${L.game_request.status}) NOT NULL DEFAULT '${openRequest}',
+     created_at timestamptz NOT NULL DEFAULT now(),
+     resolved_by text REFERENCES app_user(id) ON DELETE RESTRICT,
+     resolved_at timestamptz,
+     rejection_reason text,
+     game_id integer REFERENCES game(id) ON DELETE RESTRICT)`,
+  check('game_request', 'title_not_blank', hasText('title')),
+  check('game_request', 'steam_app_id_positive', 'steam_app_id > 0'),
+  check(
+    'game_request',
+    'resolution',
+    Object.entries(requestShapeByStatus).map(([status, shape]) => `(status = '${status}' AND ${shape})`).join(' OR '),
+  ),
+  check('game_request', 'resolved_after_created', 'resolved_at IS NULL OR resolved_at >= created_at'),
+  `CREATE TABLE game_request_user (
+     request_id integer NOT NULL REFERENCES game_request(id) ON DELETE RESTRICT,
+     user_id text NOT NULL REFERENCES app_user(id) ON DELETE RESTRICT,
+     created_at timestamptz NOT NULL DEFAULT now(),
+     PRIMARY KEY (request_id, user_id))`,
+  `COMMENT ON TABLE game_request IS 'Games users want in the catalog; game_request_user holds one row per requester. Single writer: server/commands/game-requests.ts'`,
+]
+
 export const migrations = {
   '1_auth': runStatements(auth),
   '2_opengame': runStatements([...functions, ...userTable, ...catalog, ...diagnostics, ...profiles, ...results, ...guides]),
@@ -837,6 +876,7 @@ export const migrations = {
   '6_upstream': runStatements(upstream),
   '7_english_names': runStatements(englishNames),
   '8_gamepage': runStatements(follows),
+  '9_catalog': runStatements(catalogSearchAndRequests),
 }
 
 export const migrate = PgMigrator.run({ loader: Migrator.fromRecord(migrations) })

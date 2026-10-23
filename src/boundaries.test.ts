@@ -94,6 +94,14 @@ describe('boundaries', () => {
     expect(violations).toEqual([])
   })
 
+  it('only server/commands/game-requests.ts writes game_request and game_request_user (single writer)', () => {
+    const write = /\b(INSERT INTO|UPDATE|DELETE FROM)\s+game_request(_user)?\b/
+    const violations = [...files('src'), ...files('scripts')]
+      .filter((f) => f !== 'src/server/commands/game-requests.ts' && !f.startsWith('src/server/schema/') && write.test(read(f)))
+      .map((f) => `${f} writes game_request; call requestGame(), withdrawRequest(), rejectRequest() or fulfillRequests() from server/commands/game-requests.ts instead`)
+    expect(violations).toEqual([])
+  })
+
   it('only server/commands/upstream.ts writes upstream_fix (single writer)', () => {
     const write = /\b(INSERT INTO|UPDATE|DELETE FROM)\s+upstream_fix\b/
     const violations = [...files('src'), ...files('scripts')]

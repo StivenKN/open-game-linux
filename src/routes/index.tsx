@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { Effect, Schema, SchemaTransformation, Struct } from 'effect'
+import { Schema, Struct } from 'effect'
 import type { FormEvent, ReactNode } from 'react'
 import { CatalogFilter } from '../domain/contributions.ts'
 import { CompatibilityStatus } from '../domain/compatibility.ts'
@@ -9,12 +9,8 @@ import { count, date } from '../ui/format.ts'
 import { Cover } from '../ui/Cover.tsx'
 import { ProtonDbAttribution, ProtonDbLine } from '../ui/protondb/ProtonDb.tsx'
 import { compatibilityStatus, statusMeaning } from '../ui/vocabulary.ts'
+import { lenient, SearchText } from './-search.ts'
 
-const lenient = <S extends Schema.Constraint>(field: S) => Schema.catchDecoding<S>(() => Effect.succeedNone)(field)
-// The router JSON-parses each query value, so a title typed as `?q=2` arrives as the number 2.
-const SearchText = Schema.Union([Schema.String, Schema.Finite, Schema.Boolean]).pipe(
-  Schema.decodeTo(Schema.String, SchemaTransformation.transform<string, string | number | boolean>({ decode: String, encode: (s) => s })),
-)
 const CatalogSearch = CatalogFilter.mapFields((f) => ({
   q: lenient(Schema.optionalKey(SearchText)),
   estado: lenient(f.estado),
@@ -186,9 +182,18 @@ function CatalogPage() {
             )}
           </div>
           {games.length === 0 ? (
-            <p className="empty">
-              {filtered ? 'Ningún juego coincide con estos filtros. Quita alguno o busca otro título.' : 'Todavía no hay juegos en el catálogo.'}
-            </p>
+            <div className="empty stack">
+              <p className="no-margin">
+                {filtered ? 'Ningún juego coincide con estos filtros. Quita alguno o busca otro título.' : 'Todavía no hay juegos en el catálogo.'}
+              </p>
+              {filter.q !== undefined && (
+                <p className="no-margin">
+                  <Link to="/pedidos" search={{ titulo: filter.q }}>
+                    ¿No está? Pídelo
+                  </Link>
+                </p>
+              )}
+            </div>
           ) : (
             <ul className="game-grid">
               {games.map((j) => (
@@ -221,6 +226,14 @@ function CatalogPage() {
                 </li>
               ))}
             </ul>
+          )}
+          {/* A near miss can stand in for a missing game: «The Witcher 2» finds The Witcher 3. */}
+          {filter.q !== undefined && games.length > 0 && (
+            <p className="small muted">
+              <Link to="/pedidos" search={{ titulo: filter.q }}>
+                ¿No es ninguno de estos? Pídelo
+              </Link>
+            </p>
           )}
           {games.some((j) => j.protondb) && <ProtonDbAttribution />}
         </section>

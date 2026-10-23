@@ -11,7 +11,7 @@ Some Spanish names are not code identifiers. They are contracts with players, wi
 | Contract | Examples | Why it stays |
 |---|---|---|
 | URL paths | `/juegos/12`, `/perfiles/3`, `/diagnostico/importar`, `/reportes/10/solucion` | TanStack Router builds URLs from route file names, so the route files keep their Spanish names. Bookmarks, shared links and the detector link point at them. Route param names such as `$gameId` never reach the URL, so they are English. |
-| Search keys and values | `q`, `estado`, `lanzador`, `sin_anti_cheat`, `volver`, `tipo`, `pegar`, `perfil`, `tipoFallo`, `desde` | They are part of URLs that players share and bookmark. |
+| Search keys and values | `q`, `estado`, `lanzador`, `sin_anti_cheat`, `volver`, `tipo`, `pegar`, `perfil`, `tipoFallo`, `desde`, `titulo`, `pedido` | They are part of URLs that players share and bookmark. |
 | Detector payload keys and values | `capturado_en`, `distribucion`, `biblioteca_steam`, `soporte_vulkan`, `desconocido` | Copies of the detector script that players already downloaded keep sending them. The `/diagnostico/importar#d=` link baked into the scripts and the `OPENGAME_*` environment variables stay for the same reason. |
 | Stored data values | CHECK values such as `pendiente`, `funciona` and `revisor`, `_tag` values, the `nombre` key of each game in the `steam_library` jsonb | They are rows in a deployed database, not names in code. Changing them needs a data migration. |
 | Storage keys | `opengame:diagnostico-pendiente`, `opengame:perfil:<id>:r<revision>:pasos` | A browser that saved state under the old key would lose it. |
@@ -73,6 +73,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | crear | create; sign up (`SignUpPage`, the sign-up page) |
 | cuenta | account (`AccountFailure`; `accounts`, the list on /admin/usuarios); count (a tally: `doneCount`, total) |
 | cuerpo | body |
+| cumplido | fulfilled (`fulfillRequests`; the request status cumplido stays) |
 | decidir | decide |
 | dependencia | dependency |
 | descartar | screen (distros) |
@@ -171,6 +172,8 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | origen | origin (`contributions.ts`, `server/origin.ts`); source (`SourceReport` and `SourceFailure` in `form-options.ts`, the report a solution answers) |
 | parametros_lanzamiento | launch options |
 | paso | step |
+| pedido | game request (`game_request`, `GameRequest`, `gameRequests`; the `/pedidos` URL and the `pedido` search key stay) |
+| pedir | request (`requestGame`) |
 | pegar | paste |
 | pendiente | pending |
 | perfil | profile |
@@ -188,12 +191,14 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | prueba | test (one approved test run); approved and context (test fixture locals) |
 | publicada | published (a `GuideStatus`, `published` in `server/queries/guides.ts`; the literal publicada stays) |
 | rango | range; rank (`verdictRank`) |
+| rechazar | reject (`rejectRequest`; the review decision Rechazar stays) |
 | reciente | recent |
 | registrado | noted (`upstream_fix.noted_by` and `noted_at`; see registrar) |
 | registrar | submit (a contribution); sign up (`signUp` in `routes/-account.ts`, a better-auth account); note (`NoteFix`, the form that records a merged PR through `noteFix`) |
 | regla | rule |
 | regresion | regression |
 | reiniciar | reset |
+| rellenar | fill (`steamGame` fills the new-game form from the Steam store; `SteamLookup`) |
 | reparto | breakdown |
 | reporte | report |
 | requisito | requirement |
@@ -213,11 +218,14 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | sello | stamp |
 | semilla | seed |
 | separar | split |
+| similitud | similarity (pg_trgm `word_similarity` in `catalog`) |
 | sistema | operating system (the diagnostic column `operating_system`); system (`systemFacts`) |
 | solucion | solution |
 | soporte | support |
+| sumarse | join (`RequestGame` with `_tag` existente) |
 | texto | text; schema (the argument of `OptionalTextOf`) |
 | tiene | has |
+| tienda | store (`SteamStoreRef`, a Steam store link or App ID) |
 | tipo_fallo | failure type |
 | titulo | title; heading id (`headingId` in `ReviewItem`, `routes/revision.tsx`) |
 | tono | tone |

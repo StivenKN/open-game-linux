@@ -14,6 +14,9 @@ describe('ReturnTo (?volver= on /entrar and /registro)', () => {
     ['/admin/usuarios', '/admin/usuarios'],
     ['/juegos/4', '/juegos/4'],
     ['/seguidos', '/seguidos'],
+    ['/catalogo/nuevo?pedido=3', '/catalogo/nuevo?pedido=3'],
+    ['/pedidos', '/pedidos'],
+    ['/pedidos?titulo=Hollow%20Knight', '/pedidos?titulo=Hollow%20Knight'],
   ])('keeps %s', (input, expected) => {
     expect(ReturnTo({ volver: input })).toEqual({ volver: expected })
   })
@@ -24,6 +27,9 @@ describe('ReturnTo (?volver= on /entrar and /registro)', () => {
     ['/revision?tipo=todo', '/revision'],
     ['/diagnostico/importar#d=abc', '/diagnostico/importar'],
     ['/admin/usuarios?q=ana', '/admin/usuarios'],
+    ['/catalogo/nuevo?pedido=x', '/catalogo/nuevo'],
+    ['/pedidos?titulo=%20%20&otro=1', '/pedidos'],
+    ['/pedidos?titulo=a%26b', '/pedidos?titulo=a%26b'],
   ])('rebuilds %s from its ids as %s', (input, expected) => {
     expect(ReturnTo({ volver: input })).toEqual({ volver: expected })
   })

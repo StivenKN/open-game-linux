@@ -1,5 +1,6 @@
 import { Schema } from 'effect'
-import { SteamLibrary } from './library.ts'
+import { SteamAppId, SteamLibrary } from './library.ts'
+import { GameRequestStatus } from './game-requests.ts'
 import { OperatingSystem, VulkanSupport } from './evaluation.ts'
 import { PciId } from './gpu.ts'
 import { GuideStatus, GuideType } from './guides.ts'
@@ -11,6 +12,7 @@ import {
   MachineId,
   GuideId,
   GameId,
+  GameRequestId,
   LauncherId,
   ProfileId,
   ReportId,
@@ -268,3 +270,21 @@ export const GameFollow = Schema.Struct({
   created_at: Schema.Date,
 })
 export type GameFollow = typeof GameFollow.Type
+
+/** A game someone wants in the catalog. Its requesters are rows of `game_request_user`. */
+export const GameRequest = Schema.Struct({
+  id: GameRequestId,
+  title: TextUpTo(maxLengths.game.title),
+  steam_app_id: Schema.NullOr(SteamAppId),
+  status: GameRequestStatus,
+  created_at: Schema.Date,
+  // NULL while abierto; who closed it and when otherwise.
+  resolved_by: Schema.NullOr(UserId),
+  resolved_at: Schema.NullOr(Schema.Date),
+  rejection_reason: Schema.NullOr(RequiredText),
+  game_id: Schema.NullOr(GameId),
+})
+export type GameRequest = typeof GameRequest.Type
+
+export const GameRequestUser = Schema.Struct({ request_id: GameRequestId, user_id: UserId, created_at: Schema.Date })
+export type GameRequestUser = typeof GameRequestUser.Type
