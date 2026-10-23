@@ -582,6 +582,50 @@ button:disabled {
   padding: 3px 0;
   break-inside: avoid;
 }
+/* The matrix below is a .mosaic, whose margin: 0 cancels the .stack gap. */
+.readiness {
+  margin-bottom: 12px;
+}
+.readiness-headline {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+/* Spacing comes from the .stack around these lists, so they set no margin of their own. */
+.readiness-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  padding: 0;
+  list-style: none;
+}
+.readiness-counts li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.readiness-counts b {
+  font-family: var(--display);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.readiness-list {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+.readiness-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.readiness-list li > a:first-child {
+  font-weight: 700;
+}
 details.card > summary {
   cursor: pointer;
 }
@@ -1544,6 +1588,9 @@ label.checkbox {
   }
   .lede {
     font-size: 16px;
+  }
+  .readiness-headline {
+    font-size: 21px;
   }
   .search {
     padding-left: 14px;

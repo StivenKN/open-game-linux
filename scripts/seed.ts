@@ -112,6 +112,13 @@ const games = {
     apis: ['vulkan', 'd3d11'],
     x86_level_min: 'v2', // Source 2 needs SSE4.2
   },
+  apex: {
+    title: 'Apex Legends',
+    description: 'Battle royale por escuadras de Respawn, gratuito, con Easy Anti-Cheat.',
+    editions: { steam: '1172470' },
+    apis: ['d3d11', 'd3d12'],
+    x86_level_min: null,
+  },
 } as const satisfies Record<
   string,
   {
@@ -397,6 +404,19 @@ const machines = {
       version_vulkan: null,
       nivel_x86: 'v1',
     },
+    // Saved with the diagnosis, so her page answers "can I switch?" for the games she has installed.
+    library: [
+      { app_id: 1172470, nombre: 'Apex Legends' },
+      { app_id: 730, nombre: 'Counter-Strike 2' },
+      { app_id: 1245620, nombre: 'ELDEN RING' },
+      { app_id: 227300, nombre: 'Euro Truck Simulator 2' },
+      { app_id: 271590, nombre: 'Grand Theft Auto V' },
+      { app_id: 1145360, nombre: 'Hades' },
+      { app_id: 367520, nombre: 'Hollow Knight' },
+      { app_id: 413150, nombre: 'Stardew Valley' },
+      { app_id: 105600, nombre: 'Terraria' },
+      { app_id: 292030, nombre: 'The Witcher 3: Wild Hunt' },
+    ],
   },
   // A Steam Deck OLED: its Sephiroth APU projects through amdgpu like any RDNA 2 GPU.
   brunoDeck: {
@@ -418,7 +438,16 @@ const machines = {
       dispositivo: 'steam_deck_oled',
     },
   },
-} as const satisfies Record<string, { owner: Account; alias: string; distribution: keyof typeof distributions; diagnostic: Readonly<Record<string, Value>> }>
+} as const satisfies Record<
+  string,
+  {
+    owner: Account
+    alias: string
+    distribution: keyof typeof distributions
+    diagnostic: Readonly<Record<string, Value>>
+    library?: ReadonlyArray<{ app_id: number; nombre: string }>
+  }
+>
 
 type DemoReport = {
   machine: keyof typeof machines
@@ -503,6 +532,12 @@ const reports: ReadonlyArray<DemoReport> = [
     tested_at: '2026-10-09T21:00:00Z', outcome: 'funciona',
     measurement: { avg_fps: 40, resolution: '1280x800', graphics_quality: 'Steam Deck', measurement_method: 'Superposición de rendimiento de SteamOS · Velen · 15 min' },
     failures: [], observations: 'En modo juego, con el preajuste gráfico «Steam Deck» y el límite de 40 FPS. Sin cierres en una hora.', approve: true,
+  },
+  {
+    machine: 'brunoPc', edition: ['apex', 'steam'], layer: 'proton9', withProfile: false, game_version: 'Temporada 30',
+    tested_at: '2026-09-18T21:00:00Z', outcome: 'no_inicia', measurement: null,
+    failures: [['anti_cheat', 'Easy Anti-Cheat cierra el juego al iniciar: EA dejó de admitir Linux en Apex a finales de 2024.']],
+    observations: 'El juego se instala y abre, pero el anti-trampas lo cierra antes del menú. No hay ajuste de Proton que lo evite.', approve: true,
   },
 ]
 
@@ -672,12 +707,13 @@ const program = Effect.gen(function* () {
           distribucion: { nombre: name, version },
           arquitectura: 'x86_64',
           soporte_vulkan: 'si',
-          biblioteca_steam: null,
+          biblioteca_steam: 'library' in machine ? machine.library : null,
           ...machine.diagnostic,
         }
         const save = yield* Schema.decodeUnknownEffect(SaveDiagnostic)({
           machine: { _tag: 'nuevo', alias: machine.alias },
           input: { _tag: 'detector', texto: JSON.stringify(payload) },
+          with_library: 'library' in machine,
         })
         const { id, inserted } = yield* asUser(machine.owner, submitDiagnostic(save))
         if (inserted) count('diagnostic')

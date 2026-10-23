@@ -47,5 +47,11 @@ const changedTime = (g: ListedGame) => g.changed_at?.getTime() ?? -Infinity
 export const preferred = (a: ListedGame, b: ListedGame): ListedGame =>
   changedTime(b) > changedTime(a) || (changedTime(b) === changedTime(a) && b.slug < a.slug) ? b : a
 
-/** The statuses that keep a game out of "sin bloqueo anti-cheat" and put the list's word on its catalog card. */
-export const blocksOnlinePlay = Schema.is(AntiCheatStatus.pick(['Broken', 'Denied']))
+/**
+ * The statuses that keep a game out of "sin bloqueo anti-cheat", put the list's word on its catalog card,
+ * and list a library game in "Te frenan".
+ */
+export const OnlinePlayBlock = AntiCheatStatus.pick(['Broken', 'Denied'])
+export type OnlinePlayBlock = typeof OnlinePlayBlock.Type
+
+export const blocksOnlinePlay = Schema.is(OnlinePlayBlock)

@@ -154,6 +154,13 @@ export const onSteamDeck = (tests: ReadonlyArray<ApprovedTest>, now: Date): Comp
 /** The catalog's "Probado en Steam Deck": at least one approved test on a Deck worked, however old. */
 export const workedOnSteamDeck = (tests: ReadonlyArray<ApprovedTest>): boolean => tests.some((p) => p.device !== null && isWorking(p.outcome))
 
+/**
+ * A failing test among the ones the state counts names an anti-cheat. A working test can note one too
+ * ("online needs -nobattleye"), and that game is not blocked.
+ */
+export const blockedByAntiCheat = (tests: ReadonlyArray<ApprovedTest>, now: Date): boolean =>
+  baseOf(tests, now).base.some((p) => isFailing(p.outcome) && p.failures.includes('anti_cheat'))
+
 const baseOf = (tests: ReadonlyArray<ApprovedTest>, now: Date) => {
   const recent = tests.filter((p) => isRecent(p.tested_at, now))
   return { recent, base: recent.length > 0 ? recent : tests }

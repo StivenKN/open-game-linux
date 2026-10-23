@@ -1,11 +1,10 @@
 import { Clock, Effect, Schema, Struct } from 'effect'
 import { SqlClient, SqlSchema } from 'effect/sql'
-import { blocksOnlinePlay } from '../../domain/anticheat.ts'
 import type { CatalogFilter } from '../../domain/contributions.ts'
 import { type CompatibilityStatus, summarize, workedOnSteamDeck } from '../../domain/compatibility.ts'
 import { Game, Launcher } from '../../domain/tables.ts'
 import { oneRow } from '../rows.ts'
-import { antiCheatEntries } from './anticheat.ts'
+import { onlinePlayBlocks } from './anticheat.ts'
 import { approvedTests } from './game.ts'
 import { protonDbSummaries } from './protondb.ts'
 
@@ -55,7 +54,7 @@ export const catalog = (filter: CatalogFilter) =>
     const now = new Date(yield* Clock.currentTimeMillis)
     const allTests = yield* approvedTests(null)
     const protondb = new Map((yield* protonDbSummaries(null)).map((r) => [r.game_id, r]))
-    const blocked = new Map((yield* antiCheatEntries(null)).filter((r) => blocksOnlinePlay(r.status)).map((r) => [r.game_id, r.status]))
+    const blocked = yield* onlinePlayBlocks
     const candidates = rows
       .map((j) => {
         const tests = allTests.filter((p) => p.game_id === j.id)

@@ -7,7 +7,7 @@ import { DiagnosticId, MachineId, UserId } from '../src/domain/ids.ts'
 import { submitDiagnostic } from '../src/server/commands/diagnostic.ts'
 import { Visitor } from '../src/server/auth.ts'
 import { evaluateWithoutSaving, type MatrixRow, myDiagnostic, myMachines } from '../src/server/queries/diagnostic.ts'
-import { inRollback, idOf, PgTest } from './support.ts'
+import { inRollback, idOf, onDay, PgTest } from './support.ts'
 import { seed, type Seed } from './fixtures.ts'
 
 const prototype: object = JSON.parse(readFileSync(new URL('../prototypes/detector/out.json', import.meta.url), 'utf8'))
@@ -199,6 +199,32 @@ layer(PgTest)('consultas de diagnóstico', (it) => {
         ['bazzite', 'descartada'],
         ['cachyos', 'con_ajustes'],
         ['arch', 'con_ajustes'],
+      ])
+    })))
+
+  it.effect('la matriz calcula el estado con el último año, como la ficha, y marca el bloqueo anti-cheat de cada fuente', withSeed((f) =>
+    Effect.gen(function* () {
+      const antiCheat = yield* idOf(f.sql`INSERT INTO failure_type (code, description) VALUES ('anti_cheat', 'd') RETURNING id`)
+      const approve = (edition_id: number, outcome: string, tested_at: string) =>
+        idOf(f.sql`INSERT INTO report ${f.sql.insert({
+          edition_id, diagnostic_id: f.diag, layer_version_id: f.layer, game_version: '1.0', observations: 'o', outcome, tested_at: new Date(tested_at),
+          created_at: new Date('2026-10-03T00:00:00Z'), reviewer_id: f.reviewer, reviewed_at: new Date('2026-10-04T00:00:00Z'),
+          review_status: 'aprobado', review_reason: 'probado', review_evidence: 'captura',
+        })} RETURNING id`)
+      // "Juego": a two-year-old failure, then a recent success. "Otro juego": blocked by an anti-cheat.
+      yield* approve(f.ed, 'no_inicia', '2024-09-01T12:00:00Z')
+      yield* approve(f.ed, 'funciona', '2026-10-02T12:00:00Z')
+      const blocked = yield* approve(f.ed2, 'no_inicia', '2026-10-02T12:00:00Z')
+      yield* f.sql`INSERT INTO report_failure (report_id, failure_type_id, detail) VALUES (${blocked}, ${antiCheat}, 'el anti-trampas no deja entrar')`
+      // AreWeAntiCheatYet's Denied reaches the row on its own; Running is not a block.
+      const listed = (edition_id: number, status: string) =>
+        f.sql`INSERT INTO anticheat_entry ${f.sql.insert({ edition_id, status, anticheats: ['Easy Anti-Cheat'], changed_at: null, slug: `juego-${edition_id}` })}`
+      yield* listed(f.ed, 'Denied')
+      yield* listed(f.ed2, 'Running')
+      const { matrix } = yield* evaluateWithoutSaving(payload()).pipe(onDay(new Date('2026-10-15T00:00:00Z')))
+      expect(matrix.map((m) => [m.title, m.status, m.test_count, m.blocked_by_anti_cheat, m.awacy])).toEqual([
+        ['Juego', 'funciona', 2, false, 'Denied'],
+        ['Otro juego', 'no_inicia', 1, true, null],
       ])
     })))
 
