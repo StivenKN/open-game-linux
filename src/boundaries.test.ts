@@ -23,9 +23,18 @@ const layers = {
     fix: 'routes call server fns from src/fns/; never import src/server/ (it would ship pg to the browser)',
   },
   'src/ui/': { allowed: ['react', 'effect', '@tanstack/react-router', 'src/domain/', 'src/ui/'], fix: 'ui is plain React over domain types' },
+  'src/images/': {
+    allowed: ['node:', 'react', 'react-dom/server', 'satori', '@resvg/resvg-js', 'src/domain/', 'src/ui/', 'src/images/'],
+    fix: 'images/ draws what it is given; the route handler reads the data from server/',
+  },
 } as const
 
-const exceptions = new Set(['src/routes/api/auth/$.ts', 'src/routes/opengame-detect[.]sh.ts', 'src/routes/opengame-detect[.]ps1.ts'])
+const exceptions = new Set([
+  'src/routes/api/auth/$.ts',
+  'src/routes/opengame-detect[.]sh.ts',
+  'src/routes/opengame-detect[.]ps1.ts',
+  'src/routes/-game-image.ts',
+])
 
 const resolve = (from: string, spec: string) => (spec.startsWith('.') ? relative(root, join(root, from, '..', spec)) : spec)
 

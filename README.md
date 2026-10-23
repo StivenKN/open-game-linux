@@ -2,7 +2,7 @@
 
 # open-game-linux
 
-OpenGame Linux tells a player whether a Windows game runs on Linux, based only on community test reports that a reviewer approved. A visitor searches the catalog, which forgives typos, and opens a game's page to see its computed state, the environments that were tested, and how each Wine or Proton version fared over time. They can run a detector script to compare their computer with a game's known conditions, and follow a step-by-step configuration profile for Wine or Proton. Signed-in users report results, propose solutions and configuration profiles, request games the catalog lacks, follow the review of each one under "Mis aportes", and can follow a game to see on "Seguidos" what changed since they last looked. Reviewers approve reports, solutions and profiles before they count, write the adoption guides, and add requested games, filling them from the Steam store. The interface is in Spanish.
+OpenGame Linux tells a player whether a Windows game runs on Linux, based only on community test reports that a reviewer approved. A visitor searches the catalog, which forgives typos, and opens a game's page to see its computed state, the environments that were tested, and how each Wine or Proton version fared over time. They can run a detector script to compare their computer with a game's known conditions, and follow a step-by-step configuration profile for Wine or Proton. Signed-in users report results, propose solutions and configuration profiles, request games the catalog lacks, follow the review of each one under "Mis aportes", and can follow a game to see on "Seguidos" what changed since they last looked. A game's state can also leave the app, as a status badge to embed on another site and as the preview image of a shared link. Reviewers approve reports, solutions and profiles before they count, write the adoption guides, and add requested games, filling them from the Steam store. The interface is in Spanish.
 
 Created in [T3 Code](https://t3.codes).
 
@@ -160,6 +160,17 @@ curl -fsSL http://localhost:3000/opengame-detect.sh | bash -s -- --game 1245620
 
 Besides the hardware, the script reads which compatibility tool last ran that game and its exact release (for example Proton 9.0-2), the game's launch options and its build id. The import page then asks you to save the diagnosis, signing you in first if needed, and opens the game's report form already filled in. You review every field and send it yourself. Launch options go into the observations, because a report has no field for them. The Windows script has no report mode, because a report needs a diagnosis made on Linux.
 
+## Share a game's state
+
+Each game has two images, computed from its approved reports on every request like its page:
+
+- `/juegos/<id>/badge.svg` is a badge that reads "OpenGame Linux | <estado>" in the state's color. The game page's "Compartir" section shows it with its Markdown and HTML codes, ready to paste into a README, a forum or a website.
+- `/juegos/<id>/og.png` is a 1200×630 preview with the game's title over its cover art, its state and its number of approved reports.
+
+When a demo account's report counts toward the state, both images and the link preview carry the "Datos de ejemplo" stamp, as the game page does.
+
+Both answer 404 for an id that names no game, and let caches keep them for five minutes, so a new approval shows within that time. Every page carries Open Graph and Twitter card tags, so a shared link unfurls with a preview: a game's page uses its own image, and every other page uses `/og.png`. The badge codes and the tags use absolute URLs built from `BETTER_AUTH_URL`.
+
 ## Update the GPU table
 
 The diagnosis projects what a GPU can do on Linux from its PCI id. The id table, `src/server/gpu/families.generated.ts`, is generated from pinned Mesa, Linux and pci.ids sources. Do not edit it by hand. The Steam Deck's APUs come from pci.ids by codename, because the Linux driver matches them by PCI class and lists no id for them.
@@ -239,7 +250,7 @@ pnpm build
 pnpm start
 ```
 
-`pnpm build` produces a Node server in `.output/`, built by Nitro. `pnpm start` runs it on port 3000 and reads `.env`; variables already set in the environment win. Set `PORT` to use another port, and set `BETTER_AUTH_URL` to the public address, because sign-in accepts only requests from that origin and the detector command is built from it. Extra origins go in `BETTER_AUTH_TRUSTED_ORIGINS`, comma-separated.
+`pnpm build` produces a Node server in `.output/`, built by Nitro. `pnpm start` runs it on port 3000 and reads `.env`; variables already set in the environment win. Set `PORT` to use another port, and set `BETTER_AUTH_URL` to the public address, because sign-in accepts only requests from that origin, and the detector command, the badge codes and the link preview tags are built from it. Extra origins go in `BETTER_AUTH_TRUSTED_ORIGINS`, comma-separated. The badge and preview images read their fonts from `node_modules`, so run the server where `pnpm install` ran, as the Docker image does.
 
 The server makes one outbound request: when a reviewer presses "Rellenar desde Steam" on `/catalogo/nuevo`, it asks `https://store.steampowered.com/api/appdetails` for that game, with a 5-second timeout. If the host cannot reach the Steam store, the form says so and the reviewer fills it by hand.
 
@@ -251,7 +262,7 @@ The stack reads five variables, listed in `.env.prod.example`:
 
 - `POSTGRES_PASSWORD`. Use `openssl rand -hex 32`, because the app puts it in a database URL.
 - `BETTER_AUTH_SECRET`. Use `openssl rand -base64 32`.
-- `BETTER_AUTH_URL`. The public https address, for example `https://opengame.example.com`. Sign-in accepts only this origin, and the detector command is built from it.
+- `BETTER_AUTH_URL`. The public https address, for example `https://opengame.example.com`. Sign-in accepts only this origin, and the detector command, the badge codes and the link preview tags are built from it.
 - `BETTER_AUTH_TRUSTED_ORIGINS`. Optional extra origins, comma-separated.
 - `SCHEDULED_IMPORTS`. Optional. `off` turns the scheduled imports off.
 

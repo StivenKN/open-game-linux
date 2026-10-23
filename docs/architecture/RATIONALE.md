@@ -484,6 +484,26 @@ The service waits for `app` instead of running `pnpm db:migrate` itself. The mig
 - **Leaving out-of-reach games out of the headline number.** The sentence would then claim less evidence than exists, or it would need "en un equipo como el tuyo", which no approved test supports.
 - **A stacked bar of the library by state.** It reads as a percentage of readiness, which claims more certainty than the evidence gives.
 
+## Sharing: status badges and link previews
+
+**Problem.** A game's state lived only inside the app. Players talk about games in READMEs, forums and chats, where they could paste a bare link that unfurled with no preview.
+
+**Shape.**
+
+- Two server routes, `/juegos/$gameId/badge.svg` and `/juegos/$gameId/og.png`, compute the state on each request through `gameCard` (`server/queries/share.ts`): the title, and `summarize` over the approved tests, counted like the catalog card. Nothing is stored, as everywhere else. A state that rests on a demo account's report carries the "Datos de ejemplo" stamp in the badge, the preview and the description, as it does on the page. An id that names no game gets a 404. `Cache-Control: public, max-age=300` means a new approval shows within five minutes. `/og.png`, the site's preview, never changes between deploys and keeps a day.
+- satori lays out JSX with flexbox and draws its text as paths, with the app's own fonts; resvg rasterizes the preview. Text as paths means the badge looks the same on any site, whatever fonts it has, and its `<title>` names the state for screen readers. satori cannot read the WOFF2 that the page's `@fontsource-variable` packages ship, so the static `@fontsource` packages provide WOFF at the four weights the images use. satori draws a face with one font per name and falls back only to fonts of other names, so each subset but Latin loads under its own name: a Cyrillic or Vietnamese title draws, while Greek, CJK and emoji, which no face covers, draw as boxes.
+- The preview's cover is the page's own `Artwork`, rendered to a standalone SVG with `renderToStaticMarkup`, because satori cannot run its `useId`. satori takes inline styles, not the stylesheet, so `images/render.tsx` keeps a `palette` copy of the `styles.css` colors, and `render.test.ts` fails when the two drift.
+- `images/` is its own layer. It imports `ui/` and the renderers and never `server/`: the route handler reads the card and hands it over. Handlers load it with a dynamic `import()`, so satori and resvg load at the first image request, not at server start, and the bundle guard fails if either reaches the browser. resvg is a native addon: Nitro traces it as one (nf3's native list), the dev server leaves it out of dependency prebundling, and the Docker image installs its Linux binary.
+- Absolute URLs come from the root's context. `sessionFn`, which already runs on every navigation, also returns `publicOrigin`. The meta tags, which crawlers read in the SSR HTML, the embed codes and the ficha's detector command all use it, so the ficha no longer calls `originFn` on its own.
+- The root sets the default tags, including `og:url` from the deepest match's path and `twitter:card`, and the ficha replaces the title, description and image. HeadContent keeps the deepest route's tag for each name.
+
+**Alternatives considered.**
+
+- **A hand-written SVG badge with text widths from a character table, as shields.io does.** It needs no dependency, but the widths are guessed and the text falls back to whatever font the embedding site has.
+- **`@vercel/og`.** It wraps the same satori and resvg (as WASM) for edge runtimes, a layer this Node server does not need.
+- **A default preview committed as a PNG.** It is one more binary that drifts from the design. The route draws it with the same code.
+- **A versioned preview URL (`og.png?v=<state>`).** Platforms cache the unfurl per page URL, so a new image URL rarely refreshes a link that was already shared.
+
 ## Open questions and risks
 
 1. Does `Schema.fromFormData(Schema.toCodecStringTree(S))` decode the report form's nested shape (`failures[0][failure_type_id]`, the `layer_version[_tag]` union, a null `profile_id`) at runtime? It typechecks. If not, U0 falls back to a controlled form object decoded with plain `Schema.decodeUnknownResult(S)`, and the hook signature stays the same.

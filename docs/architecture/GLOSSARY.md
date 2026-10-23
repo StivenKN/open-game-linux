@@ -10,7 +10,7 @@ Some Spanish names are not code identifiers. They are contracts with players, wi
 
 | Contract | Examples | Why it stays |
 |---|---|---|
-| URL paths | `/juegos/12`, `/perfiles/3`, `/diagnostico/importar`, `/reportes/10/solucion` | TanStack Router builds URLs from route file names, so the route files keep their Spanish names. Bookmarks, shared links and the detector link point at them. Route param names such as `$gameId` never reach the URL, so they are English. |
+| URL paths | `/juegos/12`, `/juegos/12/badge.svg`, `/perfiles/3`, `/diagnostico/importar`, `/reportes/10/solucion` | TanStack Router builds URLs from route file names, so the route files keep their Spanish names. Bookmarks, shared links, badges embedded on other sites and the detector link point at them. Route param names such as `$gameId` never reach the URL, so they are English. |
 | Search keys and values | `q`, `estado`, `lanzador`, `sin_anti_cheat`, `steam_deck`, `volver`, `tipo`, `pegar`, `perfil`, `tipoFallo`, `desde`, `titulo`, `pedido`, and report mode's `diagnostico`, `edicion` and `steam` | They are part of URLs that players share and bookmark. |
 | Detector payload keys and values | `capturado_en`, `distribucion`, `biblioteca_steam`, `soporte_vulkan`, `desconocido`, `dispositivo`, and report mode's `juego` block (`herramienta`, `version_herramienta`, `opciones_lanzamiento`, `build`, `nativo`, `cuenta_supuesta`) | Copies of the detector script that players already downloaded keep sending them. The `/diagnostico/importar#d=` link baked into the scripts and the `OPENGAME_*` environment variables stay for the same reason. |
 | Stored data values | CHECK values such as `pendiente`, `funciona` and `revisor`, `_tag` values, the `nombre` key of each game in the `steam_library` jsonb | They are rows in a deployed database, not names in code. Changing them needs a data migration. |
@@ -58,7 +58,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | codigo | code |
 | cola | queue |
 | como | via (distros); `asUser` and `asGuest` (test helpers that act as a session) |
-| compartir | share |
+| compartir | share (the ficha's "Compartir" block is `Embed`, its codes `embedCodes`) |
 | comprobacion | check |
 | condicion | requirement |
 | congelado | frozen |
@@ -137,7 +137,7 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | importar | import |
 | informe | report (upstream Proton report) |
 | inmutable | immutable |
-| insignia | badge |
+| insignia | badge (`badgeSvg`, the embeddable status badge at `/juegos/<id>/badge.svg`) |
 | instruccion | instruction |
 | juego | game; Steam game (`steam_game`, the report-mode block of the detector payload) |
 | lanzador | launcher |
@@ -249,5 +249,6 @@ UI copy, Spanish test titles, and `docs/architecture/sketch/` and `prototypes/` 
 | vigencia | recency window |
 | vigente | recent (inside the window); active (`activeStatuses`) |
 | visitante | visitor |
+| vista previa | preview (`gamePreviewPng`, `sitePreviewPng` and `previewMeta`: the image and the tags a shared link unfurls with) |
 | visto | seen (`seen_at`; "Marcar como visto" posts the `Visto` change) |
 | volver | return to (the search key volver stays) |

@@ -55,6 +55,17 @@ Gaps by requirement:
 |---|---|---|---|
 | Signed-in users request a game the catalog lacks, or join an open request; reviewers create its game from it or reject it with a reason; requesters see each request's state in "Mis aportes" | `/pedidos`, linked from every catalog search ("¿No está? Pídelo", or "¿No es ninguno de estos? Pídelo" under results); `/catalogo/nuevo?pedido=` | `gameRequestsFn` → `server/queries/game-requests.ts` `gameRequests`, and `myGameRequests` inside `myContributions`; `requestGameFn`, `withdrawRequestFn`, `rejectRequestFn` → `server/commands/game-requests.ts`; `createGame` fulfils | `tests/game-requests.test.ts` (one open request per game, catalog matches, withdraw, reject, fulfil in the same transaction, a game created without its request still closes it, `/pedidos` and "Mis aportes", the resolution CHECK) |
 
+## Beyond section 7.1: sharing
+
+| Feature | Route | Server program | Tests |
+|---|---|---|---|
+| An embeddable badge with a game's computed state, and the Markdown and HTML that embed it, linked to the game's page | `/juegos/$gameId/badge.svg` (404 for an unknown game); `/juegos/$gameId` "Compartir" | `routes/-game-image.ts` `gameImage` → `server/queries/share.ts` `gameCard`; `images/render.tsx` `badgeSvg`; `ui/compatibility/Embed.tsx` `embedCodes` | `tests/share.test.ts` "cuentan solo lo aprobado, como su tarjeta del catálogo: ni lo pendiente ni lo retirado", "un id que no nombra un juego no tiene tarjeta". `images/render.test.ts`, `ui/compatibility/Embed.test.ts` |
+| A shared link unfurls with a preview: a game's title over its cover art, its state and its approved reports; the site's preview on every other page | `/juegos/$gameId/og.png`, `/og.png`; Open Graph and Twitter card tags from `__root.tsx` and `/juegos/$gameId` | `gameCard`; `images/render.tsx` `gamePreviewPng`, `sitePreviewPng`; `routes/-meta.ts` `previewMeta` | `images/render.test.ts` "draws the preview at the size the meta tags announce", "uses the colors styles.css defines" |
+
+The badge, the previews and their tags are in Spanish, like the rest of the interface. A state that rests on a demo account's report carries the "Datos de ejemplo" stamp in all three.
+
+- **Gap.** A title with Greek or CJK characters or emoji draws boxes for them in the preview image, because none of the app's fonts covers them. Latin, Cyrillic and Vietnamese titles draw.
+
 ## Wireframed screens
 
 | Screen | Route | Built | Not built, and why |

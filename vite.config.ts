@@ -15,6 +15,8 @@ const config = defineConfig({
   server: { port: 3000 },
   preview: { port: 3000 },
   resolve: { tsconfigPaths: true },
+  // resvg is a native addon the dev server cannot prebundle; the build traces it as one (nf3's native list).
+  optimizeDeps: { exclude: ['@resvg/resvg-js'] },
   plugins: [tanstackStart(), nitro(), viteReact()],
 })
 
