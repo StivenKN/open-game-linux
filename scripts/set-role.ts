@@ -1,6 +1,6 @@
 // `pnpm set-role <email> <usuario|revisor|administrador>`: bootstraps the first administrador, who then
-// manages roles at /admin/usuarios. Both go through `changeAccess`, so the last active administrador
-// cannot be demoted from here either.
+// manages roles at /admin/usuarios, and recovers a deactivated account, which it reactivates. Both go
+// through `changeAccess`, so the last active administrador cannot be demoted from here either.
 import { Effect, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { rules } from '../src/domain/errors.ts'
@@ -19,8 +19,8 @@ const program = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
   const [user] = yield* rows(Schema.Struct({ id: UserId }), sql`SELECT id FROM app_user WHERE email = lower(btrim(${email}))`)
   if (user === undefined) return yield* Effect.die(`No account has the email ${email}`)
-  const c = yield* changeAccess(user.id, { role: r }, null).pipe(Effect.catchTag('ReglaIncumplida', (e) => Effect.die(rules[e.rule].message)))
-  yield* Effect.log(c.changed ? `${c.alias} is now ${c.role}` : `${c.alias} was already ${c.role}; nothing to change`)
+  const c = yield* changeAccess(user.id, { role: r, active: true }, null).pipe(Effect.catchTag('ReglaIncumplida', (e) => Effect.die(rules[e.rule].message)))
+  yield* Effect.log(c.changed ? `${c.alias} is now an active ${c.role}` : `${c.alias} was already an active ${c.role}; nothing to change`)
 }).pipe(Effect.provide(PgLive))
 
 Effect.runPromise(program).then(

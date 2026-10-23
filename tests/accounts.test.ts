@@ -5,7 +5,7 @@ import { Forbidden, NotFound, RuleViolated, Unauthenticated } from '../src/domai
 import { UserId } from '../src/domain/ids.ts'
 import type { Role } from '../src/domain/review.ts'
 import { requireAdmin, type SignedInUser, Visitor } from '../src/server/auth.ts'
-import { changeAccess } from '../src/server/commands/accounts.ts'
+import { administerAccess, changeAccess } from '../src/server/commands/accounts.ts'
 import { accounts } from '../src/server/queries/accounts.ts'
 import { myContributions } from '../src/server/queries/contributions.ts'
 import { idOf, inRollback, PgTest } from './support.ts'
@@ -17,9 +17,9 @@ const scenario = Effect.gen(function* () {
   const insert = (table: string, row: Record<string, Value>) => idOf(sql`INSERT INTO ${sql(table)} ${sql.insert(row)} RETURNING id`)
   // Ids and values no other test file uses: db files run in parallel, and two transactions inserting the
   // same keys block or deadlock. Launcher "Steam" is the exception, needed for the Valve report link.
-  const insertUser = (alias: string, role: Role, active = true) =>
+  const insertUser = (alias: string, role: Role, domain = 'cuentas.test') =>
     Effect.as(
-      sql`INSERT INTO app_user (id, alias, email, email_verified, role, active) VALUES (${alias}, ${alias}, ${`${alias}@cuentas.test`}, false, ${role}, ${active})`,
+      sql`INSERT INTO app_user (id, alias, email, email_verified, role, active) VALUES (${alias}, ${alias}, ${`${alias}@${domain}`}, false, ${role}, true)`,
       { id: UserId.make(alias), alias, role } satisfies SignedInUser,
     )
   const admin = yield* insertUser('acc_admin', 'administrador')
@@ -95,7 +95,7 @@ const scenario = Effect.gen(function* () {
     created_at: new Date('2026-10-05T12:00:00Z'),
     ...reviewed('rechazado', 'Faltan los pasos del lanzador.'),
   })
-  return { sql, admin, admin2, reviewer, ana, approved, rejected, failing, solution, profile, game }
+  return { sql, insertUser, admin, admin2, reviewer, ana, approved, rejected, failing, solution, profile, game }
 })
 type Scenario = Effect.Success<typeof scenario>
 
@@ -112,13 +112,16 @@ const rule = (r: RuleViolated['rule']) => new RuleViolated({ rule: r })
 const AccessRow = Schema.Struct({ role: Schema.String, active: Schema.Boolean })
 const accessOf = (sql: SqlClient.SqlClient, id: string) =>
   Effect.flatMap(sql`SELECT role, active FROM app_user WHERE id = ${id}`, Schema.decodeUnknownEffect(Schema.Array(AccessRow)))
+const sessionsOf = (sql: SqlClient.SqlClient, id: string) =>
+  Effect.flatMap(sql`SELECT count(*)::int AS n FROM session WHERE "userId" = ${id}`, Schema.decodeUnknownEffect(Schema.Tuple([Schema.Struct({ n: Schema.Int })])))
 
 layer(PgTest)('changeAccess', (it) => {
-  it.effect('un administrador cambia el rol y desactiva otra cuenta; repetirlo no cambia nada', inScenario((e) =>
+  it.effect('un administrador cambia el rol y desactiva otra cuenta, que pierde sus sesiones; repetirlo no cambia nada', inScenario((e) =>
     Effect.gen(function* () {
+      yield* e.sql`INSERT INTO session (id, "expiresAt", token, "updatedAt", "userId") VALUES ('acc_s', now() + interval '1 day', 'acc_t', now(), ${e.ana.id})`
       const admin = yield* adminOf(e.admin)
       expect(yield* changeAccess(e.ana.id, { role: 'revisor', active: false }, admin)).toEqual({ alias: 'acc_ana', role: 'revisor', active: false, changed: true })
-      expect(yield* accessOf(e.sql, e.ana.id)).toEqual([{ role: 'revisor', active: false }])
+      expect([yield* accessOf(e.sql, e.ana.id), yield* sessionsOf(e.sql, e.ana.id)]).toEqual([[{ role: 'revisor', active: false }], [{ n: 0 }]])
       expect(yield* changeAccess(e.ana.id, { role: 'revisor', active: false }, admin)).toMatchObject({ changed: false })
     })))
 
@@ -145,6 +148,25 @@ layer(PgTest)('changeAccess', (it) => {
   it.effect('una cuenta que no existe', inScenario(() =>
     Effect.gen(function* () {
       expect(yield* Effect.flip(changeAccess(UserId.make('acc_nadie'), { role: 'revisor' }, null))).toEqual(new NotFound())
+    })))
+
+  it.effect('desde la página, solo un administrador cambia cuentas', inScenario((e) =>
+    Effect.gen(function* () {
+      const change = { user_id: e.ana.id, role: 'administrador', active: true } as const
+      expect(yield* Effect.flip(as(e.reviewer)(administerAccess(change)))).toEqual(new Forbidden())
+      expect(yield* Effect.flip(as(null)(administerAccess(change)))).toEqual(new Unauthenticated())
+      expect(yield* as(e.admin)(administerAccess(change))).toMatchObject({ role: 'administrador', changed: true })
+    })))
+
+  it.effect('un administrador de ejemplo, cuya contraseña es pública, solo ve y cambia cuentas de ejemplo', inScenario((e) =>
+    Effect.gen(function* () {
+      const demo = yield* e.insertUser('acc_demo_admin', 'administrador', 'demo.opengame.test')
+      const sample = yield* e.insertUser('acc_demo_ana', 'usuario', 'demo.opengame.test')
+      const seen = (user: SignedInUser) => Effect.map(as(user)(accounts('acc_')), (r) => r.accounts.map((a) => a.alias).sort())
+      expect(yield* seen(demo)).toEqual(['acc_demo_admin', 'acc_demo_ana'])
+      expect((yield* seen(e.admin)).length).toBe(7)
+      expect(yield* Effect.flip(changeAccess(e.admin.id, { active: false }, yield* adminOf(demo)))).toEqual(new NotFound())
+      expect(yield* changeAccess(sample.id, { role: 'revisor' }, yield* adminOf(demo))).toMatchObject({ changed: true })
     })))
 })
 
