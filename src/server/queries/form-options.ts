@@ -1,6 +1,6 @@
 import { Effect, Schema, Struct } from 'effect'
 import { SqlClient } from 'effect/sql'
-import { TargetProfile } from '../../domain/contributions.ts'
+import { profileContentColumns, TargetProfile } from '../../domain/contributions.ts'
 import { NotFound } from '../../domain/errors.ts'
 import { DiagnosticId, DistributionId, EditionId, type GameId, type GuideId, type ProfileId, type ReportId } from '../../domain/ids.ts'
 import { activeStatuses } from '../../domain/review.ts'
@@ -131,22 +131,9 @@ const dependencyOptions = Effect.flatMap(SqlClient.SqlClient, (sql) =>
   rows(DependencyOption, sql`SELECT id, name, package_manager FROM dependency ORDER BY name, package_manager`),
 )
 
-const contentColumns =
-  'p.title, p.target_game_version, p.ram_min_mb, p.vram_min_mb, p.requires_vulkan, p.vulkan_version_min, p.cpu_requirement, p.gpu_requirement, p.launch_options'
+const contentColumns = profileContentColumns.map((c) => `p.${c}`).join(', ')
 
-const DraftContent = Profile.mapFields(
-  Struct.pick([
-    'title',
-    'target_game_version',
-    'ram_min_mb',
-    'vram_min_mb',
-    'requires_vulkan',
-    'vulkan_version_min',
-    'cpu_requirement',
-    'gpu_requirement',
-    'launch_options',
-  ]),
-)
+const DraftContent = Profile.mapFields(Struct.pick(profileContentColumns))
 const DraftStep = ProfileStep.mapFields(Struct.pick(['title', 'instruction']))
 const DraftDependency = ProfileDependency.mapFields(Struct.pick(['dependency_id', 'required_version', 'required', 'install_instruction']))
 
@@ -167,10 +154,13 @@ const draftOf = (id: ProfileId) =>
 
 const SourceEnvironment = Profile.mapFields(Struct.pick(['id', 'edition_id', 'distribution_id', 'layer_version_id', 'architecture']))
 
-/** The propose form. `from` names a public profile of the same game to start from: a new version with changes. */
+/**
+ * The propose form. `from` names a profile of the same game to start from, a new version with changes:
+ * a public one, or one of the visitor's own whatever its status (rejected included).
+ */
 export const profileOptions = (gameId: GameId, from: ProfileId | null) =>
   Effect.gen(function* () {
-    yield* requireUser
+    const user = yield* requireUser
     const sql = yield* SqlClient.SqlClient
     const [game] = yield* rows(GameRow, sql`SELECT id, title FROM game WHERE id = ${gameId}`)
     if (game === undefined) return yield* Effect.fail(new NotFound())
@@ -187,7 +177,7 @@ export const profileOptions = (gameId: GameId, from: ProfileId | null) =>
             SourceEnvironment,
             sql`SELECT p.id, p.edition_id, p.distribution_id, p.layer_version_id, p.architecture
                 FROM profile p JOIN game_edition e ON e.id = p.edition_id
-                WHERE p.id = ${from} AND e.game_id = ${gameId} AND p.review_status IN ${sql.in(activeStatuses)}`,
+                WHERE p.id = ${from} AND e.game_id = ${gameId} AND (p.review_status IN ${sql.in(activeStatuses)} OR p.author_id = ${user.id})`,
           )
     const draft = source === undefined ? null : { ...source, ...(yield* draftOf(source.id)) }
     return { game, editions, layers, distributions: yield* distributionOptions, dependencies: yield* dependencyOptions, draft }

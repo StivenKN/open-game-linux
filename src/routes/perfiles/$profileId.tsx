@@ -58,8 +58,8 @@ function ProfilePage() {
         </div>
         {!approved && (
           <p className="small note" data-tone="amarillo">
-            Este perfil aún no está aprobado. Puedes probarlo: un reporte aprobado con resultado funcional es lo que su
-            aprobación necesita.
+            Este perfil aún no está aprobado: lo escribió un usuario y ningún revisor ha leído sus pasos. Lee cada comando antes
+            de ejecutarlo. Si lo pruebas, un reporte aprobado con resultado funcional es lo que su aprobación necesita.
           </p>
         )}
         <p className="small note" data-tone="azul">

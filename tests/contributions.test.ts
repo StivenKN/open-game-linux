@@ -3,7 +3,7 @@ import { Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import { GuideEdit, NewGuide, NewSolution, NewGame, NewProfile, NewReport, ProfileEdit } from '../src/domain/contributions.ts'
 import { ApprovalBlocked, Unauthenticated, IncomparableProfile, NotFound, RuleViolated, Forbidden, InvalidTransition } from '../src/domain/errors.ts'
-import { ProfileId, UserId } from '../src/domain/ids.ts'
+import { GameId, ProfileId, UserId } from '../src/domain/ids.ts'
 import { ContributionRef, Decision, type Role } from '../src/domain/review.ts'
 import {
   createGame,
@@ -17,6 +17,7 @@ import {
 } from '../src/server/commands/contributions.ts'
 import { approvalBlockers, decide } from '../src/server/commands/review.ts'
 import { type SignedInUser, Visitor } from '../src/server/auth.ts'
+import { profileOptions } from '../src/server/queries/form-options.ts'
 import { gamePage } from '../src/server/queries/game.ts'
 import { guide } from '../src/server/queries/guides.ts'
 import { profile as profilePage } from '../src/server/queries/profile.ts'
@@ -350,7 +351,23 @@ layer(PgTest)('aportes', (it) => {
         const rejected = yield* e.profile({ distribution_id: e.fedora })
         yield* asUser(e.rita)(decide(ref('perfil', rejected), reject))
         expect(yield* Effect.flip(asUser(e.bruno)(editProfile(profileEdit(rejected))))).toEqual(rule('perfil_congelado'))
+        const recommended = yield* e.profile({ layer_version_id: e.layerVersion8 })
+        const { id: failing } = yield* fileReport(e, { tested_at: '2026-10-04T10:00:00.000Z', ...withFailure(e) })
+        yield* fileSolution(e, failing, { profile_id: recommended })
+        expect(yield* Effect.flip(asUser(e.bruno)(editProfile(profileEdit(recommended))))).toEqual(rule('perfil_congelado'))
+        expect(yield* Effect.flip(asUser(e.bruno)(deleteProfile(profileId(recommended))))).toEqual(rule('perfil_congelado'))
         expect(yield* e.sql`SELECT count(*)::int AS n FROM report WHERE id = ${id} AND profile_id = ${e.mintProfile}`).toEqual([{ n: 1 }])
+      })))
+
+    it.effect('empezar una versión nueva desde un perfil rechazado ajeno, aunque su autor sí puede', inScenario((e) =>
+      Effect.gen(function* () {
+        const rejected = yield* e.profile({ distribution_id: e.fedora })
+        yield* asUser(e.rita)(decide(ref('perfil', rejected), reject))
+        const [edition] = Schema.decodeUnknownSync(Schema.Array(Schema.Struct({ game_id: GameId })))(yield* e.sql`SELECT game_id FROM game_edition WHERE id = ${e.ed}`)
+        if (edition === undefined) return yield* Effect.die('the scenario has no edition')
+        const from = profileId(rejected)
+        expect((yield* asUser(e.ana)(profileOptions(edition.game_id, from))).draft).toBeNull()
+        expect((yield* asUser(e.bruno)(profileOptions(edition.game_id, from))).draft).toMatchObject({ id: rejected, distribution_id: e.fedora, title: 'perfil' })
       })))
 
     it.effect('la misma dependencia dos veces en un perfil, sin dejar el perfil a medias', inScenario((e) =>

@@ -361,7 +361,7 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 
 - Any signed-in user proposes a profile from the game page (`/juegos/$gameId/perfiles/nuevo`): the environment (edition, distribution, layer version, architecture), the content (title, target game version, RAM, VRAM and Vulkan minimums, CPU and GPU notes, launch options) and ordered steps and dependencies. A dependency is picked from the catalog or typed as a new one, which upserts like a new layer version. The profile is `pendiente` and enters the existing queue on `/revision`; approval still needs an approved working report that used it.
 - Its author edits it on `/perfiles/$profileId/editar` while it is pending and no report or solution points at it. One SQL expression, `profileEditable` in `server/commands/contributions.ts`, decides that for the writer and for the profile page's «Editar la propuesta». The DB trigger `og_profile_frozen` still freezes a reviewed or tested profile, and now maps to the rule `perfil_congelado`.
-- An approved, rejected or used profile changes only through a new profile. «Proponer una versión con cambios» opens the form filled from it (`?desde=`). A new profile takes the next `revision` of its environment, so a second proposal for the same edition, distribution, layer and architecture is r2.
+- An approved, rejected or used profile changes only through a new profile. «Proponer una versión con cambios» opens the form filled from it (`?desde=`): any public profile, or one of your own whatever its status, so a rejected author can rework theirs. A new profile takes the next `revision` of its environment, so a second proposal for the same edition, distribution, layer and architecture is r2.
 - Reviewers and administrators create and edit guides on `/guias/nueva` and `/guias/$guideId/editar`. `createGuide` and `editGuide` call `requireReviewer`, which is the code home of "Solo revisores publican guías". Readers still see only published guides; reviewers also see drafts and archived ones, so they can reach them to edit.
 - Every write lives in `server/commands/contributions.ts`, and `src/boundaries.test.ts` fails on an `INSERT`, `UPDATE` or `DELETE` of `profile`, `profile_step`, `profile_dependency` or `adoption_guide` anywhere else. The seed now proposes its demo profiles and writes its guides through those writers.
 
@@ -380,8 +380,9 @@ Found by the pre-PR comment audit. None is a correctness bug; each would make an
 **Open questions and risks.**
 
 1. Two proposals for the same environment in the same instant collide on `profile_revision_uq`; the second gets the generic error and can resend.
-2. The profile page keeps a player's step checklist under the profile id and revision. Editing a pending profile keeps both, so a checklist can point at steps that moved.
-3. A new dependency typed by any user becomes a catalog row others can pick, like a new layer version from a report.
+2. A pending profile is public so others can test it, and now anyone can write one. Its page says no reviewer has read the steps and asks readers to check each command before running it.
+3. The profile page keeps a player's step checklist under the profile id and revision. Editing a pending profile keeps both, so a checklist can point at steps that moved.
+4. A new dependency typed by any user becomes a catalog row others can pick, like a new layer version from a report.
 
 ## Open questions and risks
 

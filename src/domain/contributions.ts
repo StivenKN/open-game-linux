@@ -127,12 +127,7 @@ const NewProfileDependency = Schema.Struct({
   install_instruction: RequiredText,
 })
 
-/**
- * What the author of a profile can still change while it is pending and nobody used it. The
- * environment it is for (edition, distribution, layer, architecture) is fixed at birth.
- * Steps keep the order of the form's rows.
- */
-export const ProfileContent = Schema.Struct({
+const profileColumns = {
   title: Profile.fields.title,
   target_game_version: OptionalTextUpTo(maxLengths.profile.target_game_version),
   ram_min_mb: Profile.fields.ram_min_mb,
@@ -142,6 +137,18 @@ export const ProfileContent = Schema.Struct({
   cpu_requirement: OptionalText,
   gpu_requirement: OptionalText,
   launch_options: OptionalText,
+}
+
+/** The `profile` columns of `ProfileContent`, the one list the writer and the form's reads use. */
+export const profileContentColumns = Struct.keys(profileColumns)
+
+/**
+ * What the author of a profile can still change while it is pending and nobody used it. The
+ * environment it is for (edition, distribution, layer, architecture) is fixed at birth.
+ * Steps keep the order of the form's rows.
+ */
+export const ProfileContent = Schema.Struct({
+  ...profileColumns,
   steps: Schema.Array(NewStep).pipe(
     Schema.refine(Arr.isReadonlyArrayNonEmpty, { message: 'Un perfil necesita al menos un paso.' }),
     Schema.withDecodingDefaultKey(Effect.succeed([])),

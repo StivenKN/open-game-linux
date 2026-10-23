@@ -10,6 +10,7 @@ import {
   type NewReport,
   type GuideEdit,
   type ProfileContent,
+  profileContentColumns,
   type ProfileEdit,
   TargetProfile,
 } from '../../domain/contributions.ts'
@@ -170,21 +171,11 @@ export const profileEditable = (p: string) =>
 const ProfileIdRow = Schema.Struct({ id: ProfileId })
 const NextRevision = Schema.Struct({ revision: Profile.fields.revision })
 const DependencyIdRow = Schema.Struct({ id: DependencyId })
-const OwnProfile = Schema.Struct({ author_id: UserId, editable: Schema.Boolean })
+const Author = Schema.Struct({ author_id: UserId })
+const Editable = Schema.Struct({ editable: Schema.Boolean })
 const ProfileGame = Schema.Struct({ game_id: GameId })
 
-const contentColumns = (c: ProfileContent) =>
-  Struct.pick(c, [
-    'title',
-    'target_game_version',
-    'ram_min_mb',
-    'vram_min_mb',
-    'requires_vulkan',
-    'vulkan_version_min',
-    'cpu_requirement',
-    'gpu_requirement',
-    'launch_options',
-  ])
+const contentColumns = (c: ProfileContent) => Struct.pick(c, profileContentColumns)
 
 const resolveDependency = (ref: DependencyRef) =>
   Effect.gen(function* () {
@@ -243,9 +234,11 @@ const lockEditable = (id: ProfileId) =>
   Effect.gen(function* () {
     const user = yield* requireUser
     const sql = yield* SqlClient.SqlClient
-    const [row] = yield* rows(OwnProfile, sql`SELECT p.author_id, ${sql.literal(profileEditable('p'))} AS editable FROM profile p WHERE p.id = ${id} FOR UPDATE`)
+    const [row] = yield* rows(Author, sql`SELECT author_id FROM profile WHERE id = ${id} FOR UPDATE`)
     if (row === undefined || row.author_id !== user.id) return yield* Effect.fail(new NotFound())
-    if (!row.editable) return yield* violate('perfil_congelado')
+    // A second statement: it reads after the lock wait, so it sees a report or solution saved meanwhile.
+    const { editable } = yield* oneRow(Editable, sql`SELECT ${sql.literal(profileEditable('p'))} AS editable FROM profile p WHERE p.id = ${id}`)
+    if (!editable) return yield* violate('perfil_congelado')
   })
 
 /** Replaces the content, steps and dependencies of the author's pending, unused profile. */
