@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { type CompatibilityStatus, onDistribution, onSteamDeck, statusOf, type ApprovedTest, summarize, timeline, workedOnSteamDeck } from './compatibility.ts'
+import { type CompatibilityStatus, onDistribution, onSteamDeck, statusOf, type ApprovedTest, summarize, timeline, workedOnSteamDeck, blockedByAntiCheat } from './compatibility.ts'
 import { DistributionId, EditionId, LayerVersionId, ReportId } from './ids.ts'
 import type { Outcome } from './literals.ts'
 import { ets2, gtaV, valorant } from './samples.ts'
@@ -253,5 +253,20 @@ describe('Steam Deck', () => {
       ['steam_deck_oled', 1],
       [null, 1],
     ])
+  })
+})
+
+describe('blockedByAntiCheat', () => {
+  it('Valorant: its failing tests name the anti-cheat', () => {
+    expect(blockedByAntiCheat(valorant.tests, now)).toBe(true)
+  })
+
+  it('a working test that notes an anti-cheat does not block the game', () => {
+    expect(blockedByAntiCheat([approved(1, 'funciona_con_ajustes', '2026-09-01T12:00:00Z', { failures: ['anti_cheat'] })], now)).toBe(false)
+  })
+
+  it('reads the tests the state counts: a stale block gives way to a recent success', () => {
+    const recovered = approved(7, 'funciona', '2027-09-01T12:00:00Z', { edition_id: EditionId.make(3) })
+    expect(blockedByAntiCheat([...valorant.tests, recovered], new Date('2027-10-01T00:00:00Z'))).toBe(false)
   })
 })

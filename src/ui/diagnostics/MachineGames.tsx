@@ -1,6 +1,7 @@
 import type { EvaluatedLibrary } from '../../domain/library.ts'
-import { count } from '../format.ts'
+import { libraryReadiness } from '../../domain/readiness.ts'
 import { type MatrixRow, DiagnosticMatrix } from './DiagnosticMatrix.tsx'
+import { ReadinessSummary } from './ReadinessSummary.tsx'
 
 const OPEN_UP_TO = 20
 
@@ -29,14 +30,8 @@ export function MachineGames({
         <h2 id="steam-library" className="section-title">
           Tu biblioteca de Steam
         </h2>
-        <p className="muted">
-          {count(library.total, 'juego instalado', 'juegos instalados')}, {owned.length} en el catálogo.
-        </p>
-        {owned.length > 0 ? (
-          <DiagnosticMatrix rows={owned} approximate={approximate} />
-        ) : (
-          <p className="small note">Ninguno de tus juegos instalados está todavía en el catálogo.</p>
-        )}
+        <ReadinessSummary readiness={libraryReadiness(owned, library.total)} />
+        {owned.length > 0 && <DiagnosticMatrix rows={owned} approximate={approximate} />}
         {unknown.length > 0 && (
           <details className="card" open={unknown.length <= OPEN_UP_TO}>
             <summary className="panel-title">Juegos que todavía no conocemos ({unknown.length})</summary>

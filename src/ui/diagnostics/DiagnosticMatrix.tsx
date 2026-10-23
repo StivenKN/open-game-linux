@@ -15,6 +15,7 @@ export type MatrixRow = {
   readonly in_library: boolean
   readonly status: CompatibilityStatus
   readonly test_count: number
+  readonly blocked_by_anti_cheat: boolean
   readonly x86_level_min: X86Level | null
   readonly path: GamePath
   readonly profile: (EvaluatedProfile & { readonly layer: string; readonly distribution: string }) | null

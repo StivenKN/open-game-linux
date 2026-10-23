@@ -1,14 +1,14 @@
-import { Effect, Option, Schema } from 'effect'
+import { Clock, Effect, Option, Schema } from 'effect'
 import { SqlClient } from 'effect/sql'
 import type { Capture, DiagnosticInput } from '../../domain/contributions.ts'
 import { type EvaluatedLibrary, type SteamLibrary, STEAM_LAUNCHER } from '../../domain/library.ts'
-import { statusOf } from '../../domain/compatibility.ts'
+import { blockedByAntiCheat, summarize } from '../../domain/compatibility.ts'
 import { screenDistros, type EvaluatedDistro } from '../../domain/distros.ts'
 import { requirements, evaluate, suggestProfile } from '../../domain/evaluation.ts'
 import type { MachineOnLinux } from '../../domain/gpu.ts'
 import { NotFound, type InvalidPayload } from '../../domain/errors.ts'
 import type { DiagnosticId, GuideId, GameId } from '../../domain/ids.ts'
-import { GraphicsApi, Outcome } from '../../domain/literals.ts'
+import { GraphicsApi } from '../../domain/literals.ts'
 import type { X86Level } from '../../domain/platform.ts'
 import { gamePath } from '../../domain/graphics-path.ts'
 import { Diagnostic, Distribution, Machine, AdoptionGuide, Game, GameEdition, Profile } from '../../domain/tables.ts'
@@ -16,10 +16,10 @@ import { requireUser, Visitor } from '../auth.ts'
 import { captureOf } from '../diagnostics/payload.ts'
 import { machineOnLinux } from '../gpu/capability.ts'
 import { rows, type Infra } from '../rows.ts'
+import { approvedTests } from './game.ts'
 import { layerLabel, distributionLabel } from './labels.ts'
 
 const GameRow = Schema.Struct({ id: Game.fields.id, title: Game.fields.title, x86_level_min: Game.fields.x86_level_min, apis: Schema.Array(GraphicsApi) })
-const ApprovedOutcome = Schema.Struct({ game_id: Game.fields.id, outcome: Outcome })
 
 const ApprovedProfile = Schema.Struct({
   id: Profile.fields.id,
@@ -50,12 +50,8 @@ const matrix = (machine: MachineOnLinux, setup: Setup, inLibrary: ReadonlySet<Ga
         GROUP BY j.id
         ORDER BY j.title, j.id`,
     )
-    const outcomes = yield* rows(
-      ApprovedOutcome,
-      sql`
-        SELECT ej.game_id, r.outcome FROM report r JOIN game_edition ej ON ej.id = r.edition_id
-        WHERE r.review_status = 'aprobado'`,
-    )
+    const now = new Date(yield* Clock.currentTimeMillis)
+    const allTests = yield* approvedTests(null)
     const profiles = yield* rows(
       ApprovedProfile,
       sql`
@@ -70,15 +66,17 @@ const matrix = (machine: MachineOnLinux, setup: Setup, inLibrary: ReadonlySet<Ga
         ORDER BY p.id`,
     )
     return games.map((game) => {
-      const approved = outcomes.filter((r) => r.game_id === game.id).map((r) => r.outcome)
+      const tests = allTests.filter((p) => p.game_id === game.id)
+      const { status, test_count } = summarize(tests, now)
       const evaluated = profiles.filter((p) => p.game_id === game.id).map((p) => ({ ...p, evaluation: evaluate(machine, requirements(p)) }))
       const profile = suggestProfile(evaluated, setup)
       return {
         game_id: game.id,
         title: game.title,
         in_library: inLibrary.has(game.id),
-        status: statusOf(approved),
-        test_count: approved.length,
+        status,
+        test_count,
+        blocked_by_anti_cheat: blockedByAntiCheat(tests, now),
         x86_level_min: game.x86_level_min,
         path: gamePath(machine, setup.x86_level, game),
         profile:
