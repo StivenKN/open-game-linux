@@ -67,9 +67,11 @@ const migrate = (keys: ReadonlyArray<string>) =>
     Effect.provide(NodeServices.layer),
   )
 const allMigrations = Object.keys(migrations)
-const throughSix = allMigrations.filter((key) => Number.parseInt(key, 10) <= 6)
-// What the migrator reports for each key it applies: [7, 'english_names'] and every later one.
-const fromSeven = allMigrations.filter((key) => !throughSix.includes(key)).map((key) => [Number.parseInt(key, 10), key.slice(key.indexOf('_') + 1)])
+const upTo = (n: number) => allMigrations.filter((key) => Number.parseInt(key, 10) <= n)
+const throughSix = upTo(6)
+const throughSeven = upTo(7)
+// What the migrator reports for each later key it applies, such as [8, 'gamepage'].
+const afterSeven = allMigrations.filter((key) => !throughSeven.includes(key)).map((key) => [Number.parseInt(key, 10), key.slice(key.indexOf('_') + 1)])
 
 // The migrator probes for its table with a query that fails on a fresh database, which aborts any
 // enclosing transaction, so the upgrade runs on a database of its own instead of inside a rollback.
@@ -102,14 +104,18 @@ layer(PgTest)('7_english_names', (it) => {
     const digestsBefore = yield* Effect.forEach(tables, (t) => Effect.map(digestOf(sql, t), (d) => [t, d] as const))
     expect(digestsBefore.every(([, d]) => d.n > 0)).toBe(true)
 
-    expect(yield* migrate(allMigrations)).toEqual(fromSeven)
-    expect(yield* migrate(allMigrations)).toEqual([])
+    expect(yield* migrate(throughSeven)).toEqual([[7, 'english_names']])
+    expect(yield* migrate(throughSeven)).toEqual([])
 
     const after = yield* census
     expect(after.filter((r) => carriesSpanish(r.name))).toEqual([])
     const digestsAfter = yield* Effect.forEach(tables, (t) => Effect.map(digestOf(sql, database.tables[t] ?? t), (d) => [t, d] as const))
     expect(digestsAfter).toEqual(digestsBefore)
     expect(yield* sql`SELECT og_content('{"review_status": "aprobado", "title": "t"}'::jsonb) AS rest`).toEqual([{ rest: { title: 't' } }])
+
+    // Later migrations use the English names, so they run on the upgraded database too.
+    expect(yield* migrate(allMigrations)).toEqual(afterSeven)
+    expect(yield* migrate(allMigrations)).toEqual([])
   })
 
   it.effect('a database that ran 1 to 6 keeps every row through 7, and 7 runs once', () =>

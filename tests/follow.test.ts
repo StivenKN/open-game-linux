@@ -100,6 +100,8 @@ layer(PgTest)('seguir un juego', (it) => {
       inRollback(
         Effect.gen(function* () {
           const e = yield* scenario
+          yield* asUser(e.author)(change({ _tag: 'Seguir', game_id: e.game }))
+          yield* e.sql`UPDATE game_follow SET seen_at = ${new Date('2026-10-01T00:00:00Z')} WHERE user_id = ${e.author.id}`
           yield* asUser(e.ana)(change({ _tag: 'Seguir', game_id: e.game }))
           yield* e.seenAt('2026-10-01T00:00:00Z')
           const visto = (seen_at: string) => asUser(e.ana)(change({ _tag: 'Visto', game_id: e.game, seen_at }))
@@ -107,7 +109,9 @@ layer(PgTest)('seguir un juego', (it) => {
           expect(yield* visto('2026-10-05T00:00:00.000Z')).toEqual({ changed: true })
           expect(yield* e.follows).toEqual([{ seen_at: new Date('2026-10-05T00:00:00Z') }])
           expect(yield* visto('2999-01-01T00:00:00.000Z')).toEqual({ changed: true })
-          expect(yield* e.sql`SELECT seen_at = now() AS clamped FROM game_follow WHERE game_id = ${e.game}`).toEqual([{ clamped: true }])
+          expect(yield* e.sql`SELECT seen_at = now() AS clamped FROM game_follow WHERE user_id = ${e.ana.id}`).toEqual([{ clamped: true }])
+          // Ana's marks leave the other follower's seen_at alone.
+          expect(yield* e.sql`SELECT seen_at FROM game_follow WHERE user_id = ${e.author.id}`).toEqual([{ seen_at: new Date('2026-10-01T00:00:00Z') }])
         }),
       ))
 
@@ -138,7 +142,7 @@ layer(PgTest)('seguir un juego', (it) => {
           const page = yield* asAna(gamePage(e.game))
           expect([page.summary.status, page.follow?.news]).toEqual(['resultados_variables', news])
           // The watermark comes from the clock that stamps reviewed_at, not from the app's Clock.
-          expect(yield* e.sql`SELECT now() AS now`).toEqual([{ now: page.as_of }])
+          expect(yield* e.sql`SELECT now() - interval '1 millisecond' AS now`).toEqual([{ now: page.as_of }])
           expect((yield* asAna(myFollows)).games.map((g) => [g.title, g.status, g.news])).toEqual([['fo_juego', 'resultados_variables', news]])
           expect((yield* asAna(session)).followed_news).toBe(1)
 

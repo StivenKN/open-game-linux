@@ -22,10 +22,11 @@ const DatabaseNow = Schema.Struct({ now: Schema.Date })
 /**
  * What "Marcar como visto" may mark seen, read before the approved tests. It comes from the clock that stamps
  * `reviewed_at` (Postgres, not the app's `Clock`), so every approval stamped later is news. Only an approval
- * whose transaction is still open during the read can fall behind it.
+ * whose transaction is still open during the read can fall behind it. The driver decodes timestamps to the
+ * millisecond, so the watermark steps back one: an approval later in the same millisecond still reads later.
  */
 export const seenWatermark = Effect.flatMap(SqlClient.SqlClient, (sql) =>
-  Effect.map(oneRow(DatabaseNow, sql`SELECT now() AS now`), (row) => row.now),
+  Effect.map(oneRow(DatabaseNow, sql`SELECT now() - interval '1 millisecond' AS now`), (row) => row.now),
 )
 
 /** The approved tests of one game, of the games a user follows, or (null) of the whole catalog. */

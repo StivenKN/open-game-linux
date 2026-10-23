@@ -15,7 +15,6 @@ const followed = (user: UserId) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     const now = new Date(yield* Clock.currentTimeMillis)
-    const asOf = yield* seenWatermark
     const follows = yield* rows(
       FollowRow,
       sql`SELECT f.game_id, f.seen_at, f.created_at, g.title
@@ -29,16 +28,20 @@ const followed = (user: UserId) =>
       return { ...f, status: summarize(own, now).status, news: newsSince(own, f.seen_at, now) }
     })
     // Array.sort is stable, so the title order holds within each half.
-    return { as_of: asOf, games: games.sort((a, b) => Number(hasNews(b.news)) - Number(hasNews(a.news))) }
+    return games.sort((a, b) => Number(hasNews(b.news)) - Number(hasNews(a.news)))
   })
 
-/** The "Seguidos" page. */
-export const myFollows = Effect.flatMap(requireUser, (u) => followed(u.id))
+/** The "Seguidos" page. The watermark is read before `followed` reads the approved tests. */
+export const myFollows = Effect.gen(function* () {
+  const user = yield* requireUser
+  const asOf = yield* seenWatermark
+  return { as_of: asOf, games: yield* followed(user.id) }
+})
 
 /** What every page's header needs: the visitor, and how many followed games have news (0 for guests). */
 export const session = Effect.gen(function* () {
   const visitor = yield* Visitor
   if (Option.isNone(visitor)) return { visitor: null, followed_news: 0 }
-  const { games } = yield* followed(visitor.value.id)
+  const games = yield* followed(visitor.value.id)
   return { visitor: visitor.value, followed_news: games.filter((g) => hasNews(g.news)).length }
 })
