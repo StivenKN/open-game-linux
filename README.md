@@ -8,7 +8,7 @@ Created in [T3 Code](https://t3.codes).
 
 ## Prerequisites
 
-- Node.js 24 (the scripts run TypeScript directly).
+- Node.js 24.22.1 or later (the scripts run TypeScript directly; 24.22.1 fixes CVE-2026-111497 in Brotli).
 - pnpm.
 - Docker with Compose, for the local PostgreSQL 18 container.
 

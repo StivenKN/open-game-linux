@@ -1,7 +1,8 @@
 # One image serves the app (`pnpm start`) and runs the TypeScript scripts (`pnpm db:migrate`, `pnpm db:seed`,
 # `pnpm set-role`, `pnpm db:protondb`, `pnpm db:anticheat`), which import src/ directly. compose.prod.yaml's `imports`
 # service runs scripts/scheduled-imports.sh from the same image. The build stage keeps the dev dependencies out of the final image.
-FROM node:24-slim AS build
+# Pinned to a patch release: 24.22.1 fixes the Brotli decoder (CVE-2026-111497). Bump both stages together.
+FROM node:24.22.1-slim AS build
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
 WORKDIR /app
@@ -10,7 +11,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-FROM node:24-slim
+FROM node:24.22.1-slim
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 NODE_ENV=production
 RUN corepack enable && mkdir /app && chown node:node /app
 USER node
