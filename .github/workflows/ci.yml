@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # `pnpm check` is the same gate agents run locally: routes, types, lint, tests on a real Postgres, build, bundle guard.
+  check:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:18
+        env: { POSTGRES_USER: opengame, POSTGRES_PASSWORD: opengame, POSTGRES_DB: opengame_test }
+        ports: ['55432:5432']
+        options: --health-cmd "pg_isready -U opengame -d opengame_test" --health-interval 2s --health-timeout 3s --health-retries 15
+    env:
+      DATABASE_URL: postgres://opengame:opengame@localhost:55432/opengame_test
+      DATABASE_URL_TEST: postgres://opengame:opengame@localhost:55432/opengame_test
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else
+      BETTER_AUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
